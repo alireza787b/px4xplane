@@ -151,7 +151,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="configReader.cpp" />
+    <ClCompile Include="ConnectionManager.cpp" />
+    <ClCompile Include="DataRefManager.cpp" />
     <ClCompile Include="px4xplane.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="configReader.h" />
+    <ClInclude Include="ConnectionManager.h" />
+    <ClInclude Include="DataRefManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
