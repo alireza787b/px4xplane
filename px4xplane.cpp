@@ -59,12 +59,12 @@ PLUGIN_API int XPluginStart(
 
 	auto settings = ConfigReader::readConfigFile("settings.ini");
 	auto sitlIpIt = settings.find("SITL_IP");
-	sitlIp = (sitlIpIt != settings.end()) ? sitlIpIt->second : "172.21.170.14"; // Default IP
+	sitlIp = (sitlIpIt != settings.end()) ? sitlIpIt->second : "0.0.0.0"; // Default IP
 
 	if (sitlIpIt == settings.end()) {
 		// Log a message or show a message in the plugin window
-		XPLMDebugString("px4xplane: SITL_IP not found in settings.ini, using default IP 172.21.170.14\n");
-		sitlIp = "172.21.170.14";
+		XPLMDebugString("px4xplane: SITL_IP not found in settings.ini, using default IP 0.0.0.0\n");
+		sitlIp = "0.0.0.0";
 	}
 	else {
 		sitlIp = sitlIpIt->second;
@@ -99,6 +99,8 @@ PLUGIN_API int XPluginStart(
 	XPLMSetWindowResizingLimits(g_window, 200, 200, 600, 1000);
 	XPLMSetWindowTitle(g_window, "px4xplane");
 
+
+
 	// TODO: Setup the TCP connection here
 	// int sock = socket(AF_INET, SOCK_STREAM, 0);
 	// ...
@@ -127,6 +129,9 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	const std::string& status = ConnectionManager::getStatus();
 	snprintf(buf, sizeof(buf), "Status: %s", status.c_str());
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	const std::string& lastMessage = ConnectionManager::getLastMessage();
+	snprintf(buf, sizeof(buf), "Last Message: %s", lastMessage.c_str());
+	XPLMDrawString(col_white, l + 10, t - (lineOffset * 2), buf, NULL, xplmFont_Proportional);
 
 	// Draw SITL IP on the same row with some space from the status
 	int sitlIpOffset = 200; // Adjust this offset as needed to put space between status and SITL IP
@@ -164,7 +169,7 @@ void toggleEnable() {
 	if (ConnectionManager::isConnected())
 		ConnectionManager::disconnect();
 	else
-		ConnectionManager::connect();
+		ConnectionManager::connect(sitlIp);
 	updateMenuItems(); // Update menu items after toggling connection
 }
 
