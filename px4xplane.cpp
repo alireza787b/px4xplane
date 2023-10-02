@@ -244,6 +244,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	// Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
 	MAVLinkManager::sendHILSensor();
+	//MAVLinkManager::sendHILGPS();
 
 
 	//ConnectionManager::receiveData();
@@ -252,6 +253,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 PLUGIN_API void XPluginStop(void) {
 	// Unregister the flight loop callback
+	if (ConnectionManager::isConnected) {
+		toggleEnable();
+	}
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 #if IBM
 	ConnectionManager::cleanupWinSock();
