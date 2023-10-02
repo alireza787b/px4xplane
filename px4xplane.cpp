@@ -2,6 +2,7 @@
 #include "XPLMGraphics.h"
 #include "XPLMDataAccess.h"
 #include "XPLMMenus.h"
+#include "XPLMProcessing.h"
 #include <string>
 #include <stdio.h>
 #include <vector>
@@ -24,6 +25,7 @@
 .h> // For TCP/IP
 #include <netinet/in.h> // For TCP/IP
 #endif
+#include "MAVLinkManager.h"
 
 #ifndef XPLM300
 #error This is made to be compiled against the XPLM300 SDK
@@ -42,10 +44,8 @@ int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void
 void create_menu();
 void toggleEnable();
 void updateMenuItems();
-
-
-
-std::string sitlIp;
+float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
+PLUGIN_API void XPluginStop(void);
 
 
 PLUGIN_API int XPluginStart(
@@ -57,18 +57,7 @@ PLUGIN_API int XPluginStart(
 	strcpy(outSig, "alireza787.px4xplane");
 	strcpy(outDesc, "PX4 SITL Interface for X-Plane.");
 
-	auto settings = ConfigReader::readConfigFile("settings.ini");
-	auto sitlIpIt = settings.find("SITL_IP");
-	sitlIp = (sitlIpIt != settings.end()) ? sitlIpIt->second : "0.0.0.0"; // Default IP
 
-	if (sitlIpIt == settings.end()) {
-		// Log a message or show a message in the plugin window
-		XPLMDebugString("px4xplane: SITL_IP not found in settings.ini, using default IP 0.0.0.0\n");
-		sitlIp = "0.0.0.0";
-	}
-	else {
-		sitlIp = sitlIpIt->second;
-	}
 	create_menu();
 
 	XPLMCreateWindow_t params;
@@ -98,6 +87,16 @@ PLUGIN_API int XPluginStart(
 	XPLMSetWindowPositioningMode(g_window, xplm_WindowPositionFree, -1);
 	XPLMSetWindowResizingLimits(g_window, 200, 200, 600, 1000);
 	XPLMSetWindowTitle(g_window, "px4xplane");
+
+
+#if IBM
+	if (!ConnectionManager::initializeWinSock()) {
+		XPLMDebugString("initializeWinSock failed \n");
+	}
+#endif
+
+	// Register the flight loop callback to be called at the next cycle
+	XPLMRegisterFlightLoopCallback(MyFlightLoopCallback, -1.0f, NULL);
 
 
 
@@ -133,12 +132,7 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	snprintf(buf, sizeof(buf), "Last Message: %s", lastMessage.c_str());
 	XPLMDrawString(col_white, l + 10, t - (lineOffset * 2), buf, NULL, xplmFont_Proportional);
 
-	// Draw SITL IP on the same row with some space from the status
-	int sitlIpOffset = 200; // Adjust this offset as needed to put space between status and SITL IP
-	snprintf(buf, sizeof(buf), "SITL IP: %s", sitlIp.c_str());
-	XPLMDrawString(col_white, l + sitlIpOffset, t - lineOffset, buf, NULL, xplmFont_Proportional);
 
-	// Draw Drone Config on the same row with some space from the SITL IP
 	int droneConfigOffset = 400; // Adjust this offset as needed to put space between SITL IP and Drone Config
 	snprintf(buf, sizeof(buf), "Drone Config: Quad");
 	XPLMDrawString(col_white, l + droneConfigOffset, t - lineOffset, buf, NULL, xplmFont_Proportional);
@@ -166,10 +160,15 @@ void menu_handler(XPLMMenuID in_menu, void* in_item_ref) {
 }
 
 void toggleEnable() {
-	if (ConnectionManager::isConnected())
+	XPLMDebugString("px4xplane: toggleEnable() called.\n");
+	if (ConnectionManager::isConnected()) {
+		XPLMDebugString("px4xplane: Currently connected, attempting to disconnect.\n");
 		ConnectionManager::disconnect();
-	else
-		ConnectionManager::connect(sitlIp);
+	}
+	else {
+		XPLMDebugString("px4xplane: Currently disconnected, attempting to set up server socket.\n");
+		ConnectionManager::setupServerSocket();
+	}
 	updateMenuItems(); // Update menu items after toggling connection
 }
 
@@ -239,3 +238,23 @@ void updateMenuItems() {
 }
 
 
+float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
+	// Check if the plugin is connected to PX4 SITL
+	if (!ConnectionManager::isConnected()) return -1.0f; // Return -1 to be called at the next cycle
+
+	// Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
+	MAVLinkManager::sendHILSensor();
+
+
+	//ConnectionManager::receiveData();
+	return -1.0f; // Return -1 to be called at the next cycle
+}
+
+PLUGIN_API void XPluginStop(void) {
+	// Unregister the flight loop callback
+	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
+#if IBM
+	ConnectionManager::cleanupWinSock();
+#endif
+	// ...
+}

@@ -69,7 +69,7 @@
       <Optimization>MaxSpeed</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>SDK\CHeaders\XPLM;SDK\CHeaders\Widgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>SDK\CHeaders\XPLM;SDK\CHeaders\Widgets;C:\Users\Alireza\source\repos\px4xplane\mavlink\c_library_v2\all;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;_WIN32_WINDOWS=0x0601;WIN32;NDEBUG;_WINDOWS;_USRDLL;SIMDATA_EXPORTS;IBM=1;XPLM200=1;XPLM210=1;XPLM300=1;XPLM301=1;XPLM302=1;XPLM303=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>.\Release\64\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>.\Release\64\Hello-World-SDK-3.pch</PrecompiledHeaderOutputFile>
@@ -154,12 +154,18 @@
     <ClCompile Include="configReader.cpp" />
     <ClCompile Include="ConnectionManager.cpp" />
     <ClCompile Include="DataRefManager.cpp" />
+    <ClCompile Include="MAVLinkManager.cpp" />
     <ClCompile Include="px4xplane.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="configReader.h" />
     <ClInclude Include="ConnectionManager.h" />
     <ClInclude Include="DataRefManager.h" />
+    <ClInclude Include="MAVLinkManager.h" />
+    <ClInclude Include="resource.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="px4xplane.rc" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

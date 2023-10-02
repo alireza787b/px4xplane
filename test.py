@@ -1,23 +1,19 @@
 import socket
 
-host = '0.0.0.0'
-port = 4560
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.bind(('0.0.0.0', 4560))  # Listen on port 4560
+server_socket.listen(1)
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind((host, port))
-s.listen(1)
+print("Server is listening on port 4560...")
 
-print(f"Server is listening on {host}:{port}")
+client_socket, addr = server_socket.accept()
+print(f"Connection accepted from {addr}")
 
-try:
-    conn, addr = s.accept()
-    print(f"Connection from {addr}")
+# To keep the connection alive, you may want to read or send data here
+# For example, to receive data from the client:
+data = client_socket.recv(1024)
+print(f"Received data: {data.decode()}")
 
-    conn.sendall(b'Welcome to the test server!\n')
-
-    data = conn.recv(1024)
-    print(f"Received: {data.hex()}")  # Print received data in hexadecimal format
-
-finally:
-    conn.close()
-    print("Connection closed")
+# Don't forget to close the sockets when done
+client_socket.close()
+server_socket.close()
