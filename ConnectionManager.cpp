@@ -127,6 +127,14 @@ void ConnectionManager::closeSocket(int& sockfd) {
 }
 void ConnectionManager::sendData(const uint8_t* buffer, int len) {
     if (!connected) return;
+
+    // Log the MAVLink packet in an interpretable format
+    std::string logMessage = "Sending MAVLink packet: ";
+    /*for (int i = 0; i < len; i++) {
+        logMessage += std::to_string(buffer[i]) + " ";
+    }*/
+    XPLMDebugString(logMessage.c_str());
+
     int totalBytesSent = 0;
     while (totalBytesSent < len) {
         int bytesSent = send(newsockfd, reinterpret_cast<const char*>(buffer) + totalBytesSent, len - totalBytesSent, 0);
