@@ -246,6 +246,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	MAVLinkManager::sendHILSensor();
 	MAVLinkManager::sendHILGPS();
 	MAVLinkManager::sendHILStateQuaternion();
+	MAVLinkManager::sendHILRCInputs();
 
 
 	//ConnectionManager::receiveData();

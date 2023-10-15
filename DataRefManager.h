@@ -7,7 +7,8 @@
 #include "XPLMDataAccess.h"
 #include "XPLMDisplay.h"
 #include <string>
-
+#include<cmath>
+#include<vector>
 
 enum DataRefType {
     DRT_FLOAT,
@@ -40,6 +41,8 @@ public:
     static int getInt(const char* dataRef);
     static double getDouble(const char* dataRef);
     static std::string arrayToString(const std::vector<float>& array); // add this line
-
-    // ... other functions for getting DataRefs ...
+    static float mapChannelValue(float value, float minInput, float maxInput, float minOutput, float maxOutput);
+    static std::tuple<float, float, float> convertOGLtoNED(float ogl_vx, float ogl_vy, float ogl_vz, float roll_rad, float pitch_rad, float yaw_rad);
+  
 };
+

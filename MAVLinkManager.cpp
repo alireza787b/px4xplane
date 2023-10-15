@@ -15,7 +15,23 @@ void MAVLinkManager::sendHILSensor() {
     hil_sensor.id = uint8_t(0);
     hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth;
     hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth;
-    hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth;
+    hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth*-1;
+
+  /*  float ogl_ax = DataRefManager::getFloat("sim/flightmodel/position/local_ax");
+    float ogl_ay = DataRefManager::getFloat("sim/flightmodel/position/local_ay");
+    float ogl_az = DataRefManager::getFloat("sim/flightmodel/position/local_az");
+
+    float roll_rad = DataRefManager::getFloat("sim/flightmodel/position/phi") * M_PI / 180.0;
+    float pitch_rad = DataRefManager::getFloat("sim/flightmodel/position/theta") * M_PI / 180.0;
+    float yaw_rad = DataRefManager::getFloat("sim/flightmodel/position/psi") * M_PI / 180.0;
+
+    float ned_an, ned_ae, ned_ad;
+    std::tie(ned_an, ned_ae, ned_ad) = DataRefManager::convertOGLtoNED(ogl_ax, ogl_ay, ogl_az, roll_rad, pitch_rad, yaw_rad);
+    hil_sensor.xacc = ned_an;
+    hil_sensor.yacc = ned_ae;
+    hil_sensor.zacc = ned_ad;*/
+
+
 
     hil_sensor.xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");
     hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
@@ -36,9 +52,16 @@ void MAVLinkManager::sendHILSensor() {
     hil_sensor.pressure_alt = DataRefManager::getDouble("sim/flightmodel2/position/pressure_altitude") * 0.3048;
     // Find suitable datarefs or provide default values
     hil_sensor.diff_pressure = 0;
-    hil_sensor.xmag = 0;
-    hil_sensor.ymag = 0;
-    hil_sensor.zmag = 0;
+
+        //create a siulated magnetomter here later
+
+        // Add noise to the magnetic vector
+       /* hil_sensor.xmag = 0;
+        hil_sensor.ymag = 0;
+        hil_sensor.zmag = 0;*/
+
+ 
+
 
     hil_sensor.temperature = DataRefManager::getFloat("sim/cockpit2/temperature/outside_air_temp_degc");
 
@@ -52,6 +75,9 @@ void MAVLinkManager::sendHILSensor() {
     fields_updated |= (1 << 3); // HIL_SENSOR_UPDATED_XGYRO, the bit shift corresponds to setting the 3rd bit to 1
     fields_updated |= (1 << 4); // HIL_SENSOR_UPDATED_YGYRO, the bit shift corresponds to setting the 4th bit to 1
     fields_updated |= (1 << 5); // HIL_SENSOR_UPDATED_ZGYRO, the bit shift corresponds to setting the 5th bit to 1
+    //fields_updated |= (1 << 6); // HIL_SENSOR_UPDATED_XMAG
+    //fields_updated |= (1 << 7); // HIL_SENSOR_UPDATED_YMAG
+    //fields_updated |= (1 << 8); // HIL_SENSOR_UPDATED_ZMAG
     fields_updated |= (1 << 9); // HIL_SENSOR_UPDATED_ABS_PRESSURE, the bit shift corresponds to setting the 9th bit to 1
     fields_updated |= (1 << 11); // HIL_SENSOR_UPDATED_PRESSURE_ALT, the bit shift corresponds to setting the 11th bit to 1
     fields_updated |= (1 << 12); // HIL_SENSOR_UPDATED_TEMPERATURE, the bit shift corresponds to setting the 12th bit to 1
@@ -79,20 +105,31 @@ void MAVLinkManager::sendHILGPS() {
     hil_gps.lon = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/longitude") * 1e7); // converted to degE7
 
     hil_gps.alt = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/elevation") * 1e3); // converted to mm
-
     hil_gps.eph = 20; // Example: equivalent to 0.2 in HDOP, assuming very high accuracy due to simulation environment
     hil_gps.epv = 20; // Example: equivalent to 0.2 in VDOP, assuming very high accuracy due to simulation environment
     hil_gps.satellites_visible = 12; // Example: assuming we have 12 satellites visible as it's common in good conditions.
 
-    hil_gps.vn = static_cast<int16_t>(DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100); // converted to cm/s
-    hil_gps.ve = static_cast<int16_t>(DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100); // converted to cm/s
-    hil_gps.vd = static_cast<int16_t>(DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100); // converted to cm/s
+    float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx");
+    float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy");
+    float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz");
+
+    float roll_rad = DataRefManager::getFloat("sim/flightmodel/position/phi") * M_PI / 180.0;
+    float pitch_rad = DataRefManager::getFloat("sim/flightmodel/position/theta") * M_PI / 180.0;
+    float yaw_rad = DataRefManager::getFloat("sim/flightmodel/position/psi") * M_PI / 180.0;
+
+    float ned_vn, ned_ve, ned_vd;
+    std::tie(ned_vn, ned_ve, ned_vd) = DataRefManager::convertOGLtoNED(ogl_vx, ogl_vy, ogl_vz, roll_rad, pitch_rad, yaw_rad);
+
+
+    hil_gps.vn = ned_vn;
+    hil_gps.ve = ned_ve;
+    hil_gps.vd = ned_vd;
+    hil_gps.vel = static_cast<int16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100); // converted to cm/s
 
     hil_gps.cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100); // converted to cdeg
 
-    hil_gps.vel = UINT16_MAX; // Assuming velocity is unknown as per MAVLink definition
     hil_gps.id = 0; // 0 indexed GPS ID for single GPS
-    hil_gps.yaw = UINT16_MAX; // Yaw not available
+    hil_gps.yaw = DataRefManager::getFloat("sim/flightmodel/position/psi") * 100;
 
     mavlink_msg_hil_gps_encode(1, 1, &msg, &hil_gps);
     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
@@ -136,6 +173,29 @@ void MAVLinkManager::sendHILStateQuaternion() {
     hil_state.zacc = static_cast<int16_t>(DataRefManager::getFloat("sim/flightmodel/position/local_az") * 1000 / 9.81);
 
     mavlink_msg_hil_state_quaternion_encode(1, 1, &msg, &hil_state);
+
+    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+    int len = mavlink_msg_to_send_buffer(buffer, &msg);
+
+    ConnectionManager::sendData(buffer, len);
+}
+void MAVLinkManager::sendHILRCInputs() {
+    if (!ConnectionManager::isConnected()) return;
+
+    mavlink_message_t msg;
+    mavlink_hil_rc_inputs_raw_t hil_rc_inputs;
+
+    hil_rc_inputs.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+    hil_rc_inputs.chan1_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/joystick/yoke_roll_ratio"),-1,+1, 1000, 2000));
+    hil_rc_inputs.chan2_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/joystick/yoke_pitch_ratio"), -1, +1, 1000, 2000));
+    hil_rc_inputs.chan3_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/cockpit2/engine/actuators/throttle_ratio_all"),0, +1, 1000, 2000));
+    hil_rc_inputs.chan4_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/joystick/yoke_heading_ratio"), -1, +1, 1000, 2000));
+    hil_rc_inputs.chan4_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(0, -1, +1, 1000, 2000));
+    // Map the remaining channels as needed
+
+    hil_rc_inputs.rssi = 255; // Set the RSSI field to a constant value if not available
+
+    mavlink_msg_hil_rc_inputs_raw_encode(1, 1, &msg, &hil_rc_inputs);
 
     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
     int len = mavlink_msg_to_send_buffer(buffer, &msg);
