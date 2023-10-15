@@ -156,6 +156,7 @@
     <ClCompile Include="DataRefManager.cpp" />
     <ClCompile Include="MAVLinkManager.cpp" />
     <ClCompile Include="px4xplane.cpp" />
+    <ClCompile Include="structs.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="configReader.h" />

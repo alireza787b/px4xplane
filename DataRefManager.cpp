@@ -7,7 +7,7 @@
 #include "XPLMGraphics.h"
 #include <vector>
 #include<cmath>
-
+#include "MAVLinkManager.h"
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
 	// Position Information
@@ -102,6 +102,34 @@ void DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float
 		lineOffset += 20; // Increment line offset for next items
 	}
 }
+
+void DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
+	// Get the actuator controls data
+	auto& hilActuatorControlsData = MAVLinkManager::hilActuatorControlsData;
+
+	// Draw the timestamp
+	char buf[512];
+	snprintf(buf, sizeof(buf), "Timestamp: %llu", hilActuatorControlsData.timestamp);
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	// Draw the controls
+	for (int i = 0; i < 16; ++i) {
+		snprintf(buf, sizeof(buf), "Control %d: %f", i, hilActuatorControlsData.controls[i]);
+		XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+		lineOffset += 20;
+	}
+
+	// Draw the mode
+	snprintf(buf, sizeof(buf), "Mode: %u", hilActuatorControlsData.mode);
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	// Draw the flags
+	snprintf(buf, sizeof(buf), "Flags: %llu", hilActuatorControlsData.flags);
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+}
+
 
 
 

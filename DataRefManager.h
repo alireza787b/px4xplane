@@ -43,6 +43,7 @@ public:
     static std::string arrayToString(const std::vector<float>& array); // add this line
     static float mapChannelValue(float value, float minInput, float maxInput, float minOutput, float maxOutput);
     static std::tuple<float, float, float> convertOGLtoNED(float ogl_vx, float ogl_vy, float ogl_vz, float roll_rad, float pitch_rad, float yaw_rad);
-  
+    static void drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
+
 };
 

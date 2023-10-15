@@ -14,6 +14,7 @@ public:
     static const std::string& getLastMessage(); // Function to get the last message
     static void cleanupWinSock();
     static bool initializeWinSock();
+    static void receiveHILActuatorControls();
 
 private:
     static int sockfd; // Socket file descriptor

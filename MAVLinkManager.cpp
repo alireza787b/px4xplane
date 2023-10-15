@@ -4,6 +4,12 @@
 #include "DataRefManager.h"
 #include <random>
 #include <vector>
+#include "XPLMUtilities.h"
+
+
+// Define and initialize the static member
+MAVLinkManager::HILActuatorControlsData MAVLinkManager::hilActuatorControlsData = {};
+
 
 void MAVLinkManager::sendHILSensor() {
     if (!ConnectionManager::isConnected()) return;
@@ -53,7 +59,25 @@ void MAVLinkManager::sendHILSensor() {
     // Find suitable datarefs or provide default values
     hil_sensor.diff_pressure = 0;
 
-        //create a siulated magnetomter here later
+    // Get the heading
+    float yaw = DataRefManager::getFloat("sim/flightmodel/position/psi");
+
+    // Convert yaw to radians
+    float yaw_rad = yaw * M_PI / 180.0f;
+
+    // Generate random noise values for the magnetometer data
+    std::random_device rd_mag;
+    std::mt19937 gen_mag(rd_mag());
+    std::normal_distribution<float> noiseDistribution_mag(0.0f, 0.02f); // Adjust the standard deviation as needed
+
+    // Magnetic field strengths in Gauss
+    float f_xmag_gauss = (28158.2 / 1e5) * cos(yaw_rad) + noiseDistribution_mag(gen_mag); // North Component
+    float f_ymag_gauss = (2575.1 / 1e5) * sin(yaw_rad) + noiseDistribution_mag(gen_mag); // East Component
+    float f_zmag_gauss = (38411.1 / 1e5) + noiseDistribution_mag(gen_mag); // Vertical Component
+
+    hil_sensor.xmag = f_xmag_gauss;
+    hil_sensor.ymag = f_ymag_gauss;
+    hil_sensor.zmag = f_zmag_gauss;
 
         // Add noise to the magnetic vector
        /* hil_sensor.xmag = 0;
@@ -75,9 +99,9 @@ void MAVLinkManager::sendHILSensor() {
     fields_updated |= (1 << 3); // HIL_SENSOR_UPDATED_XGYRO, the bit shift corresponds to setting the 3rd bit to 1
     fields_updated |= (1 << 4); // HIL_SENSOR_UPDATED_YGYRO, the bit shift corresponds to setting the 4th bit to 1
     fields_updated |= (1 << 5); // HIL_SENSOR_UPDATED_ZGYRO, the bit shift corresponds to setting the 5th bit to 1
-    //fields_updated |= (1 << 6); // HIL_SENSOR_UPDATED_XMAG
-    //fields_updated |= (1 << 7); // HIL_SENSOR_UPDATED_YMAG
-    //fields_updated |= (1 << 8); // HIL_SENSOR_UPDATED_ZMAG
+    fields_updated |= (1 << 6); // HIL_SENSOR_UPDATED_XMAG
+    fields_updated |= (1 << 7); // HIL_SENSOR_UPDATED_YMAG
+    fields_updated |= (1 << 8); // HIL_SENSOR_UPDATED_ZMAG
     fields_updated |= (1 << 9); // HIL_SENSOR_UPDATED_ABS_PRESSURE, the bit shift corresponds to setting the 9th bit to 1
     fields_updated |= (1 << 11); // HIL_SENSOR_UPDATED_PRESSURE_ALT, the bit shift corresponds to setting the 11th bit to 1
     fields_updated |= (1 << 12); // HIL_SENSOR_UPDATED_TEMPERATURE, the bit shift corresponds to setting the 12th bit to 1
@@ -201,4 +225,53 @@ void MAVLinkManager::sendHILRCInputs() {
     int len = mavlink_msg_to_send_buffer(buffer, &msg);
 
     ConnectionManager::sendData(buffer, len);
+}
+
+
+void MAVLinkManager::receiveHILActuatorControls(uint8_t* buffer, int size) {
+    if (!ConnectionManager::isConnected()) return;
+
+    // Parse the received data
+    mavlink_message_t msg;
+    mavlink_status_t status;
+    for (int i = 0; i < size; ++i) {
+        if (mavlink_parse_char(MAVLINK_COMM_0, buffer[i], &msg, &status)) {
+            // Handle the received message
+            switch (msg.msgid) {
+            case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS: {
+                mavlink_hil_actuator_controls_t hil_actuator_controls;
+                mavlink_msg_hil_actuator_controls_decode(&msg, &hil_actuator_controls);
+
+                // Extract the relevant information from the message
+                uint64_t timestamp = hil_actuator_controls.time_usec;
+                float controls[16];
+                for (int i = 0; i < 16; ++i) {
+                    controls[i] = hil_actuator_controls.controls[i];
+                }
+                uint8_t mode = hil_actuator_controls.mode;
+                uint64_t flags = hil_actuator_controls.flags;
+
+                // Store the received data in a suitable data structure or variable
+                // For example, you can store it in a class member variable or pass it to another function for further processing
+
+                                     // Store the received data in the member variable
+                MAVLinkManager::hilActuatorControlsData.timestamp = timestamp;
+                for (int i = 0; i < 16; ++i) {
+                    MAVLinkManager::hilActuatorControlsData.controls[i] = controls[i];
+                }
+                MAVLinkManager::hilActuatorControlsData.mode = mode;
+                MAVLinkManager::hilActuatorControlsData.flags = flags;
+
+                // Example: Pass the received data to another function for further processing
+
+                break;
+            }
+                                                     // Handle other MAVLink message types if needed
+
+            default:
+                // Handle unrecognized message types if needed
+                break;
+            }
+        }
+    }
 }

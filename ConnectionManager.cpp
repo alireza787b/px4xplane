@@ -1,4 +1,5 @@
 #include "ConnectionManager.h"
+#include "MAVLinkManager.h"
 #if IBM
 #include <winsock2.h>
 #include <ws2tcpip.h> // For inet_pton
@@ -129,7 +130,7 @@ void ConnectionManager::sendData(const uint8_t* buffer, int len) {
     if (!connected) return;
 
     // Log the MAVLink packet in an interpretable format
-    std::string logMessage = "Sending MAVLink packet: ";
+    //std::string logMessage = "Sending MAVLink packet: ";
     /*for (int i = 0; i < len; i++) {
         logMessage += std::to_string(buffer[i]) + " ";
     }*/
@@ -166,19 +167,42 @@ void ConnectionManager::sendData(const uint8_t* buffer, int len) {
 void ConnectionManager::receiveData() {
     if (!connected) return;
 
-    char buffer[256];
+    uint8_t buffer[256];
     memset(buffer, 0, sizeof(buffer));
 
-    int bytesReceived = recv(newsockfd, buffer, sizeof(buffer) - 1, 0);
-    if (bytesReceived < 0) {
-        XPLMDebugString("px4xplane: Error receiving data\n");
+    // Set up the read set and timeout for select
+    fd_set readSet;
+    FD_ZERO(&readSet);
+    FD_SET(newsockfd, &readSet);
+    struct timeval timeout;
+    timeout.tv_sec = 0; // Zero seconds
+    timeout.tv_usec = 0; // Zero microseconds
+
+    // Use select to check if there is data available to read
+    int result = select(newsockfd + 1, &readSet, NULL, NULL, &timeout);
+    if (result < 0) {
+        XPLMDebugString("px4xplane: Error in select\n");
     }
-    else if (bytesReceived > 0) {
-        buffer[bytesReceived] = '\0'; // Null-terminate the received data
-        setLastMessage(buffer); // Store the received message
-        XPLMDebugString(buffer); // Write the received message to the X-Plane log
+    else if (result > 0 && FD_ISSET(newsockfd, &readSet)) {
+        // There is data available to read
+        int bytesReceived = recv(newsockfd, reinterpret_cast<char*>(buffer), sizeof(buffer) - 1, 0);
+        if (bytesReceived < 0) {
+            XPLMDebugString("px4xplane: Error receiving data\n");
+        }
+        else if (bytesReceived > 0) {
+            buffer[bytesReceived] = '\0'; // Null-terminate the received data
+            setLastMessage(reinterpret_cast<char*>(buffer)); // Store the received message
+            //XPLMDebugString("px4xplane: Data received: ");
+            XPLMDebugString(reinterpret_cast<char*>(buffer)); // Write the received message to the X-Plane log
+
+            // Call MAVLinkManager::receiveHILActuatorControls() function here
+            MAVLinkManager::receiveHILActuatorControls(buffer, bytesReceived);
+        }
     }
 }
+
+
+
 
 bool ConnectionManager::isConnected() {
     return connected;

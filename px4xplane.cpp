@@ -143,6 +143,11 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	// Draw Xplane DataRefs
 	DataRefManager::drawDataRefs(in_window_id, l + 10, t - lineOffset, col_white, lineOffset);
 
+
+	int rightColumnPosition = l + 300;
+
+	DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
+
 	// Handle other static drawings here like footers, headers, etc.
 	char* footer = "Copyright (c) Alireza Ghaderi - https://github.com/alireza787b/px4xplane";
 	XPLMDrawString(col_white, l + 10, b + 10, footer, NULL, xplmFont_Proportional);
@@ -248,6 +253,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	MAVLinkManager::sendHILStateQuaternion();
 	MAVLinkManager::sendHILRCInputs();
 
+	ConnectionManager::receiveData();
 
 	//ConnectionManager::receiveData();
 	return -1.0f; // Return -1 to be called at the next cycle
