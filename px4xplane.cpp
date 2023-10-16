@@ -144,7 +144,7 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	DataRefManager::drawDataRefs(in_window_id, l + 10, t - lineOffset, col_white, lineOffset);
 
 
-	int rightColumnPosition = l + 300;
+	int rightColumnPosition = l + 350;
 
 	DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
 

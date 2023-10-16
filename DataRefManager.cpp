@@ -186,7 +186,7 @@ std::tuple<float, float, float> DataRefManager::convertOGLtoNED(float ogl_vx, fl
 	R[0][1] = cos(yaw_rad) * sin(pitch_rad) * sin(roll_rad) - sin(yaw_rad) * cos(roll_rad);
 	R[0][2] = cos(yaw_rad) * sin(pitch_rad) * cos(roll_rad) + sin(yaw_rad) * sin(roll_rad);
 
-	R[1][0] = sin(yaw_rad) * cos(pitch_rad);
+	R[1][0] = sin(yaw_rad) * cos(pitch_rad);    
 	R[1][1] = sin(yaw_rad) * sin(pitch_rad) * sin(roll_rad) + cos(yaw_rad) * cos(roll_rad);
 	R[1][2] = sin(yaw_rad) * sin(pitch_rad) * cos(roll_rad) - cos(yaw_rad) * sin(roll_rad);
 
@@ -201,6 +201,14 @@ std::tuple<float, float, float> DataRefManager::convertOGLtoNED(float ogl_vx, fl
 
 	return std::make_tuple(ned_vn, ned_ve, ned_vd);
 }
+
+void DataRefManager::enableOverride() {
+		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 1);
+	}
+
+void DataRefManager::disableOverride() {
+		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 0);
+	}
 
 
 void DataRefManager::overrideActuators() {
@@ -218,6 +226,9 @@ void DataRefManager::overrideActuators() {
 		int xplaneMotor = ConnectionManager::motorMappings[i + 1];
 		correctedControls.controls[xplaneMotor - 1] = hilControls.controls[i];
 	}
+
+	// Enable the override (already enabled)
+	//DataRefManager::enableOverride();
 
 	// Override the throttle dataref in X-Plane for all engines at once
 	std::string dataRef = "sim/flightmodel/engine/ENGN_thro_use";

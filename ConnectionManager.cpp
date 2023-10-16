@@ -20,6 +20,7 @@
 
 #include <fstream>
 #include <sstream>
+#include "DataRefManager.h"
 
 
 static bool connected = false;
@@ -101,6 +102,7 @@ void ConnectionManager::acceptConnection() {
     connected = true;
     status = "Connected";
     setLastMessage("Connected to SITL successfully.");
+    DataRefManager::enableOverride();
     //motorMappings = loadMotorMappings("config.ini");
     // Hard-coded motor mappings
     motorMappings[1] = 4;
@@ -177,6 +179,7 @@ void ConnectionManager::disconnect() {
     sockfd = -1;
     closeSocket(newsockfd); // Close the newsockfd
     newsockfd = -1;
+    DataRefManager::disableOverride();
     connected = false;
     status = "Disconnected";
     setLastMessage("Disconnected from SITL.");
@@ -258,12 +261,14 @@ void ConnectionManager::receiveData() {
         int bytesReceived = recv(newsockfd, reinterpret_cast<char*>(buffer), sizeof(buffer) - 1, 0);
         if (bytesReceived < 0) {
             XPLMDebugString("px4xplane: Error receiving data\n");
+            setLastMessage("Error receiving from PX4!"); // Store the received message
+
         }
         else if (bytesReceived > 0) {
             buffer[bytesReceived] = '\0'; // Null-terminate the received data
-            setLastMessage(reinterpret_cast<char*>(buffer)); // Store the received message
+            setLastMessage("Receiving from PX4!"); // Store the received message
             //XPLMDebugString("px4xplane: Data received: ");
-            XPLMDebugString(reinterpret_cast<char*>(buffer)); // Write the received message to the X-Plane log
+            //XPLMDebugString(reinterpret_cast<char*>(buffer)); // Write the received message to the X-Plane log
 
             // Call MAVLinkManager::receiveHILActuatorControls() function here
             MAVLinkManager::receiveHILActuatorControls(buffer, bytesReceived);

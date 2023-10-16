@@ -214,7 +214,7 @@ void MAVLinkManager::sendHILRCInputs() {
     hil_rc_inputs.chan2_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/joystick/yoke_pitch_ratio"), -1, +1, 1000, 2000));
     hil_rc_inputs.chan3_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/cockpit2/engine/actuators/throttle_ratio_all"),0, +1, 1000, 2000));
     hil_rc_inputs.chan4_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(DataRefManager::getFloat("sim/joystick/yoke_heading_ratio"), -1, +1, 1000, 2000));
-    hil_rc_inputs.chan4_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(0, -1, +1, 1000, 2000));
+    hil_rc_inputs.chan5_raw = static_cast<uint16_t>(DataRefManager::mapChannelValue(0, -1, +1, 1000, 2000));
     // Map the remaining channels as needed
 
     hil_rc_inputs.rssi = 255; // Set the RSSI field to a constant value if not available
