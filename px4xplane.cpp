@@ -255,7 +255,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	ConnectionManager::receiveData();
 
-	//ConnectionManager::receiveData();
+	DataRefManager::overrideActuators();
+
 	return -1.0f; // Return -1 to be called at the next cycle
 }
 

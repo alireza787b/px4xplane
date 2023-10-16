@@ -17,7 +17,13 @@
 #include <string>
 #include <errno.h> 
 
+
+#include <fstream>
+#include <sstream>
+
+
 static bool connected = false;
+std::map<int, int> ConnectionManager::motorMappings;
 int ConnectionManager::sockfd = -1;
 int ConnectionManager::newsockfd = -1;
 
@@ -95,9 +101,73 @@ void ConnectionManager::acceptConnection() {
     connected = true;
     status = "Connected";
     setLastMessage("Connected to SITL successfully.");
+    //motorMappings = loadMotorMappings("config.ini");
+    // Hard-coded motor mappings
+    motorMappings[1] = 4;
+    motorMappings[2] = 1;
+    motorMappings[3] = 3;
+    motorMappings[4] = 2;
 
-    // You might want to spawn a thread to handle communication over newsockfd or set it to non-blocking mode.
+
+    if (motorMappings.empty()) {
+        XPLMDebugString("px4xplane: Error loading motor mappings from ini file.\n");
+    }
+    else {
+        XPLMDebugString("px4xplane: Loaded motor mappings from ini file .\n");
+    }
+
 }
+
+
+//not working now ... cannot read ini file...
+std::map<int, int> ConnectionManager::loadMotorMappings(const std::string& filename) {
+    std::map<int, int> motorMappings;
+    std::ifstream file(filename);
+
+    if (!file) {
+        XPLMDebugString("Error: Unable to open file ");
+        XPLMDebugString(filename.c_str());
+        XPLMDebugString("\n");
+        return motorMappings;
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        // Ignore comments and empty lines
+        if (line.empty() || line[0] == '#') continue;
+
+        std::istringstream iss(line);
+        std::string key, equals, value;
+
+        if (!(iss >> key >> equals >> value) || equals != "=") {
+            XPLMDebugString("Warning: Ignoring malformed line: ");
+            XPLMDebugString(line.c_str());
+            XPLMDebugString("\n");
+            continue;
+        }
+
+        // Check if the key is a PX4 motor
+        if (key.substr(0, 4) == "PX4_") {
+            int px4Motor = std::stoi(key.substr(4));
+            int xplaneMotor = std::stoi(value);
+            motorMappings[px4Motor] = xplaneMotor;
+            XPLMDebugString("Loaded mapping: PX4 motor ");
+            XPLMDebugString(std::to_string(px4Motor).c_str());
+            XPLMDebugString(" -> X-Plane motor ");
+            XPLMDebugString(std::to_string(xplaneMotor).c_str());
+            XPLMDebugString("\n");
+        }
+    }
+
+    if (motorMappings.empty()) {
+        XPLMDebugString("Warning: No motor mappings loaded from ");
+        XPLMDebugString(filename.c_str());
+        XPLMDebugString("\n");
+    }
+
+    return motorMappings;
+}
+
 
 
 
@@ -134,7 +204,7 @@ void ConnectionManager::sendData(const uint8_t* buffer, int len) {
     /*for (int i = 0; i < len; i++) {
         logMessage += std::to_string(buffer[i]) + " ";
     }*/
-    XPLMDebugString(logMessage.c_str());
+    //XPLMDebugString(logMessage.c_str());
 
     int totalBytesSent = 0;
     while (totalBytesSent < len) {

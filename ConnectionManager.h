@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <map>
+
 class ConnectionManager {
 public:
     static void setupServerSocket();
@@ -15,6 +17,8 @@ public:
     static void cleanupWinSock();
     static bool initializeWinSock();
     static void receiveHILActuatorControls();
+    static std::map<int, int> motorMappings;
+    static std::map<int, int> loadMotorMappings(const std::string& filename);
 
 private:
     static int sockfd; // Socket file descriptor

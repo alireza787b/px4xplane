@@ -1,6 +1,7 @@
 // DataRefManager.cpp
 
 #include "DataRefManager.h"
+#include "ConnectionManager.h"
 #include <cstring>
 #include <string>
 #include "XPLMDisplay.h"
@@ -8,6 +9,8 @@
 #include <vector>
 #include<cmath>
 #include "MAVLinkManager.h"
+#include "XPLMUtilities.h"
+
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
 	// Position Information
@@ -199,3 +202,24 @@ std::tuple<float, float, float> DataRefManager::convertOGLtoNED(float ogl_vx, fl
 	return std::make_tuple(ned_vn, ned_ve, ned_vd);
 }
 
+
+void DataRefManager::overrideActuators() {
+	// Get the HILActuatorControlsData from MAVLinkManager
+	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
+
+	// Create a new HILActuatorControlsData structure for the corrected controls
+	MAVLinkManager::HILActuatorControlsData correctedControls;
+	correctedControls.timestamp = hilControls.timestamp;
+	correctedControls.mode = hilControls.mode;
+	correctedControls.flags = hilControls.flags;
+
+	// Correct the controls based on the motor mappings
+	for (int i = 0; i < 16; i++) {
+		int xplaneMotor = ConnectionManager::motorMappings[i + 1];
+		correctedControls.controls[xplaneMotor - 1] = hilControls.controls[i];
+	}
+
+	// Override the throttle dataref in X-Plane for all engines at once
+	std::string dataRef = "sim/flightmodel/engine/ENGN_thro_use";
+	XPLMSetDatavf(XPLMFindDataRef(dataRef.c_str()), correctedControls.controls, 0, 16);
+}

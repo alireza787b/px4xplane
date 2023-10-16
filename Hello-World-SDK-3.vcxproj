@@ -162,11 +162,17 @@
     <ClInclude Include="configReader.h" />
     <ClInclude Include="ConnectionManager.h" />
     <ClInclude Include="DataRefManager.h" />
+    <ClInclude Include="ini.h" />
     <ClInclude Include="MAVLinkManager.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="px4xplane.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="config.ini">
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
