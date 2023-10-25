@@ -38,6 +38,11 @@ static XPLMCommandRef toggleEnableCmd;
 
 static int g_enabled = 0; // Used to toggle connection state
 
+// Global variable to store the SITL frequency
+double SIM_Timestep = 0.0;
+
+
+
 void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon);
 void menu_handler(void* in_menu_ref, void* in_item_ref);
 int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefcon);
@@ -128,8 +133,9 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	const std::string& status = ConnectionManager::getStatus();
 	snprintf(buf, sizeof(buf), "Status: %s", status.c_str());
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
-	const std::string& lastMessage = ConnectionManager::getLastMessage();
-	snprintf(buf, sizeof(buf), "Last Message: %s", lastMessage.c_str());
+
+	// Draw SITL Frequency
+	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", SIM_Timestep);
 	XPLMDrawString(col_white, l + 10, t - (lineOffset * 2), buf, NULL, xplmFont_Proportional);
 
 
@@ -146,7 +152,13 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 
 	int rightColumnPosition = l + 350;
 
-	DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
+	lineOffset = DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
+
+	// Increment lineOffset for the next row
+	lineOffset += 20;
+
+	// Draw Actual Throttle
+	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset);
 
 	// Handle other static drawings here like footers, headers, etc.
 	char* footer = "Copyright (c) Alireza Ghaderi - https://github.com/alireza787b/px4xplane";
@@ -243,7 +255,10 @@ void updateMenuItems() {
 }
 
 
+
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
+	
+
 	// Check if the plugin is connected to PX4 SITL
 	if (!ConnectionManager::isConnected()) return -1.0f; // Return -1 to be called at the next cycle
 
@@ -256,9 +271,12 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	ConnectionManager::receiveData();
 
 	DataRefManager::overrideActuators();
+	// Calculate the frequency 
+		SIM_Timestep = inElapsedSinceLastCall;
 
 	return -1.0f; // Return -1 to be called at the next cycle
 }
+
 
 PLUGIN_API void XPluginStop(void) {
 	// Unregister the flight loop callback
@@ -268,6 +286,8 @@ PLUGIN_API void XPluginStop(void) {
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 #if IBM
 	ConnectionManager::cleanupWinSock();
+	XPLMDebugString("px4xplane: WinSock cleaned up\n");
 #endif
 	// ...
+	XPLMDebugString("px4xplane: Plugin stopped\n");
 }

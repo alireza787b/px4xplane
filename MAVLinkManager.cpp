@@ -5,11 +5,25 @@
 #include <random>
 #include <vector>
 #include "XPLMUtilities.h"
+#include <Eigen/Dense>
 
 
 // Define and initialize the static member
 MAVLinkManager::HILActuatorControlsData MAVLinkManager::hilActuatorControlsData = {};
 
+// Function to convert Euler angles (roll, pitch, yaw) to a rotation matrix
+Eigen::Matrix3f eulerToRotationMatrix(float roll, float pitch, float yaw) {
+    Eigen::Matrix3f R;
+    float sr = sin(roll), cr = cos(roll);
+    float sp = sin(pitch), cp = cos(pitch);
+    float sy = sin(yaw), cy = cos(yaw);
+
+    R << cp * cy, (sr * sp * cy) - (cr * sy), (cr * sp * cy) + (sr * sy),
+        cp* sy, (sr * sp * sy) + (cr * cy), (cr * sp * sy) - (sr * cy),
+        -sp, sr* cp, cr* cp;
+
+    return R;
+}
 
 void MAVLinkManager::sendHILSensor() {
     if (!ConnectionManager::isConnected()) return;
@@ -19,8 +33,8 @@ void MAVLinkManager::sendHILSensor() {
 
     hil_sensor.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
     hil_sensor.id = uint8_t(0);
-    hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth;
-    hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth;
+    hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
+    hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1 ;
     hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth*-1;
 
   /*  float ogl_ax = DataRefManager::getFloat("sim/flightmodel/position/local_ax");
@@ -59,25 +73,37 @@ void MAVLinkManager::sendHILSensor() {
     // Find suitable datarefs or provide default values
     hil_sensor.diff_pressure = 0;
 
-    // Get the heading
-    float yaw = DataRefManager::getFloat("sim/flightmodel/position/psi");
+    // Get the heading, roll, and pitch
+    float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
+    float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
+    float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
 
-    // Convert yaw to radians
-    float yaw_rad = yaw * M_PI / 180.0f;
+    // Convert to radians
+    float yaw_rad = yaw_mag * M_PI / 180.0f;
+    float roll_rad = roll * M_PI / 180.0f;
+    float pitch_rad = pitch * M_PI / 180.0f;
 
     // Generate random noise values for the magnetometer data
     std::random_device rd_mag;
     std::mt19937 gen_mag(rd_mag());
-    std::normal_distribution<float> noiseDistribution_mag(0.0f, 0.02f); // Adjust the standard deviation as needed
+    std::normal_distribution<float> noiseDistribution_mag(0.0f, 0.01f); // Adjust the standard deviation as needed
 
     // Magnetic field strengths in Gauss
-    float f_xmag_gauss = (28158.2 / 1e5) * cos(yaw_rad) + noiseDistribution_mag(gen_mag); // North Component
-    float f_ymag_gauss = (2575.1 / 1e5) * sin(yaw_rad) + noiseDistribution_mag(gen_mag); // East Component
-    float f_zmag_gauss = (38411.1 / 1e5) + noiseDistribution_mag(gen_mag); // Vertical Component
+    float B_N = (27694.2 / 1e5) + noiseDistribution_mag(gen_mag); // North Component
+    float B_E = (2497.5 / 1e5) + noiseDistribution_mag(gen_mag); // East Component
+    float B_D = (40140.7 / 1e5) + noiseDistribution_mag(gen_mag); // Vertical Component
 
-    hil_sensor.xmag = f_xmag_gauss;
-    hil_sensor.ymag = f_ymag_gauss;
-    hil_sensor.zmag = f_zmag_gauss;
+    // Create the rotation matrix using roll, pitch and yaw
+    Eigen::Matrix3f rotation = eulerToRotationMatrix(roll_rad, pitch_rad, yaw_rad); // Assuming you have this function
+
+    // Rotate the magnetic field vector from NED to body frame
+    Eigen::Vector3f B_ned(B_N, B_E, B_D);
+    Eigen::Vector3f B_body = rotation.transpose() * B_ned;
+
+    // Set the magnetic field in the HIL_SENSOR message
+    hil_sensor.xmag = B_body(0);
+    hil_sensor.ymag = B_body(1);
+    hil_sensor.zmag = B_body(2);
 
         // Add noise to the magnetic vector
        /* hil_sensor.xmag = 0;
@@ -116,6 +142,8 @@ void MAVLinkManager::sendHILSensor() {
     int len = mavlink_msg_to_send_buffer(buffer, &msg);
     ConnectionManager::sendData(buffer, len);
 }
+
+
 void MAVLinkManager::sendHILGPS() {
     if (!ConnectionManager::isConnected()) return;
 

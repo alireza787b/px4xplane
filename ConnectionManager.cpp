@@ -105,10 +105,16 @@ void ConnectionManager::acceptConnection() {
     DataRefManager::enableOverride();
     //motorMappings = loadMotorMappings("config.ini");
     // Hard-coded motor mappings
-    motorMappings[1] = 4;
-    motorMappings[2] = 1;
-    motorMappings[3] = 3;
-    motorMappings[4] = 2;
+    //motorMappings[px4 motor number] = xplane motor number
+    //for airtaxi quadrippol:
+  /*  PX4 Motor 1 maps to X - Plane Motor 2
+        PX4 Motor 2 maps to X - Plane Motor 3
+        PX4 Motor 3 maps to X - Plane Motor 1
+        PX4 Motor 4 maps to X - Plane Motor 4*/
+    motorMappings[1] = 2;
+    motorMappings[2] = 3;
+    motorMappings[3] = 1;
+    motorMappings[4] = 4;
 
 
     if (motorMappings.empty()) {
@@ -184,6 +190,7 @@ void ConnectionManager::disconnect() {
     status = "Disconnected";
     setLastMessage("Disconnected from SITL.");
     XPLMDebugString("px4xplane: Disconnected from SITL\n");
+    XPLMDebugString("px4xplane: Socket closed\n");
 }
 
 void ConnectionManager::closeSocket(int& sockfd) {

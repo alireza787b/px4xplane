@@ -49,8 +49,9 @@
     <TargetExt>.xpl</TargetExt>
     <GenerateManifest>false</GenerateManifest>
     <TargetName>win</TargetName>
-    <IncludePath>C:\Users\Alireza\px4xplane\SDK\CHeaders\XPLM;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Alireza\px4xplane\SDK\Libraries\Win;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\Alireza\vcpkg\installed\x64-windows\include;C:\Users\Alireza\px4xplane\SDK\CHeaders\XPLM;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Alireza\vcpkg\installed\x64-windows\lib;C:\Users\Alireza\GeographicLib\lib;C:\Users\Alireza\px4xplane\SDK\Libraries\Win;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>C:\Users\Alireza\GeographicLib\include\GeographicLib;$(ExternalIncludePath)</ExternalIncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>.\Debug\plugins\$(TargetName)\64\</OutDir>
@@ -173,6 +174,9 @@
     <CopyFileToFolders Include="config.ini">
       <FileType>Document</FileType>
     </CopyFileToFolders>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="mag_test.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

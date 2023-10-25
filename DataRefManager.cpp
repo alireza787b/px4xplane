@@ -106,7 +106,7 @@ void DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float
 	}
 }
 
-void DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
+int DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
 	// Get the actuator controls data
 	auto& hilActuatorControlsData = MAVLinkManager::hilActuatorControlsData;
 
@@ -131,6 +131,7 @@ void DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int 
 	// Draw the flags
 	snprintf(buf, sizeof(buf), "Flags: %llu", hilActuatorControlsData.flags);
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	return lineOffset;
 }
 
 
@@ -233,4 +234,20 @@ void DataRefManager::overrideActuators() {
 	// Override the throttle dataref in X-Plane for all engines at once
 	std::string dataRef = "sim/flightmodel/engine/ENGN_thro_use";
 	XPLMSetDatavf(XPLMFindDataRef(dataRef.c_str()), correctedControls.controls, 0, 16);
+}
+
+int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
+	// Fetch the actual throttle data from X-Plane
+	std::string throttleDataRef = "sim/flightmodel2/engines/throttle_used_ratio";
+	float throttleData[16];
+	XPLMGetDatavf(XPLMFindDataRef(throttleDataRef.c_str()), throttleData, 0, 16);
+
+	// Draw the actual throttle data
+	char buf[512];
+	for (int i = 0; i < 16; ++i) {
+		snprintf(buf, sizeof(buf), "Motor %d Throttle: %f", i, throttleData[i]);
+		XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+		lineOffset += 20;
+	}
+	return lineOffset;
 }
