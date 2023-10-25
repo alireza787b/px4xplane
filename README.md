@@ -6,7 +6,8 @@ This project establishes a connection between X-Plane and PX4 SITL (Software In 
 
 All simulators, with the exception of Gazebo, communicate with PX4 using the Simulator MAVLink API. This API defines a set of MAVLink messages that provide sensor data from the simulated environment to PX4 and return motor and actuator values from the flight code that will be applied to the simulated vehicle.
 
-![PX4 Simulator Messages](https://docs.px4.io/main/assets/img/px4_simulator_messages.f1161233.svg)
+![PX4 Simulator Messages](https://github.com/alireza787b/px4xplane/assets/30341941/0f7d0129-a780-4952-abef-3a858aaf6f92)
+
 
 The following table illustrates the message flow:
 
@@ -39,12 +40,12 @@ The following table illustrates the message flow:
    - Install the plugin to your plugins folder for the specific drone.
 
 2. **PX4 SITL Setup**:
-   - Clone and build `px4_sitl`. Follow the instructions provided by [PX4](https://docs.px4.io/main/en/simulation/).
+   - Clone and build `PX4-Autopilot` and the SITL Engine. Follow the instructions provided by [PX4](https://docs.px4.io/main/en/simulation/).
    - If cloning on WSL (or another system), change the hostname IP from `localhost` to where X-Plane is running:
      ```bash
      export PX4_SIM_HOSTNAME=XPLANE_SYSTEM_IP
      ```
-     For example, if using WSL on Windows:
+     For example, if using WSL on Windows on IP: `172.21.160.1` ,  run this command:
      ```bash
      export PX4_SIM_HOSTNAME=172.21.160.1
      ```
@@ -57,7 +58,7 @@ The following table illustrates the message flow:
 
 4. **X-Plane Connection**:
    - Launch X-Plane and load your drone.
-   - Navigate to `plugin -> px4xplane -> click on connect to SITL`. The simulator should now be connected.
+   - Navigate to `plugin -> px4xplane -> Connect to SITL`. The simulator should now be connected.
    - Under `plugin -> px4xplane -> Show Settings`, you can view live data and status.
 
 5. **Firewall Configuration**:
@@ -82,4 +83,4 @@ This project is licensed under the MIT License. See the `LICENSE` file for more 
 
 ## Project Status
 
-As of September 2023, this project is under progress with minimal functionality.
+As of October 2023, this project is under progress with minimal functionality.
