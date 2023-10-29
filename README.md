@@ -45,10 +45,6 @@ The following table illustrates the message flow:
      ```bash
      export PX4_SIM_HOSTNAME=XPLANE_SYSTEM_IP
      ```
-     For example, if using WSL on Windows on IP: `172.21.160.1` ,  run this command:
-     ```bash
-     export PX4_SIM_HOSTNAME=172.21.160.1
-     ```
 
 3. **Running PX4 SITL**:
    - Run the default `iris` (or your custom airframe) with `none_` to indicate that you'll connect your own simulator:
@@ -70,17 +66,20 @@ The following table illustrates the message flow:
 
 ## Status
 
-This project is currently under development. Once a fully functional initial version is ready, the first beta release will be made available.
+As of November 2023, This project is currently under development. Once a fully functional initial version is ready, the first beta release will be made available.
 
 ## Contribution and Support
 
-Feel free to contact in the issue section if you need help. Having experienced contributors is greatly appreciated!
+Feel free to reach out to me in the issue section if you need help. Having experienced contributors is greatly appreciated!
 
 
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
-## Project Status
 
-As of October 2023, this project is under progress with minimal functionality.
+## X-Plane Aircraft
+
+Since motor mapping is still hard-coded in the code, I recommend you use quadricopter air taxi model. It is basically a quad config but the graphics just show coaxial X8 Configuration.
+
+https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/
