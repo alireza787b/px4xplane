@@ -103,6 +103,9 @@ void ConnectionManager::acceptConnection() {
     status = "Connected";
     setLastMessage("Connected to SITL successfully.");
     DataRefManager::enableOverride();
+    // 
+    // 
+    // 
     //motorMappings = loadMotorMappings("config.ini");
     // Hard-coded motor mappings
     //motorMappings[px4 motor number] = xplane motor number

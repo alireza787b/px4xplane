@@ -33,9 +33,39 @@ void MAVLinkManager::sendHILSensor() {
 
     hil_sensor.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
     hil_sensor.id = uint8_t(0);
+
+
+    const float DEG_TO_RAD = 3.14159265358979323846 / 180.0;  // Conversion factor from degrees to radians
+    const float GRAVITY = 9.81;  // Gravitational acceleration in m/s^2
+
+    // Get the accelerations from X-Plane's OGL frame
+    float ax_OGL = DataRefManager::getFloat("sim/flightmodel/position/local_ax");
+    float ay_OGL = DataRefManager::getFloat("sim/flightmodel/position/local_ay");
+    float az_OGL = DataRefManager::getFloat("sim/flightmodel/position/local_az");
+
+    //// Get the roll, pitch, and yaw angles from X-Plane and convert them to radians
+    //float phi = DataRefManager::getFloat("sim/flightmodel/position/phi") * DEG_TO_RAD;   // roll in radians
+    //float theta = DataRefManager::getFloat("sim/flightmodel/position/theta") * DEG_TO_RAD; // pitch in radians
+    //float psi = DataRefManager::getFloat("sim/flightmodel/position/psi") * DEG_TO_RAD;   // yaw in radians
+
+    //// Gravity components in the body frame
+    //float gx_body = GRAVITY * sin(theta);
+    //float gy_body = GRAVITY * sin(phi) * cos(theta);
+    //float gz_body = -GRAVITY * cos(phi) * cos(theta);
+
+    //// Convert from OGL frame to body frame using the roll, pitch, and yaw angles
+    //float ax_body = ax_OGL * cos(theta) + ay_OGL * sin(phi) * sin(theta) + az_OGL * cos(phi) * sin(theta) + gx_body;
+    //float ay_body = ay_OGL * cos(phi) - az_OGL * sin(phi) + gy_body;
+    //float az_body = -ax_OGL * sin(theta) + ay_OGL * sin(phi) * cos(theta) + az_OGL * cos(phi) * cos(theta) + gz_body;
+
+    //hil_sensor.xacc = ax_body;  // Body X-axis (forward)
+    //hil_sensor.yacc = -ay_body;  // Body Y-axis (right)
+    //hil_sensor.zacc = az_body;  // Body Z-axis (down)
+
+
     hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
-    hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1 ;
-    hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth*-1;
+    hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
+    hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 
   /*  float ogl_ax = DataRefManager::getFloat("sim/flightmodel/position/local_ax");
     float ogl_ay = DataRefManager::getFloat("sim/flightmodel/position/local_ay");
@@ -54,8 +84,8 @@ void MAVLinkManager::sendHILSensor() {
 
 
     hil_sensor.xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");
-    hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
-    hil_sensor.zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad");
+    hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad") ;
+    hil_sensor.zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad") ;
 
     // Get the base pressure value
     float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
@@ -161,9 +191,9 @@ void MAVLinkManager::sendHILGPS() {
     hil_gps.epv = 20; // Example: equivalent to 0.2 in VDOP, assuming very high accuracy due to simulation environment
     hil_gps.satellites_visible = 12; // Example: assuming we have 12 satellites visible as it's common in good conditions.
 
-    float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx");
-    float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy");
-    float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz");
+    float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx")*100;
+    float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy")*100;
+    float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz")*100;
 
     float roll_rad = DataRefManager::getFloat("sim/flightmodel/position/phi") * M_PI / 180.0;
     float pitch_rad = DataRefManager::getFloat("sim/flightmodel/position/theta") * M_PI / 180.0;
