@@ -10,7 +10,7 @@
 #include<cmath>
 #include "MAVLinkManager.h"
 #include "XPLMUtilities.h"
-
+#define M_PI 3.14
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
 	// Position Information
@@ -251,3 +251,4 @@ int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, 
 	}
 	return lineOffset;
 }
+

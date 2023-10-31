@@ -16,7 +16,6 @@ public:
     static const std::string& getLastMessage(); // Function to get the last message
     static void cleanupWinSock();
     static bool initializeWinSock();
-    static void receiveHILActuatorControls();
     static std::map<int, int> motorMappings;
     static std::map<int, int> loadMotorMappings(const std::string& filename);
 

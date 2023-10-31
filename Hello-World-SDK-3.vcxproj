@@ -166,6 +166,7 @@
     <ClInclude Include="ini.h" />
     <ClInclude Include="MAVLinkManager.h" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="XYZgeomag\src\XYZgeomag.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="px4xplane.rc" />

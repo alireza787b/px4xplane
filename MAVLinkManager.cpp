@@ -6,7 +6,9 @@
 #include <vector>
 #include "XPLMUtilities.h"
 #include <Eigen/Dense>
-
+#include "XYZgeomag/src/XYZgeomag.hpp"
+#include <cmath>  // for trigonometric functions and M_PI
+#include <tuple>  // for std::tuple
 
 // Define and initialize the static member
 MAVLinkManager::HILActuatorControlsData MAVLinkManager::hilActuatorControlsData = {};
@@ -24,6 +26,45 @@ Eigen::Matrix3f eulerToRotationMatrix(float roll, float pitch, float yaw) {
 
     return R;
 }
+
+
+
+/**
+ * This function calculates the magnetic field vector at a given location and orientation.
+ *
+ * @param lat Latitude of the location in degrees.
+ * @param lon Longitude of the location in degrees.
+ * @param alt Altitude of the location in meters.
+ * @param roll Roll angle in radians. Positive roll is to the right.
+ * @param pitch Pitch angle in radians. Positive pitch is up.
+ * @param yaw Yaw angle in radians. Positive yaw is to the right.
+ *
+ * @return A 3D vector representing the magnetic field. The vector's components are in Gauss.
+ */
+Eigen::Vector3f calculateMagneticVector(float lat, float lon, float alt, float roll, float pitch, float yaw) {
+    // Convert geodetic coordinates to geocentric Cartesian coordinates
+    geomag::Vector geocentric = geomag::geodetic2ecef(lat, lon, alt);
+
+    // Calculate magnetic field vector in sensor's frame of reference
+    geomag::Vector measuredVector = geomag::GeoMag(2022.5, geocentric, geomag::WMM2020);
+
+    // Create rotation matrix using roll, pitch and yaw
+    Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
+    Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
+    Eigen::AngleAxisf yawAngle(yaw, Eigen::Vector3f::UnitZ());
+    Eigen::Matrix3f rotationMatrix = (yawAngle * pitchAngle * rollAngle).matrix();
+
+    // Apply rotation matrix to measured vector
+    Eigen::Vector3f rotatedVector = rotationMatrix * Eigen::Vector3f(measuredVector.x, measuredVector.y, measuredVector.z);
+
+    // Convert from Tesla to Gauss
+    rotatedVector *= 10000;
+
+    // Return the rotated magnetic field vector
+    return rotatedVector;
+}
+
+
 
 void MAVLinkManager::sendHILSensor() {
     if (!ConnectionManager::isConnected()) return;
@@ -43,49 +84,24 @@ void MAVLinkManager::sendHILSensor() {
     float ay_OGL = DataRefManager::getFloat("sim/flightmodel/position/local_ay");
     float az_OGL = DataRefManager::getFloat("sim/flightmodel/position/local_az");
 
-    //// Get the roll, pitch, and yaw angles from X-Plane and convert them to radians
-    //float phi = DataRefManager::getFloat("sim/flightmodel/position/phi") * DEG_TO_RAD;   // roll in radians
-    //float theta = DataRefManager::getFloat("sim/flightmodel/position/theta") * DEG_TO_RAD; // pitch in radians
-    //float psi = DataRefManager::getFloat("sim/flightmodel/position/psi") * DEG_TO_RAD;   // yaw in radians
 
-    //// Gravity components in the body frame
-    //float gx_body = GRAVITY * sin(theta);
-    //float gy_body = GRAVITY * sin(phi) * cos(theta);
-    //float gz_body = -GRAVITY * cos(phi) * cos(theta);
-
-    //// Convert from OGL frame to body frame using the roll, pitch, and yaw angles
-    //float ax_body = ax_OGL * cos(theta) + ay_OGL * sin(phi) * sin(theta) + az_OGL * cos(phi) * sin(theta) + gx_body;
-    //float ay_body = ay_OGL * cos(phi) - az_OGL * sin(phi) + gy_body;
-    //float az_body = -ax_OGL * sin(theta) + ay_OGL * sin(phi) * cos(theta) + az_OGL * cos(phi) * cos(theta) + gz_body;
-
-    //hil_sensor.xacc = ax_body;  // Body X-axis (forward)
-    //hil_sensor.yacc = -ay_body;  // Body Y-axis (right)
-    //hil_sensor.zacc = az_body;  // Body Z-axis (down)
 
 
     hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
     hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
     hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 
-  /*  float ogl_ax = DataRefManager::getFloat("sim/flightmodel/position/local_ax");
-    float ogl_ay = DataRefManager::getFloat("sim/flightmodel/position/local_ay");
-    float ogl_az = DataRefManager::getFloat("sim/flightmodel/position/local_az");
-
-    float roll_rad = DataRefManager::getFloat("sim/flightmodel/position/phi") * M_PI / 180.0;
-    float pitch_rad = DataRefManager::getFloat("sim/flightmodel/position/theta") * M_PI / 180.0;
-    float yaw_rad = DataRefManager::getFloat("sim/flightmodel/position/psi") * M_PI / 180.0;
-
-    float ned_an, ned_ae, ned_ad;
-    std::tie(ned_an, ned_ae, ned_ad) = DataRefManager::convertOGLtoNED(ogl_ax, ogl_ay, ogl_az, roll_rad, pitch_rad, yaw_rad);
-    hil_sensor.xacc = ned_an;
-    hil_sensor.yacc = ned_ae;
-    hil_sensor.zacc = ned_ad;*/
-
 
 
     hil_sensor.xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");
     hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad") ;
     hil_sensor.zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad") ;
+
+
+    // Get the Location 
+    float latitude = DataRefManager::getFloat("sim/flightmodel/position/latitude");
+    float longitude = DataRefManager::getFloat("sim/flightmodel/position/longitude");
+    float altitude = DataRefManager::getFloat("sim/flightmodel/position/elevation");
 
     // Get the base pressure value
     float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
@@ -109,7 +125,7 @@ void MAVLinkManager::sendHILSensor() {
     float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
 
     // Convert to radians
-    float yaw_rad = yaw_mag * M_PI / 180.0f;
+        float yaw_rad = yaw_mag * M_PI / 180.0f;
     float roll_rad = roll * M_PI / 180.0f;
     float pitch_rad = pitch * M_PI / 180.0f;
 
@@ -135,12 +151,15 @@ void MAVLinkManager::sendHILSensor() {
     hil_sensor.ymag = B_body(1);
     hil_sensor.zmag = B_body(2);
 
-        // Add noise to the magnetic vector
-       /* hil_sensor.xmag = 0;
-        hil_sensor.ymag = 0;
-        hil_sensor.zmag = 0;*/
 
- 
+    // Call the calculateMagneticVector function
+    //Eigen::Vector3f B_body = calculateMagneticVector(latitude, longitude, altitude, roll_rad, pitch_rad, yaw_rad);
+
+    // Set the magnetic field in the HIL_SENSOR message
+    //hil_sensor.xmag = B_body(0) + noiseDistribution_mag(gen_mag);
+    //hil_sensor.ymag = B_body(1) + noiseDistribution_mag(gen_mag);
+    //hil_sensor.zmag = B_body(2) + noiseDistribution_mag(gen_mag);
+
 
 
     hil_sensor.temperature = DataRefManager::getFloat("sim/cockpit2/temperature/outside_air_temp_degc");
@@ -199,14 +218,22 @@ void MAVLinkManager::sendHILGPS() {
     float pitch_rad = DataRefManager::getFloat("sim/flightmodel/position/theta") * M_PI / 180.0;
     float yaw_rad = DataRefManager::getFloat("sim/flightmodel/position/psi") * M_PI / 180.0;
 
-    float ned_vn, ned_ve, ned_vd;
-    std::tie(ned_vn, ned_ve, ned_vd) = DataRefManager::convertOGLtoNED(ogl_vx, ogl_vy, ogl_vz, roll_rad, pitch_rad, yaw_rad);
+
+    float hpath = DataRefManager::getFloat(" sim/flightmodel/position/hpath");
+    float vpath = DataRefManager::getFloat(" sim/flightmodel/position/vpath");
+    float groundspeed = DataRefManager::getFloat(" sim/flightmodel/position/groundspeed");
 
 
-    hil_gps.vn = ned_vn;
-    hil_gps.ve = ned_ve;
-    hil_gps.vd = ned_vd;
-    hil_gps.vel = static_cast<int16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100); // converted to cm/s
+
+
+    //local OGL is :
+    // X: East
+    // Y: Up
+    // Z: South
+    hil_gps.vn = -1*ogl_vz;
+    hil_gps.ve = ogl_vx;
+    hil_gps.vd = -1* ogl_vy;
+    hil_gps.vel = groundspeed*100; // converted to cm/s
 
     hil_gps.cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100); // converted to cdeg
 
@@ -218,6 +245,8 @@ void MAVLinkManager::sendHILGPS() {
     int len = mavlink_msg_to_send_buffer(buffer, &msg);
     ConnectionManager::sendData(buffer, len);
 }
+
+
 
 
 void MAVLinkManager::sendHILStateQuaternion() {

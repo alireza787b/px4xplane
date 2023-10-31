@@ -102,7 +102,13 @@ void ConnectionManager::acceptConnection() {
     connected = true;
     status = "Connected";
     setLastMessage("Connected to SITL successfully.");
+
+
+
     DataRefManager::enableOverride();
+
+
+
     // 
     // 
     // 
