@@ -9,6 +9,10 @@
 #include "XYZgeomag/src/XYZgeomag.hpp"
 #include <cmath>  // for trigonometric functions and M_PI
 #include <tuple>  // for std::tuple
+#include <Eigen/Geometry>
+#include <Eigen/Core>
+
+
 
 // Define and initialize the static member
 MAVLinkManager::HILActuatorControlsData MAVLinkManager::hilActuatorControlsData = {};
@@ -29,39 +33,53 @@ Eigen::Matrix3f eulerToRotationMatrix(float roll, float pitch, float yaw) {
 
 
 
+
+
 /**
- * This function calculates the magnetic field vector at a given location and orientation.
+ * @brief Calculate the magnetic field vector in the body frame of a vehicle.
  *
- * @param lat Latitude of the location in degrees.
- * @param lon Longitude of the location in degrees.
- * @param alt Altitude of the location in meters.
- * @param roll Roll angle in radians. Positive roll is to the right.
- * @param pitch Pitch angle in radians. Positive pitch is up.
- * @param yaw Yaw angle in radians. Positive yaw is to the right.
+ * This function takes into account the discrepancy between the convention of magnetic heading
+ * (which increases clockwise) and the right-hand rule used in rotations.
  *
- * @return A 3D vector representing the magnetic field. The vector's components are in Gauss.
+ * @param lat Latitude in degrees.
+ * @param lon Longitude in degrees.
+ * @param alt Altitude in meters above sea level.
+ * @param roll Roll angle in radians (rotation about the X-axis).
+ * @param pitch Pitch angle in radians (rotation about the Y-axis).
+ * @param yaw Yaw angle in radians with respect to Magnetic North (rotation about the Z-axis).
+ *            Positive yaw means turning to the right (clockwise).
+ * @return Eigen::Vector3f The magnetic field vector in the body frame, in Gauss.
  */
 Eigen::Vector3f calculateMagneticVector(float lat, float lon, float alt, float roll, float pitch, float yaw) {
+    // Convert latitude and longitude from degrees to radians
+    float latRad = lat * M_PI / 180.0;
+    float lonRad = lon * M_PI / 180.0;
+
     // Convert geodetic coordinates to geocentric Cartesian coordinates
-    geomag::Vector geocentric = geomag::geodetic2ecef(lat, lon, alt);
+    geomag::Vector position = geomag::geodetic2ecef(latRad, lonRad, alt);
 
-    // Calculate magnetic field vector in sensor's frame of reference
-    geomag::Vector measuredVector = geomag::GeoMag(2022.5, geocentric, geomag::WMM2020);
+    // Calculate magnetic field vector in Earth's geocentric frame of reference
+    geomag::Vector mag_field = geomag::GeoMag(2022.5, position, geomag::WMM2020);
 
-    // Create rotation matrix using roll, pitch and yaw
+    // Convert the magnetic field vector from geocentric cartesian coordinates to magnetic elements (NED components)
+    geomag::Elements nedElements = geomag::magField2Elements(mag_field, latRad, lonRad);
+
+    // Create rotation matrix using roll, pitch, and yaw (ZYX Euler angle rotation sequence).
+    // Note: We negate the yaw angle to account for the discrepancy between the convention of magnetic heading 
+    // and the right-hand rule used in rotations.
     Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
     Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
-    Eigen::AngleAxisf yawAngle(yaw, Eigen::Vector3f::UnitZ());
-    Eigen::Matrix3f rotationMatrix = (yawAngle * pitchAngle * rollAngle).matrix();
+    Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
+    Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
 
-    // Apply rotation matrix to measured vector
-    Eigen::Vector3f rotatedVector = rotationMatrix * Eigen::Vector3f(measuredVector.x, measuredVector.y, measuredVector.z);
+    // Apply rotation matrix to the magnetic field vector in the NED frame to transform it to the body frame
+    Eigen::Vector3f bodyVector = rotationMatrix * Eigen::Vector3f(nedElements.north, nedElements.east, nedElements.down);
 
-    // Convert from Tesla to Gauss
-    rotatedVector *= 10000;
+    // Convert from nT (nanoTesla) to Gauss (1 Tesla = 10,000 Gauss, 1 nT = 0.00001 Gauss)
+    bodyVector *= 0.00001;
 
-    // Return the rotated magnetic field vector
-    return rotatedVector;
+    // Return the magnetic field vector in the body frame
+    return bodyVector;
 }
 
 
@@ -134,31 +152,14 @@ void MAVLinkManager::sendHILSensor() {
     std::mt19937 gen_mag(rd_mag());
     std::normal_distribution<float> noiseDistribution_mag(0.0f, 0.01f); // Adjust the standard deviation as needed
 
-    // Magnetic field strengths in Gauss
-    float B_N = (27694.2 / 1e5) + noiseDistribution_mag(gen_mag); // North Component
-    float B_E = (2497.5 / 1e5) + noiseDistribution_mag(gen_mag); // East Component
-    float B_D = (40140.7 / 1e5) + noiseDistribution_mag(gen_mag); // Vertical Component
-
-    // Create the rotation matrix using roll, pitch and yaw
-    Eigen::Matrix3f rotation = eulerToRotationMatrix(roll_rad, pitch_rad, yaw_rad); // Assuming you have this function
-
-    // Rotate the magnetic field vector from NED to body frame
-    Eigen::Vector3f B_ned(B_N, B_E, B_D);
-    Eigen::Vector3f B_body = rotation.transpose() * B_ned;
-
-    // Set the magnetic field in the HIL_SENSOR message
-    hil_sensor.xmag = B_body(0);
-    hil_sensor.ymag = B_body(1);
-    hil_sensor.zmag = B_body(2);
-
 
     // Call the calculateMagneticVector function
-    //Eigen::Vector3f B_body = calculateMagneticVector(latitude, longitude, altitude, roll_rad, pitch_rad, yaw_rad);
+    Eigen::Vector3f B_body = calculateMagneticVector(latitude, longitude, altitude, roll_rad, pitch_rad, yaw_rad);
 
     // Set the magnetic field in the HIL_SENSOR message
-    //hil_sensor.xmag = B_body(0) + noiseDistribution_mag(gen_mag);
-    //hil_sensor.ymag = B_body(1) + noiseDistribution_mag(gen_mag);
-    //hil_sensor.zmag = B_body(2) + noiseDistribution_mag(gen_mag);
+    hil_sensor.xmag = B_body(0) + noiseDistribution_mag(gen_mag);
+    hil_sensor.ymag = B_body(1) + noiseDistribution_mag(gen_mag);
+    hil_sensor.zmag = B_body(2) + noiseDistribution_mag(gen_mag);
 
 
 
