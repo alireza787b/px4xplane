@@ -105,9 +105,6 @@ PLUGIN_API int XPluginStart(
 
 
 
-	// TODO: Setup the TCP connection here
-	// int sock = socket(AF_INET, SOCK_STREAM, 0);
-	// ...
 
 	return 1;
 }
@@ -280,7 +277,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 PLUGIN_API void XPluginStop(void) {
 	// Unregister the flight loop callback
-	if (ConnectionManager::isConnected) {
+	if (ConnectionManager::isConnected()) {
 		toggleEnable();
 	}
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);

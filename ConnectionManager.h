@@ -25,4 +25,5 @@ private:
     static std::string status;
     static int sitlPort;
     static std::string lastMessage; // Variable to keep the last message
+
 };
