@@ -36,23 +36,13 @@ The following table illustrates the message flow:
 
 ## Setup and Testing
 
+### For Users: Installation and Setup
 
-1. **Repository Cloning**:
-   - Clone this repository to your local machine:
-     ```bash
-     git clone --recurse-submodules https://github.com/alireza787b/px4xplane.git
-     ```
-   - If you've already cloned the repository without the `--recurse-submodules` option, you can fetch the contents of the submodules with:
-     ```bash
-     git submodule init
-     git submodule update
-     ```
+1. **Download the Plugin**:
+   - Download the precompiled binary from the [Releases](https://github.com/alireza787b/px4xplane/releases) page.
 
 2. **Plugin Installation**:
-   - You have two options to get the plugin: 
-     - Download the precompiled binary from the [Releases](https://github.com/alireza787b/px4xplane/releases) page.
-     - Build the plugin yourself from the source code.
-   - After obtaining the plugin, you should see a `px4xplane` folder containing a `64` folder that contains a  `.xpl` file. This is the plugin file.
+   - After downloading, you should see a `px4xplane` folder containing a `64` folder that contains a  `.xpl` file. This is the plugin file.
    - To install the plugin for a specific drone, copy the `px4xplane` folder to the plugins folder of the drone in your X-Plane installation. The path should look like this: `X-Plane Installation Folder/Aircraft/Your Drone/Plugins`.
    - If you want to install the plugin globally for all aircraft in X-Plane, copy the `px4xplane` folder to the global plugins folder. The path should look like this: `X-Plane Installation Folder/Resources/Plugins`.
    - Please note that installing the plugin globally will make it available for all aircraft, but it may not work correctly with all of them.
@@ -84,6 +74,22 @@ The following table illustrates the message flow:
 
 8. **Importing Parameters**:
    - Tuning the PID for the quadricopter can be challenging. To assist with this, I have included a parameter file `quadricopter_px4.params` in the `config` folder. You can import these parameters using QGroundControl to get a good starting point for your tuning process.
+
+### For Developers: Building from Source
+
+1. **Repository Cloning**:
+   - Clone this repository to your local machine:
+     ```bash
+     git clone --recurse-submodules https://github.com/alireza787b/px4xplane.git
+     ```
+   - If you've already cloned the repository without the `--recurse-submodules` option, you can fetch the contents of the submodules with:
+     ```bash
+     git submodule init
+     git submodule update
+     ```
+
+2. **Building the Plugin**:
+   - Follow the instructions in the `BUILDING.md` file to build the plugin from source. (will be added)
 
 
 ## Status
