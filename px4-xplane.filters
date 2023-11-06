@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="src\configReader.cpp" />
+    <ClCompile Include="src\ConnectionManager.cpp" />
+    <ClCompile Include="src\DataRefManager.cpp" />
+    <ClCompile Include="src\MAVLinkManager.cpp" />
+    <ClCompile Include="src\px4xplane.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="XYZgeomag\src\XYZgeomag.hpp" />
+    <ClInclude Include="include\configReader.h" />
+    <ClInclude Include="include\ConnectionManager.h" />
+    <ClInclude Include="include\DataRefManager.h" />
+    <ClInclude Include="include\MAVLinkManager.h" />
+    <ClInclude Include="config\ini.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="px4xplane.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="tests\test.py" />
+    <None Include="config\config.ini" />
+  </ItemGroup>
+</Project>

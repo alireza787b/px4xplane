@@ -49,9 +49,10 @@
     <TargetExt>.xpl</TargetExt>
     <GenerateManifest>false</GenerateManifest>
     <TargetName>win</TargetName>
-    <IncludePath>C:\Users\Alireza\vcpkg\installed\x64-windows\include;C:\Users\Alireza\px4xplane\SDK\CHeaders\XPLM;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Alireza\vcpkg\installed\x64-windows\lib;C:\Users\Alireza\GeographicLib\lib;C:\Users\Alireza\px4xplane\SDK\Libraries\Win;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\Alireza\source\repos\px4xplane\include;C:\Users\Alireza\vcpkg\installed\x64-windows\include;C:\Users\Alireza\source\repos\px4xplane\lib\SDK\CHeaders\XPLM;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\Alireza\source\repos\px4xplane\lib;C:\Users\Alireza\vcpkg\installed\x64-windows\lib;C:\Users\Alireza\GeographicLib\lib;C:\Users\Alireza\source\repos\px4xplane\lib\SDK\Libraries\Win;$(LibraryPath)</LibraryPath>
     <ExternalIncludePath>C:\Users\Alireza\GeographicLib\include\GeographicLib;$(ExternalIncludePath)</ExternalIncludePath>
+    <SourcePath>C:\Users\Alireza\source\repos\px4xplane\src;$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>.\Debug\plugins\$(TargetName)\64\</OutDir>
@@ -73,7 +74,7 @@
       <AdditionalIncludeDirectories>SDK\CHeaders\XPLM;SDK\CHeaders\Widgets;C:\Users\Alireza\source\repos\px4xplane\mavlink\c_library_v2\all;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;_WIN32_WINDOWS=0x0601;WIN32;NDEBUG;_WINDOWS;_USRDLL;SIMDATA_EXPORTS;IBM=1;XPLM200=1;XPLM210=1;XPLM300=1;XPLM301=1;XPLM302=1;XPLM303=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>.\Release\64\</AssemblerListingLocation>
-      <PrecompiledHeaderOutputFile>.\Release\64\Hello-World-SDK-3.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>.\Release\64\px4-xplane.pch</PrecompiledHeaderOutputFile>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <ObjectFileName>.\Release\64\</ObjectFileName>
@@ -87,7 +88,7 @@
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;_WIN32_WINDOWS=0x0601;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TypeLibraryName>.\Release\Hello-World-SDK-3.tlb</TypeLibraryName>
+      <TypeLibraryName>.\Release\px4-xplane.tlb</TypeLibraryName>
       <MkTypLibCompatible>true</MkTypLibCompatible>
     </Midl>
     <ResourceCompile>
@@ -96,16 +97,19 @@
     </ResourceCompile>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Release\Hello-World-SDK-3.bsc</OutputFile>
+      <OutputFile>.\Release\px4-xplane.bsc</OutputFile>
     </Bscmake>
     <Link>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <LinkDLL>true</LinkDLL>
       <SubSystem>Console</SubSystem>
-      <ImportLibrary>.\Release\64\Hello-World-SDK-3.lib</ImportLibrary>
+      <ImportLibrary>.\Release\64\px4-xplane.lib</ImportLibrary>
       <AdditionalLibraryDirectories>SDK\Libraries\Win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Opengl32.lib;odbc32.lib;odbccp32.lib;XPLM_64.lib;XPWidgets_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>copy "$(ProjectDir)config\config.ini" "$(OutDir)"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -118,7 +122,7 @@
       <AdditionalIncludeDirectories>SDK\CHeaders\XPLM;SDK\CHeaders\Widgets;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;_WIN32_WINDOWS=0x0601;WIN32;_DEBUG;_WINDOWS;_USRDLL;SIMDATA_EXPORTS;IBM=1;XPLM200=1;XPLM210=1;XPLM300=1;XPLM301=1;XPLM302=1;XPLM303=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>.\Debug\64\</AssemblerListingLocation>
-      <PrecompiledHeaderOutputFile>.\Debug\64\Hello-World-SDK-3.pch</PrecompiledHeaderOutputFile>
+      <PrecompiledHeaderOutputFile>.\Debug\64\px4-xplane.pch</PrecompiledHeaderOutputFile>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <ObjectFileName>.\Debug\64\</ObjectFileName>
@@ -130,7 +134,7 @@
     <Midl>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;_WIN32_WINDOWS=0x0601;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <TypeLibraryName>.\Debug\Hello-World-SDK-3.tlb</TypeLibraryName>
+      <TypeLibraryName>.\Debug\px4-xplane.tlb</TypeLibraryName>
       <MkTypLibCompatible>true</MkTypLibCompatible>
     </Midl>
     <ResourceCompile>
@@ -139,32 +143,31 @@
     </ResourceCompile>
     <Bscmake>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <OutputFile>.\Debug\Hello-World-SDK-3.bsc</OutputFile>
+      <OutputFile>.\Debug\px4-xplane.bsc</OutputFile>
     </Bscmake>
     <Link>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <LinkDLL>true</LinkDLL>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <ImportLibrary>.\Debug\64\Hello-World-SDK-3.lib</ImportLibrary>
+      <ImportLibrary>.\Debug\64\px4-xplane.lib</ImportLibrary>
       <AdditionalLibraryDirectories>SDK\Libraries\Win;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>Opengl32.lib;odbc32.lib;odbccp32.lib;XPLM_64.lib;XPWidgets_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="configReader.cpp" />
-    <ClCompile Include="ConnectionManager.cpp" />
-    <ClCompile Include="DataRefManager.cpp" />
-    <ClCompile Include="MAVLinkManager.cpp" />
-    <ClCompile Include="px4xplane.cpp" />
-    <ClCompile Include="structs.cpp" />
+    <ClCompile Include="src\configReader.cpp" />
+    <ClCompile Include="src\ConnectionManager.cpp" />
+    <ClCompile Include="src\DataRefManager.cpp" />
+    <ClCompile Include="src\MAVLinkManager.cpp" />
+    <ClCompile Include="src\px4xplane.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="configReader.h" />
-    <ClInclude Include="ConnectionManager.h" />
-    <ClInclude Include="DataRefManager.h" />
-    <ClInclude Include="ini.h" />
-    <ClInclude Include="MAVLinkManager.h" />
+    <ClInclude Include="config\ini.h" />
+    <ClInclude Include="include\configReader.h" />
+    <ClInclude Include="include\ConnectionManager.h" />
+    <ClInclude Include="include\DataRefManager.h" />
+    <ClInclude Include="include\MAVLinkManager.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="XYZgeomag\src\XYZgeomag.hpp" />
   </ItemGroup>
@@ -172,12 +175,8 @@
     <ResourceCompile Include="px4xplane.rc" />
   </ItemGroup>
   <ItemGroup>
-    <CopyFileToFolders Include="config.ini">
-      <FileType>Document</FileType>
-    </CopyFileToFolders>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="mag_test.py" />
+    <None Include="config\config.ini" />
+    <None Include="tests\test.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

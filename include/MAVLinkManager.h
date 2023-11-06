@@ -2,8 +2,8 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <Eigen/Core>
-#include "mavlink/c_library_v2/common/mavlink.h"
-#include "XYZgeomag/src/XYZgeomag.hpp"
+#include "../lib/mavlink/c_library_v2/common/mavlink.h"
+#include "../lib/XYZgeomag/src/XYZgeomag.hpp"
 #include <random>
 #include <cmath>  // for trigonometric functions and M_PI
 
