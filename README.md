@@ -34,7 +34,7 @@ The following table illustrates the message flow:
 - **Yaw PID Tuning**: The Quadricopter drone's yaw gain can be challenging to tune. It almost flies, but the performance in yaw is not very good. If you manage to tune it better, please share your gains.
 
 
-## Setup and Testing
+## Usage Guide
 
 ### For Users: Installation and Setup
 
