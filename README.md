@@ -35,31 +35,49 @@ The following table illustrates the message flow:
 
 ## Setup and Testing
 
-1. **Plugin Installation**:
-   - Install the plugin to your plugins folder for the specific drone.
 
-2. **PX4 SITL Setup**:
+1. **Repository Cloning**:
+   - Clone this repository to your local machine:
+     ```bash
+     git clone --recurse-submodules https://github.com/alireza787b/px4xplane.git
+     ```
+   - If you've already cloned the repository without the `--recurse-submodules` option, you can fetch the contents of the submodules with:
+     ```bash
+     git submodule init
+     git submodule update
+     ```
+
+2. **Plugin Installation**:
+   - You have two options to get the plugin: 
+     - Download the precompiled binary from the [Releases](https://github.com/alireza787b/px4xplane/releases) page.
+     - Build the plugin yourself from the source code.
+   - After obtaining the plugin, you should see a `px4xplane` folder containing a `64` folder that contains a  `.xpl` file. This is the plugin file.
+   - To install the plugin for a specific drone, copy the `px4xplane` folder to the plugins folder of the drone in your X-Plane installation. The path should look like this: `X-Plane Installation Folder/Aircraft/Your Drone/Plugins`.
+   - If you want to install the plugin globally for all aircraft in X-Plane, copy the `px4xplane` folder to the global plugins folder. The path should look like this: `X-Plane Installation Folder/Resources/Plugins`.
+   - Please note that installing the plugin globally will make it available for all aircraft, but it may not work correctly with all of them.
+
+3. **PX4 SITL Setup**:
    - Clone and build `PX4-Autopilot` and the SITL Engine. Follow the instructions provided by [PX4](https://docs.px4.io/main/en/simulation/).
    - If cloning on WSL (or another system), change the hostname IP from `localhost` to where X-Plane is running:
      ```bash
      export PX4_SIM_HOSTNAME=XPLANE_SYSTEM_IP
      ```
 
-3. **Running PX4 SITL**:
+4. **Running PX4 SITL**:
    - Run the default `iris` (or your custom airframe) with `none_` to indicate that you'll connect your own simulator:
      ```bash
      make px4_sitl none_iris
      ```
 
-4. **X-Plane Connection**:
+5. **X-Plane Connection**:
    - Launch X-Plane and load your drone.
    - Navigate to `plugin -> px4xplane -> Connect to SITL`. The simulator should now be connected.
    - Under `plugin -> px4xplane -> Show Settings`, you can view live data and status.
 
-5. **Firewall Configuration**:
+6. **Firewall Configuration**:
    - Ensure that port `4560 TCP` is not blocked by your firewall on both systems. If running on the same system, this is typically not an issue.
 
-6. **QGroundControl (QGC) Connection**:
+7. **QGroundControl (QGC) Connection**:
    - If running on the same system, QGC should auto-connect to the drone on X-Plane.
    - For WSL or another system, open QGroundControl, navigate to `Application Settings -> Comm Links`, and add a new connection to UDP port `18570`. Click `connect`, and it should work.
 
