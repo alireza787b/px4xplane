@@ -96,7 +96,6 @@ Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVecto
 	Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
 
 	Eigen::Vector3f bodyVector = rotationMatrix * nedVector;
-	bodyVector *= 0.00001;  // Convert from nT to Gauss
 
 	return bodyVector;
 }
@@ -132,11 +131,23 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon
 	float latRad = lat * M_PI / 180.0;
 	float lonRad = lon * M_PI / 180.0;
 
-	geomag::Vector position = geomag::geodetic2ecef(latRad, lonRad, alt);
+	// Log the input values
+	char log[256];
+	sprintf(log, "updateEarthMagneticFieldNED called with lat: %f, lon: %f, alt: %f\n", lat, lon, alt);
+	XPLMDebugString(log);
+
+	geomag::Vector position = geomag::geodetic2ecef(lat, lon, alt);
 	geomag::Vector mag_field = geomag::GeoMag(2022.5, position, geomag::WMM2020);
-	geomag::Elements nedElements = geomag::magField2Elements(mag_field, latRad, lonRad);
+	geomag::Elements nedElements = geomag::magField2Elements(mag_field, lat, lon);
 
 	earthMagneticFieldNED = Eigen::Vector3f(nedElements.north, nedElements.east, nedElements.down);
+
+	// Log the calculated magnetic field
+	sprintf(log, "Calculated magnetic field NED: north: %f, east: %f, down: %f\n", nedElements.north, nedElements.east, nedElements.down);
+	XPLMDebugString(log);
+
+	earthMagneticFieldNED *= 0.00001;  // Convert from nT to Gauss
+
 	return earthMagneticFieldNED;
 }
 
