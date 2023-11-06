@@ -29,9 +29,9 @@ The following table illustrates the message flow:
 
 ## Known Issues
 
-- **Magnetic Field Modeling**: X-Plane doesn't model the magnetic field. Currently, a minimal magnetic field is being used that almost works. try sea-level airports for now until I fix this. eg. OIBK
-- **Attitude Estimation**: There seems to be a problem is abnormal attitudes and high-speed rapid rotation, possibly because of the EKF update rate or the magnetic field estimation imposing errors.
+- **Attitude Estimation**: There seems to be a problem is abnormal attitudes and high-speed rapid rotation.
 - **Performance**: It's crucial to run X-Plane at a high FPS since the PX4 EKF requires fast updating of sensor data.
+- **Yaw PID Tuning**: The Quadricopter drone seems to be very hard to tune. now it almost flies but now very good in yaw. If you could tune it better please share your gains. 
 
 ## Setup and Testing
 
