@@ -1,0 +1,6 @@
+[submodule "lib/XYZgeomag"]
+	path = lib/XYZgeomag
+	url = https://github.com/nhz2/XYZgeomag
+[submodule "lib/mavlink/c_library_v2"]
+	path = lib/mavlink/c_library_v2
+	url = https://github.com/mavlink/c_library_v2.git
