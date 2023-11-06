@@ -29,9 +29,10 @@ The following table illustrates the message flow:
 
 ## Known Issues
 
-- **Attitude Estimation**: There seems to be a problem is abnormal attitudes and high-speed rapid rotation.
+- **Attitude Estimation**: There seems to be a problem with abnormal attitudes and high-speed rapid rotation.
 - **Performance**: It's crucial to run X-Plane at a high FPS since the PX4 EKF requires fast updating of sensor data.
-- **Yaw PID Tuning**: The Quadricopter drone seems to be very hard to tune. now it almost flies but now very good in yaw. If you could tune it better please share your gains. 
+- **Yaw PID Tuning**: The Quadricopter drone's yaw gain can be challenging to tune. It almost flies, but the performance in yaw is not very good. If you manage to tune it better, please share your gains.
+
 
 ## Setup and Testing
 
@@ -81,9 +82,13 @@ The following table illustrates the message flow:
    - If running on the same system, QGC should auto-connect to the drone on X-Plane.
    - For WSL or another system, open QGroundControl, navigate to `Application Settings -> Comm Links`, and add a new connection to UDP port `18570`. Click `connect`, and it should work.
 
+8. **Importing Parameters**:
+   - Tuning the PID for the quadricopter can be challenging. To assist with this, I have included a parameter file `quadricopter_px4.params` in the `config` folder. You can import these parameters using QGroundControl to get a good starting point for your tuning process.
+
+
 ## Status
 
-As of November 2023, This project is currently under development. Once a fully functional initial version is ready, the first beta release will be made available.
+As of November 2023, This project is currently under development.
 
 ## Contribution and Support
 
