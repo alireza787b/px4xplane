@@ -394,19 +394,43 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 }
 
 
-
+/**
+ * @brief Sets the acceleration data in the HIL_SENSOR message.
+ *
+ * This function retrieves the aircraft's current acceleration forces from the simulation,
+ * multiplies them by the gravitational constant, and sets them in the provided HIL_SENSOR message.
+ *
+ * @param hil_sensor Reference to the HIL_SENSOR message where the acceleration data will be set.
+ */
 void MAVLinkManager::setAccelerationData(mavlink_hil_sensor_t& hil_sensor) {
     hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
     hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
     hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 }
 
+/**
+ * @brief Sets the gyroscope data in the HIL_SENSOR message.
+ *
+ * This function retrieves the aircraft's current rotational rates (in radians) from the simulation
+ * and sets them in the provided HIL_SENSOR message.
+ *
+ * @param hil_sensor Reference to the HIL_SENSOR message where the gyroscope data will be set.
+ */
 void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
     hil_sensor.xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");
     hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
     hil_sensor.zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad");
 }
 
+/**
+ * @brief Sets the pressure data in the HIL_SENSOR message.
+ *
+ * This function retrieves the aircraft's current barometric pressure and pressure altitude from the simulation.
+ * It also adds noise to the barometric pressure reading to simulate real-world sensor inaccuracies.
+ * The resulting pressure data is then set in the provided HIL_SENSOR message.
+ *
+ * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
+ */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
     float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
     float pressureNoise = noiseDistribution(gen);
@@ -415,35 +439,47 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
     hil_sensor.diff_pressure = 0;
 }
 
+
+/**
+ * @brief Sets the magnetic field data in the HIL_SENSOR message.
+ *
+ * This function retrieves the aircraft's current orientation and position, then uses the precalculated
+ * Earth's magnetic field in NED coordinates. It rotates this magnetic field to the body frame of the aircraft
+ * and adds noise to simulate real-world magnetometer readings. The resulting magnetic field data is then set
+ * in the provided HIL_SENSOR message.
+ *
+ * @param hil_sensor Reference to the HIL_SENSOR message where the magnetic field data will be set.
+ */
 void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
-    // Get the heading, roll, and pitch
+    // Retrieve the aircraft's current heading, roll, and pitch from the simulation
     float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
     float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
     float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
 
-    // Convert to radians
+    // Convert the retrieved angles from degrees to radians for further calculations
     float yaw_rad = yaw_mag * M_PI / 180.0f;
     float roll_rad = roll * M_PI / 180.0f;
     float pitch_rad = pitch * M_PI / 180.0f;
 
-    // Get the Location 
+    // Retrieve the aircraft's current geodetic position from the simulation
     float latitude = DataRefManager::getFloat("sim/flightmodel/position/latitude");
     float longitude = DataRefManager::getFloat("sim/flightmodel/position/longitude");
     float altitude = DataRefManager::getFloat("sim/flightmodel/position/elevation");
 
-    // Call the calculateMagneticVector function
-    Eigen::Vector3f B_body = MAVLinkManager::calculateMagneticVector(latitude, longitude, altitude, roll_rad, pitch_rad, yaw_rad);
+    // Rotate the precalculated Earth's magnetic field from NED to the aircraft's body frame
+    Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(DataRefManager::earthMagneticFieldNED, roll_rad, pitch_rad, yaw_rad);
 
-    // Generate random noise values for the magnetometer data
+    // Generate random noise values to simulate real-world magnetometer inaccuracies
     float xmagNoise = noiseDistribution_mag(gen);
     float ymagNoise = noiseDistribution_mag(gen);
     float zmagNoise = noiseDistribution_mag(gen);
 
-    // Set the magnetic field in the HIL_SENSOR message with added noise
-    hil_sensor.xmag = B_body(0) + xmagNoise;
-    hil_sensor.ymag = B_body(1) + ymagNoise;
-    hil_sensor.zmag = B_body(2) + zmagNoise;
+    // Set the noisy magnetic field readings in the HIL_SENSOR message
+    hil_sensor.xmag = bodyMagneticField(0) + xmagNoise;
+    hil_sensor.ymag = bodyMagneticField(1) + ymagNoise;
+    hil_sensor.zmag = bodyMagneticField(2) + zmagNoise;
 }
+
 
 /**
  * @brief Sets the time and fix type data for the HIL_GPS message.

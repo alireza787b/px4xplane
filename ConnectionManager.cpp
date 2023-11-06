@@ -100,6 +100,9 @@ void ConnectionManager::acceptConnection() {
 
     XPLMDebugString("px4xplane: Connected to SITL successfully.\n");
     connected = true;
+    DataRefManager::initializeMagneticField();
+    XPLMDebugString("px4xplane: Init Magnetic Done.\n");
+
     status = "Connected";
     setLastMessage("Connected to SITL successfully.");
 

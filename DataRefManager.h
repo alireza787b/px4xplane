@@ -9,7 +9,9 @@
 #include <string>
 #include<cmath>
 #include<vector>
-
+#include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <Eigen/Core>
 
 enum DataRefType {
     DRT_FLOAT,
@@ -35,6 +37,8 @@ class DataRefManager {
 public:
     static constexpr float g_earth = 9.81f;
     static std::vector<DataRefItem> dataRefs;
+    static Eigen::Vector3f earthMagneticFieldNED;
+
 
     static void drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
     static std::vector<float> getFloatArray(const char* dataRefName);
@@ -49,6 +53,9 @@ public:
     static void enableOverride();
     static void disableOverride();
     static int drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
+    static Eigen::Vector3f updateEarthMagneticFieldNED(float lat, float lon, float alt);
+    static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
+    static void initializeMagneticField();
 
 
 };

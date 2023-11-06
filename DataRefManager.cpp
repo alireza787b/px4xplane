@@ -69,6 +69,77 @@ std::vector<DataRefItem> DataRefManager::dataRefs = {
 	{"RC Information", "Rudder", "sim/joystick/yoke_heading_ratio", "", 1, DRT_FLOAT, std::function<float(const char*)>(getFloat)},
 };
 
+/**
+ * @brief Static variable representing the Earth's magnetic field in NED (North-East-Down) coordinates.
+ * Initialized to zero and updated based on the aircraft's location.
+ */
+Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
+
+
+
+/**
+ * @brief Converts a magnetic field vector from NED to body frame.
+ *
+ * This function uses the provided roll, pitch, and yaw angles to rotate the magnetic field vector
+ * from the NED frame to the body frame of the aircraft.
+ *
+ * @param nedVector Magnetic field vector in NED coordinates.
+ * @param roll Roll angle in radians (rotation about the X-axis).
+ * @param pitch Pitch angle in radians (rotation about the Y-axis).
+ * @param yaw Yaw angle in radians with respect to Magnetic North (rotation about the Z-axis).
+ * @return Eigen::Vector3f The magnetic field vector in the body frame, in Gauss.
+ */
+Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
+	Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
+	Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
+	Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
+	Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
+
+	Eigen::Vector3f bodyVector = rotationMatrix * nedVector;
+	bodyVector *= 0.00001;  // Convert from nT to Gauss
+
+	return bodyVector;
+}
+
+
+/**
+ * @brief Initializes the Earth's magnetic field in NED based on the aircraft's initial location.
+ *
+ * This function should be called when the plugin or simulation starts to set the initial value
+ * of the Earth's magnetic field in NED.
+ */
+void DataRefManager::initializeMagneticField() {
+	float initialLatitude = getFloat("sim/flightmodel/position/latitude");
+	float initialLongitude = getFloat("sim/flightmodel/position/longitude");
+	float initialAltitude = getFloat("sim/flightmodel/position/elevation");
+
+	updateEarthMagneticFieldNED(initialLatitude, initialLongitude, initialAltitude);
+}
+
+
+/**
+ * @brief Updates the Earth's magnetic field in NED based on the provided geodetic coordinates.
+ *
+ * This function calculates the Earth's magnetic field in NED using the World Magnetic Model (WMM2020)
+ * and the provided latitude, longitude, and altitude.
+ *
+ * @param lat Latitude in degrees.
+ * @param lon Longitude in degrees.
+ * @param alt Altitude in meters above sea level.
+ * @return Eigen::Vector3f The updated magnetic field vector in NED coordinates.
+ */
+Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon, float alt) {
+	float latRad = lat * M_PI / 180.0;
+	float lonRad = lon * M_PI / 180.0;
+
+	geomag::Vector position = geomag::geodetic2ecef(latRad, lonRad, alt);
+	geomag::Vector mag_field = geomag::GeoMag(2022.5, position, geomag::WMM2020);
+	geomag::Elements nedElements = geomag::magField2Elements(mag_field, latRad, lonRad);
+
+	earthMagneticFieldNED = Eigen::Vector3f(nedElements.north, nedElements.east, nedElements.down);
+	return earthMagneticFieldNED;
+}
+
 
 void DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[],int lineOffset) {
 	
