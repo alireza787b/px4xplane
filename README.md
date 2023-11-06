@@ -29,9 +29,8 @@ The following table illustrates the message flow:
 
 ## Known Issues
 
-- **Magnetic Field Modeling**: X-Plane doesn't model the magnetic field. Currently, it's hardcoded for Tehran City, but this needs a more generic solution.
-- **Attitude Estimation**: There seems to be a discrepancy in the acceleration and magnetic field coordinate system of X-Plane compared to expectations (Body coordinate system). The potential problem lies in the coordinate transformation and definition mismatch between X-Plane and PX4.
-- **Plugin Responsiveness**: Occasionally, the plugin may cause the plane to become unresponsive when attempting to exit.
+- **Magnetic Field Modeling**: X-Plane doesn't model the magnetic field. Currently, a minimal magnetic field is being used that almost works. try sea-level airports for now until I fix this. eg. OIBK
+- **Attitude Estimation**: There seems to be a problem is abnormal attitudes and high-speed rapid rotation, possibly because of the EKF update rate or the magnetic field estimation imposing errors.
 - **Performance**: It's crucial to run X-Plane at a high FPS since the PX4 EKF requires fast updating of sensor data.
 
 ## Setup and Testing
