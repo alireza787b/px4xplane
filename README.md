@@ -21,12 +21,6 @@ The following table illustrates the message flow:
 | [HIL_STATE_QUATERNION](https://mavlink.io/en/messages/common.html#HIL_STATE_QUATERNION) | Sim to PX4 | Contains the actual "simulated" vehicle position, attitude, speed, etc. This can be logged and compared to PX4's estimates for analysis and debugging. |
 | [HIL_RC_INPUTS_RAW](https://mavlink.io/en/messages/common.html#HIL_RC_INPUTS_RAW) | Sim to PX4 | The RAW values of the RC channels received. |
 
-## Features
-
-- **Xplane-PX4 SITL TCP Connection**: Establishes a TCP connection between X-Plane and PX4 SITL.
-- **MAVLink Message Integration**: MAVLink messages such as HIL_SENSOR, HIL_GPS, and HIL_STATE_QUATERNION are used to communicate between the simulator and PX4.
-- **Flight Modes**: Currently, you can fly a drone in Acro mode as angular rates are functional.
-
 ## Known Issues
 
 - **Attitude Estimation**: There seems to be a problem with abnormal attitudes and high-speed rapid rotation.
