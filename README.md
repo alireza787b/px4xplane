@@ -66,8 +66,15 @@ The following table illustrates the message flow:
    - If running on the same system, QGC should auto-connect to the drone on X-Plane.
    - For WSL or another system, open QGroundControl, navigate to `Application Settings -> Comm Links`, and add a new connection to UDP port `18570`. Click `connect`, and it should work.
 
+
+
+
 8. **Importing Parameters**:
    - Tuning the PID for the quadricopter can be challenging. To assist with this, I have included a parameter file `quadricopter_px4.params` in the `config` folder. You can import these parameters using QGroundControl to get a good starting point for your tuning process.
+
+
+9. **Configuring Motor Mappings**:
+   - The plugin uses a `config.ini` file for motor mappings and airframe configuration. This file should be placed in the same directory as the `.xpl` file. You can customize the motor arrangement and select the airframe type (multirotor or fixed-wing) through this file. For detailed instructions, refer to the "Configuration and Motor Arrangement" section above. If you are using quadricopter and imported the `quadricopter_px4.params` everything is done for you no need to do any steps.
 
 ### For Developers: Building from Source
 
@@ -86,6 +93,24 @@ The following table illustrates the message flow:
    - Follow the instructions in the `BUILDING.md` file to build the plugin from source. (will be added)
 
 
+
+## Configuration and Motor Arrangement
+
+The plugin now supports flexible motor arrangements and configuration changes through a `config.ini` file located alongside the `.xpl` file. This enhancement allows users to easily switch between different airframe types (note: fixed-wing configurations are currently not supported) and customize motor mappings without modifying the source code.
+
+### Customizing Motor Layout
+
+To customize the motor layout,instead of changing `config.ini`, I recommend using QGroundControl (QGC) to adjust the dynamic mixing. This can be done under `Vehicle Settings -> Actuators`. Arrange the motor positions and directions to match your X-Plane airframe.
+Remember, in X-Plane, the positive direction is back and right, whereas in PX4, the positive is forward and right. Consequently, the rotation direction (CW & CCW) might appear reversed between PX4 and X-Plane.
+
+### X-Plane Aircraft Setup
+
+I recommend you use quadricopter air taxi model. It is basically a quad config but the graphics just show coaxial X8 Configuration. 
+For users operating a quadricopter, a parameter file (`quadricopter_px4.params`) is provided in the `config` folder. This file pre-configures all necessary settings, simplifying the setup process for this specific airframe.
+
+https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/
+
+
 ## Status
 
 As of November 2023, This project is currently under development.
@@ -99,9 +124,3 @@ Feel free to reach out to me in the issue section if you need help. Having exper
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
-
-## X-Plane Aircraft
-
-Since motor mapping is still hard-coded in the code, I recommend you use quadricopter air taxi model. It is basically a quad config but the graphics just show coaxial X8 Configuration.
-
-https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/
