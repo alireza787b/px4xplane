@@ -10,7 +10,9 @@
 #include<cmath>
 #include "MAVLinkManager.h"
 #include "XPLMUtilities.h"
+#include <ConfigManager.h>
 #define M_PI 3.14
+#include <chrono>
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
 	// Position Information
@@ -152,7 +154,7 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon
 }
 
 
-void DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[],int lineOffset) {
+int DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[],int lineOffset) {
 	
 
 	const char* currentCategory = nullptr;
@@ -186,6 +188,7 @@ void DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float
 		XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
 		lineOffset += 20; // Increment line offset for next items
 	}
+	return lineOffset;
 }
 
 int DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
@@ -261,29 +264,6 @@ float DataRefManager::mapChannelValue(float value, float minInput, float maxInpu
 	return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
 }
 
-std::tuple<float, float, float> DataRefManager::convertOGLtoNED(float ogl_vx, float ogl_vy, float ogl_vz, float roll_rad, float pitch_rad, float yaw_rad) {
-	// Calculate the rotation matrix from OGL to NED
-	// This is a simplified example and might not exactly match your requirements
-	float R[3][3];
-	R[0][0] = cos(yaw_rad) * cos(pitch_rad);
-	R[0][1] = cos(yaw_rad) * sin(pitch_rad) * sin(roll_rad) - sin(yaw_rad) * cos(roll_rad);
-	R[0][2] = cos(yaw_rad) * sin(pitch_rad) * cos(roll_rad) + sin(yaw_rad) * sin(roll_rad);
-
-	R[1][0] = sin(yaw_rad) * cos(pitch_rad);    
-	R[1][1] = sin(yaw_rad) * sin(pitch_rad) * sin(roll_rad) + cos(yaw_rad) * cos(roll_rad);
-	R[1][2] = sin(yaw_rad) * sin(pitch_rad) * cos(roll_rad) - cos(yaw_rad) * sin(roll_rad);
-
-	R[2][0] = -sin(pitch_rad);
-	R[2][1] = cos(pitch_rad) * sin(roll_rad);
-	R[2][2] = cos(pitch_rad) * cos(roll_rad);
-
-	// Convert OGL velocities to NED velocities using the rotation matrix
-	float ned_vn = R[0][0] * ogl_vx + R[0][1] * ogl_vy + R[0][2] * ogl_vz;
-	float ned_ve = R[1][0] * ogl_vx + R[1][1] * ogl_vy + R[1][2] * ogl_vz;
-	float ned_vd = R[2][0] * ogl_vx + R[2][1] * ogl_vy + R[2][2] * ogl_vz;
-
-	return std::make_tuple(ned_vn, ned_ve, ned_vd);
-}
 
 void DataRefManager::enableOverride() {
 		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 1);
@@ -292,7 +272,6 @@ void DataRefManager::enableOverride() {
 void DataRefManager::disableOverride() {
 		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 0);
 	}
-
 
 void DataRefManager::overrideActuators() {
 	// Get the HILActuatorControlsData from MAVLinkManager
@@ -304,19 +283,24 @@ void DataRefManager::overrideActuators() {
 	correctedControls.mode = hilControls.mode;
 	correctedControls.flags = hilControls.flags;
 
-	// Correct the controls based on the motor mappings
-	for (int i = 0; i < 16; i++) {
-		int xplaneMotor = ConnectionManager::motorMappings[i + 1];
-		correctedControls.controls[xplaneMotor - 1] = hilControls.controls[i];
-	}
+	// Correct the controls based on the motor mappings from ConfigManager
+	for (int i = 0; i < 8 ; i++) {
+		int xplaneMotor = ConfigManager::getXPlaneMotorFromPX4(i + 1);
+		if (xplaneMotor != -1) { // Check if mapping exists
+			correctedControls.controls[xplaneMotor - 1] = hilControls.controls[i];
 
-	// Enable the override (already enabled)
-	//DataRefManager::enableOverride();
+			// Debug print
+			char debugMsg[100];
+			snprintf(debugMsg, sizeof(debugMsg), "PX4 Motor %d -> X-Plane Motor %d\n", i + 1, xplaneMotor);
+			XPLMDebugString(debugMsg);
+		}
+	}
 
 	// Override the throttle dataref in X-Plane for all engines at once
 	std::string dataRef = "sim/flightmodel/engine/ENGN_thro_use";
-	XPLMSetDatavf(XPLMFindDataRef(dataRef.c_str()), correctedControls.controls, 0, 16);
+	XPLMSetDatavf(XPLMFindDataRef(dataRef.c_str()), hilControls.controls, 0, 8);
 }
+
 
 int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
 	// Fetch the actual throttle data from X-Plane
@@ -334,3 +318,18 @@ int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, 
 	return lineOffset;
 }
 
+std::string DataRefManager::GetFormattedDroneConfig() {
+	// Fetch the configuration name and type from ConfigManager
+	std::string configName = ConfigManager::getConfigName();
+	std::string configType = ConfigManager::getConfigType();
+
+	// Check for empty values and replace them with "N/A"
+	if (configName.empty()) configName = "N/A";
+	if (configType.empty()) configType = "N/A";
+
+	// Prepare the formatted string
+	char formattedConfig[512]; // Adjust the size as needed
+	snprintf(formattedConfig, sizeof(formattedConfig), "Drone Config: %s\nConfig Type: %s", configName.c_str(), configType.c_str());
+
+	return std::string(formattedConfig);
+}

@@ -40,14 +40,13 @@ public:
     static Eigen::Vector3f earthMagneticFieldNED;
 
 
-    static void drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
+    static int drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
     static std::vector<float> getFloatArray(const char* dataRefName);
     static float getFloat(const char* dataRef);
     static int getInt(const char* dataRef);
     static double getDouble(const char* dataRef);
     static std::string arrayToString(const std::vector<float>& array); // add this line
     static float mapChannelValue(float value, float minInput, float maxInput, float minOutput, float maxOutput);
-    static std::tuple<float, float, float> convertOGLtoNED(float ogl_vx, float ogl_vy, float ogl_vz, float roll_rad, float pitch_rad, float yaw_rad);
     static int drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
     static void overrideActuators();
     static void enableOverride();
@@ -56,6 +55,7 @@ public:
     static Eigen::Vector3f updateEarthMagneticFieldNED(float lat, float lon, float alt);
     static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
     static void initializeMagneticField();
+    static std::string GetFormattedDroneConfig();
 
 
 };

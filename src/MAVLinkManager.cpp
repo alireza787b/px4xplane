@@ -4,6 +4,7 @@
 #include <vector>
 #include "XPLMUtilities.h"
 #include <tuple>  // for std::tuple
+#include <ConfigManager.h>
 
 
 
@@ -335,12 +336,25 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
     mavlink_msg_hil_actuator_controls_decode(&msg, &hil_actuator_controls);
 
     MAVLinkManager::hilActuatorControlsData.timestamp = hil_actuator_controls.time_usec;
-    for (int i = 0; i < 16; ++i) {
-        MAVLinkManager::hilActuatorControlsData.controls[i] = hil_actuator_controls.controls[i];
+
+    // Initialize all controls to zero
+    for (auto& control : MAVLinkManager::hilActuatorControlsData.controls) {
+        control = 0.0f;
     }
+
+    // Map the controls based on the motor mappings from ConfigManager
+    for (int i = 0; i < 8; ++i) {
+        int xPlaneMotorNumber = ConfigManager::getXPlaneMotorFromPX4(i + 1);
+        if (xPlaneMotorNumber != -1) {
+            MAVLinkManager::hilActuatorControlsData.controls[xPlaneMotorNumber - 1] = hil_actuator_controls.controls[i];
+        }
+    }
+
     MAVLinkManager::hilActuatorControlsData.mode = hil_actuator_controls.mode;
     MAVLinkManager::hilActuatorControlsData.flags = hil_actuator_controls.flags;
 }
+
+
 
 
 /**

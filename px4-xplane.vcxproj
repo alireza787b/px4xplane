@@ -51,7 +51,7 @@
     <TargetName>win</TargetName>
     <IncludePath>C:\Users\Alireza\source\repos\px4xplane\include;C:\Users\Alireza\vcpkg\installed\x64-windows\include;C:\Users\Alireza\source\repos\px4xplane\lib\SDK\CHeaders\XPLM;$(IncludePath)</IncludePath>
     <LibraryPath>C:\Users\Alireza\source\repos\px4xplane\lib;C:\Users\Alireza\vcpkg\installed\x64-windows\lib;C:\Users\Alireza\GeographicLib\lib;C:\Users\Alireza\source\repos\px4xplane\lib\SDK\Libraries\Win;$(LibraryPath)</LibraryPath>
-    <ExternalIncludePath>C:\Users\Alireza\GeographicLib\include\GeographicLib;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>C:\Users\Alireza\source\repos\px4xplane\lib\simpleini;$(ExternalIncludePath)</ExternalIncludePath>
     <SourcePath>C:\Users\Alireza\source\repos\px4xplane\src;$(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -108,7 +108,8 @@
       <AdditionalDependencies>Opengl32.lib;odbc32.lib;odbccp32.lib;XPLM_64.lib;XPWidgets_64.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)config\config.ini" "$(OutDir)"</Command>
+      <Command>copy "$(ProjectDir)config\config.ini" "$(OutDir)"
+copy "$(ProjectDir)config\quadricopter_px4.params" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -156,6 +157,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\ConfigManager.cpp" />
     <ClCompile Include="src\configReader.cpp" />
     <ClCompile Include="src\ConnectionManager.cpp" />
     <ClCompile Include="src\DataRefManager.cpp" />
@@ -164,6 +166,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config\ini.h" />
+    <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\configReader.h" />
     <ClInclude Include="include\ConnectionManager.h" />
     <ClInclude Include="include\DataRefManager.h" />

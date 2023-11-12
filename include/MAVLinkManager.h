@@ -19,7 +19,6 @@ public:
     static void setPressureData(mavlink_hil_sensor_t& hil_sensor);
     static void setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor);
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
-    static Eigen::Vector3f calculateMagneticVector(float latitude, float longitude, float altitude, float roll_rad, float pitch_rad, float yaw_rad);
 
     struct HILActuatorControlsData {
         uint64_t timestamp;

@@ -21,6 +21,7 @@
 #include <fstream>
 #include <sstream>
 #include "DataRefManager.h"
+#include <ConfigManager.h>
 
 
 static bool connected = false;
@@ -93,48 +94,27 @@ void ConnectionManager::acceptConnection() {
     socklen_t clilen = sizeof(cli_addr);
 
      newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
-    if (newsockfd < 0) {
-        XPLMDebugString("px4xplane: Error on accept.\n");
-        return;
-    }
+     if (newsockfd < 0) {
+         XPLMDebugString("px4xplane: Error on accept.\n");
+         return;
+     }
 
-    XPLMDebugString("px4xplane: Connected to SITL successfully.\n");
-    connected = true;
-    DataRefManager::initializeMagneticField();
-    XPLMDebugString("px4xplane: Init Magnetic Done.\n");
+     XPLMDebugString("px4xplane: Connected to SITL successfully.\n");
+     connected = true;
+     DataRefManager::enableOverride();
 
-    status = "Connected";
-    setLastMessage("Connected to SITL successfully.");
+     DataRefManager::initializeMagneticField();
+     XPLMDebugString("px4xplane: Init Magnetic Done.\n");
 
+     // Load motor mappings from config.ini
+     ConfigManager::loadConfiguration();
+     XPLMDebugString("px4xplane: Motor mappings loaded from config.ini.\n");
 
-
-    DataRefManager::enableOverride();
-
-
-
-    // 
-    // 
-    // 
-    //motorMappings = loadMotorMappings("config.ini");
-    // Hard-coded motor mappings
-    //motorMappings[px4 motor number] = xplane motor number
-    //for airtaxi quadrippol:
-  /*  PX4 Motor 1 maps to X - Plane Motor 2
-        PX4 Motor 2 maps to X - Plane Motor 3
-        PX4 Motor 3 maps to X - Plane Motor 1
-        PX4 Motor 4 maps to X - Plane Motor 4*/
-    motorMappings[1] = 2;
-    motorMappings[2] = 3;
-    motorMappings[3] = 1;
-    motorMappings[4] = 4;
-
-
-    if (motorMappings.empty()) {
-        XPLMDebugString("px4xplane: Error loading motor mappings from ini file.\n");
-    }
-    else {
-        XPLMDebugString("px4xplane: Loaded motor mappings from ini file .\n");
-    }
+     // Debug: Log loaded configuration
+     std::string debugMsg = "Config Name: " + ConfigManager::getConfigName() +
+         ", Version: " + ConfigManager::getConfigVersion() +
+         ", Type: " + ConfigManager::getConfigType() + "\n";
+     XPLMDebugString(debugMsg.c_str());
 
 }
 

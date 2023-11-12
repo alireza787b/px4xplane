@@ -50,6 +50,57 @@ void create_menu();
 void toggleEnable();
 void updateMenuItems();
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
+
+
+
+int drawHeader(int l, int t, float col_white[]) {
+	char header[512];
+	snprintf(header, sizeof(header), "PX4-XPlane Interface v1.1.0");
+	XPLMDrawString(col_white, l + 10, t - 20, header, NULL, xplmFont_Proportional);
+	return l + 20;
+}
+
+int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int columnWidth) {
+	char buf[512];
+	int droneConfigOffset = 20; // Adjust this offset as needed
+
+	
+
+	// Get the formatted drone configuration string
+	std::string droneConfigStr = DataRefManager::GetFormattedDroneConfig();
+	// Split the string into two lines for display
+	std::istringstream iss(droneConfigStr);
+	std::string line;
+	while (std::getline(iss, line)) {
+		char lineBuffer[512]; // Ensure this buffer is large enough
+		strncpy(lineBuffer, line.c_str(), sizeof(lineBuffer));
+		lineBuffer[sizeof(lineBuffer) - 1] = '\0'; // Ensure null termination
+
+		XPLMDrawString(col_white, l + droneConfigOffset, t - lineOffset, lineBuffer, NULL, xplmFont_Proportional);
+		lineOffset += 20;
+	}
+
+	// Draw Connection Status
+	const std::string& status = ConnectionManager::getStatus();
+	snprintf(buf, sizeof(buf), "Status: %s", status.c_str());
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	// Draw SITL Frequency
+	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", SIM_Timestep);
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	return lineOffset;
+}
+
+void drawFooter(int l, int b, float col_white[]) {
+	char footer[512];
+	snprintf(footer, sizeof(footer), "Copyright (c) Alireza Ghaderi - https://github.com/alireza787b/px4xplane");
+	XPLMDrawString(col_white, l + 10, b + 10, footer, NULL, xplmFont_Proportional);
+}
+
+
 PLUGIN_API void XPluginStop(void);
 
 
@@ -62,13 +113,13 @@ PLUGIN_API int XPluginStart(
 	strcpy(outSig, "alireza787.px4xplane");
 	strcpy(outDesc, "PX4 SITL Interface for X-Plane.");
 
-
 	create_menu();
 
 	XPLMCreateWindow_t params;
 	params.structSize = sizeof(params);
 	params.visible = 0; // Window is initially invisible
 	params.drawWindowFunc = draw_px4xplane;
+	// Note on handlers:
 	// Note on handlers:
 	// Register real handlers here as needed
 	params.handleMouseClickFunc = NULL; // Example: mouse_handler;
@@ -120,47 +171,31 @@ int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void
 void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	int l, t, r, b;
 	XPLMGetWindowGeometry(in_window_id, &l, &t, &r, &b);
-	char buf[512];
 	float col_white[] = { 1.0, 1.0, 1.0 };
+	int lineOffset = 20;
+	int columnWidth = 350; // Adjust as needed
 
-	// Start drawing from the top, decrement lineOffset for each new line
-	int lineOffset = 20; // Adjust as needed
+	// Draw Header
+	lineOffset = drawHeader(l, t, col_white);
 
-	// Draw Connection Status on the top left
-	const std::string& status = ConnectionManager::getStatus();
-	snprintf(buf, sizeof(buf), "Status: %s", status.c_str());
-	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	// Draw Status and Configuration
+	lineOffset = drawStatusAndConfig(l, t, col_white, lineOffset, columnWidth);
 
-	// Draw SITL Frequency
-	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", SIM_Timestep);
-	XPLMDrawString(col_white, l + 10, t - (lineOffset * 2), buf, NULL, xplmFont_Proportional);
+	// Draw DataRefs
+	lineOffset = DataRefManager::drawDataRefs(in_window_id, l, t, col_white, lineOffset);
 
-
-	int droneConfigOffset = 400; // Adjust this offset as needed to put space between SITL IP and Drone Config
-	snprintf(buf, sizeof(buf), "Drone Config: Quad");
-	XPLMDrawString(col_white, l + droneConfigOffset, t - lineOffset, buf, NULL, xplmFont_Proportional);
-
-	// Increment lineOffset for the next row
-	lineOffset += 20;
-
-	// Draw Xplane DataRefs
-	DataRefManager::drawDataRefs(in_window_id, l + 10, t - lineOffset, col_white, lineOffset);
-
-
-	int rightColumnPosition = l + 350;
-
+	// Draw Actuator Controls
+	int rightColumnPosition = l + columnWidth;
+	lineOffset = 20;
 	lineOffset = DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
 
-	// Increment lineOffset for the next row
-	lineOffset += 20;
-
 	// Draw Actual Throttle
-	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset);
+	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset+20);
 
-	// Handle other static drawings here like footers, headers, etc.
-	char* footer = "Copyright (c) Alireza Ghaderi - https://github.com/alireza787b/px4xplane";
-	XPLMDrawString(col_white, l + 10, b + 10, footer, NULL, xplmFont_Proportional);
+	// Draw Footer
+	drawFooter(l, b, col_white);
 }
+
 
 
 
@@ -288,3 +323,4 @@ PLUGIN_API void XPluginStop(void) {
 	// ...
 	XPLMDebugString("px4xplane: Plugin stopped\n");
 }
+
