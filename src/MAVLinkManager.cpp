@@ -59,14 +59,15 @@ std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.00
  * @see setPressureData
  * @see setMagneticFieldData
  */
-void MAVLinkManager::sendHILSensor() {
+void MAVLinkManager::sendHILSensor(uint8_t sensor_id=0) {
+
     if (!ConnectionManager::isConnected()) return;
 
     mavlink_message_t msg;
     mavlink_hil_sensor_t hil_sensor;
 
     hil_sensor.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-    hil_sensor.id = uint8_t(0);
+    hil_sensor.id = uint8_t(sensor_id);
 
     setAccelerationData(hil_sensor);
     setGyroData(hil_sensor);

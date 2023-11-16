@@ -10,7 +10,7 @@
 
 class MAVLinkManager {
 public:
-    static void sendHILSensor();
+    static void sendHILSensor(uint8_t sensor_id);
     static void sendHILGPS();
     static void sendHILStateQuaternion();
     static void sendHILRCInputs();

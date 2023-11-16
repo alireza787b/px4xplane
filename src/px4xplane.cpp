@@ -295,14 +295,17 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	if (!ConnectionManager::isConnected()) return -1.0f; // Return -1 to be called at the next cycle
 
 	// Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
-	MAVLinkManager::sendHILSensor();
+	MAVLinkManager::sendHILSensor(uint8_t(0));
 	MAVLinkManager::sendHILGPS();
 	/*MAVLinkManager::sendHILStateQuaternion();
 	MAVLinkManager::sendHILRCInputs();*/
 
+
+
 	ConnectionManager::receiveData();
 
 	DataRefManager::overrideActuators();
+	//MAVLinkManager::sendHILSensor(uint8_t(1));
 	// Calculate the frequency 
 		SIM_Timestep = inElapsedSinceLastCall;
 

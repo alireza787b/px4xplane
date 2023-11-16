@@ -1,0 +1,322 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PX4 Setup Guide with X-Plane and QGroundControl</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #fff;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3 {
+            color: #3079ed;
+            margin-bottom: 15px;
+        }
+
+        p, li {
+            font-size: 1.1em;
+        }
+
+        nav {
+            text-align: center;
+            padding: 10px;
+        }
+
+            nav a {
+                padding: 10px 15px;
+                display: inline-block;
+                margin: 0 5px;
+                border-radius: 5px;
+                transition: background-color 0.3s, text-decoration 0.3s;
+                color: #3079ed;
+                text-decoration: none;
+            }
+
+                nav a:hover {
+                    background-color: #f2f2f2;
+                    text-decoration: none; /* Ensures no underline on hover */
+                }
+
+        /* Typography */
+         p, li {
+            font-size: 1.1em; /* Adjust as needed */
+        }
+
+        /* Box Style for Command Blocks */
+        .command {
+            position: relative;
+            background-color: #f2f2f2;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+
+        .footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            background-color: #eee;
+            font-size: 0.9em;
+        }
+
+            .footer a {
+                color: #3079ed;
+            }
+
+       
+
+        .copy-icon {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            cursor: pointer;
+            color: #3079ed;
+            font-size: 1.2em;
+        }
+
+            .copy-icon svg {
+                height: 20px;
+                width: 20px;
+            }
+
+        ul {
+            margin-left: 20px;
+        }
+
+
+        .dark-mode {
+            background-color: #333;
+            color: #fff;
+        }
+
+            .dark-mode .container {
+                background-color: #444;
+            }
+
+            .dark-mode nav a {
+                color: #fff;
+            }
+
+            .dark-mode .command {
+                background-color: #555;
+            }
+
+            .dark-mode .footer {
+                background-color: #222;
+            }
+
+    </style>
+    <script>
+        window.onload = function () {
+            var commands = document.querySelectorAll('.command code');
+            commands.forEach(function (command, index) {
+                var icon = document.createElement('span');
+                icon.innerHTML = '<svg viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 4C10.8954 4 10 4.89543 10 6H14C14 4.89543 13.1046 4 12 4ZM8.53513 4C9.22675 2.8044 10.5194 2 12 2C13.4806 2 14.7733 2.8044 15.4649 4H17C18.6569 4 20 5.34315 20 7V19C20 20.6569 18.6569 22 17 22H7C5.34315 22 4 20.6569 4 19V7C4 5.34315 5.34315 4 7 4H8.53513ZM8 6H7C6.44772 6 6 6.44772 6 7V19C6 19.5523 6.44772 20 7 20H17C17.5523 20 18 19.5523 18 19V7C18 6.44772 17.5523 6 17 6H16C16 7.10457 15.1046 8 14 8H10C8.89543 8 8 7.10457 8 6Z" fill="currentColor"></path></svg>';
+                icon.className = 'copy-icon';
+                icon.onclick = function () { copyToClipboard(command.textContent); };
+                command.parentNode.appendChild(icon);
+            });
+            document.getElementById('toggleTheme').addEventListener('click', function () {
+                document.body.classList.toggle('dark-mode');
+            });
+        };
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function () {
+                alert("Copied to clipboard");
+            }).catch(function (error) {
+                alert("Copy failed: " + error);
+            });
+
+        }
+
+     
+
+    </script>
+
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PX4 with X-Plane and QGroundControl Setup Guide (v1.0.0-beta, Nov 2023)</h1>
+            <nav>
+                <a href="#download-software">Download Software</a> |
+                <a href="#setting-up-environment">Setting Up the Environment</a> |
+                <a href="#Clone-and-build-pX4">Clone and Build PX4</a> |
+                <a href="#installation-and-configuration">Installation and Configuration</a> |
+                <a href="#additional-tips">Additional Tips</a>
+            </nav>
+            <div class="theme-toggle">
+                <button id="toggleTheme">Toggle Night/Day Mode</button>
+            </div>
+
+        </header>
+
+        <section id="download-software">
+            <h2>Download Software</h2>
+            <ol>
+                <li>
+                    <strong>X-Plane</strong>:
+                    <p>Download X-Plane 11 or 12 from the <a href="https://www.x-plane.com/download/" target="_blank">X-Plane Official Website</a>.</p>
+                </li>
+                <li>
+                    <strong>Quadricopter eVTOL Air Taxi</strong>:
+                    <p>Download the Quadricopter eVTOL Air Taxi from the <a href="https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/" target="_blank">X-Plane Forum</a>. Install it in the <code>Aircraft/Extra Aircrafts</code> folder.</p>
+                </li>
+                <li>
+                    <strong>QGroundControl</strong>:
+                    <p>Download QGroundControl from the <a href="https://qgroundcontrol.com/" target="_blank">official website</a>.</p>
+                </li>
+                <li>
+                    <strong>PX4xplane Plugin</strong>:
+                    <p>Download the precompiled binary from <a href="https://github.com/alireza787b/px4xplane/releases" target="_blank">PX4xplane Releases</a>.</p>
+                </li>
+            </ol>
+        </section>
+        <section id="setting-up-environment">
+            <h2>Setting Up the Environment</h2>
+            <p><strong>Note for Mac and Linux Users:</strong> No extra steps are required for setting up the environment on Mac and Linux systems.</p>
+
+            <h3>Windows Users - Setting Up WSL2</h3>
+            <p>WSL2 (Windows Subsystem for Linux) allows you to run a Linux environment directly in Windows. This setup is necessary for Windows users to run PX4 simulation.</p>
+            <p>First, ensure virtualization (Virtualization Technology, Intel VT-x, AMD-V) is enabled in BIOS.</p>
+            <p>
+                For Windows 10 (build 19041 or higher) and Windows 11, Open Command Prompt as administrator and install WSL2 with Ubuntu 22.04:
+            </p>
+
+            <div class="command">
+                <code>wsl --install</code>
+            </div>
+            <p>If you need more help or information about WSL, consider the following resources:</p>
+            <ul>
+                <li><a href="https://www.youtube.com/watch?v=iVU8ZNoMn_U" target="_blank">WSL with PX4 (Video)</a></li>
+                <li><a href="https://www.youtube.com/watch?v=YByZ_sOOWsQ" target="_blank">How to  WSL Configuration (Video)</a></li>
+            </ul>
+            <p><strong>Hint:</strong> If you want a different version of Ubuntu or need to manage multiple WSL instances, you can specify the distribution during installation using commands like <code>wsl --install -d Ubuntu-20.04</code>.</p>
+
+
+
+        </section>
+        <section id="Clone-and-build-pX4">
+            <h2>Clone and Build PX4</h2>
+            <p>In WSL2, clone and set up the PX4 environment:</p>
+            <div class="command">
+                <code>git clone https://github.com/PX4/PX4-Autopilot.git --recursive</code>
+            </div>
+            <p>Navigate to the cloned directory:</p>
+            <div class="command">
+                <code>cd PX4-Autopilot</code>
+            </div>
+            <p>Run the setup script:</p>
+            <div class="command">
+                <code>bash ./Tools/setup/ubuntu.sh</code>
+            </div>
+            <p>Restart System:</p>
+            <p>If using WSL:</p>
+            <div class="command">
+                <code>exit</code>
+            </div>
+            <div class="command">
+                <code>wsl --shutdown</code>
+            </div>
+            <div class="command">
+                <code>wsl</code>
+            </div>
+        </section>
+
+        <section id="installation-and-configuration">
+
+
+            <h2>Installation and Configuration</h2>
+            <h3>Install the PX4xplane Plugin</h3>
+            <p>Copy the <code>px4xplane</code> folder to the specific drone's plugin folder in X-Plane:</p>
+            <div class="command">
+                <code>X-Plane Installation Folder/Aircraft/Quadricopter-Piloted/Plugins</code>
+            </div>
+            <p>For global installation:</p>
+            <div class="command">
+                <code>X-Plane Installation Folder/Resources/Plugins</code>
+            </div>
+
+
+            <h3>Run X-Plane and Load Drone</h3>
+            <p>Start X-Plane and load the Quadricopter eVTOL Air Taxi.</p>
+
+            <h3>Configure PX4 SITL</h3>
+            <p>In WSL2, check your IP address:(eg. 172.21.144.1)</p>
+            <div class="command">
+                <code>ifconfig</code>
+            </div>
+            <p>Set the PX4 simulation hostname with your IP:</p>
+            <div class="command">
+                <code>export PX4_SIM_HOSTNAME=172.21.144.1</code>
+            </div>
+            <p>Start the simulation:</p>
+            <div class="command">
+                <code>make px4_sitl none_iris</code>
+            </div>
+
+            <h3>Connect X-Plane to PX4 SITL</h3>
+            <p>In X-Plane, go to the plugin menu and connect to SITL by following these steps:</p>
+            <ul>
+                <li>Navigate to the plugin menu.</li>
+                <li>Select 'px4xplane'.</li>
+                <li>Choose 'Connect to SITL'.</li>
+            </ul>
+
+            <h3>Set Up QGroundControl</h3>
+            <p>For direct connection on Mac/Linux, QGroundControl should autoconnect.</p>
+            <p>For remote connection (e.g., WSL2):</p>
+            <ul>
+                <li>Open Application Settings in QGroundControl.</li>
+                <li>Go to Comm Links.</li>
+                <li>Add a new connection with the WSL2 IP to UDP port 18570.</li>
+            </ul>
+
+            <h3>Load Parameters in QGroundControl</h3>
+            <p>To load parameters:</p>
+            <ul>
+                <li>Go to Vehicle Settings in QGroundControl.</li>
+                <li>Select 'Load from file' to import the parameter file.</li>
+            </ul>
+
+
+            <h3>Joystick Calibration</h3>
+            <p>Calibrate your joystick as needed in X-Plane or QGroundControl.</p>
+        </section>
+
+        <section id="additional-tips">
+            <h2>Additional Tips</h2>
+            <ul>
+                <li>Maintain a high FPS in X-Plane for stable flight.</li>
+                <li>The EKF estimator may have limitations in high acceleration maneuvers.</li>
+                <li>For errors: use <code>make clean</code>, <code>make distclean</code>, and rebuild PX4.</li>
+                <li>For SITL concepts and a step-by-step guide, watch <a href="https://www.youtube.com/watch?v=iVU8ZNoMn_U" target="_blank">this YouTube Video</a>.</li>
+                <li>For more information, visit the <a href="https://github.com/alireza787b/px4xplane" target="_blank">Official GitHub Repository</a>.</li>
+            </ul>
+        </section>
+
+
+
+    </div>
+        <footer class="footer">
+            <p>&copy; 2023 <a href="https://www.linkedin.com/in/alireza787b/" target="_blank"> Alireza Ghaderi</a>. All rights reserved.</p>
+            <p>For more information, visit the <a href="https://github.com/alireza787b/px4xplane" target="_blank">Official GitHub Repository</a>.</p>
+        </footer>
+
+</body>
+</html>
