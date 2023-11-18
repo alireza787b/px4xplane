@@ -154,10 +154,10 @@
         <header>
             <h1>PX4 with X-Plane and QGroundControl Setup Guide (v1.0.0-beta, Nov 2023)</h1>
             <nav>
-                <a href="#download-software">Download Software</a> |
+                <a href="#download-software">Download and install Software</a> |
                 <a href="#setting-up-environment">Setting Up the Environment</a> |
                 <a href="#Clone-and-build-pX4">Clone and Build PX4</a> |
-                <a href="#installation-and-configuration">Installation and Configuration</a> |
+                <a href="#configuration">Configuration</a> |
                 <a href="#additional-tips">Additional Tips</a>
             </nav>
             <div class="theme-toggle">
@@ -167,7 +167,7 @@
         </header>
 
         <section id="download-software">
-            <h2>Download Software</h2>
+            <h2>Download and install Software</h2>
             <ol>
                 <li>
                     <strong>X-Plane</strong>:
@@ -184,6 +184,8 @@
                 <li>
                     <strong>PX4xplane Plugin</strong>:
                     <p>Download the precompiled binary from <a href="https://github.com/alireza787b/px4xplane/releases" target="_blank">PX4xplane Releases</a>.</p>
+                    <p>Copy the <code>px4xplane</code> folder to the specific drone's plugin folder in X-Plane: <code>X-Plane Installation Folder/Aircraft/Quadricopter-Piloted/Plugins</code></p>
+                    <p>For global installation: <code>X-Plane Installation Folder/Resources/Plugins</code></p>
                 </li>
             </ol>
         </section>
@@ -239,19 +241,12 @@
             </div>
         </section>
 
-        <section id="installation-and-configuration">
+        <section id="configuration">
 
 
-            <h2>Installation and Configuration</h2>
-            <h3>Install the PX4xplane Plugin</h3>
-            <p>Copy the <code>px4xplane</code> folder to the specific drone's plugin folder in X-Plane:</p>
-            <div class="command">
-                <code>X-Plane Installation Folder/Aircraft/Quadricopter-Piloted/Plugins</code>
-            </div>
-            <p>For global installation:</p>
-            <div class="command">
-                <code>X-Plane Installation Folder/Resources/Plugins</code>
-            </div>
+            <h2>Configuration</h2>
+            
+            
 
 
             <h3>Run X-Plane and Load Drone</h3>
@@ -280,7 +275,7 @@
             </ul>
 
             <h3>Set Up QGroundControl</h3>
-            <p>For direct connection on Mac/Linux, QGroundControl should autoconnect.</p>
+            <p>For direct connection on Mac/Linux, QGroundControl should auto connect.</p>
             <p>For remote connection (e.g., WSL2):</p>
             <ul>
                 <li>Open Application Settings in QGroundControl.</li>
