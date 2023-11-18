@@ -246,15 +246,22 @@
             <h2>Configuration</h2>
             
             
-
+            <h3>Set Up QGroundControl</h3>
+            <p>For direct connection on Mac/Linux, QGroundControl should auto-connect.</p>
+            <p>For remote connection (e.g., WSL2):</p>
+            <ul>
+                <li>Open Application Settings in QGroundControl.</li>
+                <li>Go to Comm Links.</li>
+                <li>Add a new connection with the WSL2 IP to UDP port 18570.</li>
+            </ul>
 
             <h3>Run X-Plane and Load Drone</h3>
             <p>Start X-Plane and load the Quadricopter eVTOL Air Taxi.</p>
 
             <h3>Configure PX4 SITL</h3>
-            <p>In WSL2, check your IP address:(eg. 172.21.144.1)</p>
+            <p>In Windows Terminal, check your IP address:(eg. 172.21.144.1)</p>
             <div class="command">
-                <code>ifconfig</code>
+                <code>ipconfig</code>
             </div>
             <p>Set the PX4 simulation hostname with your IP:</p>
             <div class="command">
@@ -273,14 +280,7 @@
                 <li>Choose 'Connect to SITL'.</li>
             </ul>
 
-            <h3>Set Up QGroundControl</h3>
-            <p>For direct connection on Mac/Linux, QGroundControl should auto connect.</p>
-            <p>For remote connection (e.g., WSL2):</p>
-            <ul>
-                <li>Open Application Settings in QGroundControl.</li>
-                <li>Go to Comm Links.</li>
-                <li>Add a new connection with the WSL2 IP to UDP port 18570.</li>
-            </ul>
+            
 
             <h3>Load Parameters in QGroundControl</h3>
             <p>To load parameters:</p>
