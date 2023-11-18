@@ -30,7 +30,7 @@ The following table illustrates the message flow:
 
 ## Usage Guide
 
-follow the <a href="https://alireza787b.github.io/px4xplane/v1.html" target="_blank"> step-by-step instructions </a>.
+follow the <a href="https://alireza787b.github.io/px4xplane/v1.html" target="_blank"> step-by-step instruction </a>.
 
 
 ### For Users: Installation and Setup
