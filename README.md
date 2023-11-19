@@ -2,6 +2,13 @@
 
 This project establishes a connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. The goal is to provide a realistic simulation environment where PX4 can control a drone in the X-Plane simulator.
 
+## Video Tutorial
+
+Check out our [full setup guide and demonstration on YouTube](https://www.youtube.com/watch?v=aRJxsnf24k4) to see the PX4 X-Plane Plugin in action!
+
+![PX4 X-Plane Plugin Video Thumbnail](https://img.youtube.com/vi/aRJxsnf24k4/0.jpg)
+
+
 ## Introduction
 
 All simulators, with the exception of Gazebo, communicate with PX4 using the Simulator MAVLink API. This API defines a set of MAVLink messages that provide sensor data from the simulated environment to PX4 and return motor and actuator values from the flight code that will be applied to the simulated vehicle.
