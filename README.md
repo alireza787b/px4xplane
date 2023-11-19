@@ -6,7 +6,7 @@ This project establishes a connection between X-Plane and PX4 SITL (Software In 
 
 Check out our [full setup guide and demonstration on YouTube](https://www.youtube.com/watch?v=aRJxsnf24k4) to see the PX4 X-Plane Plugin in action!
 
-![PX4 X-Plane Plugin Video Thumbnail](https://img.youtube.com/vi/aRJxsnf24k4/0.jpg)
+[![PX4 X-Plane Plugin Video Thumbnail](https://img.youtube.com/vi/aRJxsnf24k4/0.jpg)](https://www.youtube.com/watch?v=aRJxsnf24k4 "Click to Watch!")
 
 
 ## Introduction
