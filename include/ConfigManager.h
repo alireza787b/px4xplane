@@ -6,8 +6,9 @@
 #include <string>
 #include <map>
 #include <vector>
+#include "SimpleIni.h"
 
-enum ActuatorDataType { UNKNOWN, FLOAT, FLOAT_ARRAY };
+enum ActuatorDataType { UNKNOWN, FLOAT_SINGLE, FLOAT_ARRAY };
 
 struct ActuatorConfig {
     std::string datarefName;
@@ -26,7 +27,8 @@ public:
     static std::string getConfigVersion();
     static std::string getConfigType();
     static uint8_t getConfigTypeCode();
-    
+    static std::map<int, ActuatorConfig> actuatorConfigs; // Map channel number to ActuatorConfig
+
 
 private:
     static std::map<int, int> motorMappingsPX4toXPlane;
@@ -36,7 +38,6 @@ private:
     static std::string configType; // "Multirotor" or "FixedWing" or ...
     static uint8_t ConfigManager::configTypeCode;
     static std::string getConfigFilePath();
-    static std::map<int, ActuatorConfig> actuatorConfigs; // Map channel number to ActuatorConfig
     static void parseFixedWingConfig(CSimpleIniA& ini) ;
     static void parseMultirotorConfig(CSimpleIniA& ini) ;
     static ActuatorDataType stringToDataType(const std::string& typeStr);

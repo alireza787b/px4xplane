@@ -308,14 +308,14 @@ void DataRefManager::overrideActuators_fixedwing() {
     MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
 
     // Iterate over each configured actuator
-    for (const auto& [channel, config] : actuatorConfigs) {
-        // Retrieve the control value for the current channel and clamp it within the configured range
+	for (const auto& [channel, config] : ConfigManager::actuatorConfigs) {
+		// Retrieve the control value for the current channel and clamp it within the configured range
         float value = hilControls.controls[channel];
-        value = std::max(config.range.first, std::min(config.range.second, value));
+		value = (std::max)(config.range.first, (std::min)(config.range.second, value));
 
         // Set the dataref in X-Plane based on the actuator's data type
         switch (config.dataType) {
-            case FLOAT:
+            case FLOAT_SINGLE:
                 // For float type, directly set the dataref with the clamped value
                 XPLMSetDataf(XPLMFindDataRef(config.datarefName.c_str()), value);
                 break;

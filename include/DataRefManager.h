@@ -57,18 +57,6 @@ public:
     static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
     static void initializeMagneticField();
     static std::string GetFormattedDroneConfig();
-    static void overrideActuators_fixedwing() {
-
-
-
-    // Additional debug information can be printed here if necessary
-}
-
-void setControlSurface(const std::string& dataref, float value) ;
-}
-
-void setThrottle(const std::string& dataref, float value) ;
-
 
 
 };

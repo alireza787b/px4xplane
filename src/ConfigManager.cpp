@@ -6,7 +6,6 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
-#include "SimpleIni.h"
 
 std::map<int, int> ConfigManager::motorMappingsPX4toXPlane;
 std::map<int, int> ConfigManager::motorMappingsXPlanetoPX4;
@@ -14,6 +13,9 @@ std::string ConfigManager::configName;
 std::string ConfigManager::configVersion;
 std::string ConfigManager::configType;
 uint8_t ConfigManager::configTypeCode;
+
+std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
+
 
 void ConfigManager::loadConfiguration() {
     // Initialize the SimpleIni object and set it to handle Unicode
@@ -155,8 +157,8 @@ void ConfigManager::parseFixedWingConfig(CSimpleIniA& ini) {
 
 
 
-ActuatorDataType stringToDataType(const std::string& typeStr) {
-    if (typeStr == "float") return FLOAT;
+ActuatorDataType ConfigManager::stringToDataType(const std::string& typeStr) {
+    if (typeStr == "float") return FLOAT_SINGLE;
     else if (typeStr == "floatArray") return FLOAT_ARRAY;
     return UNKNOWN;
 }

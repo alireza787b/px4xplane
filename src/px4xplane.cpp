@@ -14,7 +14,7 @@
 #include "ConfigReader.h"
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
-
+#include "ConfigManager.h"
 
 #if IBM
 #include <windows.h>
