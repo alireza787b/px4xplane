@@ -13,6 +13,7 @@ std::map<int, int> ConfigManager::motorMappingsXPlanetoPX4;
 std::string ConfigManager::configName;
 std::string ConfigManager::configVersion;
 std::string ConfigManager::configType;
+uint8_t ConfigManager::configTypeCode;
 
 void ConfigManager::loadConfiguration() {
     // Initialize the SimpleIni object and set it to handle Unicode
@@ -35,6 +36,12 @@ void ConfigManager::loadConfiguration() {
     configName = ini.GetValue("", "config_name", "");
     configVersion = ini.GetValue("", "config_version", "");
     configType = ini.GetValue("", "active_config_type", "");
+    
+
+    //TODO:
+    //configTypeCode = 
+    //we should also add a code for each config eg. Multirotor be 1 , FixedWing be 2 , ... so basde on read configType we update the configTypeCode
+    //we better have a guide of code of airframe here in comment 
 
     // Load motor mappings if the active config type is Multirotor
     if (configType == "Multirotor") {
@@ -90,4 +97,6 @@ std::string ConfigManager::getConfigType() {
     return configType;
 }
 
-
+uint8_t getConfigTypeCode(){
+    return getConfigTypeCode;
+}

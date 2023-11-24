@@ -15,14 +15,15 @@ public:
     static std::string getConfigName();
     static std::string getConfigVersion();
     static std::string getConfigType();
+    static uint8_t getConfigTypeCode();
 
 private:
     static std::map<int, int> motorMappingsPX4toXPlane;
     static std::map<int, int> motorMappingsXPlanetoPX4;
     static std::string configName;
     static std::string configVersion;
-    static std::string configType; // "Multirotor" or "FixedWing"
-
+    static std::string configType; // "Multirotor" or "FixedWing" or ...
+    static uint8_t ConfigManager::configTypeCode;
     static std::string getConfigFilePath();
 };
 

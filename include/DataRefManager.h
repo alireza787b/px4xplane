@@ -48,7 +48,8 @@ public:
     static std::string arrayToString(const std::vector<float>& array); // add this line
     static float mapChannelValue(float value, float minInput, float maxInput, float minOutput, float maxOutput);
     static int drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
-    static void overrideActuators();
+    static void overrideActuators_multirotor();
+    static void overrideActuators_fixedwing();
     static void enableOverride();
     static void disableOverride();
     static int drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);

@@ -304,8 +304,16 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	ConnectionManager::receiveData();
 
-	DataRefManager::overrideActuators();
-	//MAVLinkManager::sendHILSensor(uint8_t(1));
+
+
+	//if ConfigManager::configType equal to Multirotor we should run this otherwise we will create also aother airframes and run their override 
+	DataRefManager::overrideActuators_multirotor();
+
+
+
+
+
+
 	// Calculate the frequency 
 		SIM_Timestep = inElapsedSinceLastCall;
 

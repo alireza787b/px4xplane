@@ -273,7 +273,7 @@ void DataRefManager::disableOverride() {
 		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 0);
 	}
 
-void DataRefManager::overrideActuators() {
+void DataRefManager::overrideActuators_multirotor() {
 	// Get the HILActuatorControlsData from MAVLinkManager
 	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
 
