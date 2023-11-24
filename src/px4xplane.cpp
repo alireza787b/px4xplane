@@ -289,36 +289,36 @@ void updateMenuItems() {
 
 
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
-	
+    
+    // Check if the plugin is connected to PX4 SITL
+    if (!ConnectionManager::isConnected()) return -1.0f; // Return -1 to be called at the next cycle
 
-	// Check if the plugin is connected to PX4 SITL
-	if (!ConnectionManager::isConnected()) return -1.0f; // Return -1 to be called at the next cycle
+    // Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
+    MAVLinkManager::sendHILSensor(uint8_t(0));
+    MAVLinkManager::sendHILGPS();
+    /*MAVLinkManager::sendHILStateQuaternion();
+    MAVLinkManager::sendHILRCInputs();*/
 
-	// Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
-	MAVLinkManager::sendHILSensor(uint8_t(0));
-	MAVLinkManager::sendHILGPS();
-	/*MAVLinkManager::sendHILStateQuaternion();
-	MAVLinkManager::sendHILRCInputs();*/
+    ConnectionManager::receiveData();
 
+    // Check the configuration type and call the appropriate actuator override function
+    if (ConfigManager::getConfigTypeCode() == 1) {
+        // Multirotor configuration
+        DataRefManager::overrideActuators_multirotor();
+    } else if (ConfigManager::getConfigTypeCode() == 2) {
+        // Fixed-wing configuration
+        // TODO: Implement and call the overrideActuators_fixedwing function
+        // DataRefManager::overrideActuators_fixedwing();
+    }
 
+    // Calculate the frequency 
+    SIM_Timestep = inElapsedSinceLastCall;
 
-	ConnectionManager::receiveData();
-
-
-
-	//if ConfigManager::configType equal to Multirotor we should run this otherwise we will create also aother airframes and run their override 
-	DataRefManager::overrideActuators_multirotor();
-
-
-
-
-
-
-	// Calculate the frequency 
-		SIM_Timestep = inElapsedSinceLastCall;
-
-	return -1.0f; // Return -1 to be called at the next cycle
+    return -1.0f; // Return -1 to be called at the next cycle
 }
+
+
+
 
 
 PLUGIN_API void XPluginStop(void) {

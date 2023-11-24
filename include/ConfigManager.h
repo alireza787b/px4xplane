@@ -5,6 +5,16 @@
 
 #include <string>
 #include <map>
+#include <vector>
+
+enum ActuatorDataType { UNKNOWN, FLOAT, FLOAT_ARRAY };
+
+struct ActuatorConfig {
+    std::string datarefName;
+    ActuatorDataType dataType;
+    std::vector<int> arrayIndices;
+    std::pair<float, float> range;
+};
 
 class ConfigManager {
 public:
@@ -16,6 +26,7 @@ public:
     static std::string getConfigVersion();
     static std::string getConfigType();
     static uint8_t getConfigTypeCode();
+    
 
 private:
     static std::map<int, int> motorMappingsPX4toXPlane;
@@ -25,6 +36,13 @@ private:
     static std::string configType; // "Multirotor" or "FixedWing" or ...
     static uint8_t ConfigManager::configTypeCode;
     static std::string getConfigFilePath();
+    static std::map<int, ActuatorConfig> actuatorConfigs; // Map channel number to ActuatorConfig
+    static void parseFixedWingConfig(CSimpleIniA& ini) ;
+    static void parseMultirotorConfig(CSimpleIniA& ini) ;
+    static ActuatorDataType stringToDataType(const std::string& typeStr);
+
+
+
 };
 
 #endif // CONFIGMANAGER_H

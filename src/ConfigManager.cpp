@@ -38,26 +38,13 @@ void ConfigManager::loadConfiguration() {
     configType = ini.GetValue("", "active_config_type", "");
     
 
-    //TODO:
-    //configTypeCode = 
-    //we should also add a code for each config eg. Multirotor be 1 , FixedWing be 2 , ... so basde on read configType we update the configTypeCode
-    //we better have a guide of code of airframe here in comment 
-
-    // Load motor mappings if the active config type is Multirotor
     if (configType == "Multirotor") {
-        // Get the number of motors from the Multirotor section
-        std::string numMotorsStr = ini.GetValue("Multirotor", "num_motors", "0");
-        int numMotors = std::stoi(numMotorsStr);
-
-        // Loop through each motor and load its mapping
-        for (int i = 1; i <= numMotors; ++i) {
-            std::string motorKey = "motor" + std::to_string(i);
-            std::string motorValue = ini.GetValue("Multirotor", motorKey.c_str(), "0");
-            int xPlaneMotor = std::stoi(motorValue);
-            motorMappingsPX4toXPlane[i] = xPlaneMotor;
-            motorMappingsXPlanetoPX4[xPlaneMotor] = i;
-        }
-    }
+    configTypeCode = 1;
+    parseMultirotorConfig(ini);
+} else if (configType == "FixedWing") {
+    configTypeCode = 2;
+    parseFixedWingConfig(ini);
+}
 
     XPLMDebugString("px4xplane: Config file loaded successfully.\n");
 }
@@ -97,6 +84,79 @@ std::string ConfigManager::getConfigType() {
     return configType;
 }
 
-uint8_t getConfigTypeCode(){
-    return getConfigTypeCode;
+uint8_t ConfigManager::getConfigTypeCode(){
+    return configTypeCode;
+}
+
+void ConfigManager::parseMultirotorConfig(CSimpleIniA& ini) {
+    std::string numMotorsStr = ini.GetValue("Multirotor", "num_motors", "0");
+    int numMotors = std::stoi(numMotorsStr);
+
+    for (int i = 1; i <= numMotors; ++i) {
+        std::string motorKey = "motor" + std::to_string(i);
+        std::string motorValue = ini.GetValue("Multirotor", motorKey.c_str(), "0");
+        int xPlaneMotor = std::stoi(motorValue);
+        motorMappingsPX4toXPlane[i] = xPlaneMotor;
+        motorMappingsXPlanetoPX4[xPlaneMotor] = i;
+    }
+}
+
+
+
+void ConfigManager::parseFixedWingConfig(CSimpleIniA& ini) {
+    for (int channel = 0; channel < 16; ++channel) {
+        std::string key = "channel" + std::to_string(channel);
+        std::string value = ini.GetValue("FixedWing", key.c_str(), "");
+
+        if (!value.empty()) {
+            ActuatorConfig config;
+            std::istringstream iss(value);
+            std::string token;
+            int idx = 0;
+
+            while (std::getline(iss, token, ',')) {
+                token.erase(0, token.find_first_not_of(" \t\n\r\f\v")); // Trim leading whitespace
+                switch (idx) {
+                    case 0: // Dataref name
+                        config.datarefName = token;
+                        break;
+                    case 1: // Data type
+                        config.dataType = stringToDataType(token);
+                        break;
+                    case 2: // Array indices
+                        if (token != "0") {
+                            std::string indices = token.substr(1, token.length() - 2); // Remove brackets
+                            std::istringstream arrayStream(indices);
+                            std::string arrayIndex;
+                            while (std::getline(arrayStream, arrayIndex, ' ')) {
+                                config.arrayIndices.push_back(std::stoi(arrayIndex));
+                            }
+                        }
+                        break;
+                    case 3: // Range
+                        std::string range = token.substr(1, token.length() - 2); // Remove brackets
+                        std::istringstream rangeStream(range);
+                        std::string rangePart;
+                        if (std::getline(rangeStream, rangePart, ',')) {
+                            config.range.first = std::stof(rangePart);
+                        }
+                        if (std::getline(rangeStream, rangePart)) {
+                            config.range.second = std::stof(rangePart);
+                        }
+                        break;
+                }
+                ++idx;
+            }
+
+            actuatorConfigs[channel] = config;
+        }
+    }
+}
+
+
+
+ActuatorDataType stringToDataType(const std::string& typeStr) {
+    if (typeStr == "float") return FLOAT;
+    else if (typeStr == "floatArray") return FLOAT_ARRAY;
+    return UNKNOWN;
 }

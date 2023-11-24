@@ -302,6 +302,38 @@ void DataRefManager::overrideActuators_multirotor() {
 }
 
 
+
+void DataRefManager::overrideActuators_fixedwing() {
+    // Retrieve the current HIL actuator controls data from the MAVLink manager
+    MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
+
+    // Iterate over each configured actuator
+    for (const auto& [channel, config] : actuatorConfigs) {
+        // Retrieve the control value for the current channel and clamp it within the configured range
+        float value = hilControls.controls[channel];
+        value = std::max(config.range.first, std::min(config.range.second, value));
+
+        // Set the dataref in X-Plane based on the actuator's data type
+        switch (config.dataType) {
+            case FLOAT:
+                // For float type, directly set the dataref with the clamped value
+                XPLMSetDataf(XPLMFindDataRef(config.datarefName.c_str()), value);
+                break;
+            case FLOAT_ARRAY:
+                // For float array type, set the specified index in the dataref array
+                if (!config.arrayIndices.empty()) {
+                    XPLMSetDatavf(XPLMFindDataRef(config.datarefName.c_str()), &value, config.arrayIndices[0], 1);
+                }
+                break;
+            default:
+                // Optionally handle unknown data types, if necessary
+                break;
+        }
+    }
+}
+
+
+
 int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
 	// Fetch the actual throttle data from X-Plane
 	std::string throttleDataRef = "sim/flightmodel2/engines/throttle_used_ratio";
