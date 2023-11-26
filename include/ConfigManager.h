@@ -41,6 +41,10 @@ private:
     static void parseFixedWingConfig(CSimpleIniA& ini) ;
     static void parseMultirotorConfig(CSimpleIniA& ini) ;
     static ActuatorDataType stringToDataType(const std::string& typeStr);
+    static void ConfigManager::parseArrayIndices(const std::string& token, ActuatorConfig& config);
+    static void ConfigManager::parseRange(const std::string& token, ActuatorConfig& config);
+    static void ConfigManager::parseChannelValue(const std::string& value, ActuatorConfig& config);
+    static void ConfigManager::trimWhitespace(std::string& str);
 
 
 

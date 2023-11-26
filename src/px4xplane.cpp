@@ -296,8 +296,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
     // Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
     MAVLinkManager::sendHILSensor(uint8_t(0));
     MAVLinkManager::sendHILGPS();
-    /*MAVLinkManager::sendHILStateQuaternion();
-    MAVLinkManager::sendHILRCInputs();*/
+    MAVLinkManager::sendHILStateQuaternion();
+    MAVLinkManager::sendHILRCInputs();
 
     ConnectionManager::receiveData();
 
@@ -307,8 +307,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
         DataRefManager::overrideActuators_multirotor();
     } else if (ConfigManager::getConfigTypeCode() == 2) {
         // Fixed-wing configuration
-        // TODO: Implement and call the overrideActuators_fixedwing function
-        // DataRefManager::overrideActuators_fixedwing();
+         DataRefManager::overrideActuators_fixedwing();
     }
 
     // Calculate the frequency 

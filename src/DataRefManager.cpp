@@ -153,7 +153,19 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon
 	return earthMagneticFieldNED;
 }
 
-
+/**
+ * Draws the data references and their current values on an X-Plane window.
+ * This function iterates through a collection of data references, categorized and formatted,
+ * and displays their values in the simulation window. It supports various data types, including
+ * floats, doubles, integers, and float arrays.
+ *
+ * @param in_window_id The identifier for the X-Plane window where the data will be drawn.
+ * @param l Left coordinate for the starting point of the drawing.
+ * @param t Top coordinate for the starting point of the drawing.
+ * @param col_white Color array for the text.
+ * @param lineOffset Vertical offset for each line of text.
+ * @return The new line offset after drawing all data references.
+ */
 int DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[],int lineOffset) {
 	
 
@@ -191,6 +203,19 @@ int DataRefManager::drawDataRefs(XPLMWindowID in_window_id, int l, int t, float 
 	return lineOffset;
 }
 
+/**
+ * Draws the actuator control data on an X-Plane window.
+ * This function displays various control parameters such as the control values,
+ * timestamp, mode, and flags obtained from the High-Level Actuator Control Data (HILActuatorControlsData form PX4).
+ * It's used for visualization and debugging of the actuator control data within the simulation.
+ *
+ * @param in_window_id The identifier for the X-Plane window where the data will be drawn.
+ * @param l Left coordinate for the starting point of the drawing.
+ * @param t Top coordinate for the starting point of the drawing.
+ * @param col_white Color array for the text.
+ * @param lineOffset Vertical offset for each line of text.
+ * @return The new line offset after drawing the actuator controls.
+ */
 int DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
 	// Get the actuator controls data
 	auto& hilActuatorControlsData = MAVLinkManager::hilActuatorControlsData;
@@ -221,25 +246,56 @@ int DataRefManager::drawActuatorControls(XPLMWindowID in_window_id, int l, int t
 
 
 
-
+/**
+ * Retrieves a float value from the specified data reference.
+ * If the data reference is valid, the function returns its current float value.
+ * Otherwise, a default value of 0 is returned.
+ *
+ * @param dataRef The data reference from which to retrieve the value.
+ * @return The float value of the data reference, or 0 if not found.
+ */
 float DataRefManager::getFloat(const char* dataRef) {
 	XPLMDataRef ref = XPLMFindDataRef(dataRef);
 	if (ref) return XPLMGetDataf(ref);
 	return 0; // or some other suitable default or error value
 }
 
+/**
+ * Retrieves a double value from the specified data reference.
+ * If the data reference is valid, the function returns its current double value.
+ * Otherwise, a default value of 0 is returned.
+ *
+ * @param dataRef The data reference from which to retrieve the value.
+ * @return The double value of the data reference, or 0 if not found.
+ */
 double DataRefManager::getDouble(const char* dataRef) {
 	XPLMDataRef ref = XPLMFindDataRef(dataRef);
 	if (ref) return XPLMGetDatad(ref);
 	return 0; // or some other suitable default or error value
 }
 
+/**
+ * Retrieves an integer value from the specified data reference.
+ * If the data reference is valid, the function returns its current integer value.
+ * Otherwise, a default value of 0 is returned.
+ *
+ * @param dataRef The data reference from which to retrieve the value.
+ * @return The integer value of the data reference, or 0 if not found.
+ */
 int DataRefManager::getInt(const char* dataRef) {
 	XPLMDataRef ref = XPLMFindDataRef(dataRef);
 	if (ref) return XPLMGetDatai(ref);
 	return 0; // or some other suitable default or error value
 }
 
+/**
+ * Retrieves an array of float values from the specified data reference.
+ * The function determines the size of the array and retrieves all values,
+ * returning them in a vector.
+ *
+ * @param dataRefName The data reference from which to retrieve the array.
+ * @return A vector containing the float values from the data reference.
+ */
 std::vector<float> DataRefManager::getFloatArray(const char* dataRefName) {
 	// This is just a placeholder; replace with the actual SDK call to get float array dataRef.
 	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
@@ -249,6 +305,14 @@ std::vector<float> DataRefManager::getFloatArray(const char* dataRefName) {
 	return values;
 }
 
+/**
+ * Converts an array of float values to a string representation.
+ * This function creates a comma-separated string enclosed in square brackets,
+ * representing the contents of the float array.
+ *
+ * @param array The vector of float values to be converted.
+ * @return A string representation of the array.
+ */
 std::string DataRefManager::arrayToString(const std::vector<float>& array) {
 	std::string result = "[";
 	for (size_t i = 0; i < array.size(); ++i) {
@@ -259,20 +323,57 @@ std::string DataRefManager::arrayToString(const std::vector<float>& array) {
 	result += "]";
 	return result;
 }
+
+/**
+ * Maps a value from one range to another.
+ * This utility function scales an input value from its original range to a new specified range.
+ *
+ * @param value The input value to be mapped.
+ * @param minInput The minimum value of the input range.
+ * @param maxInput The maximum value of the input range.
+ * @param minOutput The minimum value of the output range.
+ * @param maxOutput The maximum value of the output range.
+ * @return The mapped value in the output range.
+ */
 float DataRefManager::mapChannelValue(float value, float minInput, float maxInput, float minOutput, float maxOutput) {
 	// Map the input value from the input range to the output range
 	return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
 }
 
-
+/**
+ * Enables override for various control aspects in the simulation environment.
+ * This function activates the override for throttle, control surfaces, and wheel steering
+ * in the X-Plane simulation. This is necessary to allow external control inputs (e.g., from PX4)
+ * to take effect, bypassing the default X-Plane control mechanisms.
+ */
 void DataRefManager::enableOverride() {
-		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 1);
+	XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 1);
+	XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_control_surfaces"), 1);
+	XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_wheel_steer"), 1);
+	
 	}
 
+/**
+ * Disables override for various control aspects in the simulation environment.
+ * This function deactivates the override for throttle, control surfaces, and wheel steering
+ * in the X-Plane simulation, returning control to the default X-Plane mechanisms.
+ * This is used when external control inputs are no longer needed or when returning to manual control.
+ */
 void DataRefManager::disableOverride() {
 		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 0);
+		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_control_surfaces"), 0);
+		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_wheel_steer"), 0);
+
+
 	}
 
+/**
+ * Overrides the actuators for a multirotor configuration in the simulation.
+ * This function fetches the actuator control data from MAVLinkManager and corrects it based
+ * on the motor mappings configured in ConfigManager. It then overrides the throttle dataref
+ * in X-Plane for all engines to reflect these corrected controls.
+ * This is specifically tailored for multirotor vehicles and handles up to 8 motors.
+ */
 void DataRefManager::overrideActuators_multirotor() {
 	// Get the HILActuatorControlsData from MAVLinkManager
 	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
@@ -302,38 +403,105 @@ void DataRefManager::overrideActuators_multirotor() {
 }
 
 
-
+/**
+ * Overrides the actuators for a fixed-wing configuration in the simulation.
+ * This function processes the actuator control data from MAVLinkManager for each configured actuator channel.
+ * It scales the values based on the actuator's range and sets the corresponding dataref in X-Plane.
+ * This method is tailored for fixed-wing vehicles and accounts for various actuator types and configurations.
+ */
 void DataRefManager::overrideActuators_fixedwing() {
-    // Retrieve the current HIL actuator controls data from the MAVLink manager
-    MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
+	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
 
-    // Iterate over each configured actuator
+
+	//// Debug: Print all values in hilControls
+	//XPLMDebugString("px4xplane: Printing all HILActuatorControlsData values\n");
+	//XPLMDebugString(("Timestamp: " + std::to_string(hilControls.timestamp) + "\n").c_str());
+	//XPLMDebugString(("Mode: " + std::to_string(hilControls.mode) + "\n").c_str());
+	//XPLMDebugString(("Flags: " + std::to_string(hilControls.flags) + "\n").c_str());
+
+	//for (int i = 0; i < 16; ++i) { // Assuming there are 16 channels, adjust this number as needed
+	//	XPLMDebugString(("Channel " + std::to_string(i) + ": " + std::to_string(hilControls.controls[i]) + "\n").c_str());
+	//}
+	
+
 	for (const auto& [channel, config] : ConfigManager::actuatorConfigs) {
-		// Retrieve the control value for the current channel and clamp it within the configured range
-        float value = hilControls.controls[channel];
-		value = (std::max)(config.range.first, (std::min)(config.range.second, value));
+		// Original value from MAVLink, typically in the range -1 to +1 or 1000 to 2000
+		
+		
+		float originalValue = hilControls.controls[channel];
 
-        // Set the dataref in X-Plane based on the actuator's data type
-        switch (config.dataType) {
-            case FLOAT_SINGLE:
-                // For float type, directly set the dataref with the clamped value
-                XPLMSetDataf(XPLMFindDataRef(config.datarefName.c_str()), value);
-                break;
-            case FLOAT_ARRAY:
-                // For float array type, set the specified index in the dataref array
-                if (!config.arrayIndices.empty()) {
-                    XPLMSetDatavf(XPLMFindDataRef(config.datarefName.c_str()), &value, config.arrayIndices[0], 1);
-                }
-                break;
-            default:
-                // Optionally handle unknown data types, if necessary
-                break;
-        }
-    }
+		// Scale the value to the actuator's range
+		float scaledValue = scaleActuatorCommand(originalValue, -1.0, +1.0, config.range.first, config.range.second);
+		// Debug output for the scaling process
+	/*	XPLMDebugString(("px4xplane: Actuator " + std::to_string(channel) +
+			" - Original value: " + std::to_string(originalValue) +
+			", Scaled value: " + std::to_string(scaledValue) +
+			" (Range: " + std::to_string(config.range.first) + " to " +
+			std::to_string(config.range.second) + ")\n").c_str());*/
+
+		//XPLMDebugString(("px4xplane: Setting actuator " + std::to_string(channel) + " to scaled value: " + std::to_string(scaledValue) + " original value: " + std::to_string(originalValue) + "\n").c_str());
+
+		switch (config.dataType) {
+		case FLOAT_SINGLE: {
+			XPLMDataRef floatDataRef = XPLMFindDataRef(config.datarefName.c_str());
+			if (floatDataRef == nullptr) {
+				XPLMDebugString(("px4xplane: DataRef not found: " + config.datarefName + "\n").c_str());
+				continue;
+			}
+			XPLMSetDataf(floatDataRef, scaledValue);
+			break;
+		}
+		case FLOAT_ARRAY: {
+			if (!config.arrayIndices.empty()) {
+				XPLMDataRef arrayDataRef = XPLMFindDataRef(config.datarefName.c_str());
+				if (arrayDataRef == nullptr) {
+					XPLMDebugString(("px4xplane: DataRef not found: " + config.datarefName + "\n").c_str());
+					continue;
+				}
+				XPLMSetDatavf(arrayDataRef, &scaledValue, config.arrayIndices[0], 1);
+			}
+			break;
+		}
+		default:
+			XPLMDebugString(("px4xplane: Unknown data type for actuator " + std::to_string(channel) + "\n").c_str());
+			break;
+		}
+	}
 }
 
 
+/**
+ * Scales an actuator command value from its input range to a specified output range.
+ * This utility function is used to map a control input value (e.g., from PX4) that is in a
+ * certain range (e.g., -1 to +1) to a new range that is expected by the simulation environment
+ * (e.g., 0 to 100).
+ *
+ * @param input The original input value to be scaled.
+ * @param inputMin The minimum value of the input range.
+ * @param inputMax The maximum value of the input range.
+ * @param outputMin The minimum value of the output range.
+ * @param outputMax The maximum value of the output range.
+ * @return The scaled value.
+ */
+float DataRefManager::scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax) {
+	float scale = (outputMax - outputMin) / (inputMax - inputMin);
+	return outputMin + scale * (input - inputMin);
+}
 
+
+/**
+ * Draws the actual throttle data on an X-Plane window.
+ * This function fetches and displays the actual throttle data used in X-Plane for each engine.
+ * It is used for visualizing the current throttle settings in the simulation, assisting in debugging
+ * and monitoring purposes.
+ *
+ * @param in_window_id The identifier for the X-Plane window where the data will be drawn.
+ * @param l Left coordinate for the starting point of the drawing.
+ * @param t Top coordinate for the starting point of the drawing.
+ * @param col_white Color array for the text.
+ * @param lineOffset Vertical offset for each line of text.
+ * @return The new line offset after drawing the text.
+ */
 int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset) {
 	// Fetch the actual throttle data from X-Plane
 	std::string throttleDataRef = "sim/flightmodel2/engines/throttle_used_ratio";
@@ -350,6 +518,14 @@ int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, 
 	return lineOffset;
 }
 
+/**
+ * Retrieves and formats the drone configuration information for display.
+ * This function fetches the current configuration name and type from ConfigManager and
+ * formats them into a human-readable string. If either the name or type is not set,
+ * they are replaced with "N/A" to indicate their absence.
+ *
+ * @return A formatted string containing the drone configuration details.
+ */
 std::string DataRefManager::GetFormattedDroneConfig() {
 	// Fetch the configuration name and type from ConfigManager
 	std::string configName = ConfigManager::getConfigName();

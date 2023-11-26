@@ -39,7 +39,7 @@ public:
     static std::vector<DataRefItem> dataRefs;
     static Eigen::Vector3f earthMagneticFieldNED;
 
-
+    static constexpr float AirDensitySeaLevel = 1.225; // kg/m^3
     static int drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
     static std::vector<float> getFloatArray(const char* dataRefName);
     static float getFloat(const char* dataRef);
@@ -57,6 +57,7 @@ public:
     static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
     static void initializeMagneticField();
     static std::string GetFormattedDroneConfig();
+    static float DataRefManager::scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax);
 
 
 };

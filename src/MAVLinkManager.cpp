@@ -20,7 +20,7 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.01f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.02f);
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.0001f);
 
 
@@ -90,6 +90,7 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id=0) {
     fields_updated |= (1 << 7); // HIL_SENSOR_UPDATED_YMAG
     fields_updated |= (1 << 8); // HIL_SENSOR_UPDATED_ZMAG
     fields_updated |= (1 << 9); // HIL_SENSOR_UPDATED_ABS_PRESSURE
+    fields_updated |= (1 << 10); // HIL_SENSOR_UPDATED_DIF_PRESSURE
     fields_updated |= (1 << 11); // HIL_SENSOR_UPDATED_PRESSURE_ALT
     fields_updated |= (1 << 12); // HIL_SENSOR_UPDATED_TEMPERATURE
 
@@ -313,6 +314,7 @@ void MAVLinkManager::receiveHILActuatorControls(uint8_t* buffer, int size) {
  * @param msg The received MAVLink message.
  */
 void MAVLinkManager::handleReceivedMessage(const mavlink_message_t& msg) {
+    //XPLMDebugString(("px4xplane: Received msgid =  " + std::to_string(msg.msgid) + "\n").c_str());
     switch (msg.msgid) {
     case MAVLINK_MSG_ID_HIL_ACTUATOR_CONTROLS:
         processHILActuatorControlsMessage(msg);
@@ -325,35 +327,54 @@ void MAVLinkManager::handleReceivedMessage(const mavlink_message_t& msg) {
 }
 
 /**
- * @brief Processes the HIL actuator control message.
+ * Processes the High-Level (HIL) actuator control message received via MAVLink.
  *
- * This function decodes the HIL actuator control message, extracts the relevant
- * information, and stores it in the hilActuatorControlsData member variable.
+ * This function decodes the HIL actuator control message from MAVLink and updates the
+ * hilActuatorControlsData member variable. The processing is based on the type of airframe
+ * configured (multirotor or fixed-wing). For multirotors, it maps the controls to the correct
+ * motors based on the motor mappings specified in ConfigManager. For fixed-wing or other types,
+ * the received controls are directly used without modification.
  *
- * @param msg The received HIL actuator control MAVLink message.
+ * This function is essential for translating the actuator control commands received from the
+ * autopilot (sent via MAVLink) into a format that can be understood and used by the simulation
+ * environment (X-Plane).
+ *
+ * @param msg The received HIL actuator control MAVLink message, containing control information for actuators.
  */
 void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& msg) {
     mavlink_hil_actuator_controls_t hil_actuator_controls;
     mavlink_msg_hil_actuator_controls_decode(&msg, &hil_actuator_controls);
 
+    // Store the timestamp and mode information
     MAVLinkManager::hilActuatorControlsData.timestamp = hil_actuator_controls.time_usec;
-
-    // Initialize all controls to zero
-    for (auto& control : MAVLinkManager::hilActuatorControlsData.controls) {
-        control = 0.0f;
-    }
-
-    // Map the controls based on the motor mappings from ConfigManager
-    for (int i = 0; i < 8; ++i) {
-        int xPlaneMotorNumber = ConfigManager::getXPlaneMotorFromPX4(i + 1);
-        if (xPlaneMotorNumber != -1) {
-            MAVLinkManager::hilActuatorControlsData.controls[xPlaneMotorNumber - 1] = hil_actuator_controls.controls[i];
-        }
-    }
-
     MAVLinkManager::hilActuatorControlsData.mode = hil_actuator_controls.mode;
     MAVLinkManager::hilActuatorControlsData.flags = hil_actuator_controls.flags;
+
+    // Check the configuration type code
+    uint8_t configTypeCode = ConfigManager::getConfigTypeCode();
+
+    if (ConfigManager::getConfigTypeCode() == 1) {
+        // For multirotor, map the controls based on the motor mappings from ConfigManager
+        for (int i = 0; i < 8; ++i) {
+            int xPlaneMotorNumber = ConfigManager::getXPlaneMotorFromPX4(i + 1);
+            if (xPlaneMotorNumber != -1) {
+                MAVLinkManager::hilActuatorControlsData.controls[xPlaneMotorNumber - 1] = hil_actuator_controls.controls[i];
+            }
+        }
+    }
+    else {
+        // For fixed-wing or other types, directly use the received controls
+        for (int i = 0; i < 16; i++) {
+            MAVLinkManager::hilActuatorControlsData.controls[i] = hil_actuator_controls.controls[i];
+            // Debug message for each channel
+            XPLMDebugString(("px4xplane: Fixed-wing actuator channel " + std::to_string(i) +
+                " value: " + std::to_string(MAVLinkManager::hilActuatorControlsData.controls[i]) + "\n").c_str());
+        }
+    }
 }
+
+
+
 
 
 
@@ -390,17 +411,25 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
  * @brief Sets the pressure data in the HIL_SENSOR message.
  *
  * This function retrieves the aircraft's current barometric pressure and pressure altitude from the simulation.
- * It also adds noise to the barometric pressure reading to simulate real-world sensor inaccuracies.
- * The resulting pressure data is then set in the provided HIL_SENSOR message.
+ * It adds noise to the barometric pressure reading to simulate sensor inaccuracies.
+ * The differential pressure is approximated using the indicated airspeed (IAS), based on the formula for dynamic pressure.
+ * The resulting pressure data is set in the provided HIL_SENSOR message.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
     float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
     float pressureNoise = noiseDistribution(gen);
+  
+
+    // Calculate differential pressure using indicated airspeed
+    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444; //in m/s
+    float dynamicPressure = 0.01 * (0.5 * DataRefManager::AirDensitySeaLevel * ias * ias); // in hPa
+    hil_sensor.diff_pressure = dynamicPressure + pressureNoise;
+
     hil_sensor.abs_pressure = basePressure + pressureNoise;
     hil_sensor.pressure_alt = DataRefManager::getDouble("sim/flightmodel2/position/pressure_altitude") * 0.3048;
-    hil_sensor.diff_pressure = 0;
+
 }
 
 
