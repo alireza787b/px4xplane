@@ -478,7 +478,7 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
  */
 void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
     hil_gps.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-    hil_gps.fix_type = 3; // Assuming always a 3D fix in the simulation environment
+    hil_gps.fix_type = static_cast<uint8_t>(3); // Assuming always a 3D fix in the simulation environment
 }
 
 /**
@@ -498,9 +498,9 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
-    hil_gps.eph = 20; // Assuming high accuracy due to simulation environment
-    hil_gps.epv = 20;
-    hil_gps.satellites_visible = 12; // Assuming 12 satellites visible in good conditions
+    hil_gps.eph = static_cast<uint16_t>(20); // Assuming high accuracy due to simulation environment
+    hil_gps.epv = static_cast<uint16_t>(20);
+    hil_gps.satellites_visible = static_cast<uint16_t>(14);; // Assuming 12 satellites visible in good conditions
 }
 
 /**
@@ -512,9 +512,9 @@ void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
-    float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100;
-    float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100;
-    float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100;
+    int16_t ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100;
+    int16_t ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100;
+    int16_t ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100;
 
     // Coordinate Transformation:
     // The local OGL (OpenGL) coordinate system in the simulation environment is defined as:
@@ -532,10 +532,10 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
     // NED East  (Y) =  OGL East  (X)
     // NED Down  (Z) = -OGL Up    (Y)
 
-    hil_gps.vn = -1 * ogl_vz;
-    hil_gps.ve = ogl_vx;
-    hil_gps.vd = -1 * ogl_vy;
-    hil_gps.vel = DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100;
+    hil_gps.vn = static_cast<int16_t> ( - 1 * ogl_vz);
+    hil_gps.ve = static_cast<int16_t>(ogl_vx);
+    hil_gps.vd = static_cast<int16_t>(-1 * ogl_vy);
+    hil_gps.vel = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100);
 }
 
 /**
@@ -544,6 +544,8 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
-    hil_gps.cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
-    hil_gps.yaw = DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100;
+    uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
+    hil_gps.cog = (cog == 0) ? 360 : cog;
+    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/psi") * 100);
+    hil_gps.yaw = (yaw == 0) ? 360 : yaw;
 }

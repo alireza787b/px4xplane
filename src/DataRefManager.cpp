@@ -134,9 +134,9 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon
 	float lonRad = lon * M_PI / 180.0;
 
 	// Log the input values
-	char log[256];
+	/*char log[256];
 	sprintf(log, "updateEarthMagneticFieldNED called with lat: %f, lon: %f, alt: %f\n", lat, lon, alt);
-	XPLMDebugString(log);
+	XPLMDebugString(log);*/
 
 	geomag::Vector position = geomag::geodetic2ecef(lat, lon, alt);
 	geomag::Vector mag_field = geomag::GeoMag(2022.5, position, geomag::WMM2020);
@@ -145,8 +145,8 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon
 	earthMagneticFieldNED = Eigen::Vector3f(nedElements.north, nedElements.east, nedElements.down);
 
 	// Log the calculated magnetic field
-	sprintf(log, "Calculated magnetic field NED: north: %f, east: %f, down: %f\n", nedElements.north, nedElements.east, nedElements.down);
-	XPLMDebugString(log);
+	/*sprintf(log, "Calculated magnetic field NED: north: %f, east: %f, down: %f\n", nedElements.north, nedElements.east, nedElements.down);
+	XPLMDebugString(log)*/;
 
 	earthMagneticFieldNED *= 0.00001;  // Convert from nT to Gauss
 
@@ -390,10 +390,7 @@ void DataRefManager::overrideActuators_multirotor() {
 		if (xplaneMotor != -1) { // Check if mapping exists
 			correctedControls.controls[xplaneMotor - 1] = hilControls.controls[i];
 
-			// Debug print
-			char debugMsg[100];
-			snprintf(debugMsg, sizeof(debugMsg), "PX4 Motor %d -> X-Plane Motor %d\n", i + 1, xplaneMotor);
-			XPLMDebugString(debugMsg);
+			
 		}
 	}
 

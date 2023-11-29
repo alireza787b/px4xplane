@@ -296,8 +296,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
     // Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
     MAVLinkManager::sendHILSensor(uint8_t(0));
     MAVLinkManager::sendHILGPS();
-    MAVLinkManager::sendHILStateQuaternion();
-    MAVLinkManager::sendHILRCInputs();
+    //MAVLinkManager::sendHILStateQuaternion();
+    //MAVLinkManager::sendHILRCInputs();
 
     ConnectionManager::receiveData();
 
@@ -305,7 +305,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
     if (ConfigManager::getConfigTypeCode() == 1) {
         // Multirotor configuration
         DataRefManager::overrideActuators_multirotor();
-    } else if (ConfigManager::getConfigTypeCode() == 2) {
+    } else {
         // Fixed-wing configuration
          DataRefManager::overrideActuators_fixedwing();
     }

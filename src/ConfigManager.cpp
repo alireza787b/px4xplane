@@ -185,7 +185,7 @@ void ConfigManager::parseMultirotorConfig(CSimpleIniA& ini) {
 void ConfigManager::parseFixedWingConfig(CSimpleIniA& ini) {
     XPLMDebugString("px4xplane: Starting to parse FixedWing configuration.\n");
 
-    for (int channel = 0; channel < 16; ++channel) {
+    for (int channel = 0; channel < 16; channel++) {
         std::string key = "channel" + std::to_string(channel);
         std::string value = ini.GetValue("FixedWing", key.c_str(), "");
 
