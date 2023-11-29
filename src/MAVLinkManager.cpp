@@ -546,6 +546,6 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
     uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
     hil_gps.cog = (cog == 0) ? 360 : cog;
-    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/psi") * 100);
+    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100);
     hil_gps.yaw = (yaw == 0) ? 360 : yaw;
 }
