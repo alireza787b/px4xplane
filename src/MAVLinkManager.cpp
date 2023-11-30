@@ -20,7 +20,7 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.02f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.01f);
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.0001f);
 
 
@@ -111,6 +111,9 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id=0) {
  * is established before sending the message. The function gathers data from the simulation
  * environment, applies necessary conversions, and populates the HIL_GPS message.
  *
+ * Additionally, it calls updateMagneticFieldIfNeeded to check if the Earth's magnetic field
+ * needs to be updated based on the current position.
+ *
  * The following GPS data is populated:
  * - Time
  * - Fix type
@@ -133,9 +136,6 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id=0) {
  * @code
  * MAVLinkManager::sendHILGPS();
  * @endcode
- *
- * @see setGPSLocationData
- * @see setGPSVelocityData
  */
 void MAVLinkManager::sendHILGPS() {
     if (!ConnectionManager::isConnected()) return;
@@ -143,17 +143,58 @@ void MAVLinkManager::sendHILGPS() {
     mavlink_message_t msg;
     mavlink_hil_gps_t hil_gps;
 
+    // Set various GPS data components
     setGPSTimeAndFix(hil_gps);
     setGPSPositionData(hil_gps);
     setGPSAccuracyData(hil_gps);
     setGPSVelocityData(hil_gps);
     setGPSHeadingData(hil_gps);
 
+    // Check if the magnetic field needs to be updated
+    updateMagneticFieldIfExceededTreshold(hil_gps);
+
+    // Encode and send the MAVLink message
     mavlink_msg_hil_gps_encode(1, 1, &msg, &hil_gps);
     uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
     int len = mavlink_msg_to_send_buffer(buffer, &msg);
     ConnectionManager::sendData(buffer, len);
 }
+
+
+
+/**
+ * @brief Checks if the Earth's magnetic field needs to be updated and updates it if necessary.
+ *
+ * This function calculates the distance between the current position and the last position
+ * where the magnetic field was updated. If this distance exceeds a predefined threshold,
+ * it triggers an update of the Earth's magnetic field in NED coordinates using the current
+ * position data.
+ *
+ * This function is called within sendHILGPS to ensure the magnetic field data is updated
+ * according to the movement of the simulated aircraft.
+ *
+ * @param hil_gps The HIL_GPS data structure containing the current GPS data.
+ *
+ * Usage:
+ * @code
+ * updateMagneticFieldIfNeeded(hil_gps);
+ * @endcode
+ */
+void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps_t& hil_gps) {
+    GeodeticPosition currentPosition = {
+        hil_gps.lat * 1e-7,
+        hil_gps.lon * 1e-7,
+        hil_gps.alt * 1e-3
+    };
+
+    if (DataRefManager::calculateDistance(currentPosition, DataRefManager::lastPosition) > DataRefManager::UPDATE_THRESHOLD) {
+        XPLMDebugString("px4xplane: Mag ValidityTreshold Reached!");
+
+        DataRefManager::updateEarthMagneticFieldNED(currentPosition);
+        DataRefManager::lastPosition = currentPosition;
+    }
+}
+
 
 
 
@@ -367,8 +408,8 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
         for (int i = 0; i < 16; i++) {
             MAVLinkManager::hilActuatorControlsData.controls[i] = hil_actuator_controls.controls[i];
             // Debug message for each channel
-            XPLMDebugString(("px4xplane: Fixed-wing actuator channel " + std::to_string(i) +
-                " value: " + std::to_string(MAVLinkManager::hilActuatorControlsData.controls[i]) + "\n").c_str());
+           /* XPLMDebugString(("px4xplane: Fixed-wing actuator channel " + std::to_string(i) +
+                " value: " + std::to_string(MAVLinkManager::hilActuatorControlsData.controls[i]) + "\n").c_str());*/
         }
     }
 }
@@ -425,7 +466,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
     // Calculate differential pressure using indicated airspeed
     float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444; //in m/s
     float dynamicPressure = 0.01 * (0.5 * DataRefManager::AirDensitySeaLevel * ias * ias); // in hPa
-    hil_sensor.diff_pressure = dynamicPressure + pressureNoise;
+    hil_sensor.diff_pressure = dynamicPressure;
 
     hil_sensor.abs_pressure = basePressure + pressureNoise;
     hil_sensor.pressure_alt = DataRefManager::getDouble("sim/flightmodel2/position/pressure_altitude") * 0.3048;
@@ -546,6 +587,6 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
     uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
     hil_gps.cog = (cog == 0) ? 360 : cog;
-    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100);
+    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/psi") * 100);
     hil_gps.yaw = (yaw == 0) ? 360 : yaw;
 }

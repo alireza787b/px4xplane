@@ -33,6 +33,14 @@ struct DataRefItem {
         std::function<std::vector<float>(const char*)>> getter;
 };
 
+struct GeodeticPosition {
+    float latitude;
+    float longitude;
+    float altitude;
+};
+
+
+
 class DataRefManager {
 public:
     static constexpr float g_earth = 9.81f;
@@ -53,12 +61,18 @@ public:
     static void enableOverride();
     static void disableOverride();
     static int drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
-    static Eigen::Vector3f updateEarthMagneticFieldNED(float lat, float lon, float alt);
+    static Eigen::Vector3f updateEarthMagneticFieldNED(const GeodeticPosition& position);
+    static float calculateDistance(const GeodeticPosition& pos1, const GeodeticPosition& pos2);
     static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
     static void initializeMagneticField();
+
     static std::string GetFormattedDroneConfig();
-    static float DataRefManager::scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax);
+    static float scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax);
 
-
+    static float lastLatitude;
+    static float lastLongitude;
+    static float lastAltitude;
+    static GeodeticPosition lastPosition;
+    static constexpr float UPDATE_THRESHOLD=1000;  // Define a threshold for position change in meters
 };
 

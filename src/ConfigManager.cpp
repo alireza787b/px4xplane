@@ -203,47 +203,54 @@ void ConfigManager::parseFixedWingConfig(CSimpleIniA& ini) {
 
 /**
  * Parses an individual channel value string into the ActuatorConfig structure.
- * This function extracts and interprets various components of a channel's configuration,
- * such as dataref name, data type, array indices, and range. It uses a string stream
- * to separate these components based on commas and processes each part with specialized
- * parsing functions.
+ * This function is enhanced to handle multiple datarefs per channel, allowing for more
+ * complex actuator configurations. Each dataref configuration within a channel is separated
+ * by the '|' delimiter. The function iterates over these configurations, parsing and storing
+ * each one as a DatarefConfig object within the ActuatorConfig.
+ *
+ * The parsing process involves splitting the channel value string into individual dataref
+ * configurations and then further splitting each configuration into its components (dataref name,
+ * data type, array indices, and range). These components are then used to construct a DatarefConfig
+ * object, which is added to the ActuatorConfig.
  *
  * @param value The string containing the channel's configuration data.
  * @param config Reference to ActuatorConfig where the parsed data will be stored.
  */
 void ConfigManager::parseChannelValue(const std::string& value, ActuatorConfig& config) {
-    std::istringstream iss(value);
-    std::string token;
-    int idx = 0;
+    std::istringstream channelStream(value);
+    std::string datarefConfigStr;
 
-    try {
-        // Parse each token from the channel value string.
-        while (std::getline(iss, token, ',') && idx < 3) {
+    // Iterate over each dataref configuration separated by '|'
+    while (std::getline(channelStream, datarefConfigStr, '|')) {
+        trimWhitespace(datarefConfigStr);
+        std::istringstream datarefStream(datarefConfigStr);
+        std::string token;
+        std::vector<std::string> tokens;
+
+        // Parse each component of the dataref configuration
+        while (std::getline(datarefStream, token, ',')) {
             trimWhitespace(token);
-            XPLMDebugString(("px4xplane: Token " + std::to_string(idx) + ": " + token + "\n").c_str());
-
-            switch (idx) {
-            case 0:
-                config.datarefName = token;
-                break;
-            case 1:
-                config.dataType = stringToDataType(token);
-                break;
-            case 2:
-                parseArrayIndices(token, config);
-                break;
-            //case 3 (range) is considered below seperately
-            
-            }
-            ++idx;
+            tokens.push_back(token);
         }
-        // Parse the range which is not split by commas.
-        parseRange(value, config);
-    }
-    catch (const std::exception& e) {
-        XPLMDebugString(("px4xplane: Exception while parsing channel value: " + std::string(e.what()) + "\n").c_str());
+
+        // Construct DatarefConfig from parsed tokens
+        if (tokens.size() >= 4) {
+            std::string datarefName = tokens[0];
+            ActuatorDataType dataType = stringToDataType(tokens[1]);
+            std::vector<int> arrayIndices = parseArrayIndices(tokens[2]);
+            std::pair<float, float> range = parseRange(tokens[3]);
+
+            DatarefConfig datarefConfig(datarefName, dataType, arrayIndices, range);
+            config.addDatarefConfig(datarefConfig);
+        }
+        else {
+            XPLMDebugString(("px4xplane: Incomplete dataref configuration: " + datarefConfigStr + "\n").c_str());
+        }
     }
 }
+
+
+
 
 /**
  * Trims leading and trailing whitespace from a string.
@@ -259,31 +266,40 @@ void ConfigManager::trimWhitespace(std::string& str) {
 }
 
 /**
- * Parses the array indices part of a channel configuration.
- * This function is designed to extract and process the array indices specified in
- * the configuration line. It handles the extraction of indices from within square brackets
- * and converts them into integers for storage in the ActuatorConfig structure.
+ * Parses the array indices part of a dataref configuration.
+ * This function is designed to extract array indices from a string token, typically representing
+ * part of a dataref configuration. It handles the parsing of indices specified in a bracketed,
+ * space-separated format (e.g., "[0 1 2]"). The function returns a vector of integers, each
+ * representing an array index. This is particularly useful for configurations where a dataref
+ * is an array, and specific indices within that array need to be accessed or modified.
  *
- * @param token The string token containing the array indices.
- * @param config Reference to ActuatorConfig where the parsed indices will be stored.
+ * The function checks for the presence of brackets to identify the indices string and then
+ * iterates over each index, converting it from a string to an integer. If no indices are specified
+ * (indicated by a "0"), an empty vector is returned.
+ *
+ * @param token The string containing the array indices in bracketed format.
+ * @return A vector of integers representing the parsed array indices.
  */
-void ConfigManager::parseArrayIndices(const std::string& token, ActuatorConfig& config) {
+std::vector<int> ConfigManager::parseArrayIndices(const std::string& token) {
+    std::vector<int> indices;
+
+    // Check if the token is not just a "0" (indicating no indices)
     if (token != "0") {
-        // Extract the indices substring (removing the brackets)
         size_t start_bracket = token.find('[');
         size_t end_bracket = token.find(']');
-        if (start_bracket != std::string::npos && end_bracket != std::string::npos) {
-            std::string indices = token.substr(start_bracket + 1, end_bracket - start_bracket - 1);
 
-            // Split the indices string by space and convert each to an integer
-            std::istringstream arrayStream(indices);
+        // Ensure the presence of both opening and closing brackets
+        if (start_bracket != std::string::npos && end_bracket != std::string::npos) {
+            std::string indicesStr = token.substr(start_bracket + 1, end_bracket - start_bracket - 1);
+            std::istringstream arrayStream(indicesStr);
             std::string arrayIndex;
+
+            // Iterate over each index within the brackets
             while (std::getline(arrayStream, arrayIndex, ' ')) {
-                arrayIndex.erase(0, arrayIndex.find_first_not_of(" \t\n\r\f\v")); // Trim leading whitespace
-                arrayIndex.erase(arrayIndex.find_last_not_of(" \t\n\r\f\v") + 1); // Trim trailing whitespace
+                trimWhitespace(arrayIndex);
                 if (!arrayIndex.empty()) {
-                    config.arrayIndices.push_back(std::stoi(arrayIndex));
-                    XPLMDebugString(("px4xplane: Array index: " + arrayIndex + "\n").c_str());
+                    // Convert the index from string to integer and add to the vector
+                    indices.push_back(std::stoi(arrayIndex));
                 }
             }
         }
@@ -291,29 +307,49 @@ void ConfigManager::parseArrayIndices(const std::string& token, ActuatorConfig& 
             XPLMDebugString(("px4xplane: Invalid array indices format: " + token + "\n").c_str());
         }
     }
+
+    return indices;
 }
 
+
+
 /**
- * Parses the range part of a channel configuration using a regular expression.
- * The function applies a regular expression to extract the min and max values of the range
- * specified within square brackets. These values are then converted to float and stored
- * in the ActuatorConfig structure.
+ * Parses the range part of a dataref configuration.
+ * This function is responsible for extracting the minimum and maximum values of a range from a string token.
+ * The range is expected to be in a specific format, enclosed in brackets and separated by a space (e.g., "[0.0 1.0]").
+ * It returns a pair of floats representing these min and max values. This is crucial for scaling actuator commands
+ * to the appropriate range as required by the simulation environment or the specific actuator being controlled.
  *
- * @param value The entire configuration string of the channel.
- * @param config Reference to ActuatorConfig where the parsed range will be stored.
+ * The function uses regular expressions to parse the range string, ensuring that the format is correctly followed.
+ * If the token matches the expected format, the min and max values are extracted and converted from strings to floats.
+ * In case of an invalid format, the function returns a default range (0.0, 0.0), and a debug message is logged.
+ *
+ * @param token The string containing the range in the expected format.
+ * @return A pair of floats representing the parsed min and max values of the range.
  */
-void ConfigManager::parseRange(const std::string& value, ActuatorConfig& config) {
+std::pair<float, float> ConfigManager::parseRange(const std::string& token) {
+    std::pair<float, float> range(0.0f, 0.0f); // Default range
     std::regex rangeRegex(R"(\[(\S+)\s+(\S+)\])");
     std::smatch matches;
-    if (std::regex_search(value, matches, rangeRegex) && matches.size() == 3) {
-        config.range.first = std::stof(matches[1].str());
-        config.range.second = std::stof(matches[2].str());
-        XPLMDebugString(("px4xplane: Range: [" + std::to_string(config.range.first) + " " + std::to_string(config.range.second) + "]\n").c_str());
+
+    // Check if the token matches the range format
+    if (std::regex_search(token, matches, rangeRegex) && matches.size() == 3) {
+        try {
+            range.first = std::stof(matches[1].str());
+            range.second = std::stof(matches[2].str());
+        }
+        catch (const std::exception& e) {
+            XPLMDebugString(("px4xplane: Error parsing range: " + token + ", Exception: " + e.what() + "\n").c_str());
+        }
     }
     else {
-        XPLMDebugString(("px4xplane: Invalid range format in value: " + value + "\n").c_str());
+        XPLMDebugString(("px4xplane: Invalid range format: " + token + "\n").c_str());
     }
+
+    return range;
 }
+
+
 
 
 /**

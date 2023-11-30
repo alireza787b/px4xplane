@@ -78,6 +78,23 @@ std::vector<DataRefItem> DataRefManager::dataRefs = {
 Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
 
 
+/**
+ * @brief Static member variable to store the last known geodetic position of the aircraft.
+ *
+ * This variable holds the last recorded geodetic position (latitude, longitude, and altitude)
+ * of the aircraft. It is used to determine when to update the Earth's magnetic field in NED
+ * coordinates based on the movement of the aircraft. The position is updated whenever the aircraft
+ * moves beyond a certain threshold distance from this last known position.
+ *
+ * The variable is initialized with default values (0, 0, 0) representing a neutral geodetic position.
+ *
+ * Usage:
+ * - Updated in `initializeMagneticField` and `updateEarthMagneticFieldNED` functions.
+ * - Used in `sendHILGPS` to check if the magnetic field needs updating based on position change.
+ */
+GeodeticPosition DataRefManager::lastPosition = {}; // Initialize with default values
+
+
 
 /**
  * @brief Converts a magnetic field vector from NED to body frame.
@@ -92,8 +109,9 @@ Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
  * @return Eigen::Vector3f The magnetic field vector in the body frame, in Gauss.
  */
 Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
-	Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
-	Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
+	//temporarly remove the effect of roll and pitch
+	Eigen::AngleAxisf rollAngle(0, Eigen::Vector3f::UnitX());
+	Eigen::AngleAxisf pitchAngle(0, Eigen::Vector3f::UnitY());
 	Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
 	Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
 
@@ -106,49 +124,112 @@ Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVecto
 /**
  * @brief Initializes the Earth's magnetic field in NED based on the aircraft's initial location.
  *
- * This function should be called when the plugin or simulation starts to set the initial value
- * of the Earth's magnetic field in NED.
+ * This function sets the initial value of the Earth's magnetic field in NED coordinates
+ * at the start of the simulation. It retrieves the initial geodetic position (latitude,
+ * longitude, and altitude) of the aircraft and uses it to update the magnetic field.
+ *
+ * The function also initializes the last known position to the initial position.
+ *
+ * Usage:
+ * @code
+ * DataRefManager::initializeMagneticField();
+ * @endcode
  */
 void DataRefManager::initializeMagneticField() {
-	float initialLatitude = getFloat("sim/flightmodel/position/latitude");
-	float initialLongitude = getFloat("sim/flightmodel/position/longitude");
-	float initialAltitude = getFloat("sim/flightmodel/position/elevation");
+	DataRefManager::lastPosition = {
+		getFloat("sim/flightmodel/position/latitude"),
+		getFloat("sim/flightmodel/position/longitude"),
+		getFloat("sim/flightmodel/position/elevation")
+	};
 
-	updateEarthMagneticFieldNED(initialLatitude, initialLongitude, initialAltitude);
+	updateEarthMagneticFieldNED(DataRefManager::lastPosition);
 }
+
+
+
+
+/**
+ * @brief Calculates the distance between two geodetic positions.
+ *
+ * This function computes the distance in meters between two points on the Earth's surface,
+ * given their latitude, longitude, and altitude. It uses the Haversine formula for calculating
+ * the great-circle distance between two points on a sphere from their longitudes and latitudes.
+ *
+ * The altitude difference is also considered in the distance calculation.
+ *
+ * @param pos1 The first geodetic position.
+ * @param pos2 The second geodetic position.
+ * @return float The distance between pos1 and pos2 in meters.
+ *
+ * Usage:
+ * @code
+ * float distance = DataRefManager::calculateDistance(pos1, pos2);
+ * @endcode
+ */
+float DataRefManager::calculateDistance(const GeodeticPosition& pos1, const GeodeticPosition& pos2) {
+	const float R = 6371000; // Earth's radius in meters
+	float lat1Rad = pos1.latitude * M_PI / 180.0f;
+	float lat2Rad = pos2.latitude * M_PI / 180.0f;
+	float deltaLat = (pos2.latitude - pos1.latitude) * M_PI / 180.0f;
+	float deltaLon = (pos2.longitude - pos1.longitude) * M_PI / 180.0f;
+
+	float a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+		cos(lat1Rad) * cos(lat2Rad) *
+		sin(deltaLon / 2) * sin(deltaLon / 2);
+	float c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+	float distance = R * c;
+
+	// Considering altitude difference
+	float altDiff = pos2.altitude - pos1.altitude;
+	distance = sqrt(distance * distance + altDiff * altDiff);
+
+	return distance;
+}
+
+
 
 
 /**
  * @brief Updates the Earth's magnetic field in NED based on the provided geodetic coordinates.
  *
  * This function calculates the Earth's magnetic field in NED using the World Magnetic Model (WMM2020)
- * and the provided latitude, longitude, and altitude.
+ * and the provided geodetic position (latitude, longitude, altitude). The magnetic field is calculated
+ * in the North-East-Down (NED) coordinate system and scaled from nanoteslas to Gauss.
  *
- * @param lat Latitude in degrees.
- * @param lon Longitude in degrees.
- * @param alt Altitude in meters above sea level.
+ * The function also updates the last known position and logs the updated magnetic field values
+ * for debugging purposes.
+ *
+ * @param position The geodetic position (latitude, longitude, altitude) for the magnetic field calculation.
  * @return Eigen::Vector3f The updated magnetic field vector in NED coordinates.
+ *
+ * Usage:
+ * @code
+ * Eigen::Vector3f magneticField = DataRefManager::updateEarthMagneticFieldNED(position);
+ * @endcode
  */
-Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(float lat, float lon, float alt) {
-	float latRad = lat * M_PI / 180.0;
-	float lonRad = lon * M_PI / 180.0;
+Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(const GeodeticPosition& position) {
+	float latRad = position.latitude * M_PI / 180.0f;
+	float lonRad = position.longitude * M_PI / 180.0f;
 
-	// Log the input values
-	/*char log[256];
-	sprintf(log, "updateEarthMagneticFieldNED called with lat: %f, lon: %f, alt: %f\n", lat, lon, alt);
-	XPLMDebugString(log);*/
+	// Convert geodetic coordinates to ECEF (Earth-Centered, Earth-Fixed)
+	geomag::Vector ecefPosition = geomag::geodetic2ecef(position.latitude, position.longitude, position.altitude);
 
-	geomag::Vector position = geomag::geodetic2ecef(lat, lon, alt);
-	geomag::Vector mag_field = geomag::GeoMag(2022.5, position, geomag::WMM2020);
-	geomag::Elements nedElements = geomag::magField2Elements(mag_field, lat, lon);
+	// Calculate the magnetic field using the World Magnetic Model
+	geomag::Vector magField = geomag::GeoMag(2022.5, ecefPosition, geomag::WMM2020);
+	geomag::Elements nedElements = geomag::magField2Elements(magField, position.latitude, position.longitude);
 
-	earthMagneticFieldNED = Eigen::Vector3f(nedElements.north, nedElements.east, nedElements.down);
+	// Convert the magnetic field to NED (North-East-Down) coordinates and scale it
+	DataRefManager::earthMagneticFieldNED = Eigen::Vector3f(nedElements.north, nedElements.east, nedElements.down) * 0.00001;  // Convert from nT to Gauss
 
-	// Log the calculated magnetic field
-	/*sprintf(log, "Calculated magnetic field NED: north: %f, east: %f, down: %f\n", nedElements.north, nedElements.east, nedElements.down);
-	XPLMDebugString(log)*/;
+	// Update the last known position
+	DataRefManager::lastPosition = position;
 
-	earthMagneticFieldNED *= 0.00001;  // Convert from nT to Gauss
+
+	char log[256];
+	sprintf(log, "px4xplane: Magnetic field updated - North: %f, East: %f, Down: %f\n", earthMagneticFieldNED.x(), earthMagneticFieldNED.y(), earthMagneticFieldNED.z());
+	XPLMDebugString(log);
+
 
 	return earthMagneticFieldNED;
 }
@@ -400,71 +481,45 @@ void DataRefManager::overrideActuators_multirotor() {
 }
 
 
-/**
- * Overrides the actuators for a fixed-wing configuration in the simulation.
- * This function processes the actuator control data from MAVLinkManager for each configured actuator channel.
- * It scales the values based on the actuator's range and sets the corresponding dataref in X-Plane.
- * This method is tailored for fixed-wing vehicles and accounts for various actuator types and configurations.
- */
+
 void DataRefManager::overrideActuators_fixedwing() {
 	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
 
-
-	//// Debug: Print all values in hilControls
-	//XPLMDebugString("px4xplane: Printing all HILActuatorControlsData values\n");
-	//XPLMDebugString(("Timestamp: " + std::to_string(hilControls.timestamp) + "\n").c_str());
-	//XPLMDebugString(("Mode: " + std::to_string(hilControls.mode) + "\n").c_str());
-	//XPLMDebugString(("Flags: " + std::to_string(hilControls.flags) + "\n").c_str());
-
-	//for (int i = 0; i < 16; ++i) { // Assuming there are 16 channels, adjust this number as needed
-	//	XPLMDebugString(("Channel " + std::to_string(i) + ": " + std::to_string(hilControls.controls[i]) + "\n").c_str());
-	//}
-	
-
-	for (const auto& [channel, config] : ConfigManager::actuatorConfigs) {
-		// Original value from MAVLink, typically in the range -1 to +1 or 1000 to 2000
-		
-		
+	for (const auto& [channel, actuatorConfig] : ConfigManager::actuatorConfigs) {
 		float originalValue = hilControls.controls[channel];
 
-		// Scale the value to the actuator's range
-		float scaledValue = scaleActuatorCommand(originalValue, -1.0, +1.0, config.range.first, config.range.second);
-		// Debug output for the scaling process
-	/*	XPLMDebugString(("px4xplane: Actuator " + std::to_string(channel) +
-			" - Original value: " + std::to_string(originalValue) +
-			", Scaled value: " + std::to_string(scaledValue) +
-			" (Range: " + std::to_string(config.range.first) + " to " +
-			std::to_string(config.range.second) + ")\n").c_str());*/
+		for (const auto& datarefConfig : actuatorConfig.getDatarefConfigs()) {
+			// Scale the value to the datarefConfig's range
+			float scaledValue = scaleActuatorCommand(originalValue, -1.0, +1.0, datarefConfig.range.first, datarefConfig.range.second);
 
-		//XPLMDebugString(("px4xplane: Setting actuator " + std::to_string(channel) + " to scaled value: " + std::to_string(scaledValue) + " original value: " + std::to_string(originalValue) + "\n").c_str());
-
-		switch (config.dataType) {
-		case FLOAT_SINGLE: {
-			XPLMDataRef floatDataRef = XPLMFindDataRef(config.datarefName.c_str());
-			if (floatDataRef == nullptr) {
-				XPLMDebugString(("px4xplane: DataRef not found: " + config.datarefName + "\n").c_str());
-				continue;
-			}
-			XPLMSetDataf(floatDataRef, scaledValue);
-			break;
-		}
-		case FLOAT_ARRAY: {
-			if (!config.arrayIndices.empty()) {
-				XPLMDataRef arrayDataRef = XPLMFindDataRef(config.datarefName.c_str());
-				if (arrayDataRef == nullptr) {
-					XPLMDebugString(("px4xplane: DataRef not found: " + config.datarefName + "\n").c_str());
-					continue;
+			// Set the dataref based on the data type
+			switch (datarefConfig.dataType) {
+			case FLOAT_SINGLE: {
+				XPLMDataRef floatDataRef = XPLMFindDataRef(datarefConfig.datarefName.c_str());
+				if (floatDataRef != nullptr) {
+					XPLMSetDataf(floatDataRef, scaledValue);
 				}
-				XPLMSetDatavf(arrayDataRef, &scaledValue, config.arrayIndices[0], 1);
+				break;
 			}
-			break;
-		}
-		default:
-			XPLMDebugString(("px4xplane: Unknown data type for actuator " + std::to_string(channel) + "\n").c_str());
-			break;
+			case FLOAT_ARRAY: {
+				if (!datarefConfig.arrayIndices.empty()) {
+					XPLMDataRef arrayDataRef = XPLMFindDataRef(datarefConfig.datarefName.c_str());
+					if (arrayDataRef != nullptr) {
+						for (int index : datarefConfig.arrayIndices) {
+							XPLMSetDatavf(arrayDataRef, &scaledValue, index, 1);
+						}
+					}
+				}
+				break;
+			}
+			default:
+				XPLMDebugString(("px4xplane: Unknown data type for actuator " + std::to_string(channel) + "\n").c_str());
+				break;
+			}
 		}
 	}
 }
+
 
 
 /**
