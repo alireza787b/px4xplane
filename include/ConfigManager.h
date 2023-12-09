@@ -70,27 +70,23 @@ public:
     static int getXPlaneMotorFromPX4(int px4MotorNumber);
 
     static std::string getConfigName();
-    static std::string getConfigVersion();
-    static std::string getConfigType();
-    static uint8_t getConfigTypeCode();
     static std::map<int, ActuatorConfig> actuatorConfigs; // Map channel number to ActuatorConfig
+    static std::string getSelectedAirframeName(CSimpleIniA& ini);
+    static std::string selectedConfig;
 
 
 private:
+
     static std::map<int, int> motorMappingsPX4toXPlane;
     static std::map<int, int> motorMappingsXPlanetoPX4;
     static std::string configName;
-    static std::string configVersion;
-    static std::string configType; // "Multirotor" or "FixedWing" or ...
-    static uint8_t ConfigManager::configTypeCode;
     static std::string getConfigFilePath();
-    static void parseFixedWingConfig(CSimpleIniA& ini) ;
-    static void parseMultirotorConfig(CSimpleIniA& ini) ;
+    static void parseConfig(CSimpleIniA& ini) ;
     static ActuatorDataType stringToDataType(const std::string& typeStr);
-    static std::vector<int> ConfigManager::parseArrayIndices(const std::string& token);
-    static std::pair<float, float> ConfigManager::parseRange(const std::string& token);
-    static void ConfigManager::parseChannelValue(const std::string& value, ActuatorConfig& config);
-     static void ConfigManager::trimWhitespace(std::string& str);
+    static std::vector<int> parseArrayIndices(const std::string& token);
+    static std::pair<float, float> parseRange(const std::string& token);
+    static void parseChannelValue(const std::string& value, ActuatorConfig& config);
+     static void trimWhitespace(std::string& str);
 
 
 

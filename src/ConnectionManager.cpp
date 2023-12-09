@@ -111,9 +111,7 @@ void ConnectionManager::acceptConnection() {
      XPLMDebugString("px4xplane: Motor mappings loaded from config.ini.\n");
 
      // Debug: Log loaded configuration
-     std::string debugMsg = "Config Name: " + ConfigManager::getConfigName() +
-         ", Version: " + ConfigManager::getConfigVersion() +
-         ", Type: " + ConfigManager::getConfigType() + "\n";
+     std::string debugMsg = "Config Name: " + ConfigManager::getConfigName();
      XPLMDebugString(debugMsg.c_str());
 
 }

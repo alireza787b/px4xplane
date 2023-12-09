@@ -377,10 +377,8 @@ void MAVLinkManager::handleReceivedMessage(const mavlink_message_t& msg) {
  * Processes the High-Level (HIL) actuator control message received via MAVLink.
  *
  * This function decodes the HIL actuator control message from MAVLink and updates the
- * hilActuatorControlsData member variable. The processing is based on the type of airframe
- * configured (multirotor or fixed-wing). For multirotors, it maps the controls to the correct
- * motors based on the motor mappings specified in ConfigManager. For fixed-wing or other types,
- * the received controls are directly used without modification.
+ * hilActuatorControlsData member variable. The processing now does not depend on the type of airframe
+ * configured and directly uses the received controls.
  *
  * This function is essential for translating the actuator control commands received from the
  * autopilot (sent via MAVLink) into a format that can be understood and used by the simulation
@@ -397,28 +395,15 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
     MAVLinkManager::hilActuatorControlsData.mode = hil_actuator_controls.mode;
     MAVLinkManager::hilActuatorControlsData.flags = hil_actuator_controls.flags;
 
-    // Check the configuration type code
-    uint8_t configTypeCode = ConfigManager::getConfigTypeCode();
-
-    if (ConfigManager::getConfigTypeCode() == 1) {
-        // For multirotor, map the controls based on the motor mappings from ConfigManager
-        for (int i = 0; i < 8; ++i) {
-            int xPlaneMotorNumber = ConfigManager::getXPlaneMotorFromPX4(i + 1);
-            if (xPlaneMotorNumber != -1) {
-                MAVLinkManager::hilActuatorControlsData.controls[xPlaneMotorNumber - 1] = hil_actuator_controls.controls[i];
-            }
-        }
-    }
-    else {
-        // For fixed-wing or other types, directly use the received controls
-        for (int i = 0; i < 16; i++) {
-            MAVLinkManager::hilActuatorControlsData.controls[i] = hil_actuator_controls.controls[i];
-            // Debug message for each channel
-           /* XPLMDebugString(("px4xplane: Fixed-wing actuator channel " + std::to_string(i) +
-                " value: " + std::to_string(MAVLinkManager::hilActuatorControlsData.controls[i]) + "\n").c_str());*/
-        }
+    // Directly use the received controls
+    for (int i = 0; i < 16; i++) {
+        MAVLinkManager::hilActuatorControlsData.controls[i] = hil_actuator_controls.controls[i];
+        // Debug message for each channel
+        // XPLMDebugString(("px4xplane: Actuator channel " + std::to_string(i) +
+        //     " value: " + std::to_string(MAVLinkManager::hilActuatorControlsData.controls[i]) + "\n").c_str());
     }
 }
+
 
 
 

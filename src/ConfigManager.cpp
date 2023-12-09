@@ -18,14 +18,6 @@ std::map<int, int> ConfigManager::motorMappingsXPlanetoPX4;
 // Name of the configuration, typically used for display purposes.
 std::string ConfigManager::configName;
 
-// Version of the configuration, indicating the version of setup or file format.
-std::string ConfigManager::configVersion;
-
-// Type of the configuration (e.g., Multirotor, FixedWing) as specified in the config file.
-std::string ConfigManager::configType;
-
-// Numeric code representing the type of configuration, useful for conditional logic. It willl assigned in code . not by user!
-uint8_t ConfigManager::configTypeCode;
 
 // Stores configurations for actuators, indexed by their channel number.
 std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
@@ -58,17 +50,9 @@ void ConfigManager::loadConfiguration() {
     // Load general configurations
     // These are global settings not within any specific section
     configName = ini.GetValue("", "config_name", "");
-    configVersion = ini.GetValue("", "config_version", "");
-    configType = ini.GetValue("", "active_config_type", "");
     
+    parseConfig(ini);
 
-    if (configType == "Multirotor") {
-    configTypeCode = 1;
-    parseMultirotorConfig(ini);
-} else if (configType == "FixedWing") {
-    configTypeCode = 2;
-    parseFixedWingConfig(ini);
-}
 
     XPLMDebugString("px4xplane: Config file loaded successfully.\n");
 }
@@ -119,87 +103,84 @@ int ConfigManager::getXPlaneMotorFromPX4(int px4MotorNumber) {
 }
 
 
-// Simple getters for configuration properties like name, version, type, and type code.
+// Simple getters for configuration properties like name
 // These functions provide a clean interface for accessing configuration details.
 std::string ConfigManager::getConfigName() {
     return configName;
 }
 
-std::string ConfigManager::getConfigVersion() {
-    return configVersion;
-}
-
-std::string ConfigManager::getConfigType() {
-    return configType;
-}
-
-uint8_t ConfigManager::getConfigTypeCode(){
-    return configTypeCode;
-}
-
 
 
 /**
- * Parses the Multirotor configuration section from a configuration file.
- * This function first reads the number of motors configured for the multirotor setup.
- * It then iterates through each motor, mapping PX4 motor numbers to X-Plane motor numbers.
- * This mapping is essential for ensuring that the motors are controlled correctly in
- * the simulation environment.
+ * Retrieves the name of the selected airframe configuration from the config.ini file.
+ * This function is responsible for determining which airframe configuration is currently
+ * selected by the user. It reads the 'config_name' value from the config.ini file, which
+ * should correspond to one of the defined airframe sections in the file.
  *
- * The function retrieves the number of motors from the 'num_motors' key in the 'Multirotor'
- * section. Then, for each motor, it reads its corresponding X-Plane motor number using a
- * 'motorX' key, where X is the motor number. These mappings are stored in two dictionaries:
- * motorMappingsPX4toXPlane and motorMappingsXPlanetoPX4, facilitating bidirectional lookup.
+ * If the 'config_name' is not specified or is empty, an error message is logged, and an
+ * empty string is returned. This function is crucial for ensuring that the correct airframe
+ * configuration is loaded and parsed.
  *
  * @param ini Reference to CSimpleIniA object representing the loaded ini file.
+ * @return The name of the selected airframe configuration, or an empty string if not specified.
  */
-void ConfigManager::parseMultirotorConfig(CSimpleIniA& ini) {
-    std::string numMotorsStr = ini.GetValue("Multirotor", "num_motors", "0");
-    int numMotors = std::stoi(numMotorsStr);
-
-    for (int i = 1; i <= numMotors; ++i) {
-        std::string motorKey = "motor" + std::to_string(i);
-        std::string motorValue = ini.GetValue("Multirotor", motorKey.c_str(), "0");
-        int xPlaneMotor = std::stoi(motorValue);
-        motorMappingsPX4toXPlane[i] = xPlaneMotor;
-        motorMappingsXPlanetoPX4[xPlaneMotor] = i;
+std::string ConfigManager::getSelectedAirframeName(CSimpleIniA& ini) {
+    // Retrieve the selected configuration name
+    std::string selectedConfig = ini.GetValue("", "config_name", "");
+    if (selectedConfig.empty()) {
+        XPLMDebugString("px4xplane: No configuration name specified in config.ini.\n");
     }
+    return selectedConfig;
 }
 
 
 /**
- * Parses the FixedWing configuration section from a configuration file.
- * This function iterates through a predefined number of channels (in this case, 16),
- * attempting to read and parse the configuration for each channel from the ini file.
- * The parsing for each channel's configuration string is handled by the
- * parseChannelValue function. The parsed configuration is stored in the actuatorConfigs
- * array, with each index corresponding to a channel.
+ * Parses the configuration for the selected airframe from the config.ini file.
+ * This function dynamically parses the configuration section corresponding to the
+ * airframe selected by the user. It iterates through a predefined number of channels
+ * (16 in this implementation) and attempts to read and parse the configuration for
+ * each channel. The parsed configuration is stored in the actuatorConfigs map, indexed
+ * by the channel number.
  *
- * The function reads the configuration values using a key format "channelX", where X
- * is the channel number. It then checks if the value is non-empty before parsing.
- * Each parsed configuration includes dataref name, data type, array indices (if applicable),
- * and range values, which are extracted and stored in an ActuatorConfig object.
+ * The function first retrieves the selected airframe name using getSelectedAirframeName.
+ * It then reads the configuration values for each channel using a key format "channelX",
+ * where X is the channel number. If a channel configuration is found, it is parsed and
+ * stored; otherwise, a log message is generated.
+ *
+ * This approach allows for flexible and dynamic configuration parsing, supporting various
+ * airframe types with different channel setups.
  *
  * @param ini Reference to CSimpleIniA object representing the loaded ini file.
  */
-void ConfigManager::parseFixedWingConfig(CSimpleIniA& ini) {
-    XPLMDebugString("px4xplane: Starting to parse FixedWing configuration.\n");
+void ConfigManager::parseConfig(CSimpleIniA& ini) {
+    std::string selectedConfig = getSelectedAirframeName(ini);
+    if (selectedConfig.empty()) {
+        return; // No configuration name specified, or an error occurred.
+    }
+
+    XPLMDebugString(("px4xplane: Starting to parse configuration for: " + selectedConfig + "\n").c_str());
 
     for (int channel = 0; channel < 16; channel++) {
         std::string key = "channel" + std::to_string(channel);
-        std::string value = ini.GetValue("FixedWing", key.c_str(), "");
-
-        XPLMDebugString(("px4xplane: Parsing channel " + std::to_string(channel) + " with value: " + value + "\n").c_str());
+        std::string value = ini.GetValue(selectedConfig.c_str(), key.c_str(), "");
 
         if (!value.empty()) {
             ActuatorConfig config;
             parseChannelValue(value, config);
             actuatorConfigs[channel] = config;
+            XPLMDebugString(("px4xplane: Parsed channel " + std::to_string(channel) + "\n").c_str());
+        }
+        else {
+            XPLMDebugString(("px4xplane: No configuration for channel " + std::to_string(channel) + " in " + selectedConfig + "\n").c_str());
         }
     }
 
-    XPLMDebugString("px4xplane: Finished parsing FixedWing configuration.\n");
+    XPLMDebugString(("px4xplane: Finished parsing configuration for: " + selectedConfig + "\n").c_str());
 }
+
+
+
+
 
 /**
  * Parses an individual channel value string into the ActuatorConfig structure.

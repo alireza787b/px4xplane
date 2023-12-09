@@ -453,41 +453,27 @@ void DataRefManager::disableOverride() {
 
 	}
 
+
+
 /**
- * Overrides the actuators for a multirotor configuration in the simulation.
- * This function fetches the actuator control data from MAVLinkManager and corrects it based
- * on the motor mappings configured in ConfigManager. It then overrides the throttle dataref
- * in X-Plane for all engines to reflect these corrected controls.
- * This is specifically tailored for multirotor vehicles and handles up to 8 motors.
+ * Overrides actuators based on the current aircraft configuration.
+ * This function applies control values from the MAVLink HIL (Hardware In the Loop)
+ * actuator controls data to the corresponding X-Plane datarefs. It iterates through
+ * each actuator configuration defined in the ConfigManager and scales the control
+ * values to the appropriate range for each dataref.
+ *
+ * The function handles different types of datarefs (single float or float array) and
+ * applies the scaled value to the correct index in the case of float arrays. The scaling
+ * is based on the range specified in each actuator's configuration.
+ *
+ * For each actuator, the function:
+ * 1. Retrieves the original control value from the HIL data.
+ * 2. Scales this value to the range defined in the actuator configuration.
+ * 3. Sets the scaled value to the appropriate X-Plane dataref.
+ *
+ * If the data type of the actuator is not recognized, an error message is logged.
  */
-void DataRefManager::overrideActuators_multirotor() {
-	// Get the HILActuatorControlsData from MAVLinkManager
-	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
-
-	// Create a new HILActuatorControlsData structure for the corrected controls
-	MAVLinkManager::HILActuatorControlsData correctedControls;
-	correctedControls.timestamp = hilControls.timestamp;
-	correctedControls.mode = hilControls.mode;
-	correctedControls.flags = hilControls.flags;
-
-	// Correct the controls based on the motor mappings from ConfigManager
-	for (int i = 0; i < 8 ; i++) {
-		int xplaneMotor = ConfigManager::getXPlaneMotorFromPX4(i + 1);
-		if (xplaneMotor != -1) { // Check if mapping exists
-			correctedControls.controls[xplaneMotor - 1] = hilControls.controls[i];
-
-			
-		}
-	}
-
-	// Override the throttle dataref in X-Plane for all engines at once
-	std::string dataRef = "sim/flightmodel/engine/ENGN_thro_use";
-	XPLMSetDatavf(XPLMFindDataRef(dataRef.c_str()), hilControls.controls, 0, 8);
-}
-
-
-
-void DataRefManager::overrideActuators_fixedwing() {
+void DataRefManager::overrideActuators() {
 	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
 
 	for (const auto& [channel, actuatorConfig] : ConfigManager::actuatorConfigs) {
@@ -586,15 +572,13 @@ int DataRefManager::drawActualThrottle(XPLMWindowID in_window_id, int l, int t, 
 std::string DataRefManager::GetFormattedDroneConfig() {
 	// Fetch the configuration name and type from ConfigManager
 	std::string configName = ConfigManager::getConfigName();
-	std::string configType = ConfigManager::getConfigType();
 
 	// Check for empty values and replace them with "N/A"
 	if (configName.empty()) configName = "N/A";
-	if (configType.empty()) configType = "N/A";
 
 	// Prepare the formatted string
 	char formattedConfig[512]; // Adjust the size as needed
-	snprintf(formattedConfig, sizeof(formattedConfig), "Drone Config: %s\nConfig Type: %s", configName.c_str(), configType.c_str());
+	snprintf(formattedConfig, sizeof(formattedConfig), "Drone Config: %s", configName.c_str());
 
 	return std::string(formattedConfig);
 }

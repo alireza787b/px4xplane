@@ -367,13 +367,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	ConnectionManager::receiveData();
 
 	// Actuator overrides
-	uint8_t configTypeCode = ConfigManager::getConfigTypeCode();
-	if (configTypeCode == 1) { // Multirotor configuration
-		DataRefManager::overrideActuators_multirotor();
-	}
-	else if (configTypeCode == 2) { // Fixed-wing configuration
-		DataRefManager::overrideActuators_fixedwing();
-	}
+	DataRefManager::overrideActuators();
+
 
 	// Update the SITL timestep with the loop callback rate
 	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
