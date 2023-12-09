@@ -16,6 +16,8 @@
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
 
+
+
 #if IBM
 #include <windows.h>
 #endif
@@ -38,8 +40,7 @@ static XPLMCommandRef toggleEnableCmd;
 
 static int g_enabled = 0; // Used to toggle connection state
 
-// Global variable to store the SITL frequency
-double SIM_Timestep = 0.0;
+
 
 
 
@@ -87,7 +88,7 @@ int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int co
 	lineOffset += 20;
 
 	// Draw SITL Frequency
-	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", SIM_Timestep);
+	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", DataRefManager::SIM_Timestep);
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
 	lineOffset += 20;
 
@@ -109,7 +110,7 @@ PLUGIN_API int XPluginStart(
 	char* outSig,
 	char* outDesc)
 {
-	strcpy(outName, "px4xplane");
+	strcpy(outName, "PX4 to X-Plane");
 	strcpy(outSig, "alireza787.px4xplane");
 	strcpy(outDesc, "PX4 SITL Interface for X-Plane.");
 
@@ -133,16 +134,24 @@ PLUGIN_API int XPluginStart(
 
 	int left, bottom, right, top;
 	XPLMGetScreenBoundsGlobal(&left, &top, &right, &bottom);
-	params.left = left + 50;
-	params.bottom = bottom + 150;
-	params.right = params.left + 600;
-	params.top = params.bottom + 850;
+
+	int screenWidth = right - left;
+	int screenHeight = top - bottom;
+	int windowWidth = (screenWidth * 0.3 > 550) ? static_cast<int>(screenWidth * 0.3) : 550;
+
+	params.left = left + screenWidth * 0.1; // 10% from the left edge of the screen
+	params.bottom = bottom + screenHeight * 0.1; // 10% from the bottom edge of the screen
+	params.right = params.left + windowWidth;
+	params.top = params.bottom + screenHeight * 0.5; // Initial height, adjust as needed
+
+
 
 	g_window = XPLMCreateWindowEx(&params);
 
 	XPLMSetWindowPositioningMode(g_window, xplm_WindowPositionFree, -1);
-	XPLMSetWindowResizingLimits(g_window, 200, 200, 600, 1000);
-	XPLMSetWindowTitle(g_window, "px4xplane");
+	XPLMSetWindowTitle(g_window, "PX4 to X-Plane");
+	XPLMSetWindowResizingLimits(g_window, 600, 200, windowWidth, 1000); // Set minimum width to 550px
+
 
 
 #if IBM
@@ -159,6 +168,7 @@ PLUGIN_API int XPluginStart(
 
 	return 1;
 }
+
 
 // Define a handler for the command like this
 int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefcon)
@@ -259,10 +269,10 @@ std::vector<float> getDataRefFloatArray(const char* dataRefName) {
 
 
 void create_menu() {
-	int menu_container_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "px4xplane", NULL, 1);
+	int menu_container_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "PX4 X-Plane", NULL, 1);
 	g_menu_id = XPLMCreateMenu("px4xplane", XPLMFindPluginsMenu(), menu_container_idx, menu_handler, NULL);
 
-	XPLMAppendMenuItem(g_menu_id, "Show Settings", (void*)0, 1);
+	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
 
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
@@ -287,34 +297,97 @@ void updateMenuItems() {
 }
 
 
+// Constants for update frequencies (in seconds)
+constexpr float SENSOR_UPDATE_PERIOD = 1.0f / 100.0f; // 100 Hz for sensor data
+constexpr float GPS_UPDATE_PERIOD = 1.0f / 10.0f;     // 10 Hz for GPS data
+constexpr float STATE_QUATERNION_UPDATE_PERIOD = 1.0f / 10.0f; // Optional: 50 Hz for state quaternion
+constexpr float RC_UPDATE_PERIOD = 1.0f / 10.0f;      // Optional: 20 Hz for RC data
+
+// Global timing variables
+float timeSinceLastSensorUpdate = 0.0f;
+float timeSinceLastGpsUpdate = 0.0f;
+float timeSinceLastStateQuaternionUpdate = 0.0f; // Optional
+float timeSinceLastRcUpdate = 0.0f; // Optional
+
+
+float lastFlightTime = 0.0f;
+
 
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
-    
-    // Check if the plugin is connected to PX4 SITL
-    if (!ConnectionManager::isConnected()) return -1.0f; // Return -1 to be called at the next cycle
+	if (!ConnectionManager::isConnected()) return -1.0f;
 
-    // Call MAVLinkManager::sendHILSensor() to send HIL_SENSOR data
-    MAVLinkManager::sendHILSensor(uint8_t(0));
-    MAVLinkManager::sendHILGPS();
-    //MAVLinkManager::sendHILStateQuaternion();
-    //MAVLinkManager::sendHILRCInputs();
+	// Check if the plugin is connected to PX4 SITL
 
-    ConnectionManager::receiveData();
+	float currentFlightTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 
-    // Check the configuration type and call the appropriate actuator override function
-    if (ConfigManager::getConfigTypeCode() == 1) {
-        // Multirotor configuration
-        DataRefManager::overrideActuators_multirotor();
-    } else {
-        // Fixed-wing configuration
-         DataRefManager::overrideActuators_fixedwing();
-    }
+	// Check for new flight start
+	if (currentFlightTime < lastFlightTime) {
+		if (ConnectionManager::isConnected()) {
+			toggleEnable();
+		}
+	}
 
-    // Calculate the frequency 
-    SIM_Timestep = inElapsedSinceLastCall;
 
-    return -1.0f; // Return -1 to be called at the next cycle
+
+
+
+	// Update timing counters
+	timeSinceLastSensorUpdate += inElapsedSinceLastCall;
+	timeSinceLastGpsUpdate += inElapsedSinceLastCall;
+	timeSinceLastStateQuaternionUpdate += inElapsedSinceLastCall; // Optional
+	timeSinceLastRcUpdate += inElapsedSinceLastCall; // Optional
+
+	// Send sensor data at high frequency
+	if (timeSinceLastSensorUpdate >= SENSOR_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILSensor(uint8_t(0));
+		timeSinceLastSensorUpdate = 0.0f;
+	}
+
+	// Send GPS data at a lower frequency
+	if (timeSinceLastGpsUpdate >= GPS_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILGPS();
+		timeSinceLastGpsUpdate = 0.0f;
+	}
+
+	// Optional: Send state quaternion data
+	if (timeSinceLastStateQuaternionUpdate >= STATE_QUATERNION_UPDATE_PERIOD) {
+		// Uncomment or implement if state quaternion data is required
+		MAVLinkManager::sendHILStateQuaternion();
+		timeSinceLastStateQuaternionUpdate = 0.0f;
+	}
+
+	// Optional: Send RC data
+	if (timeSinceLastRcUpdate >= RC_UPDATE_PERIOD) {
+		// Uncomment or implement if RC data is required
+		// MAVLinkManager::sendHILRCInputs();
+		timeSinceLastRcUpdate = 0.0f;
+	}
+
+	// Continuously receive and process actuator data
+	ConnectionManager::receiveData();
+
+	// Actuator overrides
+	uint8_t configTypeCode = ConfigManager::getConfigTypeCode();
+	if (configTypeCode == 1) { // Multirotor configuration
+		DataRefManager::overrideActuators_multirotor();
+	}
+	else if (configTypeCode == 2) { // Fixed-wing configuration
+		DataRefManager::overrideActuators_fixedwing();
+	}
+
+	// Update the SITL timestep with the loop callback rate
+	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
+
+
+	lastFlightTime = currentFlightTime;
+
+
+
+
+	return -1.0f; // Continue calling at next cycle
 }
+
+
 
 
 

@@ -46,7 +46,7 @@ public:
     static constexpr float g_earth = 9.81f;
     static std::vector<DataRefItem> dataRefs;
     static Eigen::Vector3f earthMagneticFieldNED;
-
+    static float SIM_Timestep;
     static constexpr float AirDensitySeaLevel = 1.225; // kg/m^3
     static int drawDataRefs(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
     static std::vector<float> getFloatArray(const char* dataRefName);

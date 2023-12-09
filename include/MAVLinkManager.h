@@ -38,6 +38,8 @@ private:
     static void setGPSPositionData(mavlink_hil_gps_t& hil_gps);
     static void setGPSAccuracyData(mavlink_hil_gps_t& hil_gps);
     static void setGPSVelocityData(mavlink_hil_gps_t& hil_gps);
+    static void setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps);
+    static void setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps);
     static void setGPSHeadingData(mavlink_hil_gps_t& hil_gps);
     static void handleReceivedMessage(const mavlink_message_t& msg);
     static void processHILActuatorControlsMessage(const mavlink_message_t& msg);

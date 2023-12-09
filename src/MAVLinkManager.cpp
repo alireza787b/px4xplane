@@ -20,8 +20,8 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.01f);
-std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.0001f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.001f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.00001f);
 
 
 /**
@@ -181,14 +181,20 @@ void MAVLinkManager::sendHILGPS() {
  * @endcode
  */
 void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps_t& hil_gps) {
-    GeodeticPosition currentPosition = {
+    /*GeodeticPosition currentPosition = {
         hil_gps.lat * 1e-7,
         hil_gps.lon * 1e-7,
         hil_gps.alt * 1e-3
+    };*/
+
+    GeodeticPosition currentPosition = {
+        DataRefManager::getFloat("sim/flightmodel/position/latitude"),
+        DataRefManager::getFloat("sim/flightmodel/position/longitude"),
+        DataRefManager::getFloat("sim/flightmodel/position/elevation")
     };
 
     if (DataRefManager::calculateDistance(currentPosition, DataRefManager::lastPosition) > DataRefManager::UPDATE_THRESHOLD) {
-        XPLMDebugString("px4xplane: Mag ValidityTreshold Reached!");
+        XPLMDebugString("px4xplane: Mag ValidityTreshold Reached!\n");
 
         DataRefManager::updateEarthMagneticFieldNED(currentPosition);
         DataRefManager::lastPosition = currentPosition;
@@ -487,13 +493,13 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
     // Retrieve the aircraft's current heading, roll, and pitch from the simulation
     float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
-    float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
-    float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
+    float roll = DataRefManager::getFloat("sim/flightmodel/position/true_phi");
+    float pitch = DataRefManager::getFloat("sim/flightmodel/position/true_theta");
 
     // Convert the retrieved angles from degrees to radians for further calculations
-    float yaw_rad = yaw_mag * M_PI / 180.0f;
-    float roll_rad = roll * M_PI / 180.0f;
-    float pitch_rad = pitch * M_PI / 180.0f;
+    float yaw_rad = (yaw_mag+10) * M_PI / 180.0f;
+    float roll_rad = roll * M_PI*0 / 180.0f;
+    float pitch_rad = pitch * M_PI*0 / 180.0f;
 
     // Rotate the precalculated Earth's magnetic field from NED to the aircraft's body frame
     Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(DataRefManager::earthMagneticFieldNED, roll_rad, pitch_rad, yaw_rad);
@@ -541,18 +547,21 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
     hil_gps.eph = static_cast<uint16_t>(20); // Assuming high accuracy due to simulation environment
     hil_gps.epv = static_cast<uint16_t>(20);
-    hil_gps.satellites_visible = static_cast<uint16_t>(14);; // Assuming 12 satellites visible in good conditions
+    hil_gps.satellites_visible = static_cast<uint16_t>(14);; // Assuming 14 satellites visible in good conditions
 }
 
 /**
- * @brief Sets the velocity data for the HIL_GPS message.
- *
- * This function extracts the velocity data from the simulation environment in the OGL (OpenGL) coordinate system
- * and converts it to the NED (North-East-Down) coordinate system for the HIL_GPS message.
+ * @brief Sets the velocity data for the HIL_GPS message using the OGL coordinate system.
+ *                                     !!NOT USED!!
+ * This function is now deprecated due to issues with the OGL (OpenGL) coordinate system
+ * in the simulation environment not aligning with the NED (North-East-Down) coordinate system
+ * consistently. It extracts the velocity data from the simulation environment, which may lead to
+ * incorrect velocity readings due to the OGL coordinate frame problems. The velocities in OGL are
+ * transformed to the NED coordinate system, which is commonly used in aviation.
  *
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
-void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
+void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
     int16_t ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100;
     int16_t ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100;
     int16_t ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100;
@@ -576,8 +585,86 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
     hil_gps.vn = static_cast<int16_t> ( - 1 * ogl_vz);
     hil_gps.ve = static_cast<int16_t>(ogl_vx);
     hil_gps.vd = static_cast<int16_t>(-1 * ogl_vy);
-    hil_gps.vel = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100);
+    hil_gps.vel = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100.0);
 }
+
+
+/**
+ * @brief Sets the velocity data for the HIL_GPS message using NED coordinate system.
+ *  *                                     !!NOT USED!!
+ *
+ * This function calculates the North (Vn), East (Ve), and Down (Vd) components of velocity
+ * in the NED coordinate system using groundspeed, hpath, and vpath datarefs provided by the
+ * simulation environment. Groundspeed is the total velocity, while hpath and vpath are the
+ * horizontal and vertical path angles in degrees, respectively.
+ *
+ * The function converts these angles and groundspeed into the NED frame velocities, suitable
+ * for MAVLink communication with PX4.
+ *
+ * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
+ */
+void MAVLinkManager::setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps) {
+    float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
+    float hpath = DataRefManager::getFloat("sim/flightmodel/position/hpath") * (M_PI / 180.0f);
+    float vpath = DataRefManager::getFloat("sim/flightmodel/position/vpath") * (M_PI / 180.0f);
+
+    // Calculate NED velocity components
+    float Vn = groundspeed * cos(vpath) * cos(hpath);
+    float Ve = groundspeed * cos(vpath) * sin(hpath);
+    float Vd = groundspeed * sin(vpath);
+
+    // Populate the MAVLink message with NED velocities (converted to cm/s)
+    hil_gps.vn = static_cast<int16_t>(Vn * 100.0f);
+    hil_gps.ve = static_cast<int16_t>(Ve * 100.0f);
+    hil_gps.vd = static_cast<int16_t>(-Vd * 100.0f); // Negate if positive vpath means climbing
+
+    // Calculate and set the total velocity
+    hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
+}
+
+
+/**
+ * @brief Sets the velocity data for the HIL_GPS message using the NED coordinate system.
+ *
+ * This function temporarily uses the TCAS system velocities (sim/cockpit2/tcas/targets/position/vx, vy, vz)
+ * from X-Plane for calculating the aircraft's velocity in the NED coordinate system. The TCAS velocities
+ * are in the OGL coordinate system and are transformed to NED. This approach is a temporary workaround
+ * to address issues with other velocity datarefs and will be replaced by a more accurate solution in the future.
+ *
+ * Note: TCAS velocities are used here for their availability and ease of access, but they might not
+ * provide the most accurate representation of the aircraft's true velocity, especially in complex flight
+ * scenarios or with certain aircraft models.
+ *
+ * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
+ */
+void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
+    // Read TCAS velocities from X-Plane
+    std::vector<float> vxArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vx");
+    std::vector<float> vyArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vy");
+    std::vector<float> vzArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vz");
+
+    // Assuming the first element in each array contains the required velocity
+    float vx = vxArray[0];
+    float vy = vyArray[0];
+    float vz = vzArray[0];
+
+    // Transform from OGL to NED
+    float Vn = -vz;  // North is negative South
+    float Ve = vx;   // East remains the same
+    float Vd = -vy;  // Down is negative Up
+
+    // Populate the MAVLink message with NED velocities (converted to cm/s)
+    hil_gps.vn = static_cast<int16_t>(Vn * 100.0f);
+    hil_gps.ve = static_cast<int16_t>(Ve * 100.0f);
+    hil_gps.vd = static_cast<int16_t>(Vd * 100.0f);
+
+    // Calculate the total velocity
+    hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
+}
+
+
+
+
 
 /**
  * @brief Sets the heading data for the HIL_GPS message.
@@ -586,7 +673,8 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
  */
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
     uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
-    hil_gps.cog = (cog == 0) ? 360 : cog;
-    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/psi") * 100);
-    hil_gps.yaw = (yaw == 0) ? 360 : yaw;
+    //uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/hpath") * 100.0f);
+    hil_gps.cog = (cog == 36000) ? static_cast < uint16_t>(0001) : cog;
+    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100.0f);
+    hil_gps.yaw = (yaw == 0) ? static_cast < uint16_t>(35999) : yaw;
 }

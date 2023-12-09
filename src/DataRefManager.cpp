@@ -78,6 +78,11 @@ std::vector<DataRefItem> DataRefManager::dataRefs = {
 Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
 
 
+
+
+float DataRefManager::SIM_Timestep = 0;
+
+
 /**
  * @brief Static member variable to store the last known geodetic position of the aircraft.
  *
@@ -110,8 +115,8 @@ GeodeticPosition DataRefManager::lastPosition = {}; // Initialize with default v
  */
 Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
 	//temporarly remove the effect of roll and pitch
-	Eigen::AngleAxisf rollAngle(0, Eigen::Vector3f::UnitX());
-	Eigen::AngleAxisf pitchAngle(0, Eigen::Vector3f::UnitY());
+	Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
+	Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
 	Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
 	Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
 
@@ -226,9 +231,9 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(const GeodeticPositi
 	DataRefManager::lastPosition = position;
 
 
-	char log[256];
+	/*char log[256];
 	sprintf(log, "px4xplane: Magnetic field updated - North: %f, East: %f, Down: %f\n", earthMagneticFieldNED.x(), earthMagneticFieldNED.y(), earthMagneticFieldNED.z());
-	XPLMDebugString(log);
+	XPLMDebugString(log);*/
 
 
 	return earthMagneticFieldNED;
