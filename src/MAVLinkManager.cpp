@@ -478,8 +478,8 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
     // Retrieve the aircraft's current heading, roll, and pitch from the simulation
     float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
-    float roll = DataRefManager::getFloat("sim/flightmodel/position/true_phi");
-    float pitch = DataRefManager::getFloat("sim/flightmodel/position/true_theta");
+    float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
+    float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
 
     // Convert the retrieved angles from degrees to radians for further calculations
     float yaw_rad = (yaw_mag+10) * M_PI / 180.0f;
