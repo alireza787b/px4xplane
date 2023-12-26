@@ -22,15 +22,31 @@ std::string ConfigManager::configName;
 // Stores configurations for actuators, indexed by their channel number.
 std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
 
+/**
+ * @brief Static member to track motor equipped with prop brakes.
+ *
+ * This bitset holds the brake status for up to 8 motor, where each bit represents an motor.
+ * A set bit indicates that the corresponding motor has a prop brake enabled.
+ */
+std::bitset<ConfigManager::MAX_MOTORS> ConfigManager::motorsWithBrakes; // Definition of the static member
 
 
 
 /**
- * Loads and parses the configuration from the 'config.ini' file.
+ * @brief Loads and parses the configuration from the 'config.ini' file.
+ *
  * This function initializes the configuration by loading global settings and then
- * determines which specific configuration (Multirotor or FixedWing) to parse.
- * Based on the type of configuration, it delegates the parsing to the respective
- * parse function. It also resolves and logs the path to the configuration file.
+ * determines which specific configuration (e.g., Multirotor or FixedWing) to parse.
+ * It delegates the parsing to the respective parse function based on the type of configuration.
+ * Additionally, it configures actuator brakes for specific actuators based on the loaded configuration.
+ * It also resolves and logs the path to the configuration file.
+ *
+ * The process involves:
+ * 1. Initializing the SimpleIni object and setting it to handle Unicode.
+ * 2. Loading the INI file and handling any errors encountered.
+ * 3. Retrieving and storing the general configuration settings.
+ * 4. Configuring motor brakes based on the specific requirements of the loaded configuration.
+ * 5. Parsing additional configuration details specific to the selected airframe or setup.
  */
 void ConfigManager::loadConfiguration() {
     // Initialize the SimpleIni object and set it to handle Unicode
@@ -50,6 +66,9 @@ void ConfigManager::loadConfiguration() {
     // Load general configurations
     // These are global settings not within any specific section
     configName = ini.GetValue("", "config_name", "");
+
+    // Configure motor brakes based on the loaded configuration
+    configureMotorBrakes(ini);
     
     parseConfig(ini);
 
@@ -346,4 +365,99 @@ ActuatorDataType ConfigManager::stringToDataType(const std::string& typeStr) {
     if (typeStr == "float") return FLOAT_SINGLE;
     else if (typeStr == "floatArray") return FLOAT_ARRAY;
     return UNKNOWN;
+}
+
+/**
+ * @brief Checks if a specific motor has a prop brake enabled.
+ *
+ * This function checks the motorsWithBrakes bitset to determine if the specified motor
+ * is configured to have a prop brake.
+ *
+ * @param motorIndex The index of the motor to check. Valid indices range from 0 to 7.
+ * @return True if the motor has a prop brake enabled, false otherwise or if the index is out of range.
+ */
+bool ConfigManager::hasPropBrake(int motorIndex) {
+    if (motorIndex >= 0 && motorIndex < 8) {
+        return motorsWithBrakes.test(motorIndex);
+    }
+    return false; // Index out of range, no brake
+}
+
+
+/**
+ * @brief Configures motors with prop brakes based on the configuration loaded from 'config.ini'.
+ *
+ * This function reads the 'autoPropBrakes' parameter from the configuration file for the
+ * current aircraft configuration. It then parses the list of motor indices specified and sets
+ * the corresponding bits in the motorsWithBrakes bitset. Each bit in this bitset corresponds to
+ * a motor in X-Plane, and a set bit indicates that the motor is equipped with an auto-prop brake.
+ *
+ * The function performs the following operations:
+ * 1. Resets the motorsWithBrakes bitset to ensure a clean configuration.
+ * 2. Retrieves the 'autoPropBrakes' configuration from the 'config.ini' file.
+ * 3. Parses the comma-separated list of motor indices and sets the corresponding bits.
+ * 4. Logs the final brake configuration for verification.
+ *
+ * If no 'autoPropBrakes' configuration is found or it's left empty, the function assumes no
+ * motors are equipped with brakes and logs an appropriate message.
+ *
+ * @param ini Reference to the loaded CSimpleIniA object containing the configuration settings.
+ */
+void ConfigManager::configureMotorBrakes(const CSimpleIniA& ini) {
+    motorsWithBrakes.reset();
+    std::string brakesConfig = ini.GetValue(configName.c_str(), "autoPropBrakes", "");
+
+    if (!brakesConfig.empty()) {
+        std::vector<int> motorIndices = parseMotorIndices(brakesConfig);
+        for (int index : motorIndices) {
+            motorsWithBrakes.set(index);
+        }
+    }
+    else {
+        XPLMDebugString(("px4xplane: No autoPropBrakes specified or parameter not found for configuration: " + configName).c_str());
+    }
+
+    // Log the final configuration for verification
+    XPLMDebugString(("px4xplane: Motor brakes configured for motors: " + motorsWithBrakes.to_string() + "\n").c_str());
+}
+
+/**
+ * @brief Parses a comma-separated string of motor indices and returns a vector of integers.
+ *
+ * This function is a utility designed to convert a string containing a list of comma-separated
+ * motor indices into a vector of integers. Each integer represents the index of a motor in
+ * X-Plane. The function is robust against invalid input and logs an error for any non-numeric
+ * or out-of-range indices encountered in the string.
+ *
+ * The function performs the following operations:
+ * 1. Splits the input string by commas to extract individual motor index strings.
+ * 2. Attempts to convert each string to an integer representing the motor index.
+ * 3. Validates that the parsed index is within the acceptable range (0 to MAX_MOTORS - 1).
+ * 4. Adds valid indices to the vector to be returned and logs errors for invalid entries.
+ *
+ * This function is typically used in conjunction with configureMotorBrakes to parse the
+ * 'autoPropBrakes' configuration parameter.
+ *
+ * @param indicesStr The string containing the comma-separated list of motor indices.
+ * @return A vector of integers representing valid motor indices parsed from the input string.
+ */
+std::vector<int> ConfigManager::parseMotorIndices(const std::string& indicesStr) {
+    std::vector<int> indices;
+    std::istringstream stream(indicesStr);
+    std::string index;
+    while (getline(stream, index, ',')) {
+        try {
+            int motorIndex = std::stoi(index);
+            if (motorIndex >= 0 && motorIndex < MAX_MOTORS) {
+                indices.push_back(motorIndex);
+            }
+            else {
+                XPLMDebugString(("px4xplane: Motor index out of range: " + index).c_str());
+            }
+        }
+        catch (const std::invalid_argument& e) {
+            XPLMDebugString(("px4xplane: Invalid motor index encountered: " + index).c_str());
+        }
+    }
+    return indices;
 }

@@ -7,8 +7,9 @@
 #include "XPLMDataAccess.h"
 #include "XPLMDisplay.h"
 #include <string>
-#include<cmath>
-#include<vector>
+#include <cmath>
+#include <vector>
+#include <bitset>
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include <Eigen/Core>
@@ -73,5 +74,10 @@ public:
     static float lastAltitude;
     static GeodeticPosition lastPosition;
     static constexpr float UPDATE_THRESHOLD=1000;  // Define a threshold for position change in meters
+    static std::bitset<8> motorBrakeStates; // Tracks the current brake states
+    static void checkAndApplyPropBrakes();
+
+    static void applyBrake(int motorIndex, bool enable);
+
 };
 

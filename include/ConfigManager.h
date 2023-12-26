@@ -6,6 +6,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <bitset>
 #include "SimpleIni.h"
 
 /**
@@ -68,17 +69,22 @@ public:
     static void loadConfiguration();
     static int getPX4MotorFromXPlane(int xPlaneMotorNumber);
     static int getXPlaneMotorFromPX4(int px4MotorNumber);
-
     static std::string getConfigName();
     static std::map<int, ActuatorConfig> actuatorConfigs; // Map channel number to ActuatorConfig
     static std::string getSelectedAirframeName(CSimpleIniA& ini);
     static std::string selectedConfig;
+    static bool hasPropBrake(int motorIndex);
+    static const int MAX_MOTORS = 8;  // Maximum possible motors in X-Plane
+    static void configureMotorBrakes(const CSimpleIniA& ini);
+
 
 
 private:
+    static std::vector<int> parseMotorIndices(const std::string& indicesStr);
 
     static std::map<int, int> motorMappingsPX4toXPlane;
     static std::map<int, int> motorMappingsXPlanetoPX4;
+    static std::bitset<MAX_MOTORS> motorsWithBrakes; // Bitset to hold the brake configuration
     static std::string configName;
     static std::string getConfigFilePath();
     static void parseConfig(CSimpleIniA& ini) ;

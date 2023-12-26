@@ -8,6 +8,7 @@
 #include "XPLMGraphics.h"
 #include <vector>
 #include<cmath>
+#include <bitset>
 #include "MAVLinkManager.h"
 #include "XPLMUtilities.h"
 #include <ConfigManager.h>
@@ -77,6 +78,17 @@ std::vector<DataRefItem> DataRefManager::dataRefs = {
  */
 Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
 
+
+
+/**
+ * @brief Tracks the current brake state of each motor.
+ *
+ * This bitset holds the brake state for up to 8 motors, where each bit represents a motor.
+ * A set bit indicates that the brake is currently applied to the corresponding motor. This
+ * tracking is crucial for ensuring brakes are only applied or released when necessary, avoiding
+ * redundant operations and ensuring synchronicity with the actual state of the motors in X-Plane.
+ */
+std::bitset<8> DataRefManager::motorBrakeStates;
 
 
 
@@ -456,11 +468,14 @@ void DataRefManager::disableOverride() {
 
 
 /**
- * Overrides actuators based on the current aircraft configuration.
+ * @brief Overrides actuators based on the current aircraft configuration and applies brakes as necessary.
+ *
  * This function applies control values from the MAVLink HIL (Hardware In the Loop)
  * actuator controls data to the corresponding X-Plane datarefs. It iterates through
  * each actuator configuration defined in the ConfigManager and scales the control
- * values to the appropriate range for each dataref.
+ * values to the appropriate range for each dataref. After setting these values,
+ * it also checks each motor to determine if a brake should be applied or released,
+ * based on the motor's current throttle value and its brake configuration.
  *
  * The function handles different types of datarefs (single float or float array) and
  * applies the scaled value to the correct index in the case of float arrays. The scaling
@@ -470,6 +485,7 @@ void DataRefManager::disableOverride() {
  * 1. Retrieves the original control value from the HIL data.
  * 2. Scales this value to the range defined in the actuator configuration.
  * 3. Sets the scaled value to the appropriate X-Plane dataref.
+ * 4. After processing all actuators, it checks and applies brakes on motors as necessary.
  *
  * If the data type of the actuator is not recognized, an error message is logged.
  */
@@ -508,7 +524,32 @@ void DataRefManager::overrideActuators() {
 				break;
 			}
 		}
+
+		// Check and apply brakes on motors as necessary
+		checkAndApplyPropBrakes();
 	}
+
+	// Retrieve the throttle array DataRef
+	XPLMDataRef throttleDataRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use");
+	if (throttleDataRef != nullptr) {
+		float throttleValues[8]; // Assuming a maximum of 8 motors
+		XPLMGetDatavf(throttleDataRef, throttleValues, 0, 8);
+
+		for (int i = 0; i < 8; ++i) {
+			// Check if the motor has a brake feature and needs a brake applied or removed
+			if (ConfigManager::hasPropBrake(i)) {
+				bool shouldBrake = throttleValues[i] == 0.0f;
+				bool isBraking = motorBrakeStates.test(i);
+				if (shouldBrake != isBraking) {
+					applyBrake(i, shouldBrake);
+				}
+			}
+		}
+	}
+	else {
+		XPLMDebugString("px4xplane: Unable to find throttle dataref\n");
+	}
+
 }
 
 
@@ -581,4 +622,73 @@ std::string DataRefManager::GetFormattedDroneConfig() {
 	snprintf(formattedConfig, sizeof(formattedConfig), "Drone Config: %s", configName.c_str());
 
 	return std::string(formattedConfig);
+}
+
+
+/**
+ * @brief Applies or releases a brake on a specific motor by manipulating X-Plane's failure DataRefs.
+ *
+ * This function simulates applying a brake to a motor by injecting a seizure failure into
+ * X-Plane's simulation for the specified motor. It constructs the DataRef name for the specific
+ * motor's seizure failure and then sets the failure mode to simulate the brake being applied or released.
+ * The function also tracks the state of each motor's brake to avoid unnecessary operations.
+ *
+ * @param motorIndex The index of the motor to which the brake will be applied or released.
+ *                   This should correspond to the actual motor numbers in X-Plane (typically 0-7).
+ * @param enable A boolean flag indicating whether to apply (true) or release (false) the brake.
+ */
+void DataRefManager::applyBrake(int motorIndex, bool enable) {
+	// Construct the DataRef name for the specific motor's seizure failure
+	std::string failureDataRefName = "sim/operation/failures/rel_seize_" + std::to_string(motorIndex);
+
+	// Find the DataRef
+	XPLMDataRef failureDataRef = XPLMFindDataRef(failureDataRefName.c_str());
+
+	if (failureDataRef != nullptr) {
+		if (enable) {
+			// Inject failure to simulate brake - Set failure mode to 6 (Engine Seize)
+			XPLMSetDatai(failureDataRef, 6);
+			XPLMDebugString(("Applying brake to motor " + std::to_string(motorIndex) + "\n").c_str());
+		}
+		else {
+			// Remove failure to release brake - Reset failure mode to 0 (No failure)
+			XPLMSetDatai(failureDataRef, 0);
+			XPLMDebugString(("Releasing brake from motor " + std::to_string(motorIndex) + "\n").c_str());
+		}
+		motorBrakeStates.set(motorIndex, enable); // Update the brake state tracking
+	}
+	else {
+		// Log an error if the DataRef was not found
+		XPLMDebugString(("px4xplane: Failed to find failure DataRef for motor " + std::to_string(motorIndex) + "\n").c_str());
+	}
+}
+
+/**
+ * @brief Checks the throttle for each motor and applies or releases the brake as necessary.
+ *
+ * This function retrieves the current throttle values for each motor and determines
+ * if the brake should be applied or released based on the motor's brake configuration
+ * and its current throttle value. It uses the 'applyBrake' function to manage the
+ * actual application or release of the brake.
+ */
+void DataRefManager::checkAndApplyPropBrakes() {
+	XPLMDataRef throttleDataRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use");
+	if (throttleDataRef != nullptr) {
+		float throttleValues[8]; // Assuming a maximum of 8 motors
+		XPLMGetDatavf(throttleDataRef, throttleValues, 0, 8);
+
+		for (int i = 0; i < 8; ++i) {
+			// Check if the motor has a brake feature and needs a brake applied or removed
+			if (ConfigManager::hasPropBrake(i)) {
+				bool shouldBrake = throttleValues[i] == 0.0f;
+				bool isBraking = motorBrakeStates.test(i);
+				if (shouldBrake != isBraking) {
+					applyBrake(i, shouldBrake);
+				}
+			}
+		}
+	}
+	else {
+		XPLMDebugString("px4xplane: Unable to find throttle dataref\n");
+	}
 }
