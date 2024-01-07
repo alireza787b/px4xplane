@@ -529,27 +529,6 @@ void DataRefManager::overrideActuators() {
 		checkAndApplyPropBrakes();
 	}
 
-	// Retrieve the throttle array DataRef
-	XPLMDataRef throttleDataRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use");
-	if (throttleDataRef != nullptr) {
-		float throttleValues[8]; // Assuming a maximum of 8 motors
-		XPLMGetDatavf(throttleDataRef, throttleValues, 0, 8);
-
-		for (int i = 0; i < 8; ++i) {
-			// Check if the motor has a brake feature and needs a brake applied or removed
-			if (ConfigManager::hasPropBrake(i)) {
-				bool shouldBrake = throttleValues[i] == 0.0f;
-				bool isBraking = motorBrakeStates.test(i);
-				if (shouldBrake != isBraking) {
-					applyBrake(i, shouldBrake);
-				}
-			}
-		}
-	}
-	else {
-		XPLMDebugString("px4xplane: Unable to find throttle dataref\n");
-	}
-
 }
 
 
@@ -627,39 +606,42 @@ std::string DataRefManager::GetFormattedDroneConfig() {
 
 /**
  * @brief Applies or releases a brake on a specific motor by manipulating X-Plane's failure DataRefs.
- *
- * This function simulates applying a brake to a motor by injecting a seizure failure into
- * X-Plane's simulation for the specified motor. It constructs the DataRef name for the specific
- * motor's seizure failure and then sets the failure mode to simulate the brake being applied or released.
- * The function also tracks the state of each motor's brake to avoid unnecessary operations.
+ * This function simulates applying a brake to a motor by injecting a seizure failure and a prop separation failure
+ * into X-Plane's simulation for the specified motor. It constructs the DataRef names for the specific motor's
+ * failures and then sets the failure modes to simulate the brake being applied or released. The function also
+ * tracks the state of each motor's brake to avoid unnecessary operations.
  *
  * @param motorIndex The index of the motor to which the brake will be applied or released.
  *                   This should correspond to the actual motor numbers in X-Plane (typically 0-7).
  * @param enable A boolean flag indicating whether to apply (true) or release (false) the brake.
  */
 void DataRefManager::applyBrake(int motorIndex, bool enable) {
-	// Construct the DataRef name for the specific motor's seizure failure
-	std::string failureDataRefName = "sim/operation/failures/rel_seize_" + std::to_string(motorIndex);
+	// Construct the DataRef names for the specific motor's seizure and prop separation failures
+	std::string seizureFailureDataRefName = "sim/operation/failures/rel_seize_" + std::to_string(motorIndex);
+	std::string propSepFailureDataRefName = "sim/operation/failures/rel_prpsep" + std::to_string(motorIndex);
 
-	// Find the DataRef
-	XPLMDataRef failureDataRef = XPLMFindDataRef(failureDataRefName.c_str());
+	// Find the DataRefs
+	XPLMDataRef seizureFailureDataRef = XPLMFindDataRef(seizureFailureDataRefName.c_str());
+	XPLMDataRef propSepFailureDataRef = XPLMFindDataRef(propSepFailureDataRefName.c_str());
 
-	if (failureDataRef != nullptr) {
+	if (seizureFailureDataRef != nullptr && propSepFailureDataRef != nullptr) {
 		if (enable) {
-			// Inject failure to simulate brake - Set failure mode to 6 (Engine Seize)
-			XPLMSetDatai(failureDataRef, 6);
+			// Inject failures to simulate brake - Set failure modes for both seizure and prop separation
+			XPLMSetDatai(seizureFailureDataRef, 6); // Engine Seize
+			XPLMSetDatai(propSepFailureDataRef, 6); // Prop Separation
 			XPLMDebugString(("Applying brake to motor " + std::to_string(motorIndex) + "\n").c_str());
 		}
 		else {
-			// Remove failure to release brake - Reset failure mode to 0 (No failure)
-			XPLMSetDatai(failureDataRef, 0);
+			// Remove failures to release brake - Reset failure modes to 0 (No failure)
+			XPLMSetDatai(seizureFailureDataRef, 0);
+			XPLMSetDatai(propSepFailureDataRef, 0);
 			XPLMDebugString(("Releasing brake from motor " + std::to_string(motorIndex) + "\n").c_str());
 		}
 		motorBrakeStates.set(motorIndex, enable); // Update the brake state tracking
 	}
 	else {
-		// Log an error if the DataRef was not found
-		XPLMDebugString(("px4xplane: Failed to find failure DataRef for motor " + std::to_string(motorIndex) + "\n").c_str());
+		// Log an error if the DataRefs were not found
+		XPLMDebugString(("px4xplane: Failed to find failure DataRefs for motor " + std::to_string(motorIndex) + "\n").c_str());
 	}
 }
 
