@@ -109,8 +109,9 @@
     </Link>
     <PostBuildEvent>
       <Command>copy "$(ProjectDir)config\config.ini" "$(OutDir)"
-copy "$(ProjectDir)config\quadricopter_px4.params" "$(OutDir)"
-copy "$(ProjectDir)config\standard_plane_px4.params" "$(OutDir)"</Command>
+copy "$(ProjectDir)config\alia250_px4.params" "$(OutDir)"
+copy "$(ProjectDir)config\cessna172_px4.params" "$(OutDir)"
+copy "$(ProjectDir)config\ehang184_px4.params" "$(OutDir)"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
