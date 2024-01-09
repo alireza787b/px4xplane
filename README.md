@@ -49,7 +49,7 @@ For those who need to use the default `make px4_sitl none_iris` command, be awar
 
 ## Usage Guide
 
-follow the <a href="https://alireza787b.github.io/px4xplane/v1.html" target="_blank"> step-by-step instruction </a>.
+follow the <a href="https://alireza787b.github.io/px4xplane/v1.0.0.html" target="_blank"> step-by-step instruction version 1.0.0</a>.
 
 
 ### For Developers: Building from Source
