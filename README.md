@@ -1,19 +1,23 @@
 # PX4 X-Plane Plugin
 
-This project establishes a connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. The goal is to provide a realistic simulation environment where PX4 can control a drone in the X-Plane simulator.
+This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Video Tutorial
+## Latest Release
 
-Check out our [full setup guide and demonstration on YouTube](https://www.youtube.com/watch?v=aRJxsnf24k4) to see the PX4 X-Plane Plugin in action!
+Check out the new features in the [v1.1.0 release](https://github.com/alireza787b/px4xplane/releases/tag/v1.1.0) of the plugin, including support for additional airframes like the Alia-250 eVTOL. Don't miss the upcoming step-by-step tutorials on our GitHub!
 
-[![PX4 X-Plane Plugin Video Thumbnail](https://img.youtube.com/vi/aRJxsnf24k4/0.jpg)](https://www.youtube.com/watch?v=aRJxsnf24k4 "Click to Watch!")
+## Video Tutorials
 
+For setup guidance and demonstrations, visit our [YouTube playlist](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=gAQBiAQB), which includes detailed tutorials and showcases the plugin in action!
+
+[![PX4 X-Plane Plugin Video Thumbnail](https://img.youtube.com/vi/eZJpRHFgx6g/0.jpg)](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=gAQBiAQB "Click to Watch!")
 
 ## Introduction
 
-All simulators, with the exception of Gazebo, communicate with PX4 using the Simulator MAVLink API. This API defines a set of MAVLink messages that provide sensor data from the simulated environment to PX4 and return motor and actuator values from the flight code that will be applied to the simulated vehicle.
+We bridge X-Plane and PX4 using the Simulator MAVLink API, which facilitates the exchange of sensor and actuator data, providing a rich and accurate simulation environment.
 
-![PX4 Simulator Messages](https://github.com/alireza787b/px4xplane/assets/30341941/0f7d0129-a780-4952-abef-3a858aaf6f92)
+![PX4 Simulator Messages](https://github.com/alireza787b/px4xplane/assets/simulator_messages.png)
+
 
 
 The following table illustrates the message flow:
@@ -30,61 +34,23 @@ The following table illustrates the message flow:
 
 ## Known Issues
 
-- **Attitude Estimation**: There seems to be a problem with abnormal attitudes and high-speed rapid rotation.
-- **Performance**: It's crucial to run X-Plane at a high FPS since the PX4 EKF requires fast updating of sensor data.
-- **Yaw PID Tuning**: The Quadricopter drone's yaw gain can be challenging to tune. It almost flies, but the performance in yaw is not very good. If you manage to tune it better, please share your gains.
+- As of January 2024, I've fixed previous issues with attitude estimation. Performance remains key; ensure X-Plane runs at high FPS for optimal EKF performance. Stay tuned for more updates as we progress.
+- If you find any bug, please report it...
+
+
+
+### New Configurations
+
+The `config.ini` file has been significantly improved to facilitate the easy definition of custom airframes. The plugin now comes with support for the Cessna 172, Alia-250, and Ehang 184, complete with preset parameters for immediate use. To utilize these new configurations, you can wait for the [pull request](https://github.com/PX4/PX4-Autopilot/pull/22493) to be merged into the official PX4 codebase, or use my forked repository and branch temporarily.
+
+For those who need to use the default `make px4_sitl none_iris` command, be aware that manual updating of parameter files is required, and this approach may not support fixed-wing and VTOL models effectively. Once the pull request is merged, you'll be able to use dedicated commands for each of the supported models — ehang184, alia250, and cessna172 — streamlining your simulation setup process.
+
 
 
 ## Usage Guide
 
 follow the <a href="https://alireza787b.github.io/px4xplane/v1.html" target="_blank"> step-by-step instruction </a>.
 
-
-### For Users: Installation and Setup
-
-1. **Download the Plugin**:
-   - Download the precompiled binary from the [Releases](https://github.com/alireza787b/px4xplane/releases) page.
-
-2. **Plugin Installation**:
-   - After downloading, you should see a `px4xplane` folder containing a `64` folder that contains a  `.xpl` file. This is the plugin file.
-   - To install the plugin for a specific drone, copy the `px4xplane` folder to the plugins folder of the drone in your X-Plane installation. The path should look like this: `X-Plane Installation Folder/Aircraft/Your Drone/Plugins`.
-   - If you want to install the plugin globally for all aircraft in X-Plane, copy the `px4xplane` folder to the global plugins folder. The path should look like this: `X-Plane Installation Folder/Resources/Plugins`.
-   - Please note that installing the plugin globally will make it available for all aircraft, but it may not work correctly with all of them.
-
-3. **PX4 SITL Setup**:
-   - Clone and build `PX4-Autopilot` and the SITL Engine. Follow the instructions provided by [PX4](https://docs.px4.io/main/en/simulation/).
-   - If cloning on WSL (or another system), change the hostname IP from `localhost` to where X-Plane is running:
-     ```bash
-     export PX4_SIM_HOSTNAME=XPLANE_SYSTEM_IP
-     ```
-
-4. **Running PX4 SITL**:
-   - Run the default `iris` (or your custom airframe) with `none_` to indicate that you'll connect your own simulator:
-     ```bash
-     make px4_sitl none_iris
-     ```
-
-5. **X-Plane Connection**:
-   - Launch X-Plane and load your drone.
-   - Navigate to `plugin -> px4xplane -> Connect to SITL`. The simulator should now be connected.
-   - Under `plugin -> px4xplane -> Show Settings`, you can view live data and status.
-
-6. **Firewall Configuration**:
-   - Ensure that port `4560 TCP` is not blocked by your firewall on both systems. If running on the same system, this is typically not an issue.
-
-7. **QGroundControl (QGC) Connection**:
-   - If running on the same system, QGC should auto-connect to the drone on X-Plane.
-   - For WSL or another system, open QGroundControl, navigate to `Application Settings -> Comm Links`, and add a new connection to UDP port `18570`. Click `connect`, and it should work.
-
-
-
-
-8. **Importing Parameters**:
-   - Tuning the PID for the quadricopter can be challenging. To assist with this, I have included a parameter file `quadricopter_px4.params` in the `config` folder. You can import these parameters using QGroundControl to get a good starting point for your tuning process.
-
-
-9. **Configuring Motor Mappings**:
-   - The plugin uses a `config.ini` file for motor mappings and airframe configuration. This file should be placed in the same directory as the `.xpl` file. You can customize the motor arrangement and select the airframe type (multirotor or fixed-wing) through this file. For detailed instructions, refer to the "Configuration and Motor Arrangement" section above. If you are using quadricopter and imported the `quadricopter_px4.params` everything is done for you no need to do any steps.
 
 ### For Developers: Building from Source
 
@@ -100,7 +66,7 @@ follow the <a href="https://alireza787b.github.io/px4xplane/v1.html" target="_bl
      ```
 
 2. **Building the Plugin**:
-   - Follow the instructions in the `BUILDING.md` file to build the plugin from source. (will be added)
+   - Follow the instructions in the `BUILDING.md` file to build the plugin from the source. (will be added)
 
 
 
@@ -108,22 +74,22 @@ follow the <a href="https://alireza787b.github.io/px4xplane/v1.html" target="_bl
 
 The plugin now supports flexible motor arrangements and configuration changes through a `config.ini` file located alongside the `.xpl` file. This enhancement allows users to easily switch between different airframe types (note: fixed-wing configurations are currently not supported) and customize motor mappings without modifying the source code.
 
-### Customizing Motor Layout
-
-To customize the motor layout,instead of changing `config.ini`, I recommend using QGroundControl (QGC) to adjust the dynamic mixing. This can be done under `Vehicle Settings -> Actuators`. Arrange the motor positions and directions to match your X-Plane airframe.
-Remember, in X-Plane, the positive direction is back and right, whereas in PX4, the positive is forward and right. Consequently, the rotation direction (CW & CCW) might appear reversed between PX4 and X-Plane.
 
 ### X-Plane Aircraft Setup
 
-I recommend you use quadricopter air taxi model. It is basically a quad config but the graphics just show coaxial X8 Configuration. 
-For users operating a quadricopter, a parameter file (`quadricopter_px4.params`) is provided in the `config` folder. This file pre-configures all necessary settings, simplifying the setup process for this specific airframe.
+For the best experience, we recommend using the following aircraft models with our plugin:
 
-https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/
+- **Quadcopter (Ehang 184)**: Utilize the quadricopter air taxi model, which graphically displays a coaxial X8 configuration. Download the model that aligns with our plugin from [X-Plane.org](https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/). A parameter file (`quadricopter_px4.params`) is included in the `config` folder to pre-configure all necessary settings for this airframe.
+
+- **Quad Plane VTOL (Alia-250)** and **Fixed-Wing (Cessna 172)**: These are default aircraft in X-Plane 12, and our plugin supports them out of the box. Simply select them within X-Plane for immediate use with PX4 SITL.
+
+Remember, for an optimized simulation experience, ensure that you are using the correct aircraft model with the corresponding parameters provided.
+
 
 
 ## Status
 
-As of November 2023, This project is currently under development.
+As of January 2024, This project is currently under development.
 
 ## Contribution and Support
 
