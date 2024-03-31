@@ -23,6 +23,10 @@
 #include "DataRefManager.h"
 #include <ConfigManager.h>
 
+#if LIN || APL
+#define INVALID_SOCKET -1
+#endif
+
 
 static bool connected = false;
 std::map<int, int> ConnectionManager::motorMappings;

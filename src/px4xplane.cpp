@@ -23,8 +23,7 @@
 #endif
 #if LIN || APL
 #include <unistd.h>  // For TCP/IP
-#include <sys/socket
-.h> // For TCP/IP
+#include <sys/socket.h> // For TCP/IP
 #include <netinet/in.h> // For TCP/IP
 #endif
 #include "MAVLinkManager.h"
