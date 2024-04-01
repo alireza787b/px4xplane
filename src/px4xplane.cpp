@@ -35,6 +35,10 @@
 
 static XPLMWindowID g_window;
 static XPLMMenuID g_menu_id;
+static XPLMMenuID airframesMenu; // Global variable for the airframes submenu
+static int g_airframesMenuItemIndex; // Global variable to store the index of the airframes submenu
+
+
 // Global variable to hold our command reference
 static XPLMCommandRef toggleEnableCmd;
 
@@ -51,6 +55,14 @@ void create_menu();
 void toggleEnable();
 void updateMenuItems();
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
+
+
+// Debugging function - Logs a message to the X-Plane log
+void debugLog(const char* message) {
+	XPLMDebugString("px4xplane: ");
+	XPLMDebugString(message);
+	XPLMDebugString("\n");
+}
 
 
 
@@ -164,6 +176,7 @@ PLUGIN_API int XPluginStart(
 	XPLMRegisterFlightLoopCallback(MyFlightLoopCallback, -1.0f, NULL);
 
 
+	debugLog("Plugin started successfully");
 
 
 	return 1;
@@ -206,17 +219,60 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	drawFooter(l, b, col_white);
 }
 
+// Function to refresh the airframes submenu to indicate the active airframe.
+void refreshAirframesMenu() {
+	// Clear the current submenu items.
+	XPLMClearAllMenuItems(airframesMenu);
 
-
-
-void menu_handler(XPLMMenuID in_menu, void* in_item_ref) {
-    if (in_item_ref == (void*)0) { // Show Window item
-        XPLMSetWindowIsVisible(g_window, 1);
-    }
-    else if (in_item_ref == (void*)1) { // Toggle enable
-        toggleEnable();
-    }
+	// Repopulate the submenu with updated airframe names and active status.
+	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+	for (const std::string& name : airframeNames) {
+		// Append each airframe to the submenu and mark the active one.
+		XPLMAppendMenuItem(airframesMenu, (name + (name == ConfigManager::getActiveAirframeName() ? " *" : "")).c_str(), (void*)new std::string(name), 1);
+	}
 }
+
+
+void menu_handler(void* in_menu_ref, void* in_item_ref) {
+	//TODO: Remember here there is a problem. handler cant find when we click on airframes. now I did a hack and put that in else when it is not part of main list menu. we should fix this later.
+	debugLog("Menu handler called");
+
+	if (in_menu_ref == (void*)g_menu_id) {
+		if ((int)(intptr_t)in_item_ref == g_airframesMenuItemIndex) {
+			debugLog("Airframes submenu selected");
+			// The submenu itself was clicked; specific handling if needed
+		}
+		else {
+			// Handling other main menu items
+			if (in_item_ref == (void*)0) {
+				XPLMSetWindowIsVisible(g_window, 1);
+				debugLog("Show Data menu item selected");
+			}
+			else if (in_item_ref == (void*)1) {
+				toggleEnable();
+				debugLog("Toggle enable menu item selected");
+			}
+		}
+	}
+	else {
+		// Handling airframes submenu interactions
+		debugLog("Entered airframe submenu handler");
+
+		int index = (int)(intptr_t)in_item_ref;
+		std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+
+		if (index >= 0 && index < airframeNames.size()) {
+			const std::string& selectedAirframe = airframeNames[index];
+			debugLog(("Airframe selected: " + selectedAirframe).c_str());
+
+			ConfigManager::setActiveAirframeName(selectedAirframe);
+			refreshAirframesMenu();
+		}
+	}
+	
+}
+
+
 
 void toggleEnable() {
 	XPLMDebugString("px4xplane: toggleEnable() called.\n");
@@ -267,26 +323,64 @@ std::vector<float> getDataRefFloatArray(const char* dataRefName) {
 
 
 
-
 void create_menu() {
+	debugLog("Creating plugin menu");
+
 	int menu_container_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "PX4 X-Plane", NULL, 1);
 	g_menu_id = XPLMCreateMenu("px4xplane", XPLMFindPluginsMenu(), menu_container_idx, menu_handler, NULL);
 
-	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	// Save the index of the airframes submenu in the main menu
+	g_airframesMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Airframes", NULL, 1);
+	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, NULL);
 
+
+	debugLog("Airframes submenu created");
+
+	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+	std::string activeAirframe = ConfigManager::getActiveAirframeName();
+	for (size_t i = 0; i < airframeNames.size(); ++i) {
+		const std::string& name = airframeNames[i];
+		std::string menuItemName = name;
+		if (name == activeAirframe) {
+			menuItemName += " *";
+		}
+		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
+	}
+
+	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
 	XPLMAppendMenuSeparator(g_menu_id);
+	XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);
+	XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
 
-	XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);  // Update this dynamically based on connection state
-	XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);  // Update this dynamically based on connection state
-	updateMenuItems(); // Update menu items after toggling connection
+	updateMenuItems();
 
+	debugLog("Menu created successfully");
 }
 
+
 void updateMenuItems() {
-	XPLMClearAllMenuItems(g_menu_id); // Clear all existing items
-	XPLMAppendMenuItem(g_menu_id, "Show Settings", (void*)0, 1);
+	XPLMClearAllMenuItems(g_menu_id);
+
+	// Recreate the main menu items
+	// Important: Update the airframesMenuItemIndex to reflect the new index after clearing
+	g_airframesMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Airframes", NULL, 1);
+	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, NULL);
+
+	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+	std::string activeAirframe = ConfigManager::getActiveAirframeName();
+	for (size_t i = 0; i < airframeNames.size(); ++i) {
+		const std::string& name = airframeNames[i];
+		std::string menuItemName = name;
+		if (name == activeAirframe) {
+			menuItemName += " *";
+		}
+		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
+	}
+
+	// Recreate the remaining main menu items
+	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
 	XPLMAppendMenuSeparator(g_menu_id);
 	if (ConnectionManager::isConnected()) {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
@@ -295,6 +389,15 @@ void updateMenuItems() {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);
 	}
 }
+
+
+// Placeholder function for handling airframe selection commands.
+void handleAirframeSelection(const std::string& airframeName) {
+	// TODO: Implement the logic for when a user selects an airframe from the "Airframes" submenu.
+	debugLog(("Airframe selected: " + airframeName).c_str());
+	// Perform necessary actions to activate the selected airframe.
+}
+
 
 
 // Constants for update frequencies (in seconds)
@@ -393,6 +496,7 @@ PLUGIN_API void XPluginStop(void) {
 	if (ConnectionManager::isConnected()) {
 		toggleEnable();
 	}
+
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 #if IBM
 	ConnectionManager::cleanupWinSock();

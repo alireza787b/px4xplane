@@ -461,3 +461,104 @@ std::vector<int> ConfigManager::parseMotorIndices(const std::string& indicesStr)
     }
     return indices;
 }
+
+
+/**
+ * @brief Retrieves a list of airframe configuration names from the config.ini file.
+ *
+ * This function reads the config.ini file and extracts the names of all sections,
+ * which represent different airframe configurations. It uses the SimpleIni library
+ * to parse the INI file and collect the section names. Each section name is assumed
+ * to correspond to a unique airframe configuration.
+ *
+ * The function is static and can be called without an instance of ConfigManager.
+ * It utilizes the getConfigFilePath method to resolve the path to the config.ini file.
+ *
+ * Usage example:
+ *     std::vector<std::string> airframes = ConfigManager::getAirframeLists();
+ *     for (const auto& airframe : airframes) {
+ *         // Process each airframe name
+ *     }
+ *
+ * @return A vector of strings, each representing the name of an airframe configuration.
+ *         Returns an empty vector if the config.ini file cannot be read or if there are no sections.
+ */
+std::vector<std::string> ConfigManager::getAirframeLists() {
+    CSimpleIniA ini;
+    ini.SetUnicode();
+    ini.LoadFile(getConfigFilePath().c_str());
+
+    CSimpleIniA::TNamesDepend sections;
+    ini.GetAllSections(sections);
+
+    std::vector<std::string> airframeNames;
+    for (const auto& section : sections) {
+        // Check and ignore the default section which does not represent an airframe.
+        if (std::string(section.pItem) != "") {
+            airframeNames.push_back(section.pItem);
+        }
+    }
+
+    return airframeNames;
+}
+
+
+
+/**
+ * @brief Retrieves the name of the currently active airframe configuration.
+ *
+ * This function reads the 'config.ini' file to obtain the name of the active airframe configuration.
+ * It returns the value of the 'config_name' parameter, which indicates the currently selected airframe.
+ *
+ * @return The name of the active airframe configuration. Returns an empty string if not specified.
+ */
+std::string ConfigManager::getActiveAirframeName() {
+    CSimpleIniA ini;
+    ini.SetUnicode();
+    ini.LoadFile(getConfigFilePath().c_str());
+    return ini.GetValue("", "config_name", "");
+}
+
+/**
+ * @brief Sets the active airframe configuration to the specified name.
+ *
+ * This function updates the 'config.ini' file to set the active airframe configuration.
+ * It first checks if the specified airframe name exists in the config file. If it does,
+ * the 'config_name' parameter is updated with the new airframe name. The updated configuration
+ * is then saved back to the 'config.ini' file.
+ *
+ * @param airframeName The name of the airframe configuration to be set as active.
+ */
+void ConfigManager::setActiveAirframeName(const std::string& airframeName) {
+    CSimpleIniA ini;
+    ini.SetUnicode();
+    ini.LoadFile(getConfigFilePath().c_str());
+
+    // Check if the airframe name exists in the config
+    CSimpleIniA::TNamesDepend sections;
+    ini.GetAllSections(sections);
+    bool exists = std::any_of(sections.begin(), sections.end(), [&](const CSimpleIniA::Entry& entry) {
+        return entry.pItem == airframeName;
+        });
+
+    if (exists) {
+        ini.SetValue("", "config_name", airframeName.c_str());
+        ini.SaveFile(getConfigFilePath().c_str());
+        XPLMDebugString("px4xplane: Config File Updated.");
+
+    }
+    else {
+        XPLMDebugString(("px4xplane: Airframe name not found in config: " + airframeName + "\n").c_str());
+    }
+}
+
+
+std::string ConfigManager::getAirframeByIndex(int index) {
+    // Retrieve the list of airframes and return the one at the given index
+    std::vector<std::string> airframes = getAirframeLists();
+    if (index >= 0 && index < airframes.size()) {
+        return airframes[index];
+    }
+    return ""; // Return an empty string if the index is out of range
+}
+

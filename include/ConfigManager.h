@@ -76,6 +76,10 @@ public:
     static bool hasPropBrake(int motorIndex);
     static const int MAX_MOTORS = 8;  // Maximum possible motors in X-Plane
     static void configureMotorBrakes(const CSimpleIniA& ini);
+    static std::vector<std::string> getAirframeLists();
+    static std::string getActiveAirframeName();
+    static void setActiveAirframeName(const std::string& airframeName);
+    static std::string getAirframeByIndex(int index);
 
 
 
