@@ -37,12 +37,12 @@ OBJS = $(SRCS:.cpp=.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-    $(CXX) $(CXXFLAGS) -shared -o $@ $^ $(LIBRARY_DIRS) $(LIBS) $(FRAMEWORK_DIRS)
+	$(CXX) $(CXXFLAGS) -shared -o $@ $^ $(LIBRARY_DIRS) $(LIBS) $(FRAMEWORK_DIRS)
 
 %.o: %.cpp
-    $(CXX) $(CXXFLAGS) -c -o $@ $< $(INCLUDE_DIRS)
+	$(CXX) $(CXXFLAGS) -c -o $@ $< $(INCLUDE_DIRS)
 
 clean:
-    rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS) $(TARGET)
 
 .PHONY: all clean
