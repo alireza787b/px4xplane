@@ -1,4 +1,4 @@
-#include "ConfigReader.h"
+#include "configReader.h"
 #include <fstream>
 #include <sstream>
 
