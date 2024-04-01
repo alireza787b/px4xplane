@@ -7,3 +7,6 @@
 [submodule "lib/simpleini"]
 	path = lib/simpleini
 	url = https://github.com/brofield/simpleini.git
+[submodule "lib/Eigen"]
+	path = lib/Eigen
+	url = https://github.com/eigenteam/eigen-git-mirror.git
