@@ -96,7 +96,7 @@ private:
     static std::vector<int> parseArrayIndices(const std::string& token);
     static std::pair<float, float> parseRange(const std::string& token);
     static void parseChannelValue(const std::string& value, ActuatorConfig& config);
-     static void trimWhitespace(std::string& str);
+    static void trimWhitespace(std::string& str);
 
 
 

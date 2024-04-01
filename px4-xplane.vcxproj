@@ -181,6 +181,7 @@ copy "$(ProjectDir)config\ehang184_px4.params" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <None Include="config\config.ini" />
+    <None Include="Makefile" />
     <None Include="tests\test.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
