@@ -46,7 +46,7 @@ private:
     static void populateHILStateQuaternion(mavlink_hil_state_quaternion_t& hil_state);
     static void sendData(const mavlink_message_t& msg);
     static uint16_t mapRCChannel(float value, float min, float max);
-    static void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps_t& hil_gps);
+    static void updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps_t& hil_gps);
 
 
 };
