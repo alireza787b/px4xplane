@@ -1,7 +1,7 @@
 #include <cstdint>
-#include <Eigen/Dense>
-#include <Eigen/Geometry>
-#include <Eigen/Core>
+#include "Eigen/Dense"
+#include "Eigen/Geometry"
+#include "Eigen/Core"
 #include "../lib/mavlink/c_library_v2/common/mavlink.h"
 #include "../lib/XYZgeomag/src/XYZgeomag.hpp"
 #include <random>
