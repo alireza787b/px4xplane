@@ -4,9 +4,11 @@ UNAME_S := $(shell uname -s)
 # Compiler settings
 ifeq ($(UNAME_S),Linux)
     CXX = g++
-    LIBS = -lXPLM -lXPWidgets -lGL -lglut
+    # Adjust these library names if the actual files have version numbers or different naming conventions
+    LIBS = -lXPLM_64 -lXPWidgets_64 -lGL -lglut
     TARGET = linux.xpl
     CXXFLAGS = -std=c++17 -Wall -Wextra -pedantic -O3 -Wno-extra-qualification -DLIN=1 -DXPLM200 -DXPLM300 -DXPLM301
+    LIBRARY_DIRS = -L./lib/SDK/Libraries/Linux
 else
     CXX = clang++
     LIBS = -framework XPLM -framework XPWidgets
@@ -17,8 +19,6 @@ endif
 
 # Include and library paths
 INCLUDE_DIRS = -I/usr/include -I./include -I./lib/SDK/CHeaders/XPLM -I./lib/mavlink/c_library_v2/all -I./lib/simpleini -I./lib/Eigen
-
-LIBRARY_DIRS = -L./lib 
 
 # Source files
 SRCS = src/ConfigManager.cpp \
