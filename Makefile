@@ -16,7 +16,7 @@ else
 endif
 
 # Include and library paths
-INCLUDE_DIRS = -I/usr/include -I./include -I./lib/SDK/CHeaders/XPLM -I./lib/mavlink/c_library_v2/all -I./lib/simpleini
+INCLUDE_DIRS = -I/usr/include -I./include -I./lib/SDK/CHeaders/XPLM -I./lib/mavlink/c_library_v2/all -I./lib/simpleini -I./lib/Eigen
 
 LIBRARY_DIRS = -L./lib 
 
