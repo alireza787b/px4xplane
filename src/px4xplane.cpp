@@ -76,7 +76,7 @@ int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int co
 	char buf[512];
 	int droneConfigOffset = 20; // Adjust this offset as needed
 
-	
+
 
 	// Get the formatted drone configuration string
 	std::string droneConfigStr = DataRefManager::GetFormattedDroneConfig();
@@ -185,9 +185,9 @@ PLUGIN_API int XPluginStart(
 // Define a handler for the command like this
 int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefcon)
 {
-    if (inPhase == xplm_CommandBegin)
-        toggleEnable(); // Call your function to toggle enable/disable
-    return 0;
+	if (inPhase == xplm_CommandBegin)
+		toggleEnable(); // Call your function to toggle enable/disable
+	return 0;
 }
 
 void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
@@ -212,7 +212,7 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 	lineOffset = DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
 
 	// Draw Actual Throttle
-	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset+20);
+	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset + 20);
 
 	// Draw Footer
 	drawFooter(l, b, col_white);
@@ -268,7 +268,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			refreshAirframesMenu();
 		}
 	}
-	
+
 }
 
 
@@ -504,4 +504,3 @@ PLUGIN_API void XPluginStop(void) {
 	// ...
 	XPLMDebugString("px4xplane: Plugin stopped\n");
 }
-

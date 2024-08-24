@@ -14,6 +14,7 @@
 #include <ConfigManager.h>
 #define M_PI 3.14
 #include <chrono>
+#include <FilterUtils.h>
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
 	// Position Information
@@ -78,6 +79,11 @@ std::vector<DataRefItem> DataRefManager::dataRefs = {
  */
 Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
 
+
+// Initialize static variables for previous filtered values
+float DataRefManager::prev_xacc = 0.0f;
+float DataRefManager::prev_yacc = 0.0f;
+float DataRefManager::prev_zacc = -9.81f;
 
 
 /**
@@ -642,6 +648,32 @@ void DataRefManager::applyBrake(int motorIndex, bool enable) {
 	else {
 		// Log an error if the DataRefs were not found
 		XPLMDebugString(("px4xplane: Failed to find failure DataRefs for motor " + std::to_string(motorIndex) + "\n").c_str());
+	}
+}
+
+
+
+/**
+ * @brief Applies low-pass filtering to the accelerometer data if filtering is enabled.
+ *
+ * This function checks the configuration to see if filtering is enabled. If it is,
+ * it applies the low-pass filter to the accelerometer data and updates the previous
+ * filtered values. If filtering is disabled, it simply returns the raw data.
+ *
+ * @param raw_value The raw accelerometer value.
+ * @param prev_filtered_value The previous filtered value.
+ * @return The filtered or raw accelerometer value.
+ */
+float DataRefManager::applyFilteringIfNeeded(float raw_value, float& prev_filtered_value) {
+	if (ConfigManager::getConfig().filter_accel_enabled) {
+		float alpha = ConfigManager::getConfig().accel_filter_alpha;
+		float filtered_value = lowPassFilter(raw_value, prev_filtered_value, alpha);
+		prev_filtered_value = filtered_value;
+		return filtered_value;
+	}
+	else {
+		// If filtering is disabled, return the raw value
+		return raw_value;
 	}
 }
 

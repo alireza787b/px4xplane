@@ -5,7 +5,7 @@
 #include "XPLMUtilities.h"
 #include <tuple>  // for std::tuple
 #include <ConfigManager.h>
-
+#include "FilterUtils.h"
 
 
 // Define and initialize the static member
@@ -20,7 +20,7 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.001f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.0001f);
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.00001f);
 
 
@@ -415,14 +415,21 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
  * @brief Sets the acceleration data in the HIL_SENSOR message.
  *
  * This function retrieves the aircraft's current acceleration forces from the simulation,
- * multiplies them by the gravitational constant, and sets them in the provided HIL_SENSOR message.
+ * applies optional low-pass filtering, multiplies them by the gravitational constant,
+ * and sets them in the provided HIL_SENSOR message.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the acceleration data will be set.
  */
 void MAVLinkManager::setAccelerationData(mavlink_hil_sensor_t& hil_sensor) {
-    hil_sensor.xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
-    hil_sensor.yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
-    hil_sensor.zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
+    // Retrieve raw accelerometer data from X-Plane
+    float raw_xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
+    float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
+    float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
+
+    // Apply filtering if enabled, otherwise use raw data
+    hil_sensor.xacc = DataRefManager::applyFilteringIfNeeded(raw_xacc, DataRefManager::prev_xacc);
+    hil_sensor.yacc = DataRefManager::applyFilteringIfNeeded(raw_yacc, DataRefManager::prev_yacc);
+    hil_sensor.zacc = DataRefManager::applyFilteringIfNeeded(raw_zacc, DataRefManager::prev_zacc);
 }
 
 /**
@@ -532,7 +539,7 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
     hil_gps.eph = static_cast<uint16_t>(20); // Assuming high accuracy due to simulation environment
     hil_gps.epv = static_cast<uint16_t>(20);
-    hil_gps.satellites_visible = static_cast<uint16_t>(14);; // Assuming 14 satellites visible in good conditions
+    hil_gps.satellites_visible = static_cast<uint16_t>(16);; // Assuming 16 satellites visible in good conditions
 }
 
 /**

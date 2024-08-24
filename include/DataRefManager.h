@@ -65,6 +65,7 @@ public:
     static float calculateDistance(const GeodeticPosition& pos1, const GeodeticPosition& pos2);
     static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
     static void initializeMagneticField();
+    static float applyFilteringIfNeeded(float raw_value, float& prev_filtered_value);
 
     static std::string GetFormattedDroneConfig();
     static float scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax);
@@ -73,6 +74,12 @@ public:
     static float lastLongitude;
     static float lastAltitude;
     static GeodeticPosition lastPosition;
+
+    // Add static variables to hold previous filtered values
+    static float prev_xacc;
+    static float prev_yacc;
+    static float prev_zacc;
+
     static constexpr float UPDATE_THRESHOLD=1000;  // Define a threshold for position change in meters
     static std::bitset<8> motorBrakeStates; // Tracks the current brake states
     static void checkAndApplyPropBrakes();

@@ -29,6 +29,8 @@ public:
     static HILActuatorControlsData hilActuatorControlsData; // Public variable to store the received data
 
 
+
+
 private:
     static std::random_device rd;
     static std::mt19937 gen;
@@ -48,5 +50,5 @@ private:
     static uint16_t mapRCChannel(float value, float min, float max);
     static void updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps_t& hil_gps);
 
-
+    
 };
