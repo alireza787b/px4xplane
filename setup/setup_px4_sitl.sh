@@ -6,6 +6,10 @@ BRANCH_NAME="px4xplane-sitl"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME/PX4-Autopilot-Me"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
+DEFAULT_FALLBACK_IP="127.0.0.1"  # Fallback IP if no IP is detected or entered
+
+# === Airframe Options for SITL ===
+PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
 
 # === Check for Custom Installation Directory Parameter ===
 if [ -n "$1" ]; then
@@ -34,7 +38,7 @@ echo "This script helps you set up PX4 SITL with X-Plane integration."
 echo "It will clone the repository, install dependencies, and build SITL."
 echo "You will need to download the PX4 X-Plane plugin from the release"
 echo "section of this repository: https://github.com/alireza787b/px4xplane"
-echo "Please ensure to follow the README instructions."
+echo "Please ensure to follow the README instructions and video tutorials."
 echo "This is a temporary setup until the integration is merged officially with PX4."
 echo "----------------------------------------------------------"
 echo "Press Enter to start the process (default: continue in 5 seconds)..."
@@ -106,21 +110,24 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     
     if [ -f "$CONFIG_FILE" ]; then
         source "$CONFIG_FILE"
-        echo "Detected previous configuration. Use stored Windows IP ($PX4_SIM_HOSTNAME) or enter a new one (press Enter to keep default: $PX4_SIM_HOSTNAME in 5 seconds):"
+        echo "Detected previous configuration. Use stored Windows IP ($PX4_SIM_HOSTNAME) or enter a new one (press Enter to keep default: $PX4_SIM_HOSTNAME in 10 seconds):"
     else
         echo "Auto-detected Windows IP: $AUTO_DETECTED_IP"
         PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
     fi
     
-    read -t 5 -r NEW_IP
+    echo "Tip: You can find your Windows IP by opening PowerShell and typing 'ipconfig'. Look for the IP address under the section titled 'Ethernet adapter vEthernet (WSL)' or something similar."
+    echo "Please enter the IP address if you want to change the detected one (press Enter to accept detected IP or enter a new one):"
+    
+    read -t 10 -r NEW_IP
     if [ -n "$NEW_IP" ]; then
         PX4_SIM_HOSTNAME="$NEW_IP"
     fi
     
-    # If no IP is set, default to localhost
+    # If no IP is set, default to the predefined fallback IP (localhost or any other)
     if [ -z "$PX4_SIM_HOSTNAME" ]; then
-        echo "No IP detected. Defaulting to localhost (this only works if X-Plane is also running on Linux)."
-        PX4_SIM_HOSTNAME="localhost"
+        echo "No IP detected. Falling back to predefined IP: $DEFAULT_FALLBACK_IP (this only works if X-Plane is also running on Linux)."
+        PX4_SIM_HOSTNAME="$DEFAULT_FALLBACK_IP"
     fi
     
     # Ensure config directory exists and save the configuration
@@ -135,8 +142,7 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
 fi
 
 # === Platform Selection and Build ===
-PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
-echo "Please select the platform to build (default: first option in 10 seconds):"
+echo "Please select the platform to build:"
 select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
     if [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
         echo "You have selected $PLATFORM. Building..."
@@ -146,7 +152,10 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
     else
         echo "Invalid selection. Please choose a valid platform."
     fi
-done < <(sleep 10; echo 1)
+done
+
+echo "Make sure that the selected airframe is defined and selected inside X-Plane's menu and loaded."
+echo "Follow the video tutorials and instructions for more guidance."
 
 # === Final Completion Message ===
 echo "Script completed. Summary:"
