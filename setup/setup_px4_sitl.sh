@@ -14,6 +14,12 @@ else
     CLONE_PATH="$DEFAULT_CLONE_PATH"
 fi
 
+# === Create the Directory if it Doesn't Exist ===
+if [ ! -d "$CLONE_PATH" ]; then
+    echo "Directory $CLONE_PATH does not exist. Creating it..."
+    mkdir -p "$CLONE_PATH"
+fi
+
 # === Initial Setup ===
 echo "Welcome to the PX4 SITL Setup Script"
 echo "This script will clone the repository, set up dependencies, and build the specified SITL platform."
@@ -30,7 +36,7 @@ if ! command -v git &> /dev/null; then
 fi
 
 # === Clone the Repository ===
-if [ ! -d "$CLONE_PATH" ]; then
+if [ ! -d "$CLONE_PATH/.git" ]; then
     echo "Cloning the repository from $REPO_URL into $CLONE_PATH..."
     git clone --recursive "$REPO_URL" "$CLONE_PATH"
 else
