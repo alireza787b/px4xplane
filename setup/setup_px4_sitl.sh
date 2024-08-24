@@ -136,9 +136,8 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         mkdir -p "$CONFIG_DIR"
     fi
     
-    # Save both the IP and the last selected platform in the config file
+    # Save both the IP in the config file
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
-    echo "LAST_PLATFORM=${LAST_PLATFORM:-}" >> "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
 fi
