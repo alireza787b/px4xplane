@@ -5,13 +5,15 @@ REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME/PX4-Autopilot-Me"
-CONFIG_FILE="$HOME/.px4sitl_config"
+DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 
 # === Check for Custom Installation Directory Parameter ===
 if [ -n "$1" ]; then
     CLONE_PATH="$1/PX4-Autopilot-Me"
+    CONFIG_FILE="$1/.px4sitl_config"
 else
     CLONE_PATH="$DEFAULT_CLONE_PATH"
+    CONFIG_FILE="$DEFAULT_CONFIG_FILE"
 fi
 
 # === Create the Directory if it Doesn't Exist ===
@@ -35,8 +37,8 @@ echo "section of this repository: https://github.com/alireza787b/px4xplane"
 echo "Please ensure to follow the README instructions."
 echo "This is a temporary setup until the integration is merged officially with PX4."
 echo "----------------------------------------------------------"
-echo "Press Enter to start the process..."
-read -r
+echo "Press Enter to start the process (default: continue in 5 seconds)..."
+read -t 5 -r
 
 # === Prerequisites Check ===
 echo "Checking for required tools..."
@@ -83,11 +85,11 @@ echo "Updating submodules..."
 git submodule update --init --recursive
 
 # === Clean Build Options ===
-echo "Do you want to run 'make clean' to clean the build directory? Press Enter to skip or type 'y' to clean: "
-read -r CLEAN_BUILD
+echo "Do you want to run 'make clean' to clean the build directory? Press Enter to skip (default) or type 'y' to clean: "
+read -t 5 -r CLEAN_BUILD
 
-echo "Do you want to run 'make distclean' to reset the build directory? Press Enter to skip or type 'y' to reset: "
-read -r DISTCLEAN_BUILD
+echo "Do you want to run 'make distclean' to reset the build directory? Press Enter to skip (default) or type 'y' to reset: "
+read -t 5 -r DISTCLEAN_BUILD
 
 if [[ "$CLEAN_BUILD" =~ ^[Yy]$ ]]; then
     make clean
@@ -104,13 +106,13 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     
     if [ -f "$CONFIG_FILE" ]; then
         source "$CONFIG_FILE"
-        echo "Detected previous configuration. Use stored Windows IP ($PX4_SIM_HOSTNAME) or enter a new one (press Enter to keep default):"
+        echo "Detected previous configuration. Use stored Windows IP ($PX4_SIM_HOSTNAME) or enter a new one (press Enter to keep default: $PX4_SIM_HOSTNAME in 5 seconds):"
     else
         echo "Auto-detected Windows IP: $AUTO_DETECTED_IP"
         PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
     fi
     
-    read -r NEW_IP
+    read -t 5 -r NEW_IP
     if [ -n "$NEW_IP" ]; then
         PX4_SIM_HOSTNAME="$NEW_IP"
     fi
@@ -121,6 +123,12 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         PX4_SIM_HOSTNAME="localhost"
     fi
     
+    # Ensure config directory exists and save the configuration
+    CONFIG_DIR=$(dirname "$CONFIG_FILE")
+    if [ ! -d "$CONFIG_DIR" ]; then
+        mkdir -p "$CONFIG_DIR"
+    fi
+    
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
@@ -128,7 +136,7 @@ fi
 
 # === Platform Selection and Build ===
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
-echo "Please select the platform to build:"
+echo "Please select the platform to build (default: first option in 10 seconds):"
 select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
     if [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
         echo "You have selected $PLATFORM. Building..."
@@ -138,7 +146,7 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
     else
         echo "Invalid selection. Please choose a valid platform."
     fi
-done
+done < <(sleep 10; echo 1)
 
 # === Final Completion Message ===
 echo "Script completed. Summary:"
