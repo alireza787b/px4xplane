@@ -28,7 +28,7 @@ fi
 
 # === Introductory Information ===
 echo "----------------------------------------------------------"
-echo "PX4 X-Plane SITL Setup Script"
+echo "PX4 X-Plane SITL Version 2.0 Setup Script"
 echo "Author: Alireza Ghaderi"
 echo "GitHub Repo: alireza787b/px4xplane"
 echo "LinkedIn: alireza787b"
@@ -136,7 +136,9 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         mkdir -p "$CONFIG_DIR"
     fi
     
+    # Save both the IP and the last selected platform in the config file
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
+    echo "LAST_PLATFORM=${LAST_PLATFORM:-}" >> "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
 fi
@@ -146,7 +148,8 @@ echo "Please select the platform to build:"
 select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
     if [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
         echo "You have selected $PLATFORM. Building..."
-        echo "LAST_PLATFORM=$PLATFORM" > "$CONFIG_FILE"
+        LAST_PLATFORM="$PLATFORM"
+        echo "LAST_PLATFORM=$LAST_PLATFORM" >> "$CONFIG_FILE"
         make px4_sitl_default "$PLATFORM"
         break
     else
