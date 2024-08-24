@@ -182,6 +182,7 @@ copy "$(ProjectDir)config\ehang184_px4.params" "$(OutDir)"</Command>
   <ItemGroup>
     <None Include="config\config.ini" />
     <None Include="Makefile" />
+    <None Include="setup\setup_px4_sitl.sh" />
     <None Include="tests\test.py" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
