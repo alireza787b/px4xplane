@@ -20,6 +20,13 @@ if [ ! -d "$CLONE_PATH" ]; then
     mkdir -p "$CLONE_PATH"
 fi
 
+# === Reminder to Download Plugin ===
+echo "Before starting, please ensure you have downloaded and installed the PX4 X-Plane plugin from the release section of this repo:"
+echo "https://github.com/alireza787b/px4xplane"
+echo "Check the README and follow the latest instructions. This setup is a temporary fix until it is officially merged with PX4."
+echo "Press Enter to continue once you've reviewed this."
+read -r
+
 # === Initial Setup ===
 echo "Welcome to the PX4 SITL Setup Script"
 echo "This script will clone the repository, set up dependencies, and build the specified SITL platform."
@@ -73,10 +80,10 @@ echo "Updating submodules..."
 git submodule update --init --recursive
 
 # === Clean Build Options ===
-echo "Do you want to run 'make clean' to clean the build directory? [y/N]: "
+echo "Do you want to run 'make clean' to clean the build directory? Press Enter to skip or type 'y' to clean: "
 read -r CLEAN_BUILD
 
-echo "Do you want to run 'make distclean' to reset the build directory? [y/N]: "
+echo "Do you want to run 'make distclean' to reset the build directory? Press Enter to skip or type 'y' to reset: "
 read -r DISTCLEAN_BUILD
 
 if [[ "$CLEAN_BUILD" =~ ^[Yy]$ ]]; then
@@ -89,17 +96,23 @@ fi
 
 # === Network Setup for X-Plane (WSL Users) ===
 if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+    # Try to auto-detect the Windows IP from WSL
+    AUTO_DETECTED_IP=$(ip route | grep default | awk '{print $3}')
+    
     if [ -f "$CONFIG_FILE" ]; then
         source "$CONFIG_FILE"
-        echo "Detected previous configuration. Use stored Windows IP ($PX4_SIM_HOSTNAME) or enter a new one:"
+        echo "Detected previous configuration. Use stored Windows IP ($PX4_SIM_HOSTNAME) or enter a new one (press Enter to keep default):"
     else
-        echo "Please enter the IP address of your Windows machine (WSL interface IP) for X-Plane:"
+        echo "Auto-detected Windows IP: $AUTO_DETECTED_IP"
+        PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
     fi
+    
     read -r NEW_IP
     if [ -n "$NEW_IP" ]; then
         PX4_SIM_HOSTNAME="$NEW_IP"
-        echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
     fi
+    
+    echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
 fi
