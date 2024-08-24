@@ -20,19 +20,22 @@ if [ ! -d "$CLONE_PATH" ]; then
     mkdir -p "$CLONE_PATH"
 fi
 
-# === Reminder to Download Plugin ===
-echo "Before starting, please ensure you have downloaded and installed the PX4 X-Plane plugin from the release section of this repo:"
-echo "https://github.com/alireza787b/px4xplane"
-echo "Check the README and follow the latest instructions. This setup is a temporary fix until it is officially merged with PX4."
-echo "Press Enter to continue once you've reviewed this."
-read -r
-
-# === Initial Setup ===
-echo "Welcome to the PX4 SITL Setup Script"
-echo "This script will clone the repository, set up dependencies, and build the specified SITL platform."
-echo "Make sure you have a stable internet connection."
-echo "Installing to: $CLONE_PATH"
-echo "Press Enter to continue or Ctrl+C to cancel."
+# === Introductory Information ===
+echo "----------------------------------------------------------"
+echo "PX4 X-Plane SITL Setup Script"
+echo "Author: Alireza Ghaderi"
+echo "GitHub Repo: alireza787b/px4xplane"
+echo "LinkedIn: alireza787b"
+echo "Date: August 2024"
+echo "----------------------------------------------------------"
+echo "This script helps you set up PX4 SITL with X-Plane integration."
+echo "It will clone the repository, install dependencies, and build SITL."
+echo "You will need to download the PX4 X-Plane plugin from the release"
+echo "section of this repository: https://github.com/alireza787b/px4xplane"
+echo "Please ensure to follow the README instructions."
+echo "This is a temporary setup until the integration is merged officially with PX4."
+echo "----------------------------------------------------------"
+echo "Press Enter to start the process..."
 read -r
 
 # === Prerequisites Check ===
@@ -110,6 +113,12 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     read -r NEW_IP
     if [ -n "$NEW_IP" ]; then
         PX4_SIM_HOSTNAME="$NEW_IP"
+    fi
+    
+    # If no IP is set, default to localhost
+    if [ -z "$PX4_SIM_HOSTNAME" ]; then
+        echo "No IP detected. Defaulting to localhost (this only works if X-Plane is also running on Linux)."
+        PX4_SIM_HOSTNAME="localhost"
     fi
     
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
