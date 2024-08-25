@@ -7,7 +7,7 @@ UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME/PX4-Autopilot-Me"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"  # Fallback IP if no IP is detected or entered
-SCRIPT_NAME="setup_px4_sitl.sh"
+SCRIPT_NAME="px4xplane_script.sh"  # Renaming the script for clarity
 
 # === Airframe Options for SITL ===
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
@@ -37,16 +37,17 @@ else
     CONFIG_FILE="$DEFAULT_CONFIG_FILE"
 fi
 
-# === Ensure the Script is in the Target Folder ===
-if [ "$(basename "$0")" != "$SCRIPT_NAME" ]; then
-    echo "Moving script to $CLONE_PATH..."
-    mv "$0" "$CLONE_PATH/$SCRIPT_NAME"
-fi
-
 # === Create the Directory if it Doesn't Exist ===
 if [ ! -d "$CLONE_PATH" ]; then
     echo "Directory $CLONE_PATH does not exist. Creating it..."
     mkdir -p "$CLONE_PATH"
+fi
+
+# === Ensure the Script is in the Target Folder ===
+TARGET_SCRIPT_PATH="$CLONE_PATH/$SCRIPT_NAME"
+if [ "$(realpath "$0")" != "$(realpath "$TARGET_SCRIPT_PATH")" ]; then
+    echo "Copying script to $TARGET_SCRIPT_PATH..."
+    cp "$0" "$TARGET_SCRIPT_PATH"
 fi
 
 # === Introductory Information ===
@@ -172,16 +173,16 @@ if ! command -v px4xplane &> /dev/null; then
     read -t 10 -r GLOBAL_SETUP
     if [[ -z "$GLOBAL_SETUP" || "$GLOBAL_SETUP" =~ ^[Yy]$ ]]; then
         if [ -d "$HOME/bin" ]; then
-            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/bin/px4xplane"
+            ln -sf "$TARGET_SCRIPT_PATH" "$HOME/bin/px4xplane"
         elif [ -d "$HOME/.local/bin" ]; then
-            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/.local/bin/px4xplane"
+            ln -sf "$TARGET_SCRIPT_PATH" "$HOME/.local/bin/px4xplane"
         else
             mkdir -p "$HOME/.local/bin"
-            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/.local/bin/px4xplane"
+            ln -sf "$TARGET_SCRIPT_PATH" "$HOME/.local/bin/px4xplane"
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
             source "$HOME/.bashrc"
         fi
-        chmod +x "$CLONE_PATH/$SCRIPT_NAME"
+        chmod +x "$TARGET_SCRIPT_PATH"
         echo "Global access to 'px4xplane' command set up successfully."
         echo "You can now run 'px4xplane' from anywhere to execute this script."
     else
