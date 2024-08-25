@@ -1,17 +1,79 @@
 #!/bin/bash
 
-# === Script Description and Usage ===
-# This script sets up PX4 SITL with X-Plane integration by:
-# 1. Cloning the PX4 repository.
-# 2. Installing dependencies.
-# 3. Building the PX4 SITL environment.
-# 4. Optionally setting up MAVLink Router.
-# 5. Optionally setting up global access to the 'px4xplane' command.
+# === PX4 X-Plane SITL Setup Script ===
+#
+# Author: Alireza Ghaderi
+# LinkedIn: alireza787b
+# Date: August 2024
+# GitHub Repo: alireza787b/px4xplane
+#
+# === Purpose ===
+# This script automates the setup of PX4 Software-In-The-Loop (SITL) integration with X-Plane.
+# It is intended as a temporary solution until the necessary modifications are officially merged into the PX4 main repository.
+# Currently, the script clones a forked version of PX4 (https://github.com/alireza787b/PX4-Autopilot-Me.git),
+# which contains customized airframes specifically designed for X-Plane simulation.
+#
+# === Functionality ===
+# The script performs the following tasks in a sequential manner:
+# 1. Clones the PX4 repository from the forked repo (customized for X-Plane).
+# 2. Sets up the necessary dependencies by running the provided setup script (`ubuntu.sh`).
+# 3. Optionally sets up MAVLink Router, which routes MAVLink traffic to specified endpoints (typically for communication with X-Plane).
+# 4. Optionally sets up global access to the `px4xplane` command, allowing the script to be run from anywhere.
+# 5. Prompts the user to select a platform to build (e.g., specific airframes for X-Plane) and initiates the build process.
+#
+# === Key Considerations ===
+# - **Temporary Fix**: This setup is a temporary fix until the official PX4 repository includes the necessary modifications for X-Plane support.
+# - **Custom Fork**: The script clones a forked version of the PX4 repository (`alireza787b/PX4-Autopilot-Me`) that contains customized airframes for X-Plane.
+# - **MAVLink Router**: If enabled, the script installs and runs MAVLink Router to facilitate communication between PX4 SITL and X-Plane over the network.
+# - **Global Access**: The script offers the option to set up global access, making it easier to run the script from anywhere on the system by typing `px4xplane`.
+# - **Repair Mode**: A repair mode is available to force a full setup process, including pulling the latest changes from the repository and reinstalling dependencies.
+# - **Uninstall Option**: An uninstall option is provided to remove the global `px4xplane` command.
+#
+# === Usage ===
+# - **Normal Run**: Run the script without any arguments to perform a normal setup or continue an existing setup.
+#   Example: `./px4xplane_script.sh`
+# - **Custom Installation Path**: You can specify a custom installation directory as an argument.
+#   Example: `./px4xplane_script.sh ~/custom_install_path`
+# - **Repair Mode**: Use the `--repair` flag to force the script to re-run the full setup process (useful if something went wrong or needs to be reset).
+#   Example: `./px4xplane_script.sh --repair`
+# - **Uninstall**: Use the `--uninstall` flag to remove the global `px4xplane` command from your system.
+#   Example: `./px4xplane_script.sh --uninstall`
+#
+# === Customization Options ===
+# The script includes several configurable variables at the top, allowing you to customize the behavior:
+# - `REPO_URL`: URL of the forked PX4 repository to clone (currently set to `https://github.com/alireza787b/PX4-Autopilot-Me.git`).
+# - `BRANCH_NAME`: The branch of the repository to checkout (currently set to `px4xplane-sitl`).
+# - `UPSTREAM_URL`: URL of the upstream PX4 repository (used to fetch tags and pull updates).
+# - `DEFAULT_CLONE_PATH`: The default installation directory if no custom path is provided.
+# - `DEFAULT_CONFIG_FILE`: Path to the configuration file that stores user settings (such as IP address and selected platform).
+# - `DEFAULT_FALLBACK_IP`: Fallback IP address (used if the script cannot detect an IP address).
+# - `PLATFORM_CHOICES`: A list of platforms (airframes) to choose from for the SITL build.
+# - **MAVLink Router Configuration**:
+#   - `USE_MAVLINK_ROUTER`: Enable or disable MAVLink Router installation and setup.
+#   - `MAVLINK_ROUTER_INSTALL_SCRIPT_URL`: URL of the installation script for MAVLink Router.
+#   - `MAVLINK_ROUTER_COMMAND`: Command to run MAVLink Router (with IP placeholders).
+#
+# === Detailed Workflow ===
+# 1. **Initial Setup**: The script checks if the PX4 repository is already cloned and if configuration files are present.
+#    If not, it clones the repository, installs dependencies, and pulls the latest changes.
+# 2. **MAVLink Router Setup (Optional)**: If enabled, the script installs and runs MAVLink Router, which routes MAVLink traffic
+#    between PX4 SITL and the X-Plane simulator. The IP address detected by the script is used to configure the routing.
+# 3. **Global Access Setup (Optional)**: The script can set up a global `px4xplane` command, allowing the user to run the script from any directory.
+# 4. **Platform Selection and Build**: The script prompts the user to select a platform (airframe) to build and then initiates the build process for the selected platform.
+# 5. **Repair Mode**: If `--repair` is passed, the script runs the full setup process again, ensuring that everything is up-to-date and reinstalled.
+# 6. **Uninstall**: If `--uninstall` is passed, the script removes the global `px4xplane` command from the system.
+#
+# === Important Notes ===
+# - This script is primarily designed for use on Linux, particularly for WSL users running X-Plane on Windows and PX4 SITL on WSL.
+# - If MAVLink Router is enabled, the script will attempt to detect the Windows IP address on WSL, or prompt the user to enter it manually.
+# - The `--repair` option can be useful if any part of the setup encounters issues, or if the repository needs to be updated to the latest version.
+# - The script is structured to be modular, allowing for easy customization by modifying the configurable variables at the top of the script.
+#
+# === Future Considerations ===
+# Once the customized airframes and modifications are officially merged into the PX4 main repository, this script will no longer be needed.
+# The installation process would then revert to using the official PX4 repository without the need for the custom fork.
 
-# Usage:
-# - Normal run: ./px4xplane_script.sh [optional installation path]
-# - Repair mode: ./px4xplane_script.sh --repair [optional installation path]
-# - Uninstall: ./px4xplane_script.sh --uninstall
+
 
 # === Configurable Variables ===
 REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
@@ -233,6 +295,15 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         highlight "Running MAVLink Router: $MAVLINK_ROUTER_CMD"
         $MAVLINK_ROUTER_CMD &
         MAVLINK_ROUTER_PID=$!
+
+        # Provide additional instructions and delay for better visibility
+        highlight "MAVLink Router is now running. You can connect to the following endpoints from your Windows machine:"
+        echo " - $PX4_SIM_HOSTNAME:14540"
+        echo " - $PX4_SIM_HOSTNAME:14550"
+        echo " - $PX4_SIM_HOSTNAME:14569"
+        echo " "
+        highlight "Make sure to configure these endpoints in your X-Plane setup as needed."
+        sleep 10  # Allow the user time to read the information
     fi
 fi
 
