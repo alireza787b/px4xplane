@@ -5,19 +5,54 @@ REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME/PX4-Autopilot-Me"
-DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"  # Fallback IP if no IP is detected or entered
+SCRIPT_NAME="px4xplane"  # Name for the global script
 
 # === Airframe Options for SITL ===
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
 
+# === Functions ===
+uninstall_px4xplane() {
+    echo "Uninstalling px4xplane..."
+
+    # Remove the global script
+    if [ -f "/usr/local/bin/$SCRIPT_NAME" ]; then
+        sudo rm "/usr/local/bin/$SCRIPT_NAME"
+        echo "Removed global command from /usr/local/bin."
+    elif [ -f "$HOME/bin/$SCRIPT_NAME" ]; then
+        rm "$HOME/bin/$SCRIPT_NAME"
+        echo "Removed global command from $HOME/bin."
+    fi
+
+    # Remove the installation directory
+    if [ -d "$CLONE_PATH" ]; then
+        rm -rf "$CLONE_PATH"
+        echo "Removed installation directory: $CLONE_PATH."
+    fi
+
+    echo "px4xplane uninstalled successfully."
+    exit 0
+}
+
+# === Check for Uninstall Flag ===
+if [[ "$1" == "--uninstall" ]]; then
+    # Ensure the configuration file exists to find the installation path
+    if [ -f "$DEFAULT_CLONE_PATH/px4xplane_config" ]; then
+        source "$DEFAULT_CLONE_PATH/px4xplane_config"
+        CLONE_PATH="${INSTALL_PATH:-$DEFAULT_CLONE_PATH}"
+    else
+        CLONE_PATH="$DEFAULT_CLONE_PATH"
+    fi
+    uninstall_px4xplane
+fi
+
 # === Check for Custom Installation Directory Parameter ===
-if [ -n "$1" ]; then
+if [ -n "$1" ] && [[ "$1" != "--uninstall" ]]; then
     CLONE_PATH="$1/PX4-Autopilot-Me"
-    CONFIG_FILE="$1/.px4sitl_config"
+    CONFIG_FILE="$1/px4xplane_config"
 else
     CLONE_PATH="$DEFAULT_CLONE_PATH"
-    CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+    CONFIG_FILE="$DEFAULT_CLONE_PATH/px4xplane_config"
 fi
 
 # === Create the Directory if it Doesn't Exist ===
@@ -136,8 +171,10 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         mkdir -p "$CONFIG_DIR"
     fi
     
-    # Save both the IP in the config file
+    # Save both the IP and the last selected platform in the config file
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
+    echo "INSTALL_PATH=$CLONE_PATH" >> "$CONFIG_FILE"
+    echo "LAST_PLATFORM=${LAST_PLATFORM:-}" >> "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
 fi
@@ -166,5 +203,31 @@ echo "- Dependencies installed"
 echo "- Submodules updated"
 echo "- Platform built: $PLATFORM"
 echo "You can now proceed with running the SITL simulation."
+
+# === Install Script Globally ===
+echo "Do you want to make the 'px4xplane' command globally available? (y/n)"
+read -t 5 -r INSTALL_GLOBAL
+
+if [[ "$INSTALL_GLOBAL" =~ ^[Yy]$ ]]; then
+    echo "Installing script globally..."
+
+    # Determine the destination for the global script
+    if [ -d "/usr/local/bin" ]; then
+        INSTALL_DIR="/usr/local/bin"
+    elif [ -d "$HOME/bin" ]; then
+        INSTALL_DIR="$HOME/bin"
+    else
+        echo "Could not find a suitable directory in PATH for installation."
+        exit 1
+    fi
+
+    # Copy or symlink the script to the global directory
+    cp "$0" "$INSTALL_DIR/$SCRIPT_NAME"
+    chmod +x "$INSTALL_DIR/$SCRIPT_NAME"
+
+    echo "'px4xplane' is now globally available. You can run it from anywhere."
+else
+    echo "Skipping global installation."
+fi
 
 # === End of Script ===
