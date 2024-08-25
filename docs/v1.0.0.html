@@ -1,326 +1,151 @@
-﻿<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PX4 Setup Guide with X-Plane and QGroundControl</title>
-    <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #fff;
-        }
+﻿# PX4 with X-Plane and QGroundControl Setup Guide (v2.0.0, August 2024)
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f9f9f9;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-        }
+![YouTube Video Coming Soon](https://via.placeholder.com/900x500.png?text=YouTube+Video+Coming+Soon)
 
-        h1, h2, h3 {
-            color: #3079ed;
-            margin-bottom: 15px;
-        }
+Watch full setup guide and demonstration on YouTube: [PX4 X-Plane Plugin Tutorial](https://www.youtube.com/watch?v=aRJxsnf24k4).
 
-        p, li {
-            font-size: 1.1em;
-        }
+## Table of Contents
 
-        nav {
-            text-align: center;
-            padding: 10px;
-        }
+- [Download and Install Softwares](#download-and-install-softwares)
+- [Setting Up the Environment](#setting-up-the-environment)
+- [Clone and Build PX4](#clone-and-build-px4)
+- [Configuration](#configuration)
+- [Additional Tips](#additional-tips)
 
-            nav a {
-                padding: 10px 15px;
-                display: inline-block;
-                margin: 0 5px;
-                border-radius: 5px;
-                transition: background-color 0.3s, text-decoration 0.3s;
-                color: #3079ed;
-                text-decoration: none;
-            }
+---
 
-                nav a:hover {
-                    background-color: #f2f2f2;
-                    text-decoration: none; /* Ensures no underline on hover */
-                }
+## Download and Install Softwares
 
-        /* Typography */
-         p, li {
-            font-size: 1.1em; /* Adjust as needed */
-        }
+1. **X-Plane**
+   Download X-Plane 11 or 12 from the [X-Plane Official Website](https://www.x-plane.com/download/).
 
-        /* Box Style for Command Blocks */
-        .command {
-            position: relative;
-            background-color: #f2f2f2;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+2. **eVTOL Air Taxi (eHang 184)**
+   You can download the eVTOL Air Taxi (eHang 184) from the [X-Plane Forum](https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/), though it's no longer required as the script supports multiple airframes.
 
+3. **QGroundControl**
+   Download QGroundControl from the [Official Download Page](https://docs.qgroundcontrol.com/master/en/getting_started/download_and_install.html).
 
-        .footer {
-            text-align: center;
-            margin-top: 50px;
-            padding: 20px;
-            background-color: #eee;
-            font-size: 0.9em;
-        }
+4. **PX4xplane Plugin**
+   Download the precompiled binary from [PX4xplane Releases](https://github.com/alireza787b/px4xplane/releases). Install the plugin in the `Resources/Plugins` folder in X-Plane.
 
-            .footer a {
-                color: #3079ed;
-            }
+---
 
-       
+## Setting Up the Environment
 
-        .copy-icon {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            cursor: pointer;
-            color: #3079ed;
-            font-size: 1.2em;
-        }
+### Windows Users - Setting Up WSL2
 
-            .copy-icon svg {
-                height: 20px;
-                width: 20px;
-            }
+WSL2 (Windows Subsystem for Linux) allows you to run a Linux environment directly in Windows. This setup is necessary for Windows users to run PX4 simulation.
 
-        ul {
-            margin-left: 20px;
-        }
+1. Ensure virtualization is enabled in your BIOS (Virtualization Technology, Intel VT-x, AMD-V).
+2. For Windows 10 (build 19041 or higher) and Windows 11, open Command Prompt **as administrator** and install WSL2 with Ubuntu 22.04:
 
+   ```bash
+   wsl --install
+   ```
 
-        .dark-mode {
-            background-color: #333;
-            color: #fff;
-        }
+3. Once you have set up WSL2 and completed the initial PX4 installation with the provided script, you can use the `px4xplane` command to build and run the simulation from anywhere in your Linux terminal.
 
-            .dark-mode .container {
-                background-color: #444;
-            }
+**Note:** The script is optimized for WSL but works on Linux too.
 
-            .dark-mode nav a {
-                color: #fff;
-            }
+---
 
-            .dark-mode .command {
-                background-color: #555;
-            }
+## Clone and Build PX4
 
-            .dark-mode .footer {
-                background-color: #222;
-            }
+### Quick Setup Using the Automated Script
 
-    </style>
-    <script>
-        window.onload = function () {
-            var commands = document.querySelectorAll('.command code');
-            commands.forEach(function (command, index) {
-                var icon = document.createElement('span');
-                icon.innerHTML = '<svg viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 4C10.8954 4 10 4.89543 10 6H14C14 4.89543 13.1046 4 12 4ZM8.53513 4C9.22675 2.8044 10.5194 2 12 2C13.4806 2 14.7733 2.8044 15.4649 4H17C18.6569 4 20 5.34315 20 7V19C20 20.6569 18.6569 22 17 22H7C5.34315 22 4 20.6569 4 19V7C4 5.34315 5.34315 4 7 4H8.53513ZM8 6H7C6.44772 6 6 6.44772 6 7V19C6 19.5523 6.44772 20 7 20H17C17.5523 20 18 19.5523 18 19V7C18 6.44772 17.5523 6 17 6H16C16 7.10457 15.1046 8 14 8H10C8.89543 8 8 7.10457 8 6Z" fill="currentColor"></path></svg>';
-                icon.className = 'copy-icon';
-                icon.onclick = function () { copyToClipboard(command.textContent); };
-                command.parentNode.appendChild(icon);
-            });
-            document.getElementById('toggleTheme').addEventListener('click', function () {
-                document.body.classList.toggle('dark-mode');
-            });
-        };
+To use the automated setup script, follow these steps:
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(function () {
-                alert("Copied to clipboard");
-            }).catch(function (error) {
-                alert("Copy failed: " + error);
-            });
+1. Open your terminal and change the directory to your home directory:
 
-        }
+   ```bash
+   cd ~
+   ```
 
-     
+2. Download the setup script using `curl`:
 
-    </script>
+   ```bash
+   curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh
+   ```
 
-</head>
-<body>
-    <div class="container">
-        <header>
-            <h1>PX4 with X-Plane and QGroundControl Setup Guide (v1.0.0-beta, Nov 2023)</h1>
-            <div style="text-align: center; margin: 20px;">
-        <a href="https://www.youtube.com/watch?v=aRJxsnf24k4" target="_blank">
-            <img src="https://img.youtube.com/vi/aRJxsnf24k4/0.jpg" alt="PX4 X-Plane Plugin Tutorial" style="width: 60%; height: auto; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);">
-        </a>
-                    <p>Watch full setup guide and demonstration on YouTube: <a href="https://www.youtube.com/watch?v=aRJxsnf24k4" target="_blank">PX4 X-Plane Plugin Tutorial</a>.</p>
+3. Run the setup script:
 
-    </div>
-            <nav>
-                <a href="#download-software">Download and Install Softwares</a> |
-                <a href="#setting-up-environment">Setting Up the Environment</a> |
-                <a href="#Clone-and-build-pX4">Clone and Build PX4</a> |
-                <a href="#configuration">Configuration</a> |
-                <a href="#additional-tips">Additional Tips</a>
-            </nav>
-            <div class="theme-toggle">
-                <button id="toggleTheme">Toggle Night/Day Mode</button>
-            </div>
+   ```bash
+   bash ./setup_px4_sitl.sh
+   ```
 
-        </header>
-        <section id="download-software">
-            <h2>Download and Install Softwares</h2>
-            <ol>
-                <li>
-                    <strong>X-Plane</strong>:
-                    <p>Download X-Plane 11 or 12 from the <a href="https://www.x-plane.com/download/" target="_blank">X-Plane Official Website</a>.</p>
-                </li>
-                <li>
-                    <strong>Quadricopter eVTOL Air Taxi</strong>:
-                    <p>Download the Quadricopter eVTOL Air Taxi from the <a href="https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/" target="_blank">X-Plane Forum</a>. Install it in the <code>Aircraft/</code> folder.</p>
-                </li>
-                <li>
-                    <strong>QGroundControl</strong>:
-                    <p>Download QGroundControl from the <a href="https://docs.qgroundcontrol.com/master/en/getting_started/download_and_install.html" target="_blank">Official Download Page</a>.</p>
-                </li>
-                <li>
-                    <strong>PX4xplane Plugin</strong>:
-                    <p>Download the precompiled binary from <a href="https://github.com/alireza787b/px4xplane/releases" target="_blank">PX4xplane Releases</a>.</p>
-                    <p>Copy the <code>px4xplane</code> folder to the specific drone's plugin folder in X-Plane: <code>X-Plane Installation Folder/Aircraft/Quadricopter-Piloted/Plugins</code></p>
-                    <p>For global installation: <code>X-Plane Installation Folder/Resources/Plugins</code></p>
-                </li>
-            </ol>
-        </section>
-        <section id="setting-up-environment">
-            <h2>Setting Up the Environment</h2>
-            <p><strong>Note for Mac and Linux Users:</strong> No extra steps are required for setting up the environment on Mac and Linux systems.</p>
+4. Once setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
 
-            <h3>Windows Users - Setting Up WSL2</h3>
-            <p>WSL2 (Windows Subsystem for Linux) allows you to run a Linux environment directly in Windows. This setup is necessary for Windows users to run PX4 simulation.</p>
-            <p>First, ensure virtualization (Virtualization Technology, Intel VT-x, AMD-V) is enabled in BIOS.</p>
-            <p>
-                For Windows 10 (build 19041 or higher) and Windows 11, Open Command Prompt <strong>as administrator</strong> and install WSL2 with Ubuntu 22.04:
-            </p>
+### Show Manual Advanced Setup (Toggle)
 
-            <div class="command">
-                <code>wsl --install</code>
-            </div>
-            <p>If you need more help or information about WSL, consider the following resources:</p>
-            <ul>
-                <li><a href="https://www.youtube.com/watch?v=iVU8ZNoMn_U" target="_blank">WSL with PX4 (Video)</a></li>
-                <li><a href="https://www.youtube.com/watch?v=YByZ_sOOWsQ" target="_blank">How to  WSL Configuration (Video)</a></li>
-            </ul>
-            <p><strong>Hint:</strong> If you want a different version of Ubuntu or need to manage multiple WSL instances, you can specify the distribution during installation using commands like <code>wsl --install -d Ubuntu-20.04</code>.</p>
+Advanced users can manually clone and set up the environment using the forked PX4 repository:
 
+```bash
+git clone https://github.com/alireza787b/PX4-Autopilot-Me.git --recursive
+```
 
+Navigate to the cloned directory:
 
-        </section>
-        <section id="Clone-and-build-pX4">
-            <h2>Clone and Build PX4</h2>
-             <p><strong>Hint:</strong> Some steps might change over time. Make sure to check latest instruction from PX4 <a href="https://docs.px4.io/main/en/simulation" target="_blank">Official Documentation</a>.</p>
-            <p>In WSL2, clone and set up the PX4 environment:</p>
-            <div class="command">
-                <code>git clone https://github.com/PX4/PX4-Autopilot.git --recursive</code>
-            </div>
-            <p>Navigate to the cloned directory:</p>
-            <div class="command">
-                <code>cd PX4-Autopilot</code>
-            </div>
-            <p>Run the setup script:</p>
-            <div class="command">
-                <code>bash ./Tools/setup/ubuntu.sh</code>
-            </div>
-            <p>Restart System:</p>
-            <p>If using WSL:</p>
-            <div class="command">
-                <code>exit</code>
-            </div>
-            <div class="command">
-                <code>wsl --shutdown</code>
-            </div>
-            <div class="command">
-                <code>wsl</code>
-            </div>
-        </section>
+```bash
+cd PX4-Autopilot-Me
+```
 
-        <section id="configuration">
+Run the setup script:
 
+```bash
+bash ./Tools/setup/ubuntu.sh
+```
 
-            
-            <h3>Run X-Plane and Load Drone</h3>
-            <p>Start X-Plane and load the Quadricopter eVTOL Air Taxi.</p>
+Follow the regular PX4 WSL setup instructions, replacing the official repository with the forked one. Once set up, you can build the desired airframes with commands like:
 
-            <h3>Configure PX4 SITL</h3>
-            <p>In Windows Terminal, check your IP address:(eg. 172.21.144.1)</p>
-            <div class="command">
-                <code>ipconfig</code>
-            </div>
-            <p>In the WSL Terminal and inside the PX4-Autopilot, Set the PX4 simulation hostname with your IP:</p>
-            <div class="command">
-                <code>export PX4_SIM_HOSTNAME=172.21.144.1</code>
-            </div>
-            <p>Start the simulation:</p>
-            <div class="command">
-                <code>make px4_sitl none_iris</code>
-            </div>
+```bash
+make px4_sitl xplane_ehang184
+```
 
-            <h2>Configuration</h2>
-            
-            
-            <h3>Set Up QGroundControl</h3>
-            <p>For direct connection on Mac/Linux, QGroundControl should auto-connect.</p>
-            <p>For remote connection (e.g., WSL2):</p>
-            <ul>
-                <li>Open Application Settings in QGroundControl.</li>
-                <li>Go to Comm Links.</li>
-                <li>Add a new connection with the WSL2 IP to UDP port 18570.</li>
-            </ul>
+Other airframes include:
 
+- `xplane_alia250`
+- `xplane_cessna172`
+- `xplane_tb2`
 
-            <h3>Connect X-Plane to PX4 SITL</h3>
-            <p>In X-Plane, go to the plugin menu and connect to SITL by following these steps:</p>
-            <ul>
-                <li>Navigate to the plugin menu.</li>
-                <li>Select 'px4xplane'.</li>
-                <li>Choose 'Connect to SITL'.</li>
-            </ul>
+---
 
-            
+## Configuration
 
-            <h3>Load Parameters in QGroundControl</h3>
-            <p>To load parameters:</p>
-            <ul>
-                <li>Go to Vehicle Settings in QGroundControl.</li>
-                <li>Select 'Load from file' to import the parameter file.</li>
-            </ul>
+### Configure PX4 SITL
 
+**Automatic Configuration:** The automated script handles all configuration steps, including setting up the airframes for X-Plane. You only need to select the desired airframe during the setup process.
 
-            <h3>Joystick Calibration</h3>
-            <p>Calibrate your joystick as needed in X-Plane or QGroundControl.</p>
-        </section>
+Start the simulation:
 
-        <section id="additional-tips">
-            <h2>Additional Tips</h2>
-            <ul>
-                <li>Maintain a high FPS in X-Plane for stable flight.</li>
-                <li>The EKF estimator may have limitations in high acceleration maneuvers.</li>
-                <li>For errors: use <code>make clean</code>, <code>make distclean</code>, and rebuild PX4.</li>
-                <li>For SITL concepts and a step-by-step guide, watch <a href="https://www.youtube.com/watch?v=iVU8ZNoMn_U" target="_blank">this YouTube Video</a>.</li>
-                <li>For more information, visit the <a href="https://github.com/alireza787b/px4xplane" target="_blank">Official GitHub Repository</a>.</li>
-            </ul>
-        </section>
+```bash
+px4xplane
+```
 
+The selected airframe will automatically load in X-Plane, and you can manage the configuration through the PX4 SITL menus directly. Manual parameter loading is no longer required for the supported airframes.
 
+---
 
-    </div>
-        <footer class="footer">
-            <p>&copy; 2023 <a href="https://www.linkedin.com/in/alireza787b/" target="_blank"> Alireza Ghaderi</a>. All rights reserved.</p>
-            <p>For more information, visit the <a href="https://github.com/alireza787b/px4xplane" target="_blank">Official GitHub Repository</a>.</p>
-        </footer>
+## Additional Tips
 
-</body>
-</html>
+- Maintain a high FPS in X-Plane for stable flight.
+- The EKF estimator may have limitations in high acceleration maneuvers.
+- For errors: use the script's repair mode: `./setup_px4_sitl.sh --repair`.
+- If issues persist, you may need to delete the cloned repository and start from scratch.
+- You can remove the global paths using the uninstall option: `px4xplane --uninstall`.
+- Remember, you can always manually build by navigating to your cloned repository and running the build commands directly.
+- YouTube video demonstration will be released soon.
+- For more information, visit the [Official GitHub Repository](https://github.com/alireza787b/px4xplane).
+
+---
+
+© 2024 [Alireza Ghaderi](https://www.linkedin.com/in/alireza787b/). All rights reserved. For more information, visit the [Official GitHub Repository](https://github.com/alireza787b/px4xplane).
+```
+
+### **Key Points**:
+1. **Header Image Placeholder**: Linked to a future YouTube video for visual engagement.
+2. **Table of Contents**: Allows easy navigation across different sections.
+3. **Quick Setup Section**: Simple step-by-step guide for setting up the environment using the automated script.
+4. **Manual Advanced Setup**: Detailed instructions for advanced users who prefer manual installation.
+5. **Additional Tips**: Helpful tips for troubleshooting and advanced options like repair and uninstall modes.
+6. **Footer with Copyright Notice**: Links to the author’s LinkedIn and the project’s GitHub repository.
+
