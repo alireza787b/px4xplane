@@ -9,12 +9,14 @@ DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
-REPAIR_MODE_FLAG="--repair"
+
+# === Repair Mode (Configurable) ===
+REPAIR_MODE=false  # Default behavior, set to true if you always want full repair mode
 
 # === Flags and Arguments ===
-REPAIR_MODE=false  # Default: Skip repair if not explicitly asked
+REPAIR_MODE_FLAG="--repair"
 if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
-    REPAIR_MODE=true
+    REPAIR_MODE=true  # Override repair mode from command line
     shift
 fi
 
@@ -74,7 +76,7 @@ fi
 if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; then
     highlight "Detected existing configuration. Skipping setup and proceeding to build..."
 else
-    # === Full Repair Mode (If Flag is Set) ===
+    # === Full Repair Mode (If Flag is Set or Configured) ===
     if [ "$REPAIR_MODE" = true ]; then
         highlight "Repair mode enabled. Running full setup and pulling the latest code..."
     fi
@@ -202,6 +204,7 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
         highlight "You have selected $PLATFORM. Building..."
         LAST_PLATFORM="$PLATFORM"
         echo "LAST_PLATFORM=$LAST_PLATFORM" >> "$CONFIG_FILE"
+        cd "$CLONE_PATH" || exit  # Ensure we are in the repository directory before building
         make px4_sitl_default "$PLATFORM"
         break
     else
