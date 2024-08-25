@@ -143,23 +143,6 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
 fi
 
-# === Platform Selection and Build ===
-echo "Please select the platform to build:"
-select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
-    if [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
-        echo "You have selected $PLATFORM. Building..."
-        LAST_PLATFORM="$PLATFORM"
-        echo "LAST_PLATFORM=$LAST_PLATFORM" >> "$CONFIG_FILE"
-        make px4_sitl_default "$PLATFORM"
-        break
-    else
-        echo "Invalid selection. Please choose a valid platform."
-    fi
-done
-
-echo "Make sure that the selected airframe is defined and selected inside X-Plane's menu and loaded."
-echo "Follow the video tutorials and instructions for more guidance."
-
 # === Global Access Setup (Optional) ===
 if ! command -v px4xplane &> /dev/null; then
     echo "Do you want to set up global access to the 'px4xplane' command so you can run this script from anywhere?"
@@ -182,6 +165,23 @@ if ! command -v px4xplane &> /dev/null; then
         echo "Global access setup skipped."
     fi
 fi
+
+# === Platform Selection and Build ===
+echo "Please select the platform to build:"
+select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
+    if [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
+        echo "You have selected $PLATFORM. Building..."
+        LAST_PLATFORM="$PLATFORM"
+        echo "LAST_PLATFORM=$LAST_PLATFORM" >> "$CONFIG_FILE"
+        make px4_sitl_default "$PLATFORM"
+        break
+    else
+        echo "Invalid selection. Please choose a valid platform."
+    fi
+done
+
+echo "Make sure that the selected airframe is defined and selected inside X-Plane's menu and loaded."
+echo "Follow the video tutorials and instructions for more guidance."
 
 # === Final Completion Message ===
 echo "Script completed. Summary:"
