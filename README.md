@@ -7,7 +7,7 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 ### What's New
 - **Sensor Improvements**: Fixed many sensor problems and inconsistencies.
 - **Multi-Airframe Support**: Native support for multiple airframes including:
-  - **eHang 184**
+  - **Ehang 184**
   - **Alia 250**
   - **Cessna 172**
   - **Bayraktar TB2**
@@ -28,7 +28,6 @@ For setup guidance and demonstrations, visit our [YouTube playlist](https://www.
 
 We bridge X-Plane and PX4 using the Simulator MAVLink API, which facilitates the exchange of sensor and actuator data, providing a rich and accurate simulation environment.
 
-![PX4 Simulator Messages](https://github.com/alireza787b/px4xplane/assets/simulator_messages.png)
 
 The following table illustrates the message flow:
 
@@ -56,7 +55,7 @@ For full step-by-step instructions, follow the [Version 2 Documentation](https:/
 
 This automated script is optimized for using with **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows, and PX4 SITL runs on Linux (WSL). It should also work natively on Ubuntu and other Linux distributions.
 
-1. Open your terminal and change the directory to your home directory:
+1. Open your terminal and enter your WSL terminal. Then change the directory to your home directory:
 
    ```bash
    cd ~
@@ -73,8 +72,17 @@ This automated script is optimized for using with **WSL** (Windows Subsystem for
    ```bash
    bash ./setup_px4_sitl.sh
    ```
+   Follow Instruction and select the platform you want to run.
 
-Once setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
+Once default setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
+
+### Uninstall
+
+To remove the global paths and the `px4xplane` command:
+
+```bash
+px4xplane --uninstall
+```
 
 ### Manual Advanced Setup
 
@@ -103,15 +111,7 @@ For advanced users, manually clone and set up the environment using the forked P
 
 Refer to the [official PX4 WSL setup documentation](https://docs.px4.io/main/en/simulation/) for more details, but use the forked repository instead of the official PX4 repo until the changes are merged.
 
-### Uninstall
 
-To remove the global paths and the `px4xplane` command:
-
-```bash
-px4xplane --uninstall
-```
-
----
 
 ## Contribution and Support
 
@@ -120,7 +120,7 @@ Feel free to reach out to me in the issue section if you need help. Having exper
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
-```
+
 
 ### **Key Updates**:
 1. **Automated Setup Instructions**: Clarified that the script is optimized for WSL but should work on native Ubuntu as well.
