@@ -37,55 +37,35 @@ else
     CONFIG_FILE="$DEFAULT_CONFIG_FILE"
 fi
 
-# === Create the Directory if it Doesn't Exist ===
-if [ ! -d "$CLONE_PATH" ]; then
-    echo "Directory $CLONE_PATH does not exist. Creating it..."
-    mkdir -p "$CLONE_PATH"
-fi
-
-# === Ensure the Script is Copied to the Target Folder ===
-SCRIPT_PATH="$CLONE_PATH/$SCRIPT_NAME"
-if [ "$(basename "$0")" != "$SCRIPT_NAME" ]; then
-    echo "Copying script to $SCRIPT_PATH..."
-    cp "$0" "$SCRIPT_PATH"
-    chmod +x "$SCRIPT_PATH"
-fi
-
-# === Introductory Information ===
-echo "----------------------------------------------------------"
-echo "PX4 X-Plane SITL Setup Script"
-echo "Author: Alireza Ghaderi"
-echo "GitHub Repo: alireza787b/px4xplane"
-echo "LinkedIn: alireza787b"
-echo "Date: August 2024"
-echo "----------------------------------------------------------"
-echo "This script helps you set up PX4 SITL with X-Plane integration."
-echo "It will clone the repository, install dependencies, and build SITL."
-echo "You will need to download the PX4 X-Plane plugin from the release"
-echo "section of this repository: https://github.com/alireza787b/px4xplane"
-echo "Please ensure to follow the README instructions and video tutorials."
-echo "This is a temporary setup until the integration is merged officially with PX4."
-echo "----------------------------------------------------------"
-echo "Press Enter to start the process (default: continue in 5 seconds)..."
-read -t 5 -r
-
-# === Prerequisites Check ===
-echo "Checking for required tools..."
-if ! command -v git &> /dev/null; then
-    echo "Git is not installed. Please install Git and run the script again."
-    exit 1
-fi
-
-# === Clone the Repository ===
-if [ ! -d "$CLONE_PATH/.git" ]; then
+# === Check if the Directory Exists and Handle Appropriately ===
+if [ -d "$CLONE_PATH" ]; then
+    if [ ! -d "$CLONE_PATH/.git" ]; then
+        echo "Directory $CLONE_PATH exists but is not a git repository."
+        echo "Would you like to delete the directory and clone a fresh repository? (y/n)"
+        read -r DELETE_DIR
+        if [[ "$DELETE_DIR" =~ ^[Yy]$ ]]; then
+            rm -rf "$CLONE_PATH"
+            echo "Directory deleted. Cloning fresh repository..."
+            git clone --recursive "$REPO_URL" "$CLONE_PATH"
+        else
+            echo "Please provide a different directory or ensure $CLONE_PATH is a valid git repository."
+            exit 1
+        fi
+    else
+        echo "Directory $CLONE_PATH exists and is a valid git repository. Pulling the latest changes..."
+        cd "$CLONE_PATH" || exit
+        git checkout "$BRANCH_NAME"
+        git pull origin "$BRANCH_NAME"
+    fi
+else
+    # Directory does not exist, so we can clone the repository
     echo "Cloning the repository from $REPO_URL into $CLONE_PATH..."
     git clone --recursive "$REPO_URL" "$CLONE_PATH"
-else
-    echo "Repository already cloned at $CLONE_PATH."
 fi
 
+# === Proceed with the Rest of the Script ===
+
 cd "$CLONE_PATH" || exit
-git checkout "$BRANCH_NAME"
 
 # === Add Upstream and Fetch Tags ===
 echo "Adding upstream repository and fetching tags..."
@@ -174,15 +154,16 @@ if ! command -v px4xplane &> /dev/null; then
     read -t 10 -r GLOBAL_SETUP
     if [[ -z "$GLOBAL_SETUP" || "$GLOBAL_SETUP" =~ ^[Yy]$ ]]; then
         if [ -d "$HOME/bin" ]; then
-            ln -sf "$SCRIPT_PATH" "$HOME/bin/px4xplane"
+            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/bin/px4xplane"
         elif [ -d "$HOME/.local/bin" ]; then
-            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/px4xplane"
+            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/.local/bin/px4xplane"
         else
             mkdir -p "$HOME/.local/bin"
-            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/px4xplane"
+            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/.local/bin/px4xplane"
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
             source "$HOME/.bashrc"
         fi
+        chmod +x "$CLONE_PATH/$SCRIPT_NAME"
         echo "Global access to 'px4xplane' command set up successfully."
         echo "You can now run 'px4xplane' from anywhere to execute this script."
     else
