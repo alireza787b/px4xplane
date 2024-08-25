@@ -1,5 +1,17 @@
 #!/bin/bash
 
+# === Script Description and Usage ===
+# This script sets up PX4 SITL with X-Plane integration by:
+# 1. Cloning the PX4 repository.
+# 2. Installing dependencies.
+# 3. Building the PX4 SITL environment.
+# 4. Optionally setting up global access to the 'px4xplane' command.
+
+# Usage:
+# - Normal run: ./px4xplane_script.sh [optional installation path]
+# - Repair mode: ./px4xplane_script.sh --repair [optional installation path]
+# - Uninstall: ./px4xplane_script.sh --uninstall
+
 # === Configurable Variables ===
 REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
@@ -11,13 +23,28 @@ SCRIPT_NAME="px4xplane_script.sh"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
 
 # === Repair Mode (Configurable) ===
-REPAIR_MODE=false  # Default behavior, set to true if you always want full repair mode
+REPAIR_MODE=false  # Set to true if you always want full repair mode
 
 # === Flags and Arguments ===
 REPAIR_MODE_FLAG="--repair"
+UNINSTALL_FLAG="--uninstall"
 if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
     REPAIR_MODE=true  # Override repair mode from command line
     shift
+elif [[ "$1" == "$UNINSTALL_FLAG" ]]; then
+    # Uninstall the global access command
+    echo "Uninstalling global access for px4xplane..."
+    if [ -L "$HOME/bin/px4xplane" ]; then
+        rm "$HOME/bin/px4xplane"
+        echo "Removed global command from $HOME/bin."
+    elif [ -L "$HOME/.local/bin/px4xplane" ]; then
+        rm "$HOME/.local/bin/px4xplane"
+        echo "Removed global command from $HOME/.local/bin."
+    else
+        echo "Global command not found."
+    fi
+    echo "Uninstallation complete."
+    exit 0
 fi
 
 # === Check for Custom Installation Directory Parameter ===
