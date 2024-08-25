@@ -121,10 +121,3 @@ Feel free to reach out to me in the issue section if you need help. Having exper
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
 
-
-### **Key Updates**:
-1. **Automated Setup Instructions**: Clarified that the script is optimized for WSL but should work on native Ubuntu as well.
-2. **Manual Setup Instructions**: Simplified to focus on using the forked repo for advanced users and referred to the official PX4 documentation.
-3. **Version 2 Release Announcement**: Added a detailed overview of the new features and improvements, with a link to the v2.0.0 release.
-4. **SEO and Documentation Best Practices**: Improved keyword usage for better searchability and ease of understanding, while making the README informative for both developers and end-users.
-
