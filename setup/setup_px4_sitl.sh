@@ -5,7 +5,8 @@
 # 1. Cloning the PX4 repository.
 # 2. Installing dependencies.
 # 3. Building the PX4 SITL environment.
-# 4. Optionally setting up global access to the 'px4xplane' command.
+# 4. Optionally setting up MAVLink Router.
+# 5. Optionally setting up global access to the 'px4xplane' command.
 
 # Usage:
 # - Normal run: ./px4xplane_script.sh [optional installation path]
@@ -21,6 +22,11 @@ DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
+
+# === MAVLink Router Configuration ===
+USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
+MAVLINK_ROUTER_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/mavlink-anywhere/main/install_mavlink_router.sh"
+MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 0.0.0.0:14550"
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
@@ -76,6 +82,15 @@ fi
 highlight() {
     echo -e "\n\033[1;33m$1\033[0m\n"  # Yellow bold text
 }
+
+# === Trap for Cleanup ===
+cleanup() {
+    if [[ -n "$MAVLINK_ROUTER_PID" ]]; then
+        highlight "Stopping MAVLink Router..."
+        kill "$MAVLINK_ROUTER_PID"
+    fi
+}
+trap cleanup EXIT
 
 # === Introductory Information ===
 highlight "----------------------------------------------------------"
@@ -198,6 +213,27 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
+
+    # === MAVLink Router Setup ===
+    if [ "$USE_MAVLINK_ROUTER" = true ]; then
+        highlight "Setting up MAVLink Router..."
+        MAVLINK_ROUTER_INSTALL_SCRIPT="$INSTALL_PATH/install_mavlink_router.sh"
+
+        # Download the MAVLink Router installation script
+        if [ ! -f "$MAVLINK_ROUTER_INSTALL_SCRIPT" ]; then
+            curl -o "$MAVLINK_ROUTER_INSTALL_SCRIPT" "$MAVLINK_ROUTER_INSTALL_SCRIPT_URL"
+            chmod +x "$MAVLINK_ROUTER_INSTALL_SCRIPT"
+        fi
+
+        # Run the MAVLink Router installation script
+        bash "$MAVLINK_ROUTER_INSTALL_SCRIPT"
+
+        # Replace IP placeholder in the MAVLink Router command and run it
+        MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g")
+        highlight "Running MAVLink Router: $MAVLINK_ROUTER_CMD"
+        $MAVLINK_ROUTER_CMD &
+        MAVLINK_ROUTER_PID=$!
+    fi
 fi
 
 # === Global Access Setup (Optional) ===
