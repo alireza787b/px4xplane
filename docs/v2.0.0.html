@@ -1,0 +1,288 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PX4 Setup Guide with X-Plane and QGroundControl</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f7f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2, h3 {
+            color: #1976D2;
+            margin-bottom: 20px;
+        }
+
+        p, li {
+            font-size: 1.15em;
+            margin-bottom: 10px;
+        }
+
+        nav {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+            nav a {
+                padding: 12px 20px;
+                margin: 0 10px;
+                display: inline-block;
+                border-radius: 30px;
+                background-color: #1976D2;
+                color: white;
+                text-decoration: none;
+                transition: background-color 0.3s, transform 0.2s;
+                font-weight: bold;
+            }
+
+                nav a:hover {
+                    background-color: #005bb5;
+                    transform: translateY(-3px);
+                }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+            .header img {
+                border-radius: 15px;
+                width: 100%;
+                max-width: 700px;
+                margin-bottom: 20px;
+                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            }
+
+        .command {
+            background-color: #f2f2f2;
+            padding: 12px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1em;
+            position: relative;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 50px;
+            background-color: #1976D2;
+            color: white;
+            font-size: 1em;
+        }
+
+            .footer a {
+                color: white;
+                text-decoration: underline;
+            }
+
+        ul {
+            margin-left: 20px;
+        }
+
+        button, .copy-icon {
+            cursor: pointer;
+        }
+
+        button {
+            background-color: #1976D2;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s, transform 0.2s;
+            font-weight: bold;
+        }
+
+            button:hover {
+                background-color: #005bb5;
+                transform: translateY(-3px);
+            }
+
+        .toggle-manual {
+            margin: 30px 0;
+            text-align: center;
+        }
+
+        .section-divider {
+            margin: 50px 0;
+            height: 1px;
+            background-color: #ddd;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0 10px;
+            }
+
+            nav a {
+                margin-bottom: 10px;
+                display: block;
+            }
+
+            .command {
+                font-size: 1em;
+            }
+        }
+    </style>
+    <script>
+        window.onload = function () {
+            var commands = document.querySelectorAll('.command code');
+            commands.forEach(function (command, index) {
+                var icon = document.createElement('span');
+                icon.innerHTML = '<svg viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 4C10.8954 4 10 4.89543 10 6H14C14 4.89543 13.1046 4 12 4ZM8.53513 4C9.22675 2.8044 10.5194 2 12 2C13.4806 2 14.7733 2.8044 15.4649 4H17C18.6569 4 20 5.34315 20 7V19C20 20.6569 18.6569 22 17 22H7C5.34315 22 4 20.6569 4 19V7C4 5.34315 5.34315 4 7 4H8.53513ZM8 6H7C6.44772 6 6 6.44772 6 7V19C6 19.5523 6.44772 20 7 20H17C17.5523 20 18 19.5523 18 19V7C18 6.44772 17.5523 6 17 6H16C16 7.10457 15.1046 8 14 8H10C8.89543 8 8 7.10457 8 6Z" fill="currentColor"></path></svg>';
+                icon.className = 'copy-icon';
+                icon.onclick = function () { copyToClipboard(command.textContent); };
+                command.parentNode.appendChild(icon);
+            });
+
+            document.getElementById('toggleTheme').addEventListener('click', function () {
+                document.body.classList.toggle('dark-mode');
+            });
+        };
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(function () {
+                alert("Copied to clipboard");
+            }).catch(function (error) {
+                alert("Copy failed: " + error);
+            });
+        }
+
+        function toggleManualSteps() {
+            var manualSteps = document.getElementById('manual-setup');
+            if (manualSteps.style.display === 'none') {
+                manualSteps.style.display = 'block';
+            } else {
+                manualSteps.style.display = 'none';
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>PX4 with X-Plane and QGroundControl Setup Guide (v2.0.0, August 2024)</h1>
+            <img src="https://via.placeholder.com/900x500.png?text=YouTube+Video+Coming+Soon" alt="Placeholder for YouTube Video">
+            <p>Watch full setup guide and demonstration on YouTube: <a href="https://www.youtube.com/watch?v=aRJxsnf24k4" target="_blank">PX4 X-Plane Plugin Tutorial</a>.</p>
+        </header>
+
+        <nav>
+            <a href="#download-software">Download and Install Softwares</a>
+            <a href="#setting-up-environment">Setting Up the Environment</a>
+            <a href="#Clone-and-build-pX4">Clone and Build PX4</a>
+            <a href="#configuration">Configuration</a>
+            <a href="#additional-tips">Additional Tips</a>
+        </nav>
+
+        <section id="download-software">
+            <h2>Download and Install Softwares</h2>
+            <ol>
+                <li><strong>X-Plane</strong>: <p>Download X-Plane 11 or 12 from the <a href="https://www.x-plane.com/download/" target="_blank">X-Plane Official Website</a>.</p></li>
+                <li><strong>eVTOL Air Taxi (eHang 184)</strong>: <p>You can download the eVTOL Air Taxi (eHang 184) from the <a href="https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/" target="_blank">X-Plane Forum</a>, though it's no longer required as the script supports multiple airframes.</p></li>
+                <li><strong>QGroundControl</strong>: <p>Download QGroundControl from the <a href="https://docs.qgroundcontrol.com/master/en/getting_started/download_and_install.html" target="_blank">Official Download Page</a>.</p></li>
+                <li><strong>PX4xplane Plugin</strong>: <p>Download the precompiled binary from <a href="https://github.com/alireza787b/px4xplane/releases" target="_blank">PX4xplane Releases</a>. Install the plugin in the <code>Resources/Plugins</code> folder in X-Plane.</p></li>
+            </ol>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="setting-up-environment">
+            <h2>Setting Up the Environment</h2>
+            <h3>Windows Users - Setting Up WSL2</h3>
+            <p>WSL2 (Windows Subsystem for Linux) allows you to run a Linux environment directly in Windows. This setup is necessary for Windows users to run PX4 simulation.</p>
+            <p>First, ensure virtualization is enabled in your BIOS (Virtualization Technology, Intel VT-x, AMD-V).</p>
+            <p>For Windows 10 (build 19041 or higher) and Windows 11, open Command Prompt <strong>as administrator</strong> and install WSL2 with Ubuntu 22.04:</p>
+            <div class="command"><code>wsl --install</code></div>
+            <p>Once you have set up WSL2 and completed the initial PX4 installation with the provided script, you can use the <code>px4xplane</code> command to build and run the simulation from anywhere in your Linux terminal.</p>
+            <p><strong>Note:</strong> The script is optimized for WSL but works on Linux too.</p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="Clone-and-build-pX4">
+            <h2>Clone and Build PX4</h2>
+            <h3>Quick Setup Using the Automated Script</h3>
+            <p>To use the automated setup script, follow these steps:</p>
+            <ol>
+                <li>Open your terminal and change the directory to your home directory:</li>
+                <div class="command"><code>cd ~</code></div>
+                <li>Download the setup script using <code>curl</code>:</li>
+                <div class="command"><code>curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh</code></div>
+                <li>Run the setup script:</li>
+                <div class="command"><code>bash ./setup_px4_sitl.sh</code></div>
+                <li>Once setup is complete, use the <code>px4xplane</code> command to run the simulation from anywhere in your terminal.</li>
+            </ol>
+
+            <div class="toggle-manual">
+                <button onclick="toggleManualSteps()">Show Manual Advanced Setup</button>
+            </div>
+
+            <div id="manual-setup" style="display:none;">
+                <h3>Manual PX4 Setup (Advanced)</h3>
+                <p>Advanced users can manually clone and set up the environment using the forked PX4 repository:</p>
+                <div class="command"><code>git clone https://github.com/alireza787b/PX4-Autopilot-Me.git --recursive</code></div>
+                <p>Navigate to the cloned directory:</p>
+                <div class="command"><code>cd PX4-Autopilot-Me</code></div>
+                <p>Run the setup script:</p>
+                <div class="command"><code>bash ./Tools/setup/ubuntu.sh</code></div>
+                <p>Follow the regular PX4 WSL setup instructions, replacing the official repository with the forked one. Once set up, you can build the desired airframes with commands like:</p>
+                <div class="command"><code>make px4_sitl xplane_ehang184</code></div>
+                <ul>
+                    <li><code>xplane_alia250</code></li>
+                    <li><code>xplane_cessna172</code></li>
+                    <li><code>xplane_tb2</code></li>
+                </ul>
+            </div>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="configuration">
+            <h2>Configuration</h2>
+            <h3>Configure PX4 SITL</h3>
+            <p><strong>Automatic Configuration:</strong> The automated script handles all configuration steps, including setting up the airframes for X-Plane. You only need to select the desired airframe during the setup process.</p>
+            <p>Start the simulation:</p>
+            <div class="command"><code>px4xplane</code></div>
+            <p>The selected airframe will automatically load in X-Plane, and you can manage the configuration through the PX4 SITL menus directly. Manual parameter loading is no longer required for the supported airframes.</p>
+        </section>
+
+        <div class="section-divider"></div>
+
+        <section id="additional-tips">
+            <h2>Additional Tips</h2>
+            <ul>
+                <li>Maintain a high FPS in X-Plane for stable flight.</li>
+                <li>The EKF estimator may have limitations in high acceleration maneuvers.</li>
+                <li>For errors: use the script's repair mode: <code>./setup_px4_sitl.sh --repair</code>.</li>
+                <li>If issues persist, you may need to delete the cloned repository and start from scratch.</li>
+                <li>You can remove the global paths using the uninstall option: <code>px4xplane --uninstall</code>.</li>
+                <li>Remember, you can always manually build by navigating to your cloned repository and running the build commands directly.</li>
+                <li>YouTube video demonstration will be released soon.</li>
+                <li>For more information, visit the <a href="https://github.com/alireza787b/px4xplane" target="_blank">Official GitHub Repository</a>.</li>
+            </ul>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 <a href="https://www.linkedin.com/in/alireza787b/" target="_blank">Alireza Ghaderi</a>. All rights reserved.</p>
+        <p>For more information, visit the <a href="https://github.com/alireza787b/px4xplane" target="_blank">Official GitHub Repository</a>.</p>
+    </footer>
+</body>
+</html>
