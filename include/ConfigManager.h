@@ -80,22 +80,13 @@ public:
     static std::string getActiveAirframeName();
     static void setActiveAirframeName(const std::string& airframeName);
     static std::string getAirframeByIndex(int index);
-    // Structure to hold the configuration settings
-    struct Config {
-        bool filter_accel_enabled = false;  // Enable/disable accelerometer filtering
-        float accel_filter_alpha = 0.1f;    // Alpha value for low-pass filter
-        // Add any other configuration fields as needed
-    };
 
-    // Static method to access the global configuration
-    static Config& getConfig() {
-        static Config config;
-        return config;
-    }
 
-    // Static method to load configuration (from a file, UI, etc.)
-    static void loadConfig();  // Implement this method if needed
+    static bool filter_velocity_enabled;  // Flag for enabling/disabling velocity filtering
+    static float velocity_filter_alpha;   // Alpha value for velocity filtering
 
+    static bool filter_accel_enabled;  // Flag for enabling/disabling accelerometer filtering
+    static float accel_filter_alpha;   // Alpha value for accelerometer filtering
 
 
 private:

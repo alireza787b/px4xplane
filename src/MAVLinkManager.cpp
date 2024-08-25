@@ -415,8 +415,9 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
  * @brief Sets the acceleration data in the HIL_SENSOR message.
  *
  * This function retrieves the aircraft's current acceleration forces from the simulation,
- * applies optional low-pass filtering, multiplies them by the gravitational constant,
- * and sets them in the provided HIL_SENSOR message.
+ * applies optional low-pass filtering if enabled, multiplies them by the gravitational constant,
+ * and sets the processed data in the provided HIL_SENSOR message.
+ * The filtering parameters (enabled flag and alpha value) are configurable.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the acceleration data will be set.
  */
@@ -427,10 +428,11 @@ void MAVLinkManager::setAccelerationData(mavlink_hil_sensor_t& hil_sensor) {
     float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 
     // Apply filtering if enabled, otherwise use raw data
-    hil_sensor.xacc = DataRefManager::applyFilteringIfNeeded(raw_xacc, DataRefManager::prev_xacc);
-    hil_sensor.yacc = DataRefManager::applyFilteringIfNeeded(raw_yacc, DataRefManager::prev_yacc);
-    hil_sensor.zacc = DataRefManager::applyFilteringIfNeeded(raw_zacc, DataRefManager::prev_zacc);
+    hil_sensor.xacc = DataRefManager::applyFilteringIfNeeded(raw_xacc, DataRefManager::prev_xacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha);
+    hil_sensor.yacc = DataRefManager::applyFilteringIfNeeded(raw_yacc, DataRefManager::prev_yacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha);
+    hil_sensor.zacc = DataRefManager::applyFilteringIfNeeded(raw_zacc, DataRefManager::prev_zacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha);
 }
+
 
 /**
  * @brief Sets the gyroscope data in the HIL_SENSOR message.
@@ -614,18 +616,13 @@ void MAVLinkManager::setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps) {
     hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
 }
 
-
 /**
  * @brief Sets the velocity data for the HIL_GPS message using the NED coordinate system.
  *
- * This function temporarily uses the TCAS system velocities (sim/cockpit2/tcas/targets/position/vx, vy, vz)
- * from X-Plane for calculating the aircraft's velocity in the NED coordinate system. The TCAS velocities
- * are in the OGL coordinate system and are transformed to NED. This approach is a temporary workaround
- * to address issues with other velocity datarefs and will be replaced by a more accurate solution in the future.
- *
- * Note: TCAS velocities are used here for their availability and ease of access, but they might not
- * provide the most accurate representation of the aircraft's true velocity, especially in complex flight
- * scenarios or with certain aircraft models.
+ * This function retrieves the TCAS system velocities (sim/cockpit2/tcas/targets/position/vx, vy, vz)
+ * from X-Plane, transforms them from the OGL coordinate system to the NED coordinate system, and applies
+ * optional low-pass filtering to the velocities if filtering is enabled in the configuration.
+ * The velocities are then populated into the HIL_GPS MAVLink message in cm/s.
  *
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
@@ -645,6 +642,11 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
     float Ve = vx;   // East remains the same
     float Vd = -vy;  // Down is negative Up
 
+    // Apply filtering if enabled, otherwise use raw data
+    Vn = DataRefManager::applyFilteringIfNeeded(Vn, DataRefManager::prev_vn, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha);
+    Ve = DataRefManager::applyFilteringIfNeeded(Ve, DataRefManager::prev_ve, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha);
+    Vd = DataRefManager::applyFilteringIfNeeded(Vd, DataRefManager::prev_vd, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha);
+
     // Populate the MAVLink message with NED velocities (converted to cm/s)
     hil_gps.vn = static_cast<int16_t>(Vn * 100.0f);
     hil_gps.ve = static_cast<int16_t>(Ve * 100.0f);
@@ -653,6 +655,8 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
     // Calculate the total velocity
     hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
 }
+
+
 
 
 

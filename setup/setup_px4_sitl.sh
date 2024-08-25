@@ -79,7 +79,7 @@
 REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
-DEFAULT_CLONE_PATH="$HOME/testpx4"
+DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"

@@ -85,6 +85,11 @@ float DataRefManager::prev_xacc = 0.0f;
 float DataRefManager::prev_yacc = 0.0f;
 float DataRefManager::prev_zacc = -9.81f;
 
+// Initialize static variables for previous filtered velocities
+float DataRefManager::prev_vn = 0.0f;
+float DataRefManager::prev_ve = 0.0f;
+float DataRefManager::prev_vd = 0.0f;
+
 
 /**
  * @brief Tracks the current brake state of each motor.
@@ -654,20 +659,21 @@ void DataRefManager::applyBrake(int motorIndex, bool enable) {
 
 
 /**
- * @brief Applies low-pass filtering to the accelerometer data if filtering is enabled.
+ * @brief Applies low-pass filtering to data if filtering is enabled.
  *
- * This function checks the configuration to see if filtering is enabled. If it is,
- * it applies the low-pass filter to the accelerometer data and updates the previous
- * filtered values. If filtering is disabled, it simply returns the raw data.
+ * This generalized function checks if filtering is enabled for a specific data type. If it is,
+ * it applies a low-pass filter to the data and updates the previous filtered value.
+ * If filtering is disabled, it simply returns the raw data.
  *
- * @param raw_value The raw accelerometer value.
+ * @param raw_value The raw sensor value (e.g., accelerometer, velocity).
  * @param prev_filtered_value The previous filtered value.
- * @return The filtered or raw accelerometer value.
+ * @param filter_enabled Flag indicating whether filtering is enabled.
+ * @param filter_alpha The alpha value for the low-pass filter.
+ * @return The filtered or raw value, depending on the filtering settings.
  */
-float DataRefManager::applyFilteringIfNeeded(float raw_value, float& prev_filtered_value) {
-	if (ConfigManager::getConfig().filter_accel_enabled) {
-		float alpha = ConfigManager::getConfig().accel_filter_alpha;
-		float filtered_value = lowPassFilter(raw_value, prev_filtered_value, alpha);
+float DataRefManager::applyFilteringIfNeeded(float raw_value, float& prev_filtered_value, bool filter_enabled, float filter_alpha) {
+	if (filter_enabled) {
+		float filtered_value = lowPassFilter(raw_value, prev_filtered_value, filter_alpha);
 		prev_filtered_value = filtered_value;
 		return filtered_value;
 	}
@@ -676,6 +682,7 @@ float DataRefManager::applyFilteringIfNeeded(float raw_value, float& prev_filter
 		return raw_value;
 	}
 }
+
 
 /**
  * @brief Checks the throttle for each motor and applies or releases the brake as necessary.

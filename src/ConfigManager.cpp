@@ -18,6 +18,12 @@ std::map<int, int> ConfigManager::motorMappingsXPlanetoPX4;
 // Name of the configuration, typically used for display purposes.
 std::string ConfigManager::configName;
 
+bool ConfigManager::filter_velocity_enabled = true;
+float ConfigManager::velocity_filter_alpha = 0.25f;
+
+bool ConfigManager::filter_accel_enabled = true;
+float ConfigManager::accel_filter_alpha = 0.15f;
+
 
 // Stores configurations for actuators, indexed by their channel number.
 std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
@@ -77,6 +83,9 @@ void ConfigManager::loadConfiguration() {
 
     XPLMDebugString("px4xplane: Config file loaded successfully.\n");
 }
+
+
+
 
 
 /**
