@@ -43,12 +43,7 @@ if [ ! -d "$CLONE_PATH" ]; then
     mkdir -p "$CLONE_PATH"
 fi
 
-# === Ensure the Script is in the Target Folder ===
-TARGET_SCRIPT_PATH="$CLONE_PATH/$SCRIPT_NAME"
-if [ "$(realpath "$0")" != "$(realpath "$TARGET_SCRIPT_PATH")" ]; then
-    echo "Copying script to $TARGET_SCRIPT_PATH..."
-    cp "$0" "$TARGET_SCRIPT_PATH"
-fi
+
 
 # === Introductory Information ===
 echo "----------------------------------------------------------"
@@ -81,6 +76,13 @@ if [ ! -d "$CLONE_PATH/.git" ]; then
     git clone --recursive "$REPO_URL" "$CLONE_PATH"
 else
     echo "Repository already cloned at $CLONE_PATH."
+fi
+
+# === Ensure the Script is in the Target Folder ===
+TARGET_SCRIPT_PATH="$CLONE_PATH/$SCRIPT_NAME"
+if [ "$(realpath "$0")" != "$(realpath "$TARGET_SCRIPT_PATH")" ]; then
+    echo "Copying script to $TARGET_SCRIPT_PATH..."
+    cp "$0" "$TARGET_SCRIPT_PATH"
 fi
 
 cd "$CLONE_PATH" || exit
