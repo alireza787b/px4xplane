@@ -7,9 +7,26 @@ UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME/PX4-Autopilot-Me"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"  # Fallback IP if no IP is detected or entered
+SCRIPT_NAME="setup_px4_sitl.sh"
 
 # === Airframe Options for SITL ===
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
+
+# === Check if Uninstall Option is Passed ===
+if [[ "$1" == "--uninstall" ]]; then
+    echo "Uninstalling global access for px4xplane..."
+    if [ -L "$HOME/bin/px4xplane" ]; then
+        rm "$HOME/bin/px4xplane"
+        echo "Removed global command from $HOME/bin."
+    elif [ -L "$HOME/.local/bin/px4xplane" ]; then
+        rm "$HOME/.local/bin/px4xplane"
+        echo "Removed global command from $HOME/.local/bin."
+    else
+        echo "Global command not found."
+    fi
+    echo "Uninstallation complete."
+    exit 0
+fi
 
 # === Check for Custom Installation Directory Parameter ===
 if [ -n "$1" ]; then
@@ -18,6 +35,12 @@ if [ -n "$1" ]; then
 else
     CLONE_PATH="$DEFAULT_CLONE_PATH"
     CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+fi
+
+# === Ensure the Script is in the Target Folder ===
+if [ "$(basename "$0")" != "$SCRIPT_NAME" ]; then
+    echo "Moving script to $CLONE_PATH..."
+    mv "$0" "$CLONE_PATH/$SCRIPT_NAME"
 fi
 
 # === Create the Directory if it Doesn't Exist ===
@@ -138,7 +161,6 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     
     # Save both the IP and the last selected platform in the config file
     echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
-    echo "LAST_PLATFORM=${LAST_PLATFORM:-}" >> "$CONFIG_FILE"
     export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
     echo "Exported PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
 fi
@@ -150,17 +172,18 @@ if ! command -v px4xplane &> /dev/null; then
     read -t 10 -r GLOBAL_SETUP
     if [[ -z "$GLOBAL_SETUP" || "$GLOBAL_SETUP" =~ ^[Yy]$ ]]; then
         if [ -d "$HOME/bin" ]; then
-            ln -s "$CLONE_PATH/setup_px4_sitl.sh" "$HOME/bin/px4xplane"
+            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/bin/px4xplane"
         elif [ -d "$HOME/.local/bin" ]; then
-            ln -s "$CLONE_PATH/setup_px4_sitl.sh" "$HOME/.local/bin/px4xplane"
+            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/.local/bin/px4xplane"
         else
             mkdir -p "$HOME/.local/bin"
-            ln -s "$CLONE_PATH/setup_px4_sitl.sh" "$HOME/.local/bin/px4xplane"
+            ln -sf "$CLONE_PATH/$SCRIPT_NAME" "$HOME/.local/bin/px4xplane"
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
             source "$HOME/.bashrc"
         fi
-        chmod +x "$CLONE_PATH/setup_px4_sitl.sh"
+        chmod +x "$CLONE_PATH/$SCRIPT_NAME"
         echo "Global access to 'px4xplane' command set up successfully."
+        echo "You can now run 'px4xplane' from anywhere to execute this script."
     else
         echo "Global access setup skipped."
     fi
