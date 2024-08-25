@@ -2,9 +2,21 @@
 
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Latest Release
+## Latest Release - Version 2.0.0 (August 2024)
 
-Check out the new features in the [v1.1.0 release](https://github.com/alireza787b/px4xplane/releases/tag/v1.1.0) of the plugin, including support for additional airframes like the Alia-250 eVTOL. Don't miss the upcoming step-by-step tutorials on our GitHub!
+### What's New
+- **Sensor Improvements**: Fixed many sensor problems and inconsistencies.
+- **Multi-Airframe Support**: Native support for multiple airframes including:
+  - **eHang 184**
+  - **Alia 250**
+  - **Cessna 172**
+  - **Bayraktar TB2**
+- **In-Menu Airframe Selection**: Change airframes directly from the X-Plane menu.
+- **Automated Setup Script**: A full automation script that sets everything up for you in WSL or Linux environments. This serves as a temporary fix until the changes are merged into the official PX4 repository.
+- **Detailed Configuration Instructions**: The `config.ini` file includes instructions for building custom airframes.
+- **Pre-Loaded Parameters**: Parameters are automatically loaded in PX4 build commands. However, if you need to load them manually, they are still available in the config folder.
+
+Check out the new features in the [v2.0.0 release](https://github.com/alireza787b/px4xplane/releases/tag/v2.0.0). **YouTube video tutorial for version 2.0 will be released soon!**
 
 ## Video Tutorials
 
@@ -18,8 +30,6 @@ We bridge X-Plane and PX4 using the Simulator MAVLink API, which facilitates the
 
 ![PX4 Simulator Messages](https://github.com/alireza787b/px4xplane/assets/simulator_messages.png)
 
-
-
 The following table illustrates the message flow:
 
 | Message | Direction | Description |
@@ -28,75 +38,93 @@ The following table illustrates the message flow:
 | [HIL_ACTUATOR_CONTROLS](https://mavlink.io/en/messages/common.html#HIL_ACTUATOR_CONTROLS) | PX4 to Sim | PX4 control outputs (to motors, actuators). |
 | [HIL_SENSOR](https://mavlink.io/en/messages/common.html#HIL_SENSOR) | Sim to PX4 | Simulated IMU readings in SI units in NED body frame. |
 | [HIL_GPS](https://mavlink.io/en/messages/common.html#HIL_GPS) | Sim to PX4 | The simulated GPS RAW sensor value. |
-| [HIL_OPTICAL_FLOW](https://mavlink.io/en/messages/common.html#HIL_OPTICAL_FLOW) | Sim to PX4 | Simulated optical flow from a flow sensor (e.g. PX4FLOW or optical mouse sensor). |
+| [HIL_OPTICAL_FLOW](https://mavlink.io/en/messages/common.html#HIL_OPTICAL_FLOW) | Sim to PX4 | Simulated optical flow from a flow sensor (e.g., PX4FLOW or optical mouse sensor). |
 | [HIL_STATE_QUATERNION](https://mavlink.io/en/messages/common.html#HIL_STATE_QUATERNION) | Sim to PX4 | Contains the actual "simulated" vehicle position, attitude, speed, etc. This can be logged and compared to PX4's estimates for analysis and debugging. |
 | [HIL_RC_INPUTS_RAW](https://mavlink.io/en/messages/common.html#HIL_RC_INPUTS_RAW) | Sim to PX4 | The RAW values of the RC channels received. |
 
 ## Known Issues
 
-- As of January 2024, I've fixed previous issues with attitude estimation. Performance remains key; ensure X-Plane runs at high FPS for optimal EKF performance. Stay tuned for more updates as we progress.
-- If you find any bug, please report it...
-
-
-
-### New Configurations
-
-The `config.ini` file has been significantly improved to facilitate the easy definition of custom airframes. The plugin now comes with support for the Cessna 172, Alia-250, and Ehang 184, complete with preset parameters for immediate use. To utilize these new configurations, you can wait for the [pull request](https://github.com/PX4/PX4-Autopilot/pull/22493) to be merged into the official PX4 codebase, or use my forked repository and branch temporarily.
-
-For those who need to use the default `make px4_sitl none_iris` command, be aware that manual updating of parameter files is required, and this approach may not support fixed-wing and VTOL models effectively. Once the pull request is merged, you'll be able to use dedicated commands for each of the supported models — ehang184, alia250, and cessna172 — streamlining your simulation setup process.
-
-
+- **Performance**: Ensure X-Plane runs at high FPS for optimal EKF performance.
+- **Temporary Fix**: This plugin is a temporary fix until merged with the official PX4 repository. For now, we use a forked version of PX4 with custom airframes and modifications.
+- **Bug Reports**: If you find any bug, please report it on the GitHub issues page.
 
 ## Usage Guide
 
-follow the <a href="https://alireza787b.github.io/px4xplane/v1.0.0.html" target="_blank"> step-by-step instruction version 1.0.0</a>.
+For full step-by-step instructions, follow the [Version 2 Documentation](https://github.com/alireza787b/px4xplane/blob/master/docs/v2.md).
 
+### Automated Setup Script
 
-### For Developers: Building from Source
+This automated script is optimized for using with **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows, and PX4 SITL runs on Linux (WSL). It should also work natively on Ubuntu and other Linux distributions.
 
-1. **Repository Cloning**:
-   - Clone this repository to your local machine:
-     ```bash
-     git clone --recurse-submodules https://github.com/alireza787b/px4xplane.git
-     ```
-   - If you've already cloned the repository without the `--recurse-submodules` option, you can fetch the contents of the submodules with:
-     ```bash
-     git submodule init
-     git submodule update
-     ```
+1. Open your terminal and change the directory to your home directory:
 
-2. **Building the Plugin**:
-   - Follow the instructions in the `BUILDING.md` file to build the plugin from the source. (will be added)
+   ```bash
+   cd ~
+   ```
 
+2. Download the setup script using `curl`:
 
+   ```bash
+   curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh
+   ```
 
-## Configuration and Motor Arrangement
+3. Run the setup script:
 
-The plugin now supports flexible motor arrangements and configuration changes through a `config.ini` file located alongside the `.xpl` file. This enhancement allows users to easily switch between different airframe types (note: fixed-wing configurations are currently not supported) and customize motor mappings without modifying the source code.
+   ```bash
+   bash ./setup_px4_sitl.sh
+   ```
 
+Once setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
 
-### X-Plane Aircraft Setup
+### Manual Advanced Setup
 
-For the best experience, we recommend using the following aircraft models with our plugin:
+For advanced users, manually clone and set up the environment using the forked PX4 repository:
 
-- **Quadcopter (Ehang 184)**: Utilize the quadricopter air taxi model, which graphically displays a coaxial X8 configuration. Download the model that aligns with our plugin from [X-Plane.org](https://forums.x-plane.org/index.php?/files/file/76635-quadricopter-piloted/). A parameter file (`quadricopter_px4.params`) is included in the `config` folder to pre-configure all necessary settings for this airframe.
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/alireza787b/PX4-Autopilot-Me.git --recursive
+   cd PX4-Autopilot-Me
+   ```
 
-- **Quad Plane VTOL (Alia-250)** and **Fixed-Wing (Cessna 172)**: These are default aircraft in X-Plane 12, and our plugin supports them out of the box. Simply select them within X-Plane for immediate use with PX4 SITL.
+2. Set up the environment:
+   ```bash
+   bash ./Tools/setup/ubuntu.sh
+   ```
 
-Remember, for an optimized simulation experience, ensure that you are using the correct aircraft model with the corresponding parameters provided.
+3. Build the desired airframes:
+   ```bash
+   make px4_sitl xplane_ehang184
+   ```
 
+   Other airframes include:
+   - `xplane_alia250`
+   - `xplane_cessna172`
+   - `xplane_tb2`
 
+Refer to the [official PX4 WSL setup documentation](https://docs.px4.io/main/en/simulation/) for more details, but use the forked repository instead of the official PX4 repo until the changes are merged.
 
-## Status
+### Uninstall
 
-As of January 2024, This project is currently under development.
+To remove the global paths and the `px4xplane` command:
+
+```bash
+px4xplane --uninstall
+```
+
+---
 
 ## Contribution and Support
 
 Feel free to reach out to me in the issue section if you need help. Having experienced contributors is greatly appreciated!
 
-
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
+```
+
+### **Key Updates**:
+1. **Automated Setup Instructions**: Clarified that the script is optimized for WSL but should work on native Ubuntu as well.
+2. **Manual Setup Instructions**: Simplified to focus on using the forked repo for advanced users and referred to the official PX4 documentation.
+3. **Version 2 Release Announcement**: Added a detailed overview of the new features and improvements, with a link to the v2.0.0 release.
+4. **SEO and Documentation Best Practices**: Improved keyword usage for better searchability and ease of understanding, while making the README informative for both developers and end-users.
 
