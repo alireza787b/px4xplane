@@ -55,27 +55,22 @@ For full step-by-step instructions, follow the [Version 2 Documentation](https:/
 
 This automated script is optimized for using with **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows, and PX4 SITL runs on Linux (WSL). It should also work natively on Ubuntu and other Linux distributions.
 
-1. Open your terminal and enter your WSL terminal. Then change the directory to your home directory:
+To quickly set up PX4 with X-Plane using WSL (Ubuntu 22.04), follow this simple step:
+
+1. **Run the setup script directly from your terminal:**
+
+   First, make sure you are in your WSL Ubuntu terminal (launch it from PowerShell), then enter the following command in your WSL terminal:
 
    ```bash
-   cd ~
+   cd ~ && curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash setup_px4_sitl.sh
    ```
 
-2. Download the setup script using `curl`:
+### Important Notes:
 
-   ```bash
-   curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh
-   ```
+- **Time Required**: The installation process may take some time, depending on your system and configuration, especially the first time.
+- **Prompts**: During installation, you will encounter several prompts asking you to customize the setup. You can either read and decide on each prompt or just let the defaults take effect (the script will automatically proceed with default settings if you don't respond).
 
-3. Run the setup script:
-
-   ```bash
-   bash ./setup_px4_sitl.sh
-   ```
-   Follow Instruction and select the platform you want to run.
-
-Once default setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
-
+2. Once setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
 ### Uninstall
 
 To remove the global paths and the `px4xplane` command:
