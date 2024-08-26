@@ -74,7 +74,6 @@
 # The installation process would then revert to using the official PX4 repository without the need for the custom fork.
 
 
-
 # === Configurable Variables ===
 REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
@@ -97,52 +96,48 @@ REPAIR_MODE=false  # Set to true if you always want full repair mode
 REPAIR_MODE_FLAG="--repair"
 UNINSTALL_FLAG="--uninstall"
 
-if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
-    REPAIR_MODE=true  # Override repair mode from command line
-    shift
-elif [[ "$1" == "$UNINSTALL_FLAG" ]]; then
-    UNINSTALL=true
-    shift
-else
-    UNINSTALL=false
-fi
-
-# === Check for Custom Installation Directory Parameter ===
-if [ -n "$1" ]; then
-    INSTALL_PATH="$1"
-else
-    INSTALL_PATH="$DEFAULT_CLONE_PATH"
-fi
-CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
-CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
-
-if [ "$UNINSTALL" == true ]; then
+if [[ "$1" == "$UNINSTALL_FLAG" ]]; then
+    # Uninstall the global access command
     echo "Uninstalling global access for px4xplane..."
-    if [ -L "$HOME/bin/px4xplane" ]; then
+    if [ -L "$HOME/bin/px4xplane" ] || [ -e "$HOME/bin/px4xplane" ]; then
         rm "$HOME/bin/px4xplane"
         echo "Removed global command from $HOME/bin."
-    elif [ -L "$HOME/.local/bin/px4xplane" ]; then
+    elif [ -L "$HOME/.local/bin/px4xplane" ] || [ -e "$HOME/.local/bin/px4xplane" ]; then
         rm "$HOME/.local/bin/px4xplane"
         echo "Removed global command from $HOME/.local/bin."
     else
         echo "Global command not found."
     fi
-    if [ -d "$CLONE_PATH" ]; then
-        sudo rm -rf "$CLONE_PATH"
-        echo "Removed PX4-Autopilot-Me Cloned Repository at $CLONE_PATH."
-    else
-        echo "PX4-Autopilot-Me Cloned Repository not found at $CLONE_PATH."
+
+    # Attempt to remove PX4-Autopilot-Me directory and config file
+    if [ -d "$DEFAULT_CLONE_PATH/PX4-Autopilot-Me" ]; then
+        sudo rm -rf "$DEFAULT_CLONE_PATH/PX4-Autopilot-Me"
+        echo "Removed PX4-Autopilot-Me Cloned Repository."
     fi
-    if [ -e "$CONFIG_FILE" ]; then
-        rm "$CONFIG_FILE"
-        echo "Removed px4sitl_config file."
-    else
-        echo "px4sitl_config file not found at $CONFIG_FILE."
+    if [ -e "$DEFAULT_CONFIG_FILE" ]; then
+        rm "$DEFAULT_CONFIG_FILE"
+        echo "Removed .px4sitl_config file."
     fi
+    
     echo "Uninstallation complete."
     exit 0
 fi
 
+if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
+    REPAIR_MODE=true  # Override repair mode from command line
+    shift
+fi
+
+# === Check for Custom Installation Directory Parameter ===
+if [ -n "$1" ]; then
+    INSTALL_PATH="$1"
+    CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
+    CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
+else
+    INSTALL_PATH="$DEFAULT_CLONE_PATH"
+    CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
+    CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+fi
 
 # === Create Parent Directory if Needed ===
 if [ ! -d "$INSTALL_PATH" ]; then
@@ -157,6 +152,7 @@ if [ "$(basename "$0")" != "$SCRIPT_NAME" ]; then
     cp "$0" "$SCRIPT_PATH"
     chmod +x "$SCRIPT_PATH"
 fi
+
 
 # === Distinguish Important Prompts ===
 highlight() {
