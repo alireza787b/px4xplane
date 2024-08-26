@@ -346,9 +346,12 @@ if ! command -v px4xplane &> /dev/null; then
 fi
 
 # === Platform Selection and Build ===
-highlight "Please select the platform to build:"
-select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
-    if [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
+highlight "Please select the platform to build (or enter 0 to Exit):"
+select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
+    if [[ "$PLATFORM" == "Exit" ]]; then
+        highlight "Exiting without building..."
+        exit 0
+    elif [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
         highlight "You have selected $PLATFORM. Building..."
         LAST_PLATFORM="$PLATFORM"
         echo "LAST_PLATFORM=$LAST_PLATFORM" >> "$CONFIG_FILE"
@@ -356,7 +359,7 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}"; do
         make px4_sitl_default "$PLATFORM"
         break
     else
-        highlight "Invalid selection. Please choose a valid platform."
+        highlight "Invalid selection. Please choose a valid platform or enter 0 to exit."
     fi
 done
 
