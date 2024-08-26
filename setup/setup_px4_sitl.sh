@@ -125,13 +125,17 @@ elif [[ "$1" == "$UNINSTALL_FLAG" ]]; then
     else
         echo "Global command not found."
     fi
-    if [ -L "$CLONE_PATH" ]; then
-        sudo rm -rf "$CLONE_PATH"
-        echo "Removed PX4-Autopilot-Me Cloned Repository."
+     if [ -d "$CLONE_PATH" ]; then
+        sudo rm -rf "$CLONE_PATH" 2>&1 | tee -a delete_log.txt
+        echo "Removed PX4-Autopilot-Me Cloned Repository at $CLONE_PATH."
+    else
+        echo "PX4-Autopilot-Me Cloned Repository not found at $CLONE_PATH."
     fi
-    if [ -L "$CONFIG_FILE" ]; then
-        rm "$CONFIG_FILE"
+    if [ -e "$CONFIG_FILE" ]; then
+        rm "$CONFIG_FILE" 2>&1 | tee -a delete_log.txt
         echo "Removed px4sitl_config file."
+    else
+        echo "px4sitl_config file not found at $CONFIG_FILE."
     fi
 fi
 
