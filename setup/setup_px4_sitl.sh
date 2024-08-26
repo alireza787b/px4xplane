@@ -93,27 +93,7 @@ MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDE
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
 
-# === Flags and Arguments ===
-REPAIR_MODE_FLAG="--repair"
-UNINSTALL_FLAG="--uninstall"
-if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
-    REPAIR_MODE=true  # Override repair mode from command line
-    shift
-elif [[ "$1" == "$UNINSTALL_FLAG" ]]; then
-    # Uninstall the global access command
-    echo "Uninstalling global access for px4xplane..."
-    if [ -L "$HOME/bin/px4xplane" ]; then
-        rm "$HOME/bin/px4xplane"
-        echo "Removed global command from $HOME/bin."
-    elif [ -L "$HOME/.local/bin/px4xplane" ]; then
-        rm "$HOME/.local/bin/px4xplane"
-        echo "Removed global command from $HOME/.local/bin."
-    else
-        echo "Global command not found."
-    fi
-    echo "Uninstallation complete."
-    exit 0
-fi
+
 
 # === Check for Custom Installation Directory Parameter ===
 if [ -n "$1" ]; then
@@ -124,6 +104,41 @@ else
     INSTALL_PATH="$DEFAULT_CLONE_PATH"
     CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
     CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+fi
+
+
+# === Flags and Arguments ===
+REPAIR_MODE_FLAG="--repair"
+UNINSTALL_FLAG="--uninstall"
+if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
+    REPAIR_MODE=true  # Override repair mode from command line
+    shift
+elif [[ "$1" == "$UNINSTALL_FLAG" ]]; then
+    # Uninstall the global access command
+     echo "Uninstalling global access for px4xplane..."
+    if [ -L "$HOME/bin/px4xplane" ]; then
+        rm "$HOME/bin/px4xplane"
+        echo "Removed global command from $HOME/bin."
+    elif [ -L "$HOME/.local/bin/px4xplane" ]; then
+        rm "$HOME/.local/bin/px4xplane"
+        echo "Removed global command from $HOME/.local/bin."
+    else
+        echo "Global command not found."
+    fi
+    if [ -L "$CLONE_PATH" ]; then
+        sudo rm -rf "$CLONE_PATH"
+        echo "Removed PX4-Autopilot-Me Cloned Repository."
+    fi
+    if [ -L "$CONFIG_FILE" ]; then
+        rm "$CONFIG_FILE"
+        echo "Removed px4sitl_config file."
+    fi
+fi
+
+
+
+    echo "Uninstallation complete."
+    exit 0
 fi
 
 # === Create Parent Directory if Needed ===
