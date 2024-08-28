@@ -94,7 +94,7 @@ bool ConfigManager::filter_barometer_enabled = true;
  * (less smoothing), and a lower value provides more smoothing (more reliance on previous data points).
  * Tuning this parameter helps balance the responsiveness of the pressure data with the need for noise reduction.
  */
-float ConfigManager::barometer_filter_alpha = 0.95f;
+float ConfigManager::barometer_filter_alpha = 0.65f;
 
 
 // Stores configurations for actuators, indexed by their channel number.
