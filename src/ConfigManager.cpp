@@ -28,7 +28,7 @@ std::string ConfigManager::configName;
  * to changes but may be less effective at eliminating noise. The optimal window
  * size should be chosen based on the specific application and expected noise characteristics.
  */
-int ConfigManager::MEDIAN_FILTER_WINDOW_SIZE = 5;
+int ConfigManager::MEDIAN_FILTER_WINDOW_SIZE = 4;
 
 /**
  * @brief Flag for enabling/disabling velocity filtering.
