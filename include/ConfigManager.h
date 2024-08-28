@@ -88,6 +88,14 @@ public:
     static bool filter_accel_enabled;  // Flag for enabling/disabling accelerometer filtering
     static float accel_filter_alpha;   // Alpha value for accelerometer filtering
 
+    // Filtering configuration for barometric pressure data
+    static bool filter_barometer_enabled;  // Flag for enabling/disabling barometric pressure filtering
+    static float barometer_filter_alpha;   // Alpha value for barometric pressure filtering
+
+
+
+    static int MEDIAN_FILTER_WINDOW_SIZE;
+
 
 private:
     static std::vector<int> parseMotorIndices(const std::string& indicesStr);

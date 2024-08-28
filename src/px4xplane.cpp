@@ -400,10 +400,10 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 
 // Constants for update frequencies (in seconds)
-constexpr float SENSOR_UPDATE_PERIOD = 1.0f / 100.0f; // 100 Hz for sensor data
-constexpr float GPS_UPDATE_PERIOD = 1.0f / 10.0f;     // 10 Hz for GPS data
-constexpr float STATE_QUATERNION_UPDATE_PERIOD = 1.0f / 10.0f; // Optional: 50 Hz for state quaternion
-constexpr float RC_UPDATE_PERIOD = 1.0f / 10.0f;      // Optional: 20 Hz for RC data
+constexpr float SENSOR_UPDATE_PERIOD = 1.0f / 200; // 200 Hz for sensor data (more than 100 currently not working in xplane)
+constexpr float GPS_UPDATE_PERIOD = 1.0f / 50.0f;     // 50 Hz for GPS data
+constexpr float STATE_QUATERNION_UPDATE_PERIOD = 1.0f / 10.0f; // Optional: 10 Hz for state quaternion
+constexpr float RC_UPDATE_PERIOD = 1.0f / 10.0f;      // Optional: 10 Hz for RC data
 
 // Global timing variables
 float timeSinceLastSensorUpdate = 0.0f;

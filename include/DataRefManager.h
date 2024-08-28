@@ -1,5 +1,7 @@
 // DataRefManager.h
 #pragma once
+#include <deque>
+#include <algorithm>
 #include <vector>
 #include <variant>
 #include <functional>
@@ -65,7 +67,12 @@ public:
     static float calculateDistance(const GeodeticPosition& pos1, const GeodeticPosition& pos2);
     static Eigen::Vector3f convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw);
     static void initializeMagneticField();
-    static float applyFilteringIfNeeded(float raw_value, float& prev_filtered_value, bool filter_enabled, float filter_alpha);
+    static float applyFilteringIfNeeded(float raw_value,
+        bool filter_enabled,
+        float filter_alpha,
+        std::deque<float>& median_filter_window);
+    static float calculatePressureAltitude(float pressure_hPa);
+
 
     static std::string GetFormattedDroneConfig();
     static float scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax);
@@ -75,15 +82,18 @@ public:
     static float lastAltitude;
     static GeodeticPosition lastPosition;
 
-    // Add static variables to hold previous filtered values
-    static float prev_xacc;
-    static float prev_yacc;
-    static float prev_zacc;
 
-    // Static variables to hold previous filtered velocities
-    static float prev_vn;
-    static float prev_ve;
-    static float prev_vd;
+    // Add deques for median filter windows
+    static std::deque<float> median_filter_window_xacc;
+    static std::deque<float> median_filter_window_yacc;
+    static std::deque<float> median_filter_window_zacc;
+
+    static std::deque<float> median_filter_window_vn;
+    static std::deque<float> median_filter_window_ve;
+    static std::deque<float> median_filter_window_vd;
+
+    static std::deque<float> DataRefManager::median_filter_window_pressure;
+
 
     static constexpr float UPDATE_THRESHOLD=1000;  // Define a threshold for position change in meters
     static std::bitset<8> motorBrakeStates; // Tracks the current brake states

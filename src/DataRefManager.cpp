@@ -80,15 +80,23 @@ std::vector<DataRefItem> DataRefManager::dataRefs = {
 Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
 
 
-// Initialize static variables for previous filtered values
-float DataRefManager::prev_xacc = 0.0f;
-float DataRefManager::prev_yacc = 0.0f;
-float DataRefManager::prev_zacc = -9.81f;
 
-// Initialize static variables for previous filtered velocities
-float DataRefManager::prev_vn = 0.0f;
-float DataRefManager::prev_ve = 0.0f;
-float DataRefManager::prev_vd = 0.0f;
+// Initialize static variables for median filter windows
+std::deque<float> DataRefManager::median_filter_window_xacc;
+std::deque<float> DataRefManager::median_filter_window_yacc;
+std::deque<float> DataRefManager::median_filter_window_zacc;
+
+std::deque<float> DataRefManager::median_filter_window_vn;
+std::deque<float> DataRefManager::median_filter_window_ve;
+std::deque<float> DataRefManager::median_filter_window_vd;
+
+/**
+ * @brief Size of the median filter window for barometer data.
+ *
+ * This constant defines the size of the window used for the median filter.
+ * The median filter is applied to the barometric pressure data to reduce the impact of outliers or noise spikes.
+ */
+std::deque<float> DataRefManager::median_filter_window_pressure;
 
 
 /**
@@ -174,7 +182,33 @@ void DataRefManager::initializeMagneticField() {
 }
 
 
+/**
+ * @brief Calculates the pressure altitude from a given barometric pressure.
+ *
+ * This function uses the International Standard Atmosphere (ISA) barometric formula
+ * to calculate the altitude from the given barometric pressure. The calculation assumes
+ * that the pressure is given in hPa and returns the altitude in meters.
+ *
+ * @param pressure_hPa The barometric pressure in hPa.
+ * @return The calculated pressure altitude in meters.
+ */
+float DataRefManager::calculatePressureAltitude(float pressure_hPa) {
+	// Constants based on ISA
+	constexpr float P0 = 1013.25f;  // Standard sea level pressure in hPa
+	constexpr float T0 = 288.15f;   // Standard temperature at sea level in Kelvin
+	constexpr float L = 0.0065f;    // Temperature lapse rate in K/m
+	constexpr float R = 8.3144598f; // Universal gas constant in J/(mol·K)
+	constexpr float g = 9.80665f;   // Gravitational acceleration in m/s²
+	constexpr float M = 0.0289644f; // Molar mass of Earth's air in kg/mol
 
+	// Simplified constant for the altitude formula
+	constexpr float exp_factor = (g * M) / (R * L);
+
+	// Calculate altitude using the barometric formula
+	float altitude = (T0 / L) * (1.0f - std::pow(pressure_hPa / P0, 1.0f / exp_factor));
+
+	return altitude;
+}
 
 /**
  * @brief Calculates the distance between two geodetic positions.
@@ -659,22 +693,35 @@ void DataRefManager::applyBrake(int motorIndex, bool enable) {
 
 
 /**
- * @brief Applies low-pass filtering to data if filtering is enabled.
+ * @brief Applies low-pass and median filtering to data if filtering is enabled.
  *
- * This generalized function checks if filtering is enabled for a specific data type. If it is,
- * it applies a low-pass filter to the data and updates the previous filtered value.
- * If filtering is disabled, it simply returns the raw data.
+ * This function checks if filtering is enabled for a specific data type. It applies
+ * a low-pass filter to the data, followed by a median filter if enabled.
+ * The previous filtered value is fetched from the last value in the window.
  *
  * @param raw_value The raw sensor value (e.g., accelerometer, velocity).
- * @param prev_filtered_value The previous filtered value.
  * @param filter_enabled Flag indicating whether filtering is enabled.
  * @param filter_alpha The alpha value for the low-pass filter.
+ * @param median_filter_window The deque storing the window for the median filter.
  * @return The filtered or raw value, depending on the filtering settings.
  */
-float DataRefManager::applyFilteringIfNeeded(float raw_value, float& prev_filtered_value, bool filter_enabled, float filter_alpha) {
+float DataRefManager::applyFilteringIfNeeded(float raw_value,
+	bool filter_enabled,
+	float filter_alpha,
+	std::deque<float>& median_filter_window)
+{
 	if (filter_enabled) {
-		float filtered_value = lowPassFilter(raw_value, prev_filtered_value, filter_alpha);
-		prev_filtered_value = filtered_value;
+		// Initialize the window with the first raw value if empty
+		if (median_filter_window.empty()) {
+			median_filter_window.push_back(raw_value);
+		}
+
+		// Apply low-pass filter using the last value in the window as the previous filtered value
+		float filtered_value = lowPassFilter(raw_value, median_filter_window.back(), filter_alpha);
+
+		// Apply median filter
+		filtered_value = medianFilter(filtered_value, median_filter_window);
+
 		return filtered_value;
 	}
 	else {

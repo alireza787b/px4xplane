@@ -245,10 +245,12 @@ highlight "Do you want to run 'make distclean' to reset the build directory? Pre
 read -t 5 -r DISTCLEAN_BUILD
 
 if [[ "$CLEAN_BUILD" =~ ^[Yy]$ ]]; then
+    cd "$CLONE_PATH" || exit  # Ensure we are in the repository directory before building
     make clean
 fi
 
 if [[ "$DISTCLEAN_BUILD" =~ ^[Yy]$ ]]; then
+    cd "$CLONE_PATH" || exit  # Ensure we are in the repository directory before building
     make distclean
 fi
 

@@ -20,7 +20,7 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.0001f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.00006f);
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.00001f);
 
 
@@ -414,10 +414,19 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 /**
  * @brief Sets the acceleration data in the HIL_SENSOR message.
  *
- * This function retrieves the aircraft's current acceleration forces from the simulation,
- * applies optional low-pass filtering if enabled, multiplies them by the gravitational constant,
- * and sets the processed data in the provided HIL_SENSOR message.
- * The filtering parameters (enabled flag and alpha value) are configurable.
+ * This function retrieves the aircraft's current acceleration forces from X-Plane simulation
+ * and applies both median and low-pass filtering based on the configuration settings.
+ * The filtering process is controlled by configuration flags and alpha values set in the
+ * ConfigManager. The median filter helps eliminate outliers or spikes, while the low-pass
+ * filter smooths the data. The filtered or raw data is then converted to the appropriate
+ * gravitational constant and set in the HIL_SENSOR MAVLink message.
+ *
+ * The process involves:
+ * - Retrieving the raw accelerometer data (x, y, z axes).
+ * - Applying median filtering to reduce spikes or outliers.
+ * - Applying low-pass filtering to smooth the data.
+ * - Multiplying the data by the gravitational constant.
+ * - Setting the processed data in the HIL_SENSOR message.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the acceleration data will be set.
  */
@@ -428,10 +437,13 @@ void MAVLinkManager::setAccelerationData(mavlink_hil_sensor_t& hil_sensor) {
     float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 
     // Apply filtering if enabled, otherwise use raw data
-    hil_sensor.xacc = DataRefManager::applyFilteringIfNeeded(raw_xacc, DataRefManager::prev_xacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha);
-    hil_sensor.yacc = DataRefManager::applyFilteringIfNeeded(raw_yacc, DataRefManager::prev_yacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha);
-    hil_sensor.zacc = DataRefManager::applyFilteringIfNeeded(raw_zacc, DataRefManager::prev_zacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha);
+    hil_sensor.xacc = DataRefManager::applyFilteringIfNeeded(raw_xacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha, DataRefManager::median_filter_window_xacc);
+    hil_sensor.yacc = DataRefManager::applyFilteringIfNeeded(raw_yacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha, DataRefManager::median_filter_window_yacc);
+    hil_sensor.zacc = DataRefManager::applyFilteringIfNeeded(raw_zacc, ConfigManager::filter_accel_enabled, ConfigManager::accel_filter_alpha, DataRefManager::median_filter_window_zacc);
 }
+
+
+
 
 
 /**
@@ -451,27 +463,45 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
 /**
  * @brief Sets the pressure data in the HIL_SENSOR message.
  *
- * This function retrieves the aircraft's current barometric pressure and pressure altitude from the simulation.
- * It adds noise to the barometric pressure reading to simulate sensor inaccuracies.
- * The differential pressure is approximated using the indicated airspeed (IAS), based on the formula for dynamic pressure.
- * The resulting pressure data is set in the provided HIL_SENSOR message.
+ * This function retrieves the aircraft's current barometric pressure from the simulation, applies optional filtering
+ * to the pressure data if enabled, and calculates the corresponding pressure altitude. The differential pressure is
+ * approximated using the indicated airspeed (IAS) based on the formula for dynamic pressure. The resulting pressure
+ * data is then set in the provided HIL_SENSOR message.
+ *
+ * The barometric pressure data undergoes noise simulation and filtering (low-pass and median), which helps to smooth
+ * the data and reduce the impact of noise on the state estimation in the PX4 EKF. The pressure altitude is calculated
+ * based on the filtered pressure, ensuring consistency in the altitude data.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
+    // Retrieve base pressure in hPa from the simulation (conversion from inHg to hPa)
     float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
+
+    // Add noise to simulate sensor inaccuracy
     float pressureNoise = noiseDistribution(gen);
-  
+    float noisyPressure = basePressure + pressureNoise;
 
-    // Calculate differential pressure using indicated airspeed
-    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444; //in m/s
-    float dynamicPressure = 0.01 * (0.5 * DataRefManager::AirDensitySeaLevel * ias * ias); // in hPa
+    // Apply filtering if enabled
+    float filteredPressure = DataRefManager::applyFilteringIfNeeded(noisyPressure,
+        ConfigManager::filter_barometer_enabled,
+        ConfigManager::barometer_filter_alpha,
+        DataRefManager::median_filter_window_pressure);
+
+    // Calculate pressure altitude from filtered pressure (this ensures consistency between pressure and altitude)
+    float pressureAltitude = DataRefManager::calculatePressureAltitude(filteredPressure);
+
+    // Set the filtered absolute pressure and calculated pressure altitude in the HIL_SENSOR message
+    hil_sensor.abs_pressure = filteredPressure;
+    hil_sensor.pressure_alt = pressureAltitude;
+
+    // Calculate differential pressure using indicated airspeed (IAS)
+    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444; // Convert IAS to m/s
+    float dynamicPressure = 0.01 * (0.5 * DataRefManager::AirDensitySeaLevel * ias * ias); // Dynamic pressure in hPa
     hil_sensor.diff_pressure = dynamicPressure;
-
-    hil_sensor.abs_pressure = basePressure + pressureNoise;
-    hil_sensor.pressure_alt = DataRefManager::getDouble("sim/flightmodel2/position/pressure_altitude") * 0.3048;
-
 }
+
+
 
 
 /**
@@ -619,10 +649,19 @@ void MAVLinkManager::setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps) {
 /**
  * @brief Sets the velocity data for the HIL_GPS message using the NED coordinate system.
  *
- * This function retrieves the TCAS system velocities (sim/cockpit2/tcas/targets/position/vx, vy, vz)
- * from X-Plane, transforms them from the OGL coordinate system to the NED coordinate system, and applies
- * optional low-pass filtering to the velocities if filtering is enabled in the configuration.
- * The velocities are then populated into the HIL_GPS MAVLink message in cm/s.
+ * This function retrieves the TCAS system velocities from X-Plane in the OGL coordinate system,
+ * transforms them to the NED coordinate system, and applies both median and low-pass filtering
+ * based on the configuration settings. The filtering helps smooth the velocity data and reduce
+ * the effect of transient spikes or jumps that might occur due to simulation inconsistencies.
+ * The processed velocities are then populated in the HIL_GPS MAVLink message in cm/s.
+ *
+ * The process involves:
+ * - Retrieving the raw velocity data (vx, vy, vz) from the TCAS system.
+ * - Transforming the velocities from the OGL coordinate system to NED.
+ * - Applying median filtering to eliminate outliers or spikes.
+ * - Applying low-pass filtering to smooth the data.
+ * - Converting the filtered velocities to cm/s and setting them in the HIL_GPS message.
+ * - Calculating and setting the total velocity magnitude.
  *
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
@@ -643,9 +682,9 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
     float Vd = -vy;  // Down is negative Up
 
     // Apply filtering if enabled, otherwise use raw data
-    Vn = DataRefManager::applyFilteringIfNeeded(Vn, DataRefManager::prev_vn, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha);
-    Ve = DataRefManager::applyFilteringIfNeeded(Ve, DataRefManager::prev_ve, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha);
-    Vd = DataRefManager::applyFilteringIfNeeded(Vd, DataRefManager::prev_vd, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha);
+    Vn = DataRefManager::applyFilteringIfNeeded(Vn, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha, DataRefManager::median_filter_window_vn);
+    Ve = DataRefManager::applyFilteringIfNeeded(Ve, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha, DataRefManager::median_filter_window_ve);
+    Vd = DataRefManager::applyFilteringIfNeeded(Vd, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha, DataRefManager::median_filter_window_vd);
 
     // Populate the MAVLink message with NED velocities (converted to cm/s)
     hil_gps.vn = static_cast<int16_t>(Vn * 100.0f);
@@ -655,6 +694,8 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
     // Calculate the total velocity
     hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
 }
+
+
 
 
 

@@ -18,11 +18,83 @@ std::map<int, int> ConfigManager::motorMappingsXPlanetoPX4;
 // Name of the configuration, typically used for display purposes.
 std::string ConfigManager::configName;
 
-bool ConfigManager::filter_velocity_enabled = true;
-float ConfigManager::velocity_filter_alpha = 0.25f;
+/**
+ * @brief Size of the median filter window.
+ *
+ * This constant defines the size of the window used for the median filter.
+ * The median filter is applied to the sensor data (e.g., accelerometer, velocity)
+ * to reduce the impact of outliers or noise spikes. A larger window size provides
+ * more smoothing but can introduce lag, while a smaller window reacts more quickly
+ * to changes but may be less effective at eliminating noise. The optimal window
+ * size should be chosen based on the specific application and expected noise characteristics.
+ */
+int ConfigManager::MEDIAN_FILTER_WINDOW_SIZE = 5;
 
+/**
+ * @brief Flag for enabling/disabling velocity filtering.
+ *
+ * This flag controls whether the velocity data from the simulation is filtered
+ * before being sent to the EKF in the PX4 firmware. When enabled, the velocity data
+ * undergoes both median and low-pass filtering to smooth the input and reduce noise.
+ * This is particularly important in scenarios where the raw simulation data may
+ * experience spikes or small jumps that could negatively affect the EKF's state estimation.
+ */
+bool ConfigManager::filter_velocity_enabled = false;
+
+/**
+ * @brief Alpha value for velocity filtering.
+ *
+ * This variable controls the strength of the low-pass filter applied to the velocity data.
+ * The alpha value should be between 0 and 1, where a higher value retains more of the current
+ * data point (less smoothing), and a lower value provides more smoothing (more reliance on
+ * previous data points). Tuning this parameter helps balance the responsiveness of the velocity
+ * data with the need for noise reduction, depending on the characteristics of the simulation.
+ */
+float ConfigManager::velocity_filter_alpha = 0.99f;
+
+
+/**
+ * @brief Flag for enabling/disabling accelerometer filtering.
+ *
+ * This flag controls whether the accelerometer data from the simulation is filtered
+ * before being sent to the EKF in the PX4 firmware. Similar to velocity filtering,
+ * this helps to smooth the input data and reduce the impact of noise or spikes, ensuring
+ * more reliable state estimation in the EKF. When disabled, the raw accelerometer data
+ * is used without filtering.
+ */
 bool ConfigManager::filter_accel_enabled = true;
-float ConfigManager::accel_filter_alpha = 0.15f;
+
+/**
+ * @brief Alpha value for accelerometer filtering.
+ *
+ * This variable controls the strength of the low-pass filter applied to the accelerometer data.
+ * Similar to the velocity filter, the alpha value should be between 0 and 1. A higher alpha value
+ * makes the filter more responsive (less smoothing), while a lower alpha value smooths the data more
+ * (more reliance on previous data points). This parameter should be tuned based on the noise
+ * characteristics of the simulation and the desired filter behavior.
+ */
+float ConfigManager::accel_filter_alpha = 0.95f;
+
+
+/**
+ * @brief Flag for enabling/disabling barometer filtering.
+ *
+ * This flag controls whether the barometric pressure data from the simulation is filtered
+ * before being sent to the EKF in the PX4 firmware. When enabled, both low-pass and median filtering
+ * are applied to the barometric pressure data to smooth the input and reduce noise. This ensures
+ * more stable pressure readings and reduces the impact of noisy sensor data on state estimation.
+ */
+bool ConfigManager::filter_barometer_enabled = true;
+
+/**
+ * @brief Alpha value for barometer filtering.
+ *
+ * This variable controls the strength of the low-pass filter applied to the barometric pressure data.
+ * The alpha value should be between 0 and 1, where a higher value retains more of the current data point
+ * (less smoothing), and a lower value provides more smoothing (more reliance on previous data points).
+ * Tuning this parameter helps balance the responsiveness of the pressure data with the need for noise reduction.
+ */
+float ConfigManager::barometer_filter_alpha = 0.95f;
 
 
 // Stores configurations for actuators, indexed by their channel number.
