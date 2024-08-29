@@ -88,7 +88,7 @@ PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
 MAVLINK_ROUTER_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/mavlink-anywhere/main/install_mavlink_router.sh"
-MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 -e MAVLINK2REST_IP:14569 0.0.0.0:14550"
+MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 -e MAVLINK2REST_IP_PLACEHOLDE:14569 0.0.0.0:14550"
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
@@ -308,7 +308,7 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         bash "$MAVLINK_ROUTER_INSTALL_SCRIPT"
 
         # Replace specific IP placeholders in the MAVLink Router command
-        MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g" | sed "s/MAVLINK2REST_IP/$MAVLINK2REST_IP/g")
+        MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g" | sed "s/MAVLINK2REST_IP_PLACEHOLDE/$MAVLINK2REST_IP/g")
         highlight "Running MAVLink Router: $MAVLINK_ROUTER_CMD"
         $MAVLINK_ROUTER_CMD &
         MAVLINK_ROUTER_PID=$!
