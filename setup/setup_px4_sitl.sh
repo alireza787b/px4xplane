@@ -321,7 +321,7 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         echo " - $MAVLINK2REST_IP:14569"
         echo " "
         highlight "Make sure to configure these endpoints in your X-Plane setup as needed."
-        sleep 5  # Allow the user time to read the information
+        sleep 2  # Allow the user time to read the information
     fi
 fi
 
