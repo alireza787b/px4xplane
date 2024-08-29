@@ -307,8 +307,8 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         # Run the MAVLink Router installation script
         bash "$MAVLINK_ROUTER_INSTALL_SCRIPT"
 
-        # Replace IP placeholder in the MAVLink Router command and run it
-        MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g")
+        # Replace specific IP placeholders in the MAVLink Router command
+        MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g" | sed "s/MAVLINK2REST_IP/$MAVLINK2REST_IP/g")
         highlight "Running MAVLink Router: $MAVLINK_ROUTER_CMD"
         $MAVLINK_ROUTER_CMD &
         MAVLINK_ROUTER_PID=$!
