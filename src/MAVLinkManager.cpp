@@ -20,7 +20,7 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.0001f);
+std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.0007f);
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.00001f);
 
 
