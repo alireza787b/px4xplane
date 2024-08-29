@@ -94,7 +94,17 @@ For advanced users, manually clone and set up the environment using the forked P
    bash ./Tools/setup/ubuntu.sh
    ```
 
-3. Build the desired airframes:
+3. Configure PX4 SITL:
+   - In Windows Terminal, check your IP address (e.g., `172.21.144.1`):
+     ```bash
+     ipconfig
+     ```
+   - In the WSL Terminal, inside the PX4-Autopilot directory, set the PX4 simulation hostname with your IP:
+     ```bash
+     export PX4_SIM_HOSTNAME=172.21.144.1
+     ```
+
+4. Build the desired airframes:
    ```bash
    make px4_sitl xplane_ehang184
    ```
