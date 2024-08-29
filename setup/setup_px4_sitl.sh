@@ -82,6 +82,7 @@ DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
+MAVLINK2REST_IP = "127.0.0.1"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
 
 # === MAVLink Router Configuration ===
@@ -313,10 +314,11 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         MAVLINK_ROUTER_PID=$!
 
         # Provide additional instructions and delay for better visibility
-        highlight "MAVLink Router is now running. You can connect to the following endpoints from your Windows machine:"
+        highlight "MAVLink Router is now running. You can connect to the following endpoints:"
         echo " - $PX4_SIM_HOSTNAME:14540"
         echo " - $PX4_SIM_HOSTNAME:14550"
         echo " - $PX4_SIM_HOSTNAME:14569"
+        echo " - $MAVLINK2REST_IP:14569"
         echo " "
         highlight "Make sure to configure these endpoints in your X-Plane setup as needed."
         sleep 5  # Allow the user time to read the information
