@@ -88,7 +88,7 @@ PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
 MAVLINK_ROUTER_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/mavlink-anywhere/main/install_mavlink_router.sh"
-MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 0.0.0.0:14550"
+MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 -e IP_PLACEHOLDER:14569 0.0.0.0:14550"
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
