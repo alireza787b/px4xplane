@@ -82,7 +82,7 @@ DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
-MAVLINK2REST_IP = "127.0.0.1"
+MAVLINK2REST_IP="127.0.0.1"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2")
 
 # === MAVLink Router Configuration ===
