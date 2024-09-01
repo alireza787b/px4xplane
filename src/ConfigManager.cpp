@@ -62,7 +62,7 @@ float ConfigManager::velocity_filter_alpha = 0.99f;
  * more reliable state estimation in the EKF. When disabled, the raw accelerometer data
  * is used without filtering.
  */
-bool ConfigManager::filter_accel_enabled = false;
+bool ConfigManager::filter_accel_enabled = true;
 
 /**
  * @brief Alpha value for accelerometer filtering.

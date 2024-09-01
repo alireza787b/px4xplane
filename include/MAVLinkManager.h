@@ -36,6 +36,8 @@ private:
     static std::mt19937 gen;
     static std::normal_distribution<float> noiseDistribution;
     static std::normal_distribution<float> noiseDistribution_mag;
+    static std::normal_distribution<float> highFreqNoise;
+    static std::normal_distribution<float> lowFreqNoise;
     static void setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps);
     static void setGPSPositionData(mavlink_hil_gps_t& hil_gps);
     static void setGPSAccuracyData(mavlink_hil_gps_t& hil_gps);

@@ -15,6 +15,7 @@
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
+#include <algorithm>
 
 
 
@@ -346,7 +347,7 @@ void create_menu() {
 		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
 	}
 
-	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	//XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
 	XPLMAppendMenuSeparator(g_menu_id);
@@ -399,11 +400,12 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 
 
+
 // Constants for update frequencies (in seconds)
-constexpr float SENSOR_UPDATE_PERIOD = 1.0f / 200; // 200 Hz for sensor data (more than 100 currently not working in xplane)
-constexpr float GPS_UPDATE_PERIOD = 1.0f / 50.0f;     // 50 Hz for GPS data
-constexpr float STATE_QUATERNION_UPDATE_PERIOD = 1.0f / 10.0f; // Optional: 10 Hz for state quaternion
-constexpr float RC_UPDATE_PERIOD = 1.0f / 10.0f;      // Optional: 10 Hz for RC data
+const float BASE_SENSOR_UPDATE_PERIOD = 0.01f; // 100 Hz
+const float BASE_GPS_UPDATE_PERIOD = 0.1f;     // 10 Hz
+const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.05f; // 20 Hz
+const float BASE_RC_UPDATE_PERIOD = 0.05f;     // 20 Hz
 
 // Global timing variables
 float timeSinceLastSensorUpdate = 0.0f;
@@ -411,14 +413,11 @@ float timeSinceLastGpsUpdate = 0.0f;
 float timeSinceLastStateQuaternionUpdate = 0.0f; // Optional
 float timeSinceLastRcUpdate = 0.0f; // Optional
 
-
 float lastFlightTime = 0.0f;
 
-
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
+	// Ensure we're connected before proceeding
 	if (!ConnectionManager::isConnected()) return -1.0f;
-
-	// Check if the plugin is connected to PX4 SITL
 
 	float currentFlightTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 
@@ -429,39 +428,33 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		}
 	}
 
-
-
-
-
-	// Update timing counters
+	// Update timing variables
 	timeSinceLastSensorUpdate += inElapsedSinceLastCall;
 	timeSinceLastGpsUpdate += inElapsedSinceLastCall;
-	timeSinceLastStateQuaternionUpdate += inElapsedSinceLastCall; // Optional
-	timeSinceLastRcUpdate += inElapsedSinceLastCall; // Optional
+	timeSinceLastStateQuaternionUpdate += inElapsedSinceLastCall;
+	timeSinceLastRcUpdate += inElapsedSinceLastCall;
 
 	// Send sensor data at high frequency
-	if (timeSinceLastSensorUpdate >= SENSOR_UPDATE_PERIOD) {
+	if (timeSinceLastSensorUpdate >= BASE_SENSOR_UPDATE_PERIOD) {
 		MAVLinkManager::sendHILSensor(uint8_t(0));
 		timeSinceLastSensorUpdate = 0.0f;
 	}
 
 	// Send GPS data at a lower frequency
-	if (timeSinceLastGpsUpdate >= GPS_UPDATE_PERIOD) {
+	if (timeSinceLastGpsUpdate >= BASE_GPS_UPDATE_PERIOD) {
 		MAVLinkManager::sendHILGPS();
 		timeSinceLastGpsUpdate = 0.0f;
 	}
 
 	// Optional: Send state quaternion data
-	if (timeSinceLastStateQuaternionUpdate >= STATE_QUATERNION_UPDATE_PERIOD) {
-		// Uncomment or implement if state quaternion data is required
+	if (timeSinceLastStateQuaternionUpdate >= BASE_STATE_QUAT_UPDATE_PERIOD) {
 		MAVLinkManager::sendHILStateQuaternion();
 		timeSinceLastStateQuaternionUpdate = 0.0f;
 	}
 
 	// Optional: Send RC data
-	if (timeSinceLastRcUpdate >= RC_UPDATE_PERIOD) {
-		// Uncomment or implement if RC data is required
-		// MAVLinkManager::sendHILRCInputs();
+	if (timeSinceLastRcUpdate >= BASE_RC_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILRCInputs();
 		timeSinceLastRcUpdate = 0.0f;
 	}
 
@@ -471,18 +464,16 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Actuator overrides
 	DataRefManager::overrideActuators();
 
-
 	// Update the SITL timestep with the loop callback rate
 	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
 
-
 	lastFlightTime = currentFlightTime;
 
-
-
-
-	return -1.0f; // Continue calling at next cycle
+	// Always return a negative value to continue calling this function every frame
+	return 0.005f; // Continue calling at the next cycle
 }
+
+
 
 
 

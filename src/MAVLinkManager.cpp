@@ -20,8 +20,10 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::noiseDistribution(0.0f, 0.0007f);
-std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.00001f);
+std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.0001f);
+std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.0005f); // Larger, slower noise
+
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.000001f);
 
 
 /**
@@ -475,31 +477,27 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
-    // Retrieve base pressure in hPa from the simulation (conversion from inHg to hPa)
     float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
 
-    // Add noise to simulate sensor inaccuracy
-    float pressureNoise = noiseDistribution(gen);
+    // Apply a combination of high-frequency and low-frequency noise
+    float highFreqNoise_term = MAVLinkManager::highFreqNoise(gen);
+    float lowFreqNoise_term = MAVLinkManager::lowFreqNoise(gen) * sin(XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec")));
+    float pressureNoise = highFreqNoise_term + lowFreqNoise_term;
     float noisyPressure = basePressure + pressureNoise;
+    static float previousPressure = 0;
+  
+    float pressureAltitude = DataRefManager::calculatePressureAltitude(noisyPressure);
 
-    // Apply filtering if enabled
-    float filteredPressure = DataRefManager::applyFilteringIfNeeded(noisyPressure,
-        ConfigManager::filter_barometer_enabled,
-        ConfigManager::barometer_filter_alpha,
-        DataRefManager::median_filter_window_pressure);
-
-    // Calculate pressure altitude from filtered pressure (this ensures consistency between pressure and altitude)
-    float pressureAltitude = DataRefManager::calculatePressureAltitude(filteredPressure);
-
-    // Set the filtered absolute pressure and calculated pressure altitude in the HIL_SENSOR message
-    hil_sensor.abs_pressure = filteredPressure;
+    hil_sensor.abs_pressure = noisyPressure;
     hil_sensor.pressure_alt = pressureAltitude;
 
-    // Calculate differential pressure using indicated airspeed (IAS)
-    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444; // Convert IAS to m/s
-    float dynamicPressure = 0.01 * (0.5 * DataRefManager::AirDensitySeaLevel * ias * ias); // Dynamic pressure in hPa
+    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444;
+    float dynamicPressure = 0.01 * (0.5 * DataRefManager::AirDensitySeaLevel * ias * ias);
     hil_sensor.diff_pressure = dynamicPressure;
+
+    previousPressure = noisyPressure;
 }
+
 
 
 
@@ -569,8 +567,8 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
-    hil_gps.eph = static_cast<uint16_t>(20); // Assuming high accuracy due to simulation environment
-    hil_gps.epv = static_cast<uint16_t>(20);
+    hil_gps.eph = static_cast<uint16_t>(80); // Assuming high accuracy due to simulation environment
+    hil_gps.epv = static_cast<uint16_t>(100);
     hil_gps.satellites_visible = static_cast<uint16_t>(16);; // Assuming 16 satellites visible in good conditions
 }
 
