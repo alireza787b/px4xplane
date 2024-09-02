@@ -347,7 +347,7 @@ void create_menu() {
 		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
 	}
 
-	//XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
 	XPLMAppendMenuSeparator(g_menu_id);
@@ -457,6 +457,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		MAVLinkManager::sendHILRCInputs();
 		timeSinceLastRcUpdate = 0.0f;
 	}
+
 
 	// Continuously receive and process actuator data
 	ConnectionManager::receiveData();

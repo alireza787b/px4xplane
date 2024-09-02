@@ -28,7 +28,7 @@ std::string ConfigManager::configName;
  * to changes but may be less effective at eliminating noise. The optimal window
  * size should be chosen based on the specific application and expected noise characteristics.
  */
-int ConfigManager::MEDIAN_FILTER_WINDOW_SIZE = 3;
+int ConfigManager::MEDIAN_FILTER_WINDOW_SIZE = 4;
 
 /**
  * @brief Flag for enabling/disabling velocity filtering.
@@ -62,7 +62,7 @@ float ConfigManager::velocity_filter_alpha = 0.99f;
  * more reliable state estimation in the EKF. When disabled, the raw accelerometer data
  * is used without filtering.
  */
-bool ConfigManager::filter_accel_enabled = true;
+bool ConfigManager::filter_accel_enabled = false;
 
 /**
  * @brief Alpha value for accelerometer filtering.
@@ -84,7 +84,7 @@ float ConfigManager::accel_filter_alpha = 0.99f;
  * are applied to the barometric pressure data to smooth the input and reduce noise. This ensures
  * more stable pressure readings and reduces the impact of noisy sensor data on state estimation.
  */
-bool ConfigManager::filter_barometer_enabled = false;
+bool ConfigManager::filter_barometer_enabled = true;
 
 /**
  * @brief Alpha value for barometer filtering.

@@ -163,6 +163,7 @@
     <ClCompile Include="src\DataRefManager.cpp" />
     <ClCompile Include="src\MAVLinkManager.cpp" />
     <ClCompile Include="src\px4xplane.cpp" />
+    <ClCompile Include="src\TimeManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config\ini.h" />
@@ -170,6 +171,7 @@
     <ClInclude Include="include\configReader.h" />
     <ClInclude Include="include\ConnectionManager.h" />
     <ClInclude Include="include\DataRefManager.h" />
+    <ClInclude Include="include\TimeManager.h" />
     <ClInclude Include="include\MAVLinkManager.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="XYZgeomag\src\XYZgeomag.hpp" />
