@@ -4,6 +4,14 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 ## Latest Release - Version 2.0.0 (August 2024)
 
+[![PX4 X-Plane Plugin v2.0.0 Demo](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)](https://youtu.be/oQTlBVXqR04)
+
+Curious about the new features in the PX4 X-Plane Plugin v2.0.0? Check out this demo video where I walk you through the simplified setup process, showcase the multi-airframe support, and test various drones like the Ehang 184, Alia 250, Cessna 172, and Bayraktar TB2. Whether you're a student, researcher, or industry professional, this quick overview will get you up and running in no time!
+
+👉 [Watch the full demo and installation guide here!](https://youtu.be/oQTlBVXqR04)
+
+![Untitled (7)](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)
+
 ### What's New
 - **Sensor Improvements**: Fixed many sensor problems and inconsistencies.
 - **Multi-Airframe Support**: Native support for multiple airframes including:
