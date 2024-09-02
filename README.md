@@ -124,7 +124,15 @@ For advanced users, manually clone and set up the environment using the forked P
 
 Refer to the [official PX4 WSL setup documentation](https://docs.px4.io/main/en/simulation/) for more details, but use the forked repository instead of the official PX4 repo until the changes are merged.
 
+## Defining Custom Airframes
 
+If you need to define new airframes for your simulation, follow the detailed guide here:
+
+👉 [How to Define Custom Airframes in PX4-XPlane](https://github.com/alireza787b/px4xplane/blob/master/docs/custom-airframe-config.md)
+
+This guide will walk you through the process of setting up custom configurations, mapping PX4 channels to X-Plane datarefs, and integrating new airframes into your simulations. Whether you're using existing X-Plane models or creating new ones in Plane Maker, this guide has you covered.
+
+---
 
 ## Contribution and Support
 
