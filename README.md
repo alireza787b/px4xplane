@@ -4,6 +4,14 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 ## Latest Release - Version 2.0.0 (August 2024)
 
+[![PX4 X-Plane Plugin v2.0.0 Demo](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)](https://youtu.be/oQTlBVXqR04)
+
+Curious about the new features in the PX4 X-Plane Plugin v2.0.0? Check out this demo video where I walk you through the simplified setup process, showcase the multi-airframe support, and test various drones like the Ehang 184, Alia 250, Cessna 172, and Bayraktar TB2. Whether you're a student, researcher, or industry professional, this quick overview will get you up and running in no time!
+
+👉 [Watch the full demo and installation guide here!](https://youtu.be/oQTlBVXqR04)
+
+![Untitled (7)](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)
+
 ### What's New
 - **Sensor Improvements**: Fixed many sensor problems and inconsistencies.
 - **Multi-Airframe Support**: Native support for multiple airframes including:
@@ -116,7 +124,15 @@ For advanced users, manually clone and set up the environment using the forked P
 
 Refer to the [official PX4 WSL setup documentation](https://docs.px4.io/main/en/simulation/) for more details, but use the forked repository instead of the official PX4 repo until the changes are merged.
 
+## Defining Custom Airframes
 
+If you need to define new airframes for your simulation, follow the detailed guide here:
+
+👉 [How to Define Custom Airframes in PX4-XPlane](https://github.com/alireza787b/px4xplane/blob/master/docs/custom-airframe-config.md)
+
+This guide will walk you through the process of setting up custom configurations, mapping PX4 channels to X-Plane datarefs, and integrating new airframes into your simulations. Whether you're using existing X-Plane models or creating new ones in Plane Maker, this guide has you covered.
+
+---
 
 ## Contribution and Support
 
