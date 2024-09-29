@@ -81,6 +81,7 @@ Eigen::Vector3f DataRefManager::earthMagneticFieldNED = Eigen::Vector3f::Zero();
 
 
 
+
 // Initialize static variables for median filter windows
 std::deque<float> DataRefManager::median_filter_window_xacc;
 std::deque<float> DataRefManager::median_filter_window_yacc;
@@ -208,6 +209,34 @@ float DataRefManager::calculatePressureAltitude(float pressure_hPa) {
 	float altitude = (T0 / L) * (1.0f - std::pow(pressure_hPa / P0, 1.0f / exp_factor));
 
 	return altitude;
+}
+
+/**
+ * @brief Calculates the barometric pressure from a given pressure altitude.
+ *
+ * This function uses the International Standard Atmosphere (ISA) barometric formula
+ * to calculate the barometric pressure based on the given altitude. The calculation assumes
+ * a standard temperature lapse rate and returns the pressure in hPa.
+ *
+ * @param altitude_m The pressure altitude in meters.
+ * @return The calculated barometric pressure in hPa.
+ */
+float DataRefManager::calculatePressureFromAltitude(float altitude_m) {
+	// Constants based on ISA
+	constexpr float P0 = 1013.25f;  // Standard sea level pressure in hPa
+	constexpr float T0 = 288.15f;   // Standard temperature at sea level in Kelvin
+	constexpr float L = 0.0065f;    // Temperature lapse rate in K/m
+	constexpr float R = 8.3144598f; // Universal gas constant in J/(mol·K)
+	constexpr float g = 9.80665f;   // Gravitational acceleration in m/s²
+	constexpr float M = 0.0289644f; // Molar mass of Earth's air in kg/mol
+
+	// Calculate temperature at the given altitude
+	float temperature = T0 - L * altitude_m;
+
+	// Calculate pressure using the barometric formula
+	float pressure = P0 * pow(1.0f - (L * altitude_m) / T0, (g * M) / (R * L));
+
+	return pressure;
 }
 
 /**

@@ -403,9 +403,9 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 // Constants for update frequencies (in seconds)
 const float BASE_SENSOR_UPDATE_PERIOD = 0.01f; // 100 Hz
-const float BASE_GPS_UPDATE_PERIOD = 0.1f;     // 10 Hz
-const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.05f; // 20 Hz
-const float BASE_RC_UPDATE_PERIOD = 0.05f;     // 20 Hz
+const float BASE_GPS_UPDATE_PERIOD = 0.05f;     // 20 Hz
+const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.1f; // 10 Hz
+const float BASE_RC_UPDATE_PERIOD = 0.1f;     // 10z
 
 // Global timing variables
 float timeSinceLastSensorUpdate = 0.0f;
@@ -471,7 +471,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	lastFlightTime = currentFlightTime;
 
 	// Always return a negative value to continue calling this function every frame
-	return 0.005f; // Continue calling at the next cycle
+	//return 0.005f; // Continue calling at the next cycle
+	return -1.0f;
 }
 
 

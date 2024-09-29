@@ -21,9 +21,9 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.00003f);
-std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.000003f); // Larger, slower noise
-std::normal_distribution<float> vibrationNoise(0.0f, 0.2f); // Adjust the standard deviation as needed
+std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.00004f);
+std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.000004f); // Larger, slower noise
+std::normal_distribution<float> vibrationNoise(0.0f, 0.3f); // Adjust the standard deviation as needed
 
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.000001f);
 
@@ -70,8 +70,13 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
     mavlink_message_t msg;
     mavlink_hil_sensor_t hil_sensor;
 
-    // Use the high-resolution time from the TimeManager utility
-    hil_sensor.time_usec = TimeManager::getCurrentTimeUsec();
+    if (ConfigManager::USE_XPLANE_TIME) {
+        hil_sensor.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+    }
+    else {
+        hil_sensor.time_usec = TimeManager::getCurrentTimeUsec();
+    }
+
     hil_sensor.id = uint8_t(sensor_id);
 
     setAccelerationData(hil_sensor);
@@ -146,8 +151,12 @@ void MAVLinkManager::sendHILGPS() {
     mavlink_message_t msg;
     mavlink_hil_gps_t hil_gps;
 
-    // Use the high-resolution time from the TimeManager utility
-    hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
+    if (ConfigManager::USE_XPLANE_TIME) {
+        hil_gps.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+    }
+    else {
+        hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
+    }
 
     // Set various GPS data components
     setGPSTimeAndFix(hil_gps);
@@ -238,9 +247,12 @@ void MAVLinkManager::sendHILStateQuaternion() {
  * @param hil_state Reference to the MAVLink HIL state quaternion structure to be populated.
  */
 void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& hil_state) {
-    // Use the high-resolution time from the TimeManager utility
-    hil_state.time_usec = TimeManager::getCurrentTimeUsec();
-
+    if (ConfigManager::USE_XPLANE_TIME) {
+        hil_state.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+    }
+    else {
+        hil_state.time_usec = TimeManager::getCurrentTimeUsec();
+    }
     // Retrieve quaternion data from X-Plane and populate the MAVLink message
     std::vector<float> q = DataRefManager::getFloatArray("sim/flightmodel/position/q");
     for (int i = 0; i < 4; ++i) {
@@ -309,9 +321,14 @@ void MAVLinkManager::sendHILRCInputs() {
     mavlink_message_t msg;
     mavlink_hil_rc_inputs_raw_t hil_rc_inputs;
 
-    // Use the high-resolution time from the TimeManager utility
-    hil_rc_inputs.time_usec = TimeManager::getCurrentTimeUsec();
+    if (ConfigManager::USE_XPLANE_TIME) {
+        hil_rc_inputs.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+    }
+    else {
+        hil_rc_inputs.time_usec = TimeManager::getCurrentTimeUsec();
+    }
 
+    
     // Map RC channels using joystick data from X-Plane
     hil_rc_inputs.chan1_raw = mapRCChannel(DataRefManager::getFloat("sim/joystick/yoke_roll_ratio"), -1, +1);
     hil_rc_inputs.chan2_raw = mapRCChannel(DataRefManager::getFloat("sim/joystick/yoke_pitch_ratio"), -1, +1);
@@ -458,7 +475,7 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 void MAVLinkManager::setAccelerationData(mavlink_hil_sensor_t& hil_sensor) {
     // Retrieve raw accelerometer data from X-Plane
     float raw_xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
-    float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -11;
+    float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
     float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
     /*
     // Add realistic ground vibration
@@ -509,51 +526,69 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
     hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
     hil_sensor.zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad");
 }
-
 /**
  * @brief Sets the pressure data in the HIL_SENSOR message.
  *
- * This function retrieves the aircraft's current barometric pressure from the simulation, applies optional filtering
- * to the pressure data if enabled, and calculates the corresponding pressure altitude. The differential pressure is
- * approximated using the indicated airspeed (IAS) based on the formula for dynamic pressure. The resulting pressure
- * data is then set in the provided HIL_SENSOR message.
- *
- * The barometric pressure data undergoes noise simulation and filtering (low-pass and median), which helps to smooth
- * the data and reduce the impact of noise on the state estimation in the PX4 EKF. The pressure altitude is calculated
- * based on the filtered pressure, ensuring consistency in the altitude data.
+ * This function performs the following steps:
+ * 1. Retrieves the aircraft's current pressure altitude from the simulation in feet.
+ * 2. Converts the pressure altitude from feet to meters.
+ * 3. Adds Gaussian noise with a mean of 0 and a standard deviation of 0.5 meters to simulate sensor inaccuracies.
+ * 4. Calculates the corresponding barometric pressure from the noisy pressure altitude using the ISA model.
+ * 5. Populates the HIL_SENSOR message with the noisy absolute pressure and pressure altitude.
+ * 6. Calculates the differential pressure (dynamic pressure) using the Indicated Airspeed (IAS) and sea-level air density.
+ * 7. Populates the HIL_SENSOR message with the calculated differential pressure.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
-    // Convert the barometric pressure from inHg to hPa
-    float basePressure = DataRefManager::getFloat("sim/weather/barometer_current_inhg") * 33.8639;
+    // 1. Define conversion factor from feet to meters
+    constexpr float FeetToMeters = 0.3048f; // 1 foot = 0.3048 meters
 
-    // Retrieve the precise current time using the TimeManager
-    float currentTimeSec = static_cast<float>(TimeManager::getCurrentTimeSec());
+    // 2. Retrieve base pressure altitude from X-Plane in feet
+    // DataRef: "sim/flightmodel2/position/pressure_altitude"
+    float basePressureAltitude_ft = DataRefManager::getFloat("sim/flightmodel2/position/pressure_altitude");
 
-    // Generate high-frequency noise
-    float highFreqNoiseTerm = MAVLinkManager::highFreqNoise(gen);
+    // 3. Convert pressure altitude from feet to meters
+    float basePressureAltitude_m = basePressureAltitude_ft * FeetToMeters;
 
-    // Generate low-frequency noise with a sine wave pattern for realism
-    float lowFreqNoiseTerm = MAVLinkManager::lowFreqNoise(gen) * sin(currentTimeSec);
+    // 4. Initialize random number generator and Gaussian distribution for noise
+    //    - Mean (mu) = 0 meters (no bias)
+    //    - Standard Deviation (sigma) = 0.05 meters (reflecting realistic sensor variance)
+    static std::default_random_engine generator(std::random_device{}());
+    static std::normal_distribution<float> distribution(0.0f, 0.05f); // mean=0m, sigma=0.05m
 
-    // Combine both noise components
-    float pressureNoise = highFreqNoiseTerm + lowFreqNoiseTerm;
+    // 5. Generate noise and add it to the base pressure altitude
+    float altitudeNoise_m = distribution(generator);
+    float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
-    // Add the noise to the base pressure reading
-    float noisyPressure = basePressure + pressureNoise;
+    // 6. Calculate barometric pressure from the noisy pressure altitude using ISA
+    float noisyPressure_hPa = DataRefManager::calculatePressureFromAltitude(noisyPressureAltitude_m);
 
-    // Calculate the pressure altitude based on the noisy pressure
-    float pressureAltitude = DataRefManager::calculatePressureAltitude(noisyPressure);
+    // 7. Assign the noisy barometric pressure to the HIL_SENSOR message
+    hil_sensor.abs_pressure = noisyPressure_hPa;
 
-    // Set the pressure and altitude values in the HIL_SENSOR message
-    hil_sensor.abs_pressure = noisyPressure;
-    hil_sensor.pressure_alt = pressureAltitude;
+    // 8. Assign the noisy pressure altitude to the HIL_SENSOR message
+    hil_sensor.pressure_alt = noisyPressureAltitude_m;
 
-    // Calculate differential pressure using the indicated airspeed (IAS)
-    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 0.514444; // Convert IAS to m/s
-    float dynamicPressure = 0.01f * (0.5f * DataRefManager::AirDensitySeaLevel * ias * ias); // Dynamic pressure in hPa
-    hil_sensor.diff_pressure = dynamicPressure;
+    // 9. Retrieve Indicated Airspeed (IAS) from the simulation in knots
+    // DataRef: "sim/flightmodel/position/indicated_airspeed"
+    float ias_knots = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed"); // IAS in knots
+
+    // 10. Convert IAS from knots to meters per second (m/s)
+    float ias_m_s = ias_knots * 0.514444f; // 1 knot = 0.514444 m/s
+
+    // 11. Calculate dynamic pressure using the formula:
+    //     q = 0.5 * rho * V^2
+    //     where:
+    //     - rho (Air Density) = Sea-Level Air Density (1.225 kg/m³)
+    //     - V (Airspeed) = IAS in m/s
+    float dynamicPressure_Pa = 0.5f * DataRefManager::AirDensitySeaLevel * ias_m_s * ias_m_s; // Dynamic pressure in Pascals
+
+    // 12. Convert dynamic pressure from Pascals (Pa) to hectopascals (hPa)
+    float dynamicPressure_hPa = dynamicPressure_Pa * 0.01f; // 1 hPa = 100 Pa
+
+    // 13. Assign the calculated differential pressure to the HIL_SENSOR message
+    hil_sensor.diff_pressure = dynamicPressure_hPa;
 }
 
 
@@ -609,9 +644,13 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
-    // Set the time using the high-resolution time from TimeManager
-    hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
-
+   
+    if (ConfigManager::USE_XPLANE_TIME) {
+        hil_gps.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+    }
+    else {
+        hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
+    }
     // Set the GPS fix type to 3D fix (value 3)
     hil_gps.fix_type = static_cast<uint8_t>(3); // Assuming a 3D fix in the simulation environment
 }
@@ -777,8 +816,8 @@ void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
     uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
     //uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/hpath") * 100.0f);
     hil_gps.cog = (cog == 36000) ? static_cast < uint16_t>(0001) : cog;
-    //uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100.0f);
-    //hil_gps.yaw = (yaw == 0) ? static_cast < uint16_t>(35999) : yaw;
-    uint16_t yaw = static_cast<uint16_t>(0);
+    uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100.0f);
+    hil_gps.yaw = (yaw == 0) ? static_cast < uint16_t>(35999) : yaw;
+    //uint16_t yaw = static_cast<uint16_t>(0);
 
 }

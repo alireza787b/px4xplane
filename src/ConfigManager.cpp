@@ -84,7 +84,7 @@ float ConfigManager::accel_filter_alpha = 0.99f;
  * are applied to the barometric pressure data to smooth the input and reduce noise. This ensures
  * more stable pressure readings and reduces the impact of noisy sensor data on state estimation.
  */
-bool ConfigManager::filter_barometer_enabled = true;
+bool ConfigManager::filter_barometer_enabled = false;
 
 /**
  * @brief Alpha value for barometer filtering.
@@ -94,7 +94,7 @@ bool ConfigManager::filter_barometer_enabled = true;
  * (less smoothing), and a lower value provides more smoothing (more reliance on previous data points).
  * Tuning this parameter helps balance the responsiveness of the pressure data with the need for noise reduction.
  */
-float ConfigManager::barometer_filter_alpha = 0.99f;
+float ConfigManager::barometer_filter_alpha = 0.90f;
 
 
 // Stores configurations for actuators, indexed by their channel number.
@@ -108,8 +108,10 @@ std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
  */
 std::bitset<ConfigManager::MAX_MOTORS> ConfigManager::motorsWithBrakes; // Definition of the static member
 
-
-
+//TODO: update doc:   
+//if use xplane_time, app will be robust in case of pause or chaing menus, since time of xplane controls everything
+//if use system_time, it seems better stability when xplane falls behind the plugin loop time (not sure yet)
+bool ConfigManager::USE_XPLANE_TIME = true;
 
 
 /**

@@ -37,7 +37,9 @@ struct DatarefConfig {
 
     DatarefConfig(const std::string& name, ActuatorDataType type, const std::vector<int>& indices, const std::pair<float, float>& rng)
         : datarefName(name), dataType(type), arrayIndices(indices), range(rng) {}
-};
+}
+
+;
 
 /**
  * Structure representing the configuration of an actuator.
@@ -92,6 +94,7 @@ public:
     static bool filter_barometer_enabled;  // Flag for enabling/disabling barometric pressure filtering
     static float barometer_filter_alpha;   // Alpha value for barometric pressure filtering
 
+    static bool USE_XPLANE_TIME;
 
 
     static int MEDIAN_FILTER_WINDOW_SIZE;

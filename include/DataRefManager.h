@@ -72,6 +72,7 @@ public:
         float filter_alpha,
         std::deque<float>& median_filter_window);
     static float calculatePressureAltitude(float pressure_hPa);
+    static float calculatePressureFromAltitude(float altitude_m);
 
 
     static std::string GetFormattedDroneConfig();
@@ -81,6 +82,7 @@ public:
     static float lastLongitude;
     static float lastAltitude;
     static GeodeticPosition lastPosition;
+
 
 
     // Add deques for median filter windows
