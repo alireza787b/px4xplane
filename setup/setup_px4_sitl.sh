@@ -83,7 +83,7 @@ DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 MAVLINK2REST_IP="127.0.0.1"
-PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter)
+PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
 
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
