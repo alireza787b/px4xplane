@@ -471,8 +471,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	lastFlightTime = currentFlightTime;
 
 	// Always return a negative value to continue calling this function every frame
-	//return 0.005f; // Continue calling at the next cycle
-	return -1.0f;
+	return 0.005f; // Continue calling at the next cycle
+	//return -1.0f;
 }
 
 

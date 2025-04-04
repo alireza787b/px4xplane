@@ -113,6 +113,9 @@ std::bitset<ConfigManager::MAX_MOTORS> ConfigManager::motorsWithBrakes; // Defin
 //if use system_time, it seems better stability when xplane falls behind the plugin loop time (not sure yet)
 bool ConfigManager::USE_XPLANE_TIME = true;
 
+bool ConfigManager::vibration_noise_enabled = true;
+bool ConfigManager::rotary_vibration_enabled = false;
+
 
 /**
  * @brief Loads and parses the configuration from the 'config.ini' file.

@@ -133,29 +133,29 @@ GeodeticPosition DataRefManager::lastPosition = {}; // Initialize with default v
 
 
 
-/**
- * @brief Converts a magnetic field vector from NED to body frame.
- *
- * This function uses the provided roll, pitch, and yaw angles to rotate the magnetic field vector
- * from the NED frame to the body frame of the aircraft.
- *
- * @param nedVector Magnetic field vector in NED coordinates.
- * @param roll Roll angle in radians (rotation about the X-axis).
- * @param pitch Pitch angle in radians (rotation about the Y-axis).
- * @param yaw Yaw angle in radians with respect to Magnetic North (rotation about the Z-axis).
- * @return Eigen::Vector3f The magnetic field vector in the body frame, in Gauss.
- */
-Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
-	//temporarly remove the effect of roll and pitch
-	Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
-	Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
-	Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
-	Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
+	/**
+	 * @brief Converts a magnetic field vector from NED to body frame.
+	 *
+	 * This function uses the provided roll, pitch, and yaw angles to rotate the magnetic field vector
+	 * from the NED frame to the body frame of the aircraft.
+	 *
+	 * @param nedVector Magnetic field vector in NED coordinates.
+	 * @param roll Roll angle in radians (rotation about the X-axis).
+	 * @param pitch Pitch angle in radians (rotation about the Y-axis).
+	 * @param yaw Yaw angle in radians with respect to Magnetic North (rotation about the Z-axis).
+	 * @return Eigen::Vector3f The magnetic field vector in the body frame, in Gauss.
+	 */
+	Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
+		//temporarly remove the effect of roll and pitch
+		Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
+		Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
+		Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
+		Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
 
-	Eigen::Vector3f bodyVector = rotationMatrix * nedVector;
+		Eigen::Vector3f bodyVector = rotationMatrix * nedVector;
 
-	return bodyVector;
-}
+		return bodyVector;
+	}
 
 
 /**

@@ -96,6 +96,9 @@ public:
 
     static bool USE_XPLANE_TIME;
 
+    static bool vibration_noise_enabled;
+    static bool rotary_vibration_enabled;
+    
 
     static int MEDIAN_FILTER_WINDOW_SIZE;
 

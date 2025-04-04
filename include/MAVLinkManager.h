@@ -14,11 +14,12 @@ public:
     static void sendHILGPS();
     static void sendHILStateQuaternion();
     static void sendHILRCInputs();
-    static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
     static void setGyroData(mavlink_hil_sensor_t& hil_sensor);
     static void setPressureData(mavlink_hil_sensor_t& hil_sensor);
     static void setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor);
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
+    static Eigen::Vector3f MAVLinkManager::computeAcceleration();
+    static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
 
     struct HILActuatorControlsData {
         uint64_t timestamp;
