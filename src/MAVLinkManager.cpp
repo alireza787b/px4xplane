@@ -25,7 +25,7 @@ std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
 std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.00004f);
 std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.000004f); // Larger, slower noise
-std::normal_distribution<float> vibrationNoise(0.0f, 0.01f); // Adjust the standard deviation as needed
+std::normal_distribution<float> vibrationNoise(0.0f, 0.0f); // Adjust the standard deviation as needed
 
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.000001f);
 
@@ -70,9 +70,9 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// The gload sensor provides acceleration in G's; multiply by g_earth (m/s^2)
 	// to convert to m/s^2, and apply a -1 factor as required by the sensor convention.
 	//----------------------------------------------------------------------
-	float raw_xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
-	float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
-	float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
+	float raw_xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1.0f;
+	float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1.0f;
+	float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1.0f;
 
 	//----------------------------------------------------------------------
 	// 2. Optionally Add Vibration Effects
@@ -680,7 +680,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	//    - Mean (mu) = 0 meters (no bias)
 	//    - Standard Deviation (sigma) = 0.05 meters (reflecting realistic sensor variance)
 	static std::default_random_engine generator(std::random_device{}());
-	static std::normal_distribution<float> distribution(0.0f, 0.001f); // mean=0m, sigma=0.05m
+	static std::normal_distribution<float> distribution(0.0f, 0.002f); // mean=0m, sigma=0.05m
 
 	// 5. Generate noise and add it to the base pressure altitude
 	float altitudeNoise_m = distribution(generator);
