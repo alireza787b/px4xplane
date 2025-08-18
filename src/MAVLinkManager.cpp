@@ -705,7 +705,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	// 11. Calculate dynamic pressure using the formula:
 	//     q = 0.5 * rho * V^2
 	//     where:
-	//     - rho (Air Density) = Sea-Level Air Density (1.225 kg/m³)
+	//     - rho (Air Density) = Sea-Level Air Density (1.225 kg/mÂ³)
 	//     - V (Airspeed) = IAS in m/s
 	float dynamicPressure_Pa = 0.5f * DataRefManager::AirDensitySeaLevel * ias_m_s * ias_m_s; // Dynamic pressure in Pascals
 
@@ -787,9 +787,20 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
-	hil_gps.lat = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/latitude") * 1e7);
-	hil_gps.lon = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/longitude") * 1e7);
-	hil_gps.alt = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/elevation") * 1e3);
+    // Get raw position data from X-Plane
+    double raw_latitude = DataRefManager::getDouble("sim/flightmodel/position/latitude");
+    double raw_longitude = DataRefManager::getDouble("sim/flightmodel/position/longitude");
+    double raw_elevation = DataRefManager::getDouble("sim/flightmodel/position/elevation");
+    
+    // Apply elevation filtering/rounding to improve stability
+    // Round to centimeter precision (0.01m) to eliminate sub-centimeter noise
+    // that can cause instability in PX4's EKF2 estimator
+    double filtered_elevation = std::round(raw_elevation * 100.0) / 100.0;
+    
+    // Convert to required GPS message format
+    hil_gps.lat = static_cast<int32_t>(raw_latitude * 1E7);    // degrees * 1E7
+    hil_gps.lon = static_cast<int32_t>(raw_longitude * 1E7);   // degrees * 1E7
+    hil_gps.alt = static_cast<int32_t>(filtered_elevation * 1000.0); // mm above MSL
 }
 
 /**
