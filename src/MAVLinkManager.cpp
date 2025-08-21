@@ -284,8 +284,7 @@ void MAVLinkManager::sendHILGPS() {
 	setGPSTimeAndFix(hil_gps);
 	setGPSPositionData(hil_gps);
 	setGPSAccuracyData(hil_gps);
-	setGPSVelocityDataOGL(hil_gps);
-	//setGPSVelocityData(hil_gps);
+	setGPSVelocityData(hil_gps);
 	setGPSHeadingData(hil_gps);
 
 	// Check if the magnetic field needs to be updated
@@ -718,9 +717,6 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 
 
 
-
-
-
 /**
  * @brief Sets the magnetic field data in the HIL_SENSOR message.
  *
@@ -816,7 +812,6 @@ void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
 
 /**
  * @brief Sets the velocity data for the HIL_GPS message using the OGL coordinate system.
- *                                     !!NOT USED!!
  * This function is now deprecated due to issues with the OGL (OpenGL) coordinate system
  * in the simulation environment not aligning with the NED (North-East-Down) coordinate system
  * consistently. It extracts the velocity data from the simulation environment, which may lead to
@@ -825,7 +820,7 @@ void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
  *
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
-void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
+void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
 	float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100;
 	float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100;
 	float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100;
@@ -853,95 +848,6 @@ void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
 	hil_gps.vel = static_cast<uint16_t>(sqrt(ogl_vx * ogl_vx + ogl_vy * ogl_vy + ogl_vz * ogl_vz));
 
 }
-
-
-/**
- * @brief Sets the velocity data for the HIL_GPS message using NED coordinate system.
- *  *                                     !!NOT USED!!
- *
- * This function calculates the North (Vn), East (Ve), and Down (Vd) components of velocity
- * in the NED coordinate system using groundspeed, hpath, and vpath datarefs provided by the
- * simulation environment. Groundspeed is the total velocity, while hpath and vpath are the
- * horizontal and vertical path angles in degrees, respectively.
- *
- * The function converts these angles and groundspeed into the NED frame velocities, suitable
- * for MAVLink communication with PX4.
- *
- * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
- */
-void MAVLinkManager::setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps) {
-	float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
-	float hpath = DataRefManager::getFloat("sim/flightmodel/position/hpath") * (M_PI / 180.0f);
-	float vpath = DataRefManager::getFloat("sim/flightmodel/position/vpath") * (M_PI / 180.0f);
-
-	// Calculate NED velocity components
-	float Vn = groundspeed * cos(vpath) * cos(hpath);
-	float Ve = groundspeed * cos(vpath) * sin(hpath);
-	float Vd = groundspeed * sin(vpath);
-
-	// Populate the MAVLink message with NED velocities (converted to cm/s)
-	hil_gps.vn = static_cast<int16_t>(Vn * 100.0f);
-	hil_gps.ve = static_cast<int16_t>(Ve * 100.0f);
-	hil_gps.vd = static_cast<int16_t>(-Vd * 100.0f); // Negate if positive vpath means climbing
-
-	// Calculate and set the total velocity
-	hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
-}
-
-/**
- * @brief Sets the velocity data for the HIL_GPS message using the NED coordinate system.
- *
- * This function retrieves the TCAS system velocities from X-Plane in the OGL coordinate system,
- * transforms them to the NED coordinate system, and applies both median and low-pass filtering
- * based on the configuration settings. The filtering helps smooth the velocity data and reduce
- * the effect of transient spikes or jumps that might occur due to simulation inconsistencies.
- * The processed velocities are then populated in the HIL_GPS MAVLink message in cm/s.
- *
- * The process involves:
- * - Retrieving the raw velocity data (vx, vy, vz) from the TCAS system.
- * - Transforming the velocities from the OGL coordinate system to NED.
- * - Applying median filtering to eliminate outliers or spikes.
- * - Applying low-pass filtering to smooth the data.
- * - Converting the filtered velocities to cm/s and setting them in the HIL_GPS message.
- * - Calculating and setting the total velocity magnitude.
- *
- * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
- */
-void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
-	// Read TCAS velocities from X-Plane
-	std::vector<float> vxArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vx");
-	std::vector<float> vyArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vy");
-	std::vector<float> vzArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vz");
-
-	// Assuming the first element in each array contains the required velocity
-	float vx = vxArray[0];
-	float vy = vyArray[0];
-	float vz = vzArray[0];
-
-	// Transform from OGL to NED
-	float Vn = -vz;  // North is negative South
-	float Ve = vx;   // East remains the same
-	float Vd = -vy;  // Down is negative Up
-
-	//// Apply filtering if enabled, otherwise use raw data
-	//Vn = DataRefManager::applyFilteringIfNeeded(Vn, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha, DataRefManager::median_filter_window_vn);
-	//Ve = DataRefManager::applyFilteringIfNeeded(Ve, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha, DataRefManager::median_filter_window_ve);
-	//Vd = DataRefManager::applyFilteringIfNeeded(Vd, ConfigManager::filter_velocity_enabled, ConfigManager::velocity_filter_alpha, DataRefManager::median_filter_window_vd);
-
-	// Populate the MAVLink message with NED velocities (converted to cm/s)
-	hil_gps.vn = static_cast<int16_t>(Vn * 100.0f);
-	hil_gps.ve = static_cast<int16_t>(Ve * 100.0f);
-	hil_gps.vd = static_cast<int16_t>(Vd * 100.0f);
-
-	// Calculate the total velocity
-	hil_gps.vel = static_cast<uint16_t>(sqrt(Vn * Vn + Ve * Ve + Vd * Vd) * 100.0f);
-}
-
-
-
-
-
-
 
 
 
