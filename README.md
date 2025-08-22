@@ -14,8 +14,6 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 **🆕 NEW VIDEO COMING SOON:** A comprehensive PixEagle 2.5 tutorial showcasing the latest improvements, enhanced UI, and cross-platform support will be available soon! Stay tuned for the updated demonstration.
 
-![Untitled (7)](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)
-
 ### What's New in PixEagle 2.5
 
 - **🎯 Enhanced GPS Position Accuracy**: Implemented advanced GPS coordinate smoothing with minimal low-pass filtering to eliminate micro-jitter while maintaining high responsiveness. This significantly improves PX4 EKF2 estimator stability.
