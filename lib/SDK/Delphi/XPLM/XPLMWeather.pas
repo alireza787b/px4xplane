@@ -12,7 +12,6 @@ INTERFACE
 USES
     XPLMDefs;
    {$A4}
-{$IFDEF XPLM400}
 {___________________________________________________________________________
  * WEATHER ACCESS
  ___________________________________________________________________________}
@@ -97,26 +96,32 @@ TYPE
    END;
    PXPLMWeatherInfo_t = ^XPLMWeatherInfo_t;
 
+{$IFDEF XPLM400}
    {
     XPLMGetMETARForAirport
     
-    Get the last known METAR report for an airport by ICAO code. Note that the
-    actual weather at that airport may have evolved significantly since the
+    Get the last-downloaded METAR report for an airport by ICAO code. Note that
+    the actual weather at that airport may have evolved significantly since the
     last downloaded METAR. outMETAR must point to a char buffer of at least 150
-    characters. This call is not intended to be used per-frame.
+    characters. This call is not intended to be used per-frame. This call does
+    not return the current weather at the airport, and returns an empty string
+    if the system is not in real-weather mode.
    }
    PROCEDURE XPLMGetMETARForAirport(
                                         airport_id          : XPLMString;
                                         outMETAR            : PXPLMFixedString150_t);
     cdecl; external XPLM_DLL;
+{$ENDIF XPLM400}
 
+{$IFDEF XPLM400}
    {
     XPLMGetWeatherAtLocation
     
     Get the current weather conditions at a given location. Note that this does
     not work world-wide, only within the surrounding region. Return 1 if
-    detailed weather was found, 0 if not. This call is not intended to be used
-    per-frame.
+    detailed weather (i.e. an airport-specific METAR) was found, 0 if not. In
+    both cases, the structure will contain the best data available. This call
+    is not intended to be used per-frame.
    }
    FUNCTION XPLMGetWeatherAtLocation(
                                         latitude            : Real;
@@ -124,8 +129,8 @@ TYPE
                                         altitude_m          : Real;
                                         out_info            : PXPLMWeatherInfo_t) : Integer;
     cdecl; external XPLM_DLL;
-
 {$ENDIF XPLM400}
+
 
 IMPLEMENTATION
 

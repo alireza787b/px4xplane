@@ -318,6 +318,10 @@ enum {
     xplm_Language_Chinese                    = 10,
 
 #endif /* XPLM300 */
+#if defined(XPLM400)
+    xplm_Language_Ukrainian                  = 11,
+
+#endif /* XPLM400 */
 
 };
 typedef int XPLMLanguageCode;

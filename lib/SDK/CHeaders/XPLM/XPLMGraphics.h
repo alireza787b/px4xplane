@@ -373,7 +373,7 @@ XPLM_API void       XPLMDrawString(
                          float *              inColorRGB,
                          int                  inXOffset,
                          int                  inYOffset,
-                         char *               inChar,
+                         const char *         inChar,
                          int *                inWordWrapWidth,        /* Can be NULL */
                          XPLMFontID           inFontID);
 

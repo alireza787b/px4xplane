@@ -32,6 +32,25 @@ SDK website explains this process in more detail.
 
 This section contains per-release notes for the history of the X-Plane SDK.
 
+X-Plane SDK Release 4.1.1 10/10/2024
+
+This is a bug fix to the SDK itself; the dylib link paths on the included
+XPLM and XPWidgets frameworks now contain paths compatible with all versions
+of X-Plane and not just X-Plane 12.1.0 and newer. Fixes XPD-16057 and 
+includes doc clarification for sound callbacks.
+
+X-Plane SDK Release 4.1.0 4/10/2024
+
+The 4.1.0 SDK includes two new sets of APIs:
+
+ - XPLMAvionics has new APIs to create custom plugin-driven glass displays,
+   as well as extended callbacks for overriding the existing displays.
+
+ - XPLMNavigation has new APIs for interacting with the FMS and its flight-
+   plans.
+
+This version of the SDK requires X-Plane 12.1.0 or newer.
+
 X-Plane SDK Release 4.0.1 3/16/2023
 
 The 4.0.1 SDK fixes the XPLMSound.h header, which contained invalid C code
