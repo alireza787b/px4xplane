@@ -679,7 +679,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	//    - Mean (mu) = 0 meters (no bias)
 	//    - Standard Deviation (sigma) = 0.05 meters (reflecting realistic sensor variance)
 	static std::default_random_engine generator(std::random_device{}());
-	static std::normal_distribution<float> distribution(0.0f, 0.001f); // mean=0m, sigma=0.05m
+	static std::normal_distribution<float> distribution(0.0f, 0.002f); // mean=0m, sigma=0.05m
 
 	// 5. Generate noise and add it to the base pressure altitude
 	float altitudeNoise_m = distribution(generator);
@@ -833,7 +833,7 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 
 	// Apply smoothing to elevation (slightly more aggressive than lat/lon for stability)
 	// Elevation changes are typically slower and benefit more from smoothing
-	filtered_elevation = 0.90 * raw_elevation + 0.10 * filtered_elevation;
+	filtered_elevation = 0.85 * raw_elevation + 0.15 * filtered_elevation;
 
 	// Apply final precision rounding to eliminate sub-centimeter noise
 	// This works together with smoothing for optimal EKF2 stability
