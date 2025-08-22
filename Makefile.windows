@@ -1,54 +1,47 @@
 #==============================================================================
-# px4xplane (PixEagle) - Professional Cross-Platform Makefile
+# px4xplane (PixEagle) - Windows Makefile for MSYS2/MinGW
 # X-Plane Plugin for PX4 SITL Integration
-# Supports: macOS, Linux with debug/release configurations
+# Repository: alireza787b/px4xplane
+# For use with MSYS2/MinGW-w64 environment on Windows
 #==============================================================================
 
 # Project Information
 PROJECT_NAME := px4xplane
 VERSION := 2.5.0
 
-# Automatic OS Detection
-UNAME_S := $(shell uname -s)
-UNAME_M := $(shell uname -m)
-
-# Determine if we're on macOS or Linux
-ifeq ($(UNAME_S),Darwin)
-    OS := macos
-    PLATFORM_DEFINE := -DAPL=1
-    SHARED_LIB_EXT := .xpl
-    OUTPUT_NAME := mac.xpl
-else ifeq ($(UNAME_S),Linux)
-    OS := linux
-    PLATFORM_DEFINE := -DLIN=1
-    SHARED_LIB_EXT := .xpl
-    OUTPUT_NAME := linux.xpl
-else
-    $(error Unsupported operating system: $(UNAME_S))
-endif
+# Windows-specific settings
+OS := windows
+PLATFORM_DEFINE := -DIBM=1
+SHARED_LIB_EXT := .xpl
+OUTPUT_NAME := win.xpl
 
 # Build Configuration (default: release)
 CONFIG ?= release
 BUILD_DIR := build/$(OS)/$(CONFIG)
 OUTPUT_DIR := $(BUILD_DIR)
 
-# Compiler Configuration
-CXX := g++
-ifeq ($(OS),macos)
-    CXX := clang++
+# Compiler Configuration for MinGW-w64
+CXX := x86_64-w64-mingw32-g++
+
+# Check if we're in MSYS2 environment
+ifeq ($(MSYSTEM),MINGW64)
+    CXX := g++
 endif
 
 # Standard Compiler Flags
-CXXFLAGS_COMMON := -std=c++17 -fPIC -Wall -Wextra -pedantic -Wno-extra-qualification
-CXXFLAGS_COMMON += $(PLATFORM_DEFINE) -DXPLM200=1 -DXPLM300=1 -DXPLM301=1 -DXPLM302=1 -DXPLM303=1
+CXXFLAGS_COMMON := -std=c++17 -Wall -Wextra -pedantic -Wno-extra-qualification
+CXXFLAGS_COMMON += $(PLATFORM_DEFINE) -DWIN32 -D_WINDOWS -D_USRDLL
+CXXFLAGS_COMMON += -DXPLM200=1 -DXPLM300=1 -DXPLM301=1 -DXPLM302=1 -DXPLM303=1 -DXPLM400=1
+CXXFLAGS_COMMON += -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_DEPRECATE
+CXXFLAGS_COMMON += -DWINVER=0x0A00 -D_WIN32_WINNT=0x0A00
 
 # Configuration-specific flags
 ifeq ($(CONFIG),debug)
     CXXFLAGS_CONFIG := -g -O0 -DDEBUG -D_DEBUG
-    $(info Building in DEBUG mode...)
+    $(info Building Windows DEBUG version with MinGW...)
 else ifeq ($(CONFIG),release)
     CXXFLAGS_CONFIG := -O3 -DNDEBUG -DRELEASE
-    $(info Building in RELEASE mode...)
+    $(info Building Windows RELEASE version with MinGW...)
 else
     $(error Invalid configuration: $(CONFIG). Use 'debug' or 'release')
 endif
@@ -69,17 +62,13 @@ INCLUDE_DIRS := \
     -Ilib/XYZgeomag/src \
     -Iconfig
 
-# Platform-specific Library Configuration
-ifeq ($(OS),macos)
-    LDFLAGS := -dynamiclib -undefined dynamic_lookup
-    LDFLAGS += -F./lib/SDK/Libraries/Mac
-    LIBS := -framework XPLM -framework XPWidgets
-    LIBS += -framework OpenGL -framework GLUT
-else ifeq ($(OS),linux)
-    LDFLAGS := -shared -fPIC
-    LDFLAGS += -L./lib/SDK/Libraries/Lin
-    LIBS := -lXPLM -lXPWidgets -lGL -lglut -lpthread
-endif
+# Windows-specific Library Configuration
+LDFLAGS := -shared -static-libgcc -static-libstdc++
+LDFLAGS += -Wl,--subsystem,console
+LDFLAGS += -Llib/SDK/Libraries/Win
+
+# Windows Libraries
+LIBS := -lXPLM_64 -lXPWidgets_64 -lopengl32 -lws2_32
 
 # Source Files (complete list)
 SOURCES := \
@@ -104,10 +93,10 @@ TARGET := $(OUTPUT_DIR)/$(OUTPUT_NAME)
 # Build Rules
 #==============================================================================
 
-.PHONY: all debug release clean distclean info help install check-deps
+.PHONY: all debug release clean distclean info help check-deps check-msys2
 
 # Default target
-all: check-deps $(TARGET)
+all: check-msys2 check-deps $(TARGET)
 
 # Debug build
 debug:
@@ -116,6 +105,23 @@ debug:
 # Release build  
 release:
 	$(MAKE) CONFIG=release
+
+# Check MSYS2 environment
+check-msys2:
+	@echo "Checking Windows build environment..."
+ifeq ($(OS),Windows_NT)
+    ifneq ($(MSYSTEM),MINGW64)
+	    @echo "⚠️  Warning: Not running in MSYS2 MINGW64 environment"
+	    @echo "   For best results, use MSYS2 MinGW-w64 shell"
+	    @echo "   Download from: https://www.msys2.org/"
+    else
+	    @echo "✓ MSYS2 MINGW64 environment detected"
+    endif
+else
+	@echo "❌ ERROR: This Makefile is for Windows only"
+	@echo "   Use the main Makefile for macOS/Linux"
+	@exit 1
+endif
 
 # Create build directory
 $(BUILD_DIR):
@@ -134,6 +140,10 @@ $(TARGET): $(OBJECTS)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
 	@echo "✓ Build completed: $(TARGET)"
 	@echo "✓ Plugin ready for X-Plane: $(TARGET)"
+	@if [ -f "config/config.ini" ]; then \
+		cp config/config.ini $(OUTPUT_DIR)/; \
+		echo "✓ Configuration file copied"; \
+	fi
 
 # Include dependency files
 -include $(DEPS)
@@ -157,20 +167,23 @@ distclean: clean
 
 # Display build information
 info:
-	@echo "=== Build Information ==="
+	@echo "=== Windows Build Information ==="
 	@echo "Project: $(PROJECT_NAME) v$(VERSION)"
-	@echo "OS: $(OS) ($(UNAME_S) $(UNAME_M))"
+	@echo "OS: Windows (MinGW-w64)"
 	@echo "Compiler: $(CXX)"
 	@echo "Configuration: $(CONFIG)"
 	@echo "Build Directory: $(BUILD_DIR)"
 	@echo "Target: $(TARGET)"
-	@echo "========================="
+	@echo "MSYS2 Environment: $(MSYSTEM)"
+	@echo "=================================="
 
 # Check dependencies and environment
 check-deps:
 	@echo "Checking build dependencies..."
 	@if ! command -v $(CXX) >/dev/null 2>&1; then \
-		echo "❌ ERROR: $(CXX) not found. Please install build tools."; \
+		echo "❌ ERROR: $(CXX) not found."; \
+		echo "   Please install MinGW-w64 or use MSYS2"; \
+		echo "   Download from: https://www.msys2.org/"; \
 		exit 1; \
 	fi
 	@if [ ! -d "lib/SDK" ]; then \
@@ -195,27 +208,9 @@ check-deps:
 	fi
 	@echo "✓ All dependencies found"
 
-# Install plugin to X-Plane (optional)
-install: $(TARGET)
-	@if [ -z "$(XPLANE_DIR)" ]; then \
-		echo "❌ ERROR: XPLANE_DIR not set. Use: make install XPLANE_DIR=/path/to/xplane"; \
-		exit 1; \
-	fi
-	@if [ ! -d "$(XPLANE_DIR)" ]; then \
-		echo "❌ ERROR: X-Plane directory not found: $(XPLANE_DIR)"; \
-		exit 1; \
-	fi
-	@echo "Installing plugin to X-Plane..."
-	@mkdir -p "$(XPLANE_DIR)/Resources/plugins/$(PROJECT_NAME)/64"
-	@cp $(TARGET) "$(XPLANE_DIR)/Resources/plugins/$(PROJECT_NAME)/64/"
-	@if [ -f "config/config.ini" ]; then \
-		cp config/config.ini "$(XPLANE_DIR)/Resources/plugins/$(PROJECT_NAME)/"; \
-	fi
-	@echo "✓ Plugin installed to: $(XPLANE_DIR)/Resources/plugins/$(PROJECT_NAME)/"
-
 # Help target
 help:
-	@echo "=== px4xplane Build System ==="
+	@echo "=== px4xplane Windows Build System ==="
 	@echo ""
 	@echo "Available targets:"
 	@echo "  all         - Build the plugin (default: release)"
@@ -225,21 +220,23 @@ help:
 	@echo "  distclean   - Complete clean"
 	@echo "  info        - Show build information"
 	@echo "  check-deps  - Verify dependencies"
-	@echo "  install     - Install to X-Plane (requires XPLANE_DIR)"
+	@echo "  check-msys2 - Check MSYS2 environment"
 	@echo "  help        - Show this help"
 	@echo ""
 	@echo "Usage examples:"
 	@echo "  make                     # Build release version"
 	@echo "  make debug               # Build debug version"
 	@echo "  make clean               # Clean build files"
-	@echo "  make install XPLANE_DIR=/Applications/X-Plane 12"
 	@echo ""
-	@echo "Environment variables:"
-	@echo "  CONFIG      - Build configuration (debug|release)"
-	@echo "  XPLANE_DIR  - X-Plane installation directory"
-	@echo "  CXX         - C++ compiler to use"
+	@echo "Environment setup:"
+	@echo "  1. Install MSYS2 from https://www.msys2.org/"
+	@echo "  2. Open 'MSYS2 MinGW 64-bit' terminal"
+	@echo "  3. Install build tools:"
+	@echo "     pacman -S mingw-w64-x86_64-gcc"
+	@echo "     pacman -S mingw-w64-x86_64-make"
+	@echo "  4. Run make from project directory"
 	@echo ""
-	@echo "==============================="
+	@echo "======================================="
 
 #==============================================================================
 # Advanced Features
@@ -255,4 +252,4 @@ help:
 .DELETE_ON_ERROR:
 
 # Make sure these targets aren't treated as files
-.PHONY: all debug release clean distclean info help install check-deps
+.PHONY: all debug release clean distclean info help check-deps check-msys2

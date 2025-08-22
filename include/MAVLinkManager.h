@@ -18,7 +18,7 @@ public:
     static void setPressureData(mavlink_hil_sensor_t& hil_sensor);
     static void setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor);
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
-    static Eigen::Vector3f MAVLinkManager::computeAcceleration();
+    static Eigen::Vector3f computeAcceleration();
     static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
 
     struct HILActuatorControlsData {

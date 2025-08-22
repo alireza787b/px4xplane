@@ -94,7 +94,7 @@ public:
     static std::deque<float> median_filter_window_ve;
     static std::deque<float> median_filter_window_vd;
 
-    static std::deque<float> DataRefManager::median_filter_window_pressure;
+    static std::deque<float> median_filter_window_pressure;
 
 
     static constexpr float UPDATE_THRESHOLD=100;  // Define a threshold for position change in meters
