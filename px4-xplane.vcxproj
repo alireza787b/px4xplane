@@ -18,7 +18,6 @@ FIXED: Proper X-Plane plugin directory structure
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
-
   <!-- Project Properties -->
   <PropertyGroup Label="Globals">
     <ProjectGuid>{2BCD1D06-76FC-4DE7-A860-98081316BC6B}</ProjectGuid>
@@ -26,10 +25,8 @@ FIXED: Proper X-Plane plugin directory structure
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
     <RootNamespace>px4xplane</RootNamespace>
   </PropertyGroup>
-
   <!-- Import Default Props -->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-
   <!-- Configuration Types -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -38,7 +35,6 @@ FIXED: Proper X-Plane plugin directory structure
     <PlatformToolset>v143</PlatformToolset>
     <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseOfMfc>false</UseOfMfc>
@@ -47,27 +43,20 @@ FIXED: Proper X-Plane plugin directory structure
     <UseDebugLibraries>false</UseDebugLibraries>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
-
   <!-- Import CPP Props -->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
-
   <ImportGroup Label="Shared">
   </ImportGroup>
-
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-
   <!-- User Macros -->
   <PropertyGroup Label="UserMacros" />
-
   <!-- ✅ FIXED: Proper X-Plane Plugin Directory Structure -->
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\64\</OutDir>
@@ -77,7 +66,6 @@ FIXED: Proper X-Plane plugin directory structure
     <GenerateManifest>false</GenerateManifest>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
-
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)build\windows\release\plugins\$(ProjectName)\64\</OutDir>
     <IntDir>$(SolutionDir)build\windows\release\obj\</IntDir>
@@ -86,7 +74,6 @@ FIXED: Proper X-Plane plugin directory structure
     <GenerateManifest>false</GenerateManifest>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
-
   <!-- Debug Configuration -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -100,7 +87,6 @@ FIXED: Proper X-Plane plugin directory structure
       <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
-
       <!-- Include Directories (All Dependencies) -->
       <AdditionalIncludeDirectories>
         $(ProjectDir)include;
@@ -115,7 +101,6 @@ FIXED: Proper X-Plane plugin directory structure
         $(ProjectDir)config;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
-
       <!-- Preprocessor Definitions -->
       <PreprocessorDefinitions>
         WIN32;
@@ -136,26 +121,22 @@ FIXED: Proper X-Plane plugin directory structure
         _WIN32_WINNT=0x0A00;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
-
       <!-- Output Settings -->
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(IntDir)px4xplane.pdb</ProgramDataBaseFileName>
       <SuppressStartupBanner>true</SuppressStartupBanner>
     </ClCompile>
-
     <Link>
       <!-- Linker Settings -->
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <LinkDLL>true</LinkDLL>
       <SubSystem>Console</SubSystem>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      
       <!-- Library Directories -->
       <AdditionalLibraryDirectories>
         $(ProjectDir)lib\SDK\Libraries\Win;
         %(AdditionalLibraryDirectories)
       </AdditionalLibraryDirectories>
-
       <!-- Library Dependencies -->
       <AdditionalDependencies>
         XPLM_64.lib;
@@ -164,12 +145,10 @@ FIXED: Proper X-Plane plugin directory structure
         ws2_32.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
-
       <!-- Output Settings -->
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
     </Link>
-
     <!-- ✅ IMPROVED: Post-Build Event with X-Plane Plugin Structure -->
     <PostBuildEvent>
       <Command>
@@ -209,7 +188,6 @@ echo ===============================================
       <Message>Creating X-Plane plugin structure and copying resources</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-
   <!-- Release Configuration -->
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -225,7 +203,6 @@ echo ===============================================
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ConformanceMode>true</ConformanceMode>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-
       <!-- Include Directories (All Dependencies) -->
       <AdditionalIncludeDirectories>
         $(ProjectDir)include;
@@ -240,7 +217,6 @@ echo ===============================================
         $(ProjectDir)config;
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
-
       <!-- Preprocessor Definitions -->
       <PreprocessorDefinitions>
         WIN32;
@@ -261,13 +237,11 @@ echo ===============================================
         _WIN32_WINNT=0x0A00;
         %(PreprocessorDefinitions)
       </PreprocessorDefinitions>
-
       <!-- Output Settings -->
       <ObjectFileName>$(IntDir)</ObjectFileName>
       <ProgramDataBaseFileName>$(IntDir)px4xplane.pdb</ProgramDataBaseFileName>
       <SuppressStartupBanner>true</SuppressStartupBanner>
     </ClCompile>
-
     <Link>
       <!-- Linker Settings -->
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -276,13 +250,11 @@ echo ===============================================
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      
       <!-- Library Directories -->
       <AdditionalLibraryDirectories>
         $(ProjectDir)lib\SDK\Libraries\Win;
         %(AdditionalLibraryDirectories)
       </AdditionalLibraryDirectories>
-
       <!-- Library Dependencies -->
       <AdditionalDependencies>
         XPLM_64.lib;
@@ -291,12 +263,10 @@ echo ===============================================
         ws2_32.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
-
       <!-- Output Settings -->
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
       <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
     </Link>
-
     <!-- ✅ IMPROVED: Post-Build Event with X-Plane Plugin Structure -->
     <PostBuildEvent>
       <Command>
@@ -311,7 +281,7 @@ if not exist "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\" mkdir
 
 REM Copy configuration file to plugin root
 if exist "$(ProjectDir)config\config.ini" (
-    copy "$(ProjectDir)config\config.ini" "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\" /Y
+    copy "$(ProjectDir)config\config.ini" "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\64\" /Y
     echo ✓ Configuration file copied: config.ini
 ) else (
     echo ⚠ Warning: config.ini not found in $(ProjectDir)config\
@@ -336,7 +306,6 @@ echo ===============================================
       <Message>Creating X-Plane plugin structure and copying resources</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-
   <!-- Source Files -->
   <ItemGroup>
     <ClCompile Include="src\ConfigManager.cpp" />
@@ -347,7 +316,6 @@ echo ===============================================
     <ClCompile Include="src\px4xplane.cpp" />
     <ClCompile Include="src\TimeManager.cpp" />
   </ItemGroup>
-
   <!-- Header Files -->
   <ItemGroup>
     <ClInclude Include="include\ConfigManager.h" />
@@ -360,12 +328,10 @@ echo ===============================================
     <ClInclude Include="resource.h" />
     <ClInclude Include="lib\XYZgeomag\src\XYZgeomag.hpp" />
   </ItemGroup>
-
   <!-- Resource Files -->
   <ItemGroup>
     <ResourceCompile Include="px4xplane.rc" />
   </ItemGroup>
-
   <!-- Additional Files -->
   <ItemGroup>
     <None Include="config\config.ini" />
@@ -376,11 +342,8 @@ echo ===============================================
     <None Include=".gitignore" />
     <None Include=".gitmodules" />
   </ItemGroup>
-
   <!-- Import CPP Targets -->
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-
 </Project>
