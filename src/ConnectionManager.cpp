@@ -110,6 +110,17 @@ void ConnectionManager::acceptConnection() {
      DataRefManager::initializeMagneticField();
      XPLMDebugString("px4xplane: Init Magnetic Done.\n");
 
+     // Initialize magnetic field with current aircraft position
+     GeodeticPosition initialPosition = {
+         DataRefManager::getFloat("sim/flightmodel/position/latitude"),
+         DataRefManager::getFloat("sim/flightmodel/position/longitude"),
+         DataRefManager::getFloat("sim/flightmodel/position/elevation")
+     };
+
+     DataRefManager::updateEarthMagneticFieldNED(initialPosition);
+     DataRefManager::lastPosition = initialPosition;
+     XPLMDebugString("px4xplane: Magnetic field initialized at current position.\n");
+
      // Load motor mappings from config.ini
      ConfigManager::loadConfiguration();
      XPLMDebugString("px4xplane: Motor mappings loaded from config.ini.\n");

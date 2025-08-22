@@ -1,18 +1,30 @@
-# PX4 X-Plane Plugin
+# PixEagle - PX4 X-Plane Plugin
 
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Latest Release - Version 2.0.0 (August 2024)
+## Latest Release - PixEagle Version 2.5.0 (August 2025)
+
+### 🎥 Video Tutorials
 
 [![PX4 X-Plane Plugin v2.0.0 Demo](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)](https://youtu.be/oQTlBVXqR04)
 
-Curious about the new features in the PX4 X-Plane Plugin v2.0.0? Check out this demo video where I walk you through the simplified setup process, showcase the multi-airframe support, and test various drones like the Ehang 184, Alia 250, Cessna 172, and Bayraktar TB2. Whether you're a student, researcher, or industry professional, this quick overview will get you up and running in no time!
+**Current Video:** Check out our v2.0.0 demo video where we walk you through the simplified setup process, showcase the multi-airframe support, and test various drones like the Ehang 184, Alia 250, Cessna 172, and Bayraktar TB2.
 
-👉 [Watch the full demo and installation guide here!](https://youtu.be/oQTlBVXqR04)
+👉 [Watch the current demo and installation guide here!](https://youtu.be/oQTlBVXqR04)
+
+**🆕 NEW VIDEO COMING SOON:** A comprehensive PixEagle 2.5 tutorial showcasing the latest improvements, enhanced UI, and cross-platform support will be available soon! Stay tuned for the updated demonstration.
 
 ![Untitled (7)](https://github.com/user-attachments/assets/3fb6d042-20d9-4589-8a79-44f434d5870d)
 
-### What's New
+### What's New in PixEagle 2.5
+
+- **🎯 Enhanced GPS Position Accuracy**: Implemented advanced GPS coordinate smoothing with minimal low-pass filtering to eliminate micro-jitter while maintaining high responsiveness. This significantly improves PX4 EKF2 estimator stability.
+- **🖥️ Improved User Interface**: Enhanced in-menu interface for better user experience and easier configuration management (available now).
+- **🐧🍎 Cross-Platform Support**: Native Linux and macOS makefile support for seamless compilation across all major platforms (available now).
+- **⚡ Sensor Improvements**: Continued refinements to sensor data processing and filtering algorithms.
+- **🔧 Stability Enhancements**: Multiple under-the-hood improvements for more reliable simulation performance.
+
+### Previous Features (v2.0.0)
 - **Sensor Improvements**: Fixed many sensor problems and inconsistencies.
 - **Multi-Airframe Support**: Native support for multiple airframes including:
   - **Ehang 184**
@@ -20,11 +32,11 @@ Curious about the new features in the PX4 X-Plane Plugin v2.0.0? Check out this 
   - **Cessna 172**
   - **Bayraktar TB2**
 - **In-Menu Airframe Selection**: Change airframes directly from the X-Plane menu.
-- **Automated Setup Script**: A full automation script that sets everything up for you in WSL or Linux environments. This serves as a temporary fix until the changes are merged into the official PX4 repository.
+- **Automated Setup Script**: A full automation script that sets everything up for you in WSL or Linux environments.
 - **Detailed Configuration Instructions**: The `config.ini` file includes instructions for building custom airframes.
-- **Pre-Loaded Parameters**: Parameters are automatically loaded in PX4 build commands. However, if you need to load them manually, they are still available in the config folder.
+- **Pre-Loaded Parameters**: Parameters are automatically loaded in PX4 build commands.
 
-Check out the new features in the [v2.0.0 release](https://github.com/alireza787b/px4xplane/releases/tag/v2.0.0). **YouTube video tutorial for version 2.0 will be released soon!**
+Check out the latest features in the [v2.5.0 release](https://github.com/alireza787b/px4xplane/releases/tag/v2.5.0).
 
 ## Video Tutorials
 
@@ -35,7 +47,6 @@ For setup guidance and demonstrations, visit our [YouTube playlist](https://www.
 ## Introduction
 
 We bridge X-Plane and PX4 using the Simulator MAVLink API, which facilitates the exchange of sensor and actuator data, providing a rich and accurate simulation environment.
-
 
 The following table illustrates the message flow:
 
@@ -61,7 +72,7 @@ For full step-by-step instructions, follow the [Version 2 Documentation](https:/
 
 ### Automated Setup Script
 
-This automated script is optimized for using with **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows, and PX4 SITL runs on Linux (WSL). It should also work natively on Ubuntu and other Linux distributions.
+This automated script is optimized for using with **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows, and PX4 SITL runs on Linux (WSL). It also works natively on Ubuntu, Linux, and macOS distributions.
 
 To quickly set up PX4 with X-Plane using WSL (Ubuntu 22.04), follow this simple step:
 
@@ -77,8 +88,10 @@ To quickly set up PX4 with X-Plane using WSL (Ubuntu 22.04), follow this simple 
 
 - **Time Required**: The installation process may take some time, depending on your system and configuration, especially the first time.
 - **Prompts**: During installation, you will encounter several prompts asking you to customize the setup. You can either read and decide on each prompt or just let the defaults take effect (the script will automatically proceed with default settings if you don't respond).
+- **Cross-Platform**: Now supports Linux and macOS natively with dedicated makefiles.
 
 2. Once setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
+
 ### Uninstall
 
 To remove the global paths and the `px4xplane` command:
@@ -134,6 +147,16 @@ This guide will walk you through the process of setting up custom configurations
 
 ---
 
+## Technical Improvements in PixEagle 2.5
+
+### GPS Position Enhancement
+PixEagle 2.5 introduces sophisticated GPS coordinate smoothing that eliminates micro-jitter while maintaining sub-meter accuracy. The implementation uses minimal low-pass filtering on latitude and longitude coordinates, and combines smoothing with precision rounding for elevation data. This results in significantly improved PX4 EKF2 estimator stability without compromising responsiveness.
+
+### Cross-Platform Compatibility
+With native Linux and macOS makefile support, PixEagle 2.5 ensures seamless compilation and operation across all major platforms, making it accessible to a broader range of developers and researchers.
+
+---
+
 ## Contribution and Support
 
 Feel free to reach out to me in the issue section if you need help. Having experienced contributors is greatly appreciated!
@@ -141,4 +164,3 @@ Feel free to reach out to me in the issue section if you need help. Having exper
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
-

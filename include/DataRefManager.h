@@ -97,7 +97,7 @@ public:
     static std::deque<float> DataRefManager::median_filter_window_pressure;
 
 
-    static constexpr float UPDATE_THRESHOLD=1000;  // Define a threshold for position change in meters
+    static constexpr float UPDATE_THRESHOLD=100;  // Define a threshold for position change in meters
     static std::bitset<8> motorBrakeStates; // Tracks the current brake states
     static void checkAndApplyPropBrakes();
 

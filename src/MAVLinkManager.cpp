@@ -679,7 +679,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	//    - Mean (mu) = 0 meters (no bias)
 	//    - Standard Deviation (sigma) = 0.05 meters (reflecting realistic sensor variance)
 	static std::default_random_engine generator(std::random_device{}());
-	static std::normal_distribution<float> distribution(0.0f, 0.002f); // mean=0m, sigma=0.05m
+	static std::normal_distribution<float> distribution(0.0f, 0.001f); // mean=0m, sigma=0.05m
 
 	// 5. Generate noise and add it to the base pressure altitude
 	float altitudeNoise_m = distribution(generator);
@@ -720,40 +720,65 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 /**
  * @brief Sets the magnetic field data in the HIL_SENSOR message.
  *
- * This function retrieves the aircraft's current orientation and position, then uses the precalculated
- * Earth's magnetic field in NED coordinates. It rotates this magnetic field to the body frame of the aircraft
- * and adds noise to simulate real-world magnetometer readings. The resulting magnetic field data is then set
- * in the provided HIL_SENSOR message.
+ * This function simulates a 3-axis magnetometer by:
+ * 1. Retrieving aircraft attitude from X-Plane simulation
+ * 2. Converting the pre-calculated Earth magnetic field (NED frame) to aircraft body frame (FRD)
+ * 3. Adding realistic noise to simulate sensor inaccuracies
+ * 4. Populating the HIL_SENSOR message for PX4 autopilot
  *
- * @param hil_sensor Reference to the HIL_SENSOR message where the magnetic field data will be set.
+ * Coordinate Frame Details:
+ * - Earth Magnetic Field: NED frame (North=X, East=Y, Down=Z)
+ * - Aircraft Body Frame: FRD frame (Forward=X, Right=Y, Down=Z)
+ * - X-Plane attitude: phi=roll, theta=pitch, mag_psi=magnetic heading (0°=North)
+ *
+ * Critical Note: We use NEGATIVE yaw angle because we're transforming the coordinate
+ * frame (NED→Body), not rotating the vector itself.
+ *
+ * @param hil_sensor Reference to the HIL_SENSOR message where magnetic field data will be set
  */
 void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
-	// Retrieve the aircraft's current heading, roll, and pitch from the simulation
-	float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
-	float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
-	float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
+	// -------------------------------------------------------------------------
+	// 1. Retrieve aircraft attitude from X-Plane simulation
+	// -------------------------------------------------------------------------
+	float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");    // Magnetic heading [degrees]
+	float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");           // Roll angle [degrees]
+	float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");        // Pitch angle [degrees]
 
-	// Convert the retrieved angles from degrees to radians for further calculations
-	float yaw_rad = (yaw_mag) * M_PI / 180.0f;
-	float roll_rad = roll * M_PI * 0 / 180.0f;
-	float pitch_rad = pitch * M_PI * 0 / 180.0f;
+	// -------------------------------------------------------------------------
+	// 2. Convert attitude angles from degrees to radians
+	// Critical: Use NEGATIVE yaw for coordinate frame transformation
+	// -------------------------------------------------------------------------
+	float yaw_rad = -yaw_mag * M_PI / 180.0f;    // Negative for NED→Body frame transform
+	float roll_rad = roll * M_PI / 180.0f;       // Roll: positive = right wing down
+	float pitch_rad = pitch * M_PI / 180.0f;     // Pitch: positive = nose up
 
-	// Rotate the precalculated Earth's magnetic field from NED to the aircraft's body frame
-	Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(DataRefManager::earthMagneticFieldNED, roll_rad, pitch_rad, yaw_rad);
+	// -------------------------------------------------------------------------
+	// 3. Transform Earth magnetic field from NED frame to aircraft body frame
+	// Uses aerospace-standard ZYX Euler sequence (Yaw-Pitch-Roll)
+	// -------------------------------------------------------------------------
+	Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(
+		DataRefManager::earthMagneticFieldNED,
+		roll_rad,
+		pitch_rad,
+		yaw_rad
+	);
 
-	//bodyMagneticField = DataRefManager::earthMagneticFieldNED;
-
-	// Generate random noise values to simulate real-world magnetometer inaccuracies
+	// -------------------------------------------------------------------------
+	// 4. Add realistic noise to simulate magnetometer sensor inaccuracies
+	// Typical magnetometer noise: ~0.01 to 0.05 Gauss RMS
+	// -------------------------------------------------------------------------
 	float xmagNoise = noiseDistribution_mag(gen);
 	float ymagNoise = noiseDistribution_mag(gen);
 	float zmagNoise = noiseDistribution_mag(gen);
 
-	// Set the noisy magnetic field readings in the HIL_SENSOR message
-	hil_sensor.xmag = bodyMagneticField(0) + xmagNoise;
-	hil_sensor.ymag = bodyMagneticField(1) + ymagNoise;
-	hil_sensor.zmag = bodyMagneticField(2) + zmagNoise;
+	// -------------------------------------------------------------------------
+	// 5. Populate HIL_SENSOR message with noisy magnetic field measurements
+	// Units: Gauss (typical range: ±0.65 Gauss depending on location)
+	// -------------------------------------------------------------------------
+	hil_sensor.xmag = bodyMagneticField(0) + xmagNoise;  // Forward component (FRD X-axis)
+	hil_sensor.ymag = bodyMagneticField(1) + ymagNoise;  // Right component (FRD Y-axis)  
+	hil_sensor.zmag = bodyMagneticField(2) + zmagNoise;  // Down component (FRD Z-axis)
 }
-
 
 /**
  * @brief Sets the time and fix type data for the HIL_GPS message.
@@ -783,20 +808,41 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
-    // Get raw position data from X-Plane
-    double raw_latitude = DataRefManager::getDouble("sim/flightmodel/position/latitude");
-    double raw_longitude = DataRefManager::getDouble("sim/flightmodel/position/longitude");
-    double raw_elevation = DataRefManager::getDouble("sim/flightmodel/position/elevation");
-    
-    // Apply elevation filtering/rounding to improve stability
-    // Round to centimeter precision (0.01m) to eliminate sub-centimeter noise
-    // that can cause instability in PX4's EKF2 estimator
-    double filtered_elevation = std::round(raw_elevation * 100.0) / 100.0;
-    
-    // Convert to required GPS message format
-    hil_gps.lat = static_cast<int32_t>(raw_latitude * 1E7);    // degrees * 1E7
-    hil_gps.lon = static_cast<int32_t>(raw_longitude * 1E7);   // degrees * 1E7
-    hil_gps.alt = static_cast<int32_t>(filtered_elevation * 1000.0); // mm above MSL
+	// Get raw position data from X-Plane
+	double raw_latitude = DataRefManager::getDouble("sim/flightmodel/position/latitude");
+	double raw_longitude = DataRefManager::getDouble("sim/flightmodel/position/longitude");
+	double raw_elevation = DataRefManager::getDouble("sim/flightmodel/position/elevation");
+
+	// Static variables to maintain filter state between calls
+	static double filtered_latitude = raw_latitude;
+	static double filtered_longitude = raw_longitude;
+	static double filtered_elevation = raw_elevation;
+	static bool initialized = false;
+
+	// Initialize on first call
+	if (!initialized) {
+		filtered_latitude = raw_latitude;
+		filtered_longitude = raw_longitude;
+		filtered_elevation = raw_elevation;
+		initialized = true;
+	}
+
+	// Apply minimal smoothing to lat/lon (very light to preserve responsiveness)
+	filtered_latitude = 0.95 * raw_latitude + 0.05 * filtered_latitude;
+	filtered_longitude = 0.95 * raw_longitude + 0.05 * filtered_longitude;
+
+	// Apply smoothing to elevation (slightly more aggressive than lat/lon for stability)
+	// Elevation changes are typically slower and benefit more from smoothing
+	filtered_elevation = 0.90 * raw_elevation + 0.10 * filtered_elevation;
+
+	// Apply final precision rounding to eliminate sub-centimeter noise
+	// This works together with smoothing for optimal EKF2 stability
+	double final_elevation = std::round(filtered_elevation * 100.0) / 100.0;
+
+	// Convert to required GPS message format
+	hil_gps.lat = static_cast<int32_t>(filtered_latitude * 1E7);    // degrees * 1E7
+	hil_gps.lon = static_cast<int32_t>(filtered_longitude * 1E7);   // degrees * 1E7
+	hil_gps.alt = static_cast<int32_t>(final_elevation * 1000.0);   // mm above MSL
 }
 
 /**

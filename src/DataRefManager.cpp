@@ -133,29 +133,58 @@ GeodeticPosition DataRefManager::lastPosition = {}; // Initialize with default v
 
 
 
-	/**
-	 * @brief Converts a magnetic field vector from NED to body frame.
-	 *
-	 * This function uses the provided roll, pitch, and yaw angles to rotate the magnetic field vector
-	 * from the NED frame to the body frame of the aircraft.
-	 *
-	 * @param nedVector Magnetic field vector in NED coordinates.
-	 * @param roll Roll angle in radians (rotation about the X-axis).
-	 * @param pitch Pitch angle in radians (rotation about the Y-axis).
-	 * @param yaw Yaw angle in radians with respect to Magnetic North (rotation about the Z-axis).
-	 * @return Eigen::Vector3f The magnetic field vector in the body frame, in Gauss.
-	 */
-	Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
-		//temporarly remove the effect of roll and pitch
-		Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());
-		Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());
-		Eigen::AngleAxisf yawAngle(-yaw, Eigen::Vector3f::UnitZ());
-		Eigen::Matrix3f rotationMatrix = (rollAngle * pitchAngle * yawAngle).matrix();
+/**
+ * @brief Converts a vector from NED (North-East-Down) frame to FRD (Forward-Right-Down) body frame.
+ *
+ * This function performs coordinate frame transformation using aerospace-standard rotation sequence.
+ * The transformation rotates the coordinate system, not the vector itself.
+ *
+ * Rotation Sequence: ZYX Euler angles (Yaw-Pitch-Roll)
+ * - First: Rotate about Z-axis by yaw angle (heading)
+ * - Second: Rotate about new Y-axis by pitch angle
+ * - Third: Rotate about final X-axis by roll angle
+ *
+ * Frame Definitions:
+ * - NED Frame: X=North, Y=East, Z=Down (Earth-fixed reference frame)
+ * - FRD Body Frame: X=Forward, Y=Right, Z=Down (Aircraft-fixed body frame)
+ *
+ * Sign Conventions:
+ * - Roll: positive = right wing down
+ * - Pitch: positive = nose up
+ * - Yaw: positive = clockwise rotation when viewed from above
+ *
+ * @param nedVector Input vector in NED coordinate frame
+ * @param roll Roll angle in radians (rotation about X-axis)
+ * @param pitch Pitch angle in radians (rotation about Y-axis)
+ * @param yaw Yaw angle in radians (rotation about Z-axis)
+ * @return Vector transformed to FRD body coordinate frame
+ */
+Eigen::Vector3f DataRefManager::convertNEDToBody(const Eigen::Vector3f& nedVector, float roll, float pitch, float yaw) {
+	// -------------------------------------------------------------------------
+	// Create individual rotation quaternions for each Euler angle
+	// -------------------------------------------------------------------------
+	Eigen::AngleAxisf rollAngle(roll, Eigen::Vector3f::UnitX());     // Rotation about X-axis
+	Eigen::AngleAxisf pitchAngle(pitch, Eigen::Vector3f::UnitY());   // Rotation about Y-axis
+	Eigen::AngleAxisf yawAngle(yaw, Eigen::Vector3f::UnitZ());       // Rotation about Z-axis
 
-		Eigen::Vector3f bodyVector = rotationMatrix * nedVector;
+	// -------------------------------------------------------------------------
+	// Combine rotations in ZYX sequence: Yaw * Pitch * Roll
+	// This is the aerospace-standard rotation sequence
+	// -------------------------------------------------------------------------
+	Eigen::Quaternionf q = yawAngle * pitchAngle * rollAngle;
 
-		return bodyVector;
-	}
+	// -------------------------------------------------------------------------
+	// Convert quaternion to rotation matrix for vector transformation
+	// -------------------------------------------------------------------------
+	Eigen::Matrix3f rotationMatrix = q.toRotationMatrix();
+
+	// -------------------------------------------------------------------------
+	// Apply rotation to transform vector from NED to body frame
+	// -------------------------------------------------------------------------
+	Eigen::Vector3f bodyVector = rotationMatrix * nedVector;
+
+	return bodyVector;
+}
 
 
 /**
@@ -307,7 +336,7 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(const GeodeticPositi
 	geomag::Vector ecefPosition = geomag::geodetic2ecef(position.latitude, position.longitude, position.altitude);
 
 	// Calculate the magnetic field using the World Magnetic Model
-	geomag::Vector magField = geomag::GeoMag(2022.5, ecefPosition, geomag::WMM2020);
+	geomag::Vector magField = geomag::GeoMag(2025.8, ecefPosition, geomag::WMM2020);
 	geomag::Elements nedElements = geomag::magField2Elements(magField, position.latitude, position.longitude);
 
 	// Convert the magnetic field to NED (North-East-Down) coordinates and scale it
