@@ -97,9 +97,9 @@ OBJECTS := $(SOURCES:src/%.cpp=$(BUILD_DIR)/%.o)
 # Dependencies
 DEPS := $(OBJECTS:.o=.d)
 
-# Main Target
-TARGET := $(OUTPUT_DIR)/$(OUTPUT_NAME)
-
+# X-Plane plugin structure
+PLUGIN_DIR := $(BUILD_DIR)/plugins/$(PROJECT_NAME)
+TARGET := $(PLUGIN_DIR)/64/$(OUTPUT_NAME)
 #==============================================================================
 # Build Rules
 #==============================================================================
@@ -131,9 +131,14 @@ $(BUILD_DIR)/%.o: src/%.cpp | $(BUILD_DIR)
 $(TARGET): $(OBJECTS)
 	@echo "Linking $(TARGET)"
 	@mkdir -p $(dir $(TARGET))
+	@mkdir -p $(PLUGIN_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS)
+	@if [ -f "config/config.ini" ]; then \
+		cp config/config.ini $(PLUGIN_DIR)/; \
+		echo "✓ Configuration copied: $(PLUGIN_DIR)/config.ini"; \
+	fi
 	@echo "✓ Build completed: $(TARGET)"
-	@echo "✓ Plugin ready for X-Plane: $(TARGET)"
+	@echo "✓ Plugin ready for X-Plane: $(PLUGIN_DIR)/"
 
 # Include dependency files
 -include $(DEPS)
