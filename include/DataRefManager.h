@@ -1,4 +1,4 @@
-// DataRefManager.h
+﻿// DataRefManager.h
 #pragma once
 #include <deque>
 #include <algorithm>
