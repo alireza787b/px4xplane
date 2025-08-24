@@ -89,7 +89,9 @@ SOURCES := \
     src/DataRefManager.cpp \
     src/MAVLinkManager.cpp \
     src/px4xplane.cpp \
-    src/TimeManager.cpp
+    src/TimeManager.cpp \
+	src/UIHandler.cpp \
+    src/UIConstants.cpp
 
 # Object Files
 OBJECTS := $(SOURCES:src/%.cpp=$(BUILD_DIR)/%.o)
