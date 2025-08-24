@@ -1,14 +1,15 @@
 ﻿/**
  * @file UIConstants.h
- * @brief Professional UI Constants and Color Management for PX4-XPlane Plugin
+ * @brief Production-Ready UI Constants with High Contrast Colors for X-Plane Plugin
  *
- * This header provides a comprehensive UI constants system using X-Plane's native
- * color datarefs for consistency with the simulator's theme. Automatically adapts
- * to high-DPI displays and user color preferences.
+ * This header provides a professional UI constants system optimized for readability
+ * against X-Plane's dark theme. Features high-contrast colors, proper font handling,
+ * and scalable layout dimensions for production use.
  *
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
  * @license MIT License
+ * @version 2.5.0 (Production Ready)
  * @url https://github.com/alireza787b/px4xplane
  */
 
@@ -21,147 +22,107 @@
 namespace UIConstants {
 
     // =================================================================
-    // LAYOUT DIMENSIONS - Scalable with X-Plane UI scale
+    // LAYOUT DIMENSIONS - Professional spacing and sizing
     // =================================================================
 
     namespace Layout {
         /** Tab header height in pixels */
-        constexpr int TAB_HEIGHT = 35;
+        constexpr int TAB_HEIGHT = 40;
 
         /** Search box height in pixels */
-        constexpr int SEARCH_BOX_HEIGHT = 30;
+        constexpr int SEARCH_BOX_HEIGHT = 35;
 
         /** Footer height in pixels */
-        constexpr int FOOTER_HEIGHT = 40;
+        constexpr int FOOTER_HEIGHT = 50;
 
         /** Content margin around tab content */
-        constexpr int CONTENT_MARGIN = 10;
+        constexpr int CONTENT_MARGIN = 15;
 
         /** Minimum window width for proper display */
-        constexpr int MIN_WINDOW_WIDTH = 800;
+        constexpr int MIN_WINDOW_WIDTH = 900;
 
         /** Minimum window height for proper display */
-        constexpr int MIN_WINDOW_HEIGHT = 600;
+        constexpr int MIN_WINDOW_HEIGHT = 700;
 
         /** Scrollbar width in pixels */
-        constexpr int SCROLLBAR_WIDTH = 12;
+        constexpr int SCROLLBAR_WIDTH = 16;
 
         /** Minimum visible lines before scrolling */
-        constexpr int MIN_VISIBLE_LINES = 5;
+        constexpr int MIN_VISIBLE_LINES = 8;
 
-        /** Line height for text content */
-        constexpr int LINE_HEIGHT = 20;
+        /** Line height for text content - increased for readability */
+        constexpr int LINE_HEIGHT = 24;
 
-        /** Tab border thickness */
-        constexpr int TAB_BORDER_WIDTH = 2;
+        /** Section spacing between content groups */
+        constexpr int SECTION_SPACING = 35;
+
+        /** Header text spacing */
+        constexpr int HEADER_SPACING = 30;
+
+        /** Tab label padding */
+        constexpr int TAB_PADDING = 15;
     }
 
     namespace Scrolling {
         /** Pixels per scroll wheel click */
-        constexpr int SCROLL_SPEED = 25;
+        constexpr int SCROLL_SPEED = 30;
 
         /** Minimum thumb size for scrollbar */
-        constexpr int MIN_THUMB_SIZE = 15;
+        constexpr int MIN_THUMB_SIZE = 20;
 
         /** Scrollbar track margin */
-        constexpr int TRACK_MARGIN = 5;
+        constexpr int TRACK_MARGIN = 8;
     }
 
     // =================================================================
-    // X-PLANE NATIVE COLOR SYSTEM - Uses X-Plane's built-in color datarefs
+    // HIGH CONTRAST COLORS - Optimized for X-Plane's Dark Theme
     // =================================================================
 
-    class XPlaneColors {
-    private:
-        // X-Plane color dataref references
-        static XPLMDataRef s_menuTextRef;
-        static XPLMDataRef s_menuTextDisabledRef;
-        static XPLMDataRef s_tabFrontRef;
-        static XPLMDataRef s_tabBackRef;
-        static XPLMDataRef s_captionTextRef;
-        static XPLMDataRef s_listTextRef;
-        static XPLMDataRef s_menuHiliteRef;
-        static XPLMDataRef s_uiScaleRef;
+    namespace Colors {
+        // Status indicators - bright and clear
+        constexpr float CONNECTED[3] = { 0.1f, 1.0f, 0.1f };     // Bright green
+        constexpr float DISCONNECTED[3] = { 1.0f, 0.2f, 0.2f };  // Bright red
+        constexpr float WARNING[3] = { 1.0f, 0.8f, 0.0f };       // Bright amber
 
-        static bool s_initialized;
+        // Text colors - high contrast against dark backgrounds
+        constexpr float HEADER_TEXT[3] = { 1.0f, 1.0f, 0.4f };   // Bright yellow
+        constexpr float CONTENT_TEXT[3] = { 1.0f, 1.0f, 1.0f };  // Pure white
+        constexpr float VALUE_TEXT[3] = { 0.8f, 1.0f, 0.8f };    // Light green
+        constexpr float LABEL_TEXT[3] = { 0.9f, 0.9f, 1.0f };    // Light blue-white
 
-    public:
-        /** Initialize X-Plane color dataref system */
-        static void initialize();
+        // Tab colors - clear distinction
+        constexpr float TAB_ACTIVE[3] = { 1.0f, 1.0f, 1.0f };    // Pure white
+        constexpr float TAB_INACTIVE[3] = { 0.7f, 0.7f, 0.7f };  // Medium gray
+        constexpr float TAB_BORDER[3] = { 0.5f, 0.8f, 1.0f };    // Light blue
 
-        /** Get current UI scale factor for high-DPI support */
-        static float getUIScale();
+        // Background elements - subtle but visible
+        constexpr float SEARCH_BOX[3] = { 0.4f, 0.6f, 1.0f };    // Light blue
+        constexpr float SCROLLBAR_TRACK[3] = { 0.3f, 0.3f, 0.3f }; // Dark gray
+        constexpr float SCROLLBAR_THUMB[3] = { 0.8f, 0.8f, 1.0f }; // Light gray
 
-        /** Get X-Plane's native menu text color */
-        static void getMenuTextColor(float color[3]);
+        // Special content colors
+        constexpr float MIXING_CONTENT[3] = { 0.6f, 1.0f, 1.0f }; // Cyan
+        constexpr float AIRFRAME_TEXT[3] = { 0.4f, 1.0f, 0.4f };  // Bright green
+        constexpr float FOOTER_TEXT[3] = { 0.8f, 0.8f, 0.9f };    // Light gray
+        constexpr float LINK_TEXT[3] = { 0.5f, 0.8f, 1.0f };      // Light blue for links
 
-        /** Get X-Plane's native disabled text color */
-        static void getMenuTextDisabledColor(float color[3]);
-
-        /** Get X-Plane's native active tab color */
-        static void getTabActiveColor(float color[3]);
-
-        /** Get X-Plane's native inactive tab color */
-        static void getTabInactiveColor(float color[3]);
-
-        /** Get X-Plane's native caption text color */
-        static void getCaptionTextColor(float color[3]);
-
-        /** Get X-Plane's native list text color */
-        static void getListTextColor(float color[3]);
-
-        /** Get X-Plane's native highlight color */
-        static void getHighlightColor(float color[3]);
-    };
-
-    // =================================================================
-    // CUSTOM COLORS - Professional additions to X-Plane's palette
-    // =================================================================
-
-    namespace CustomColors {
-        /** Bright green for connected status */
-        constexpr float CONNECTED[3] = { 0.2f, 0.8f, 0.2f };
-
-        /** Bright red for disconnected status */
-        constexpr float DISCONNECTED[3] = { 0.9f, 0.3f, 0.3f };
-
-        /** Orange for warning states */
-        constexpr float WARNING[3] = { 1.0f, 0.7f, 0.0f };
-
-        /** Light yellow for header text */
-        constexpr float HEADER_TEXT[3] = { 1.0f, 1.0f, 0.8f };
-
-        /** Light green for airframe configuration text */
-        constexpr float AIRFRAME_TEXT[3] = { 0.8f, 1.0f, 0.8f };
-
-        /** Semi-transparent gray for search box */
-        constexpr float SEARCH_BOX[3] = { 0.6f, 0.6f, 0.8f };
-
-        /** Dark gray for scrollbar track */
-        constexpr float SCROLLBAR_TRACK[3] = { 0.4f, 0.4f, 0.4f };
-
-        /** Light gray for scrollbar thumb */
-        constexpr float SCROLLBAR_THUMB[3] = { 0.8f, 0.8f, 0.9f };
-
-        /** Pure white for standard text (fallback) */
-        constexpr float WHITE[3] = { 1.0f, 1.0f, 1.0f };
-
-        /** Light blue for mixing tab content */
-        constexpr float MIXING_CONTENT[3] = { 0.8f, 0.9f, 1.0f };
+        // Border and separator colors
+        constexpr float BORDER[3] = { 0.6f, 0.6f, 0.8f };        // Light gray-blue
+        constexpr float SEPARATOR[3] = { 0.5f, 0.5f, 0.7f };     // Medium gray-blue
     }
 
     // =================================================================
-    // FONT CONFIGURATION - X-Plane SDK font types
+    // FONT MANAGEMENT - Runtime initialization required
     // =================================================================
 
     namespace Fonts {
-        // Runtime font constants - initialized at startup
-        extern int PRIMARY;
-        extern int HEADER;
-        extern int CONTENT;
-        extern int FOOTER;
+        // Font constants - initialized at runtime (NOT constexpr)
+        extern int PRIMARY;    // xplmFont_Basic for compatibility
+        extern int HEADER;     // xplmFont_Proportional for headers  
+        extern int CONTENT;    // xplmFont_Proportional for content
+        extern int FOOTER;     // xplmFont_Basic for footer
 
-        /** Initialize font constants at runtime */
+        /** Initialize font constants at startup */
         void initialize();
     }
 
@@ -171,40 +132,61 @@ namespace UIConstants {
 
     namespace Tabs {
         /** Total number of tabs in the interface */
-        constexpr int TAB_COUNT = 5;  // Added mixing tab
-
-        /** Get tab name by index */
-        const char* getTabName(int index);
-
-        /** Get tab description by index */
-        const char* getTabDescription(int index);
+        static constexpr int TAB_COUNT = 5;
 
         /** Tab content spacing */
-        constexpr int TAB_CONTENT_SPACING = 15;
+        constexpr int CONTENT_SPACING = 20;
 
         /** Tab label padding */
-        constexpr int TAB_LABEL_PADDING = 10;
+        constexpr int LABEL_PADDING = 12;
+
+        /** Get tab name by index (runtime function) */
+        const char* getTabName(int index);
+
+        /** Get tab description by index (runtime function) */
+        const char* getTabDescription(int index);
     }
 
     // =================================================================
-    // STATUS INDICATORS 
+    // STATUS INDICATORS AND ICONS
     // =================================================================
 
     namespace Status {
-        /** Connection status indicators */
-        constexpr const char* CONNECTED_ICON = "🟢";
-        constexpr const char* DISCONNECTED_ICON = "🔴";
-        constexpr const char* WARNING_ICON = "🟡";
+        // Connection status indicators - clear and visible
+        constexpr const char* CONNECTED_ICON = "●";      // Solid circle (better than emoji)
+        constexpr const char* DISCONNECTED_ICON = "○";   // Empty circle
+        constexpr const char* WARNING_ICON = "▲";        // Triangle
 
-        /** Status text */
+        // Status text
         constexpr const char* CONNECTED_TEXT = "CONNECTED";
         constexpr const char* DISCONNECTED_TEXT = "DISCONNECTED";
         constexpr const char* CONNECTING_TEXT = "CONNECTING...";
 
-        /** Scroll indicators */
+        // UI indicators
         constexpr const char* SCROLL_INDICATOR = "↕";
         constexpr const char* SEARCH_ICON = "🔍";
+        constexpr const char* LINK_ICON = "→";
     }
+
+    // =================================================================
+    // X-PLANE NATIVE COLOR INTEGRATION
+    // =================================================================
+
+    class XPlaneColors {
+    private:
+        static XPLMDataRef s_uiScaleRef;
+        static bool s_initialized;
+
+    public:
+        /** Initialize X-Plane integration */
+        static void initialize();
+
+        /** Get current UI scale factor for high-DPI support */
+        static float getUIScale();
+
+        /** Check if we're in a dark theme (always assume yes for readability) */
+        static bool isDarkTheme() { return true; }
+    };
 
     // =================================================================
     // UTILITY FUNCTIONS - Scale-aware helpers
@@ -215,19 +197,35 @@ namespace UIConstants {
         return static_cast<int>(baseSize * XPlaneColors::getUIScale());
     }
 
-    /** Get scaled layout dimension */
+    /** Get scaled layout dimension with reasonable limits */
     inline int getScaledLayout(int baseSize) {
         float scale = XPlaneColors::getUIScale();
         // Clamp scaling for layout elements to prevent UI breakage
-        scale = (scale < 1.0f) ? 1.0f : ((scale > 2.0f) ? 2.0f : scale);
+        scale = (scale < 0.8f) ? 0.8f : ((scale > 2.5f) ? 2.5f : scale);
         return static_cast<int>(baseSize * scale);
     }
 
     /** Center text within given bounds */
-    inline int centerTextX(int leftBound, int rightBound, const char* text, int charWidth = 6) {
-        int textWidth = strlen(text) * charWidth;
+    inline int centerTextX(int leftBound, int rightBound, const char* text, int charWidth = 7) {
+        int textWidth = static_cast<int>(strlen(text)) * charWidth;
         int available = rightBound - leftBound;
         return leftBound + ((available - textWidth) / 2);
+    }
+
+    /** Clamp value between min and max */
+    template<typename T>
+    inline T clamp(T value, T minVal, T maxVal) {
+        return (value < minVal) ? minVal : ((value > maxVal) ? maxVal : value);
+    }
+
+    /** Calculate contrast-adjusted color based on background */
+    inline void adjustColorForReadability(float color[3], bool isDarkBackground = true) {
+        if (isDarkBackground) {
+            // Ensure minimum brightness for dark backgrounds
+            for (int i = 0; i < 3; i++) {
+                if (color[i] < 0.3f) color[i] = 0.3f + (color[i] * 0.7f);
+            }
+        }
     }
 
 } // namespace UIConstants

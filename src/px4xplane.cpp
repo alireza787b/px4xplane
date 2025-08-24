@@ -1,16 +1,14 @@
 ﻿/**
  * @file px4xplane.cpp
- * @brief PX4-XPlane Interface Plugin - Production Ready (Phase 3)
+ * @brief PX4-XPlane Interface Plugin - Production Ready Beta v2.5.0
  *
- * PHASE 3 PRODUCTION FEATURES:
- * - Complete UI/Core separation with professional UIHandler system
- * - 5-tab interface: Connection, Position, Sensors, Controls, Mixing
- * - X-Plane native colors with high-DPI support
- * - Dynamic menu text based on connection state
- * - Fixed status display with clear indicators
- * - Professional airframe configuration visualization
- * - Enhanced error handling and code organization
- * - Production-ready maintainability and documentation
+ * PRODUCTION BETA FEATURES:
+ * - High-contrast UI optimized for X-Plane's dark theme
+ * - Professional 5-tab interface with excellent readability
+ * - Real-time airframe configuration visualization
+ * - Clear status indicators and visual feedback
+ * - Production-ready code architecture and error handling
+ * - Easy extensibility for adding new data fields
  *
  * PRESERVED FUNCTIONALITY:
  * - All original PX4 SITL communication and data handling
@@ -22,7 +20,7 @@
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
  * @license MIT License
- * @version 2.6.0 (Phase 3 - Production Ready)
+ * @version 2.5.0 (Beta - Production Ready)
  * @url https://github.com/alireza787b/px4xplane
  */
 
@@ -541,7 +539,7 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     strcpy(outSig, PX4XPlaneVersion::PLUGIN_SIGNATURE);
     strcpy(outDesc, PX4XPlaneVersion::getBuildInfo());
 
-    debugLog("Plugin starting (Phase 3 - Production Ready)...");
+    debugLog("Plugin starting (v2.5.0 - Beta Production Ready)...");
 
     // Enable modern X-Plane features
     if (XPLMHasFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS")) {
@@ -567,14 +565,14 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     // Register flight loop callback
     XPLMRegisterFlightLoopCallback(flightLoopCallback, -1.0f, nullptr);
 
-    debugLog("Plugin started successfully (Phase 3 - Production Ready)");
+    debugLog("Plugin started successfully (v2.5.0 - Beta Production Ready)");
     debugLog(("Version: " + std::string(PX4XPlaneVersion::getFullVersionString())).c_str());
 
     return 1; // Success
 }
 
 PLUGIN_API void XPluginStop(void) {
-    debugLog("Plugin stopping (Phase 3 - Production Ready)...");
+    debugLog("Plugin stopping (v2.5.0 - Beta Production Ready)...");
 
     // Disconnect if still connected
     if (ConnectionManager::isConnected()) {
@@ -607,16 +605,16 @@ PLUGIN_API void XPluginStop(void) {
     debugLog("Windows socket system cleaned up");
 #endif
 
-    debugLog("Plugin stopped successfully (Phase 3 - Production Ready)");
+    debugLog("Plugin stopped successfully (v2.5.0 - Beta Production Ready)");
 }
 
 PLUGIN_API int XPluginEnable(void) {
-    debugLog("Plugin enabled (Phase 3 - Production Ready)");
+    debugLog("Plugin enabled (v2.5.0 - Beta Production Ready)");
     return 1;
 }
 
 PLUGIN_API void XPluginDisable(void) {
-    debugLog("Plugin disabled (Phase 3 - Production Ready)");
+    debugLog("Plugin disabled (v2.5.0 - Beta Production Ready)");
     if (ConnectionManager::isConnected()) {
         ConnectionManager::disconnect();
     }

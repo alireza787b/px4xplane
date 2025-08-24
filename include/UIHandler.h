@@ -273,6 +273,9 @@ namespace UIHandler {
     // =================================================================
 
     namespace Internal {
+        /** Draw subtle background */
+        void drawBackground(int windowLeft, int windowTop, int windowRight, int windowBottom);
+
         /** Draw professional tab headers */
         void drawTabHeaders(int windowLeft, int windowTop, int windowRight, int windowBottom);
 
@@ -287,6 +290,9 @@ namespace UIHandler {
 
         /** Draw professional footer with links */
         void drawFooter(int windowLeft, int windowTop, int windowRight, int windowBottom);
+
+        /** Draw professional about dialog content */
+        void drawAboutContent(int windowLeft, int windowTop, int windowRight, int windowBottom);
 
         // Tab-specific content drawing functions
         int drawConnectionTabContent(int left, int top, int right, int bottom, int startOffset);

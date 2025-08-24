@@ -12,7 +12,6 @@
  * @url https://github.com/alireza787b/px4xplane
  */
 
-#include <stdio.h>
 #ifndef VERSION_INFO_H
 #define VERSION_INFO_H
 
@@ -26,7 +25,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* VERSION = "2.5.0";
 
     /** Version phase description */
-    constexpr const char* PHASE = "";
+    constexpr const char* PHASE = "Beta - Production Ready";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2025";
@@ -120,4 +119,4 @@ namespace PX4XPlaneVersion {
 
 } // namespace PX4XPlaneVersion
 
-#endif // VERSION_INFO_H#pragma once
+#endif // VERSION_INFO_H
