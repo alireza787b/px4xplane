@@ -12,7 +12,8 @@
  * - High-DPI display support
  * - Per-tab independent scrolling
  * - Dynamic menu text based on connection state
- * - Airframe configuration visualization
+ * - Enhanced airframe configuration visualization with live updates
+ * - Real-time sensor data display across all tabs
  *
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
@@ -214,6 +215,16 @@ namespace UIHandler {
      */
     void updateAirframesMenu();
 
+    /**
+     * @brief Notify UI that airframe configuration has changed
+     *
+     * This function should be called whenever the active airframe changes
+     * to ensure the mixing tab displays current configuration information.
+     *
+     * @param newAirframeName Name of the newly selected airframe
+     */
+    void notifyAirframeChanged(const std::string& newAirframeName);
+
     // =================================================================
     // UTILITY AND HELPER FUNCTIONS
     // =================================================================
@@ -304,7 +315,7 @@ namespace UIHandler {
         /** Handle tab header click detection */
         bool handleTabClick(int mouseX, int mouseY, int windowLeft, int windowTop, int windowRight, int windowBottom);
 
-        /** Draw DataRef category with filtering */
+        /** Draw DataRef category with filtering and live values */
         int drawDataRefCategory(int left, int top, float color[3], int lineOffset, const char* categoryFilter, int contentTop, int contentBottom, int& drawnLines);
     }
 

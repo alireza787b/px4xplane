@@ -8,7 +8,8 @@
  * - Professional spacing and typography
  * - Clear status indicators and visual feedback
  * - Clickable links and interactive elements
- * - Easy extensibility for adding new fields
+ * - Real-time sensor data display with actual values
+ * - Enhanced mixing tab with detailed configuration mapping
  * - Production-ready error handling and robustness
  *
  * @author Alireza Ghaderi
@@ -31,6 +32,7 @@
 #include <sstream>
 #include <algorithm>
 #include <cstring>
+#include <iomanip>
 
 using namespace UIConstants;
 using namespace UIHandler;
@@ -297,70 +299,50 @@ void UIHandler::Internal::drawTabHeaders(int windowLeft, int windowTop, int wind
         // Draw tab border with improved visibility
         float* currentBorderColor = isActive ? borderColor : inactiveColor;
 
-        // Draw solid line borders
+        // Draw solid line borders - using ASCII characters only
         for (int x = tabLeft + 2; x < tabRight - 2; x += 6) {
-            XPLMDrawString(currentBorderColor, x, tabTop, (char*)"━", nullptr, Fonts::PRIMARY);
-            XPLMDrawString(currentBorderColor, x, tabBottom, (char*)"━", nullptr, Fonts::PRIMARY);
+            XPLMDrawString(currentBorderColor, x, tabTop, (char*)"_", nullptr, Fonts::PRIMARY);
+            XPLMDrawString(currentBorderColor, x, tabBottom, (char*)"_", nullptr, Fonts::PRIMARY);
         }
 
-        // Side borders
+        // Side borders - using ASCII pipe character
         for (int y = tabBottom + 4; y < tabTop - 4; y += 6) {
-            XPLMDrawString(currentBorderColor, tabLeft + 2, y, (char*)"┃", nullptr, Fonts::PRIMARY);
-            XPLMDrawString(currentBorderColor, tabRight - 8, y, (char*)"┃", nullptr, Fonts::PRIMARY);
+            XPLMDrawString(currentBorderColor, tabLeft + 2, y, (char*)"|", nullptr, Fonts::PRIMARY);
+            XPLMDrawString(currentBorderColor, tabRight - 8, y, (char*)"|", nullptr, Fonts::PRIMARY);
         }
 
         // Draw tab label with better positioning
         float* textColor = isActive ? activeColor : inactiveColor;
         const char* tabName = Tabs::getTabName(i);
-        int textX = centerTextX(tabLeft + getScaledLayout(Layout::TAB_PADDING),
-            tabRight - getScaledLayout(Layout::TAB_PADDING), tabName, 8);
-        int textY = tabTop - getScaledSize(25);
-
-        XPLMDrawString(textColor, textX, textY, (char*)tabName, nullptr, Fonts::HEADER);
-
-        // Draw scroll indicator if needed with better positioning
-        if (g_uiState.needsScrollbar[i]) {
-            float scrollColor[3];
-            memcpy(scrollColor, Colors::WARNING, sizeof(scrollColor));
-            XPLMDrawString(scrollColor, tabRight - 20, textY, (char*)Status::SCROLL_INDICATOR, nullptr, Fonts::PRIMARY);
-        }
+        int textX = centerTextX(tabLeft, tabRight, tabName, 7);
+        int textY = (tabTop + tabBottom) / 2 - getScaledSize(6);
+        XPLMDrawString(textColor, textX, textY, (char*)tabName, nullptr, Fonts::PRIMARY);
     }
 }
 
 void UIHandler::Internal::drawSearchBox(int windowLeft, int windowTop, int windowRight, int windowBottom) {
-    int searchTop = windowTop - getScaledLayout(Layout::TAB_HEIGHT) - getScaledSize(12);
+    // Calculate search box position
+    int searchTop = windowTop - getScaledLayout(Layout::TAB_HEIGHT) - getScaledSize(15);
     int searchBottom = searchTop - getScaledLayout(Layout::SEARCH_BOX_HEIGHT);
-    int searchLeft = windowLeft + getScaledSize(15);
-    int searchRight = windowRight - getScaledSize(15);
+    int searchLeft = windowLeft + getScaledSize(20);
+    int searchRight = windowRight - getScaledSize(20);
 
-    // Draw search box with improved colors
     float searchColor[3];
     memcpy(searchColor, Colors::SEARCH_BOX, sizeof(searchColor));
 
-    // Draw more visible border
-    for (int x = searchLeft; x < searchRight; x += 8) {
-        XPLMDrawString(searchColor, x, searchTop, (char*)"─", nullptr, Fonts::PRIMARY);
-        XPLMDrawString(searchColor, x, searchBottom, (char*)"─", nullptr, Fonts::PRIMARY);
-    }
-
-    for (int y = searchBottom + 3; y < searchTop - 3; y += 6) {
-        XPLMDrawString(searchColor, searchLeft, y, (char*)"│", nullptr, Fonts::PRIMARY);
-        XPLMDrawString(searchColor, searchRight - 8, y, (char*)"│", nullptr, Fonts::PRIMARY);
-    }
-
-    // Enhanced search placeholder text
-    char searchText[256];
-    snprintf(searchText, sizeof(searchText), "%s Search %s data... (Advanced search coming in v2.6)",
-        Status::SEARCH_ICON, Tabs::getTabName(static_cast<int>(g_uiState.currentTab)));
-
-    XPLMDrawString(searchColor, searchLeft + 15, searchTop - 22, searchText, nullptr, Fonts::CONTENT);
+    // Draw search box outline using ASCII characters
+    char searchPrompt[64];
+    snprintf(searchPrompt, sizeof(searchPrompt), "%s Search: [Future Feature]", Status::SEARCH_ICON);
+    int textY = (searchTop + searchBottom) / 2 - getScaledSize(6);
+    XPLMDrawString(searchColor, searchLeft + 10, textY, searchPrompt, nullptr, Fonts::CONTENT);
 }
 
 void UIHandler::Internal::drawTabContent(int windowLeft, int windowTop, int windowRight, int windowBottom) {
-    int startOffset = getScaledSize(25);
-    int contentHeight = 0;
+    // Calculate content start offset
+    int startOffset = getScaledLayout(Layout::CONTENT_MARGIN);
 
-    // Draw content based on active tab with improved layout
+    // Draw tab-specific content
+    int contentHeight = startOffset;
     switch (g_uiState.currentTab) {
     case Tab::CONNECTION:
         contentHeight = drawConnectionTabContent(windowLeft, g_uiState.contentAreaTop, windowRight, g_uiState.contentAreaBottom, startOffset);
@@ -416,14 +398,14 @@ void UIHandler::Internal::drawScrollbar(int windowLeft, int windowTop, int windo
     memcpy(trackColor, Colors::SCROLLBAR_TRACK, sizeof(trackColor));
     memcpy(thumbColor, Colors::SCROLLBAR_THUMB, sizeof(thumbColor));
 
-    // Draw track
+    // Draw track using ASCII characters
     for (int i = scrollbarBottom; i < scrollbarTop; i += 4) {
-        XPLMDrawString(trackColor, scrollbarLeft + 4, i, (char*)"┃", nullptr, Fonts::PRIMARY);
+        XPLMDrawString(trackColor, scrollbarLeft + 4, i, (char*)"|", nullptr, Fonts::PRIMARY);
     }
 
-    // Draw thumb with better visibility
+    // Draw thumb with better visibility using ASCII characters
     for (int i = thumbBottom; i < thumbTop; i += 3) {
-        XPLMDrawString(thumbColor, scrollbarLeft + 2, i, (char*)"██", nullptr, Fonts::PRIMARY);
+        XPLMDrawString(thumbColor, scrollbarLeft + 2, i, (char*)"##", nullptr, Fonts::PRIMARY);
     }
 }
 
@@ -473,8 +455,8 @@ void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int wi
     int lineOffset = getScaledSize(40);
     char buf[512];
 
-    // Enhanced title
-    snprintf(buf, sizeof(buf), "🚁 %s", PX4XPlaneVersion::getMainWindowTitle());
+    // Enhanced title - removed emoji
+    snprintf(buf, sizeof(buf), "Aircraft: %s", PX4XPlaneVersion::getMainWindowTitle());
     XPLMDrawString(titleColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::HEADER);
     lineOffset += getScaledSize(50);
 
@@ -483,19 +465,19 @@ void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int wi
     XPLMDrawString(contentColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
     lineOffset += getScaledSize(40);
 
-    // Production Features
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"🚀 Production Ready Features:", nullptr, Fonts::HEADER);
+    // Production Features - removed emoji
+    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Production Ready Features:", nullptr, Fonts::HEADER);
     lineOffset += getScaledSize(35);
 
     const char* features[] = {
-        "✅ High-contrast UI optimized for X-Plane's dark theme",
-        "✅ Professional 5-tab interface with clear navigation",
-        "✅ Real-time airframe configuration visualization",
-        "✅ Dynamic connection status with clear indicators",
-        "✅ High-DPI display support and responsive scaling",
-        "✅ Per-tab independent scrolling with smooth navigation",
-        "✅ Production-ready code architecture and error handling",
-        "✅ Easy extensibility for adding new data fields"
+        "+ High-contrast UI optimized for X-Plane's dark theme",
+        "+ Professional 5-tab interface with clear navigation",
+        "+ Real-time airframe configuration visualization",
+        "+ Dynamic connection status with clear indicators",
+        "+ High-DPI display support and responsive scaling",
+        "+ Per-tab independent scrolling with smooth navigation",
+        "+ Production-ready code architecture and error handling",
+        "+ Easy extensibility for adding new data fields"
     };
 
     for (const auto& feature : features) {
@@ -504,19 +486,19 @@ void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int wi
     }
     lineOffset += getScaledSize(20);
 
-    // Tab information
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"📊 Data Organization:", nullptr, Fonts::HEADER);
+    // Tab information - removed emoji
+    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Data Organization:", nullptr, Fonts::HEADER);
     lineOffset += getScaledSize(35);
 
     for (int i = 0; i < Tabs::TAB_COUNT; i++) {
-        snprintf(buf, sizeof(buf), "• %s: %s", Tabs::getTabName(i), Tabs::getTabDescription(i));
+        snprintf(buf, sizeof(buf), "- %s: %s", Tabs::getTabName(i), Tabs::getTabDescription(i));
         XPLMDrawString(contentColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
         lineOffset += getScaledSize(25);
     }
     lineOffset += getScaledSize(25);
 
-    // Usage instructions
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"🎯 Quick Start Guide:", nullptr, Fonts::HEADER);
+    // Usage instructions - removed emoji
+    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Quick Start Guide:", nullptr, Fonts::HEADER);
     lineOffset += getScaledSize(35);
 
     const char* instructions[] = {
@@ -533,8 +515,8 @@ void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int wi
     }
     lineOffset += getScaledSize(30);
 
-    // Links and contact
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"🔗 Links & Support:", nullptr, Fonts::HEADER);
+    // Links and contact - removed emoji
+    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Links & Support:", nullptr, Fonts::HEADER);
     lineOffset += getScaledSize(35);
 
     snprintf(buf, sizeof(buf), "%s GitHub Repository: %s", Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
@@ -554,11 +536,11 @@ void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int wi
     XPLMDrawString(contentColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::FOOTER);
     lineOffset += getScaledSize(30);
 
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"👆 Click anywhere to close this dialog", nullptr, Fonts::CONTENT);
+    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Click anywhere to close this dialog", nullptr, Fonts::CONTENT);
 }
 
 // =================================================================
-// TAB-SPECIFIC CONTENT DRAWING FUNCTIONS
+// TAB-SPECIFIC CONTENT DRAWING FUNCTIONS - WITH REAL DATA
 // =================================================================
 
 int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, int bottom, int startOffset) {
@@ -573,7 +555,7 @@ int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, 
 
     // Enhanced Connection Status Section
     int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🔗 CONNECTION STATUS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "CONNECTION STATUS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     // Clear connection status with improved visibility
@@ -606,21 +588,39 @@ int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, 
     drawSmartText(left + 30, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Time Information Section
+    // Time Information Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "⏱️ TIME INFORMATION", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "TIME INFORMATION", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    // Draw Time category datarefs with improved formatting
-    int drawnLines = 0;
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Time", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // Flight time
+    float flightTime = DataRefManager::getFloat("sim/time/total_flight_time_sec");
+    snprintf(buf, sizeof(buf), "  Flight Time         : %8.1f s", flightTime);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Real time
+    float realTime = DataRefManager::getFloat("sim/time/total_running_time_sec");
+    snprintf(buf, sizeof(buf), "  Real Time           : %8.1f s", realTime);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Frame rate
+    float frameRate = DataRefManager::getFloat("sim/operation/misc/frame_rate_period");
+    if (frameRate > 0) frameRate = 1.0f / frameRate;
+    snprintf(buf, sizeof(buf), "  Frame Rate          : %8.1f fps", frameRate);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     return lineOffset;
 }
 
 int UIHandler::Internal::drawPositionTabContent(int left, int top, int right, int bottom, int startOffset) {
     int lineOffset = startOffset;
-    int drawnLines = 0;
+    char buf[512];
     float headerColor[3], contentColor[3];
 
     memcpy(headerColor, Colors::HEADER_TEXT, sizeof(headerColor));
@@ -628,35 +628,94 @@ int UIHandler::Internal::drawPositionTabContent(int left, int top, int right, in
 
     int currentTabIndex = static_cast<int>(g_uiState.currentTab);
 
-    // Position Section with better formatting
+    // Position Section with REAL DATA
     int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🌍 POSITION DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "POSITION DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Position", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // Latitude
+    double latitude = DataRefManager::getDouble("sim/flightmodel/position/latitude");
+    snprintf(buf, sizeof(buf), "  Latitude            : %12.7f deg", latitude);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Longitude
+    double longitude = DataRefManager::getDouble("sim/flightmodel/position/longitude");
+    snprintf(buf, sizeof(buf), "  Longitude           : %12.7f deg", longitude);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Elevation
+    float elevation = DataRefManager::getFloat("sim/flightmodel/position/elevation");
+    snprintf(buf, sizeof(buf), "  Elevation           : %10.1f m", elevation);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Attitude Section
+    // Attitude Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🧭 ATTITUDE DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "ATTITUDE DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Attitude", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // Roll (phi)
+    float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
+    snprintf(buf, sizeof(buf), "  Roll (phi)          : %10.2f deg", roll);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Pitch (theta)
+    float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
+    snprintf(buf, sizeof(buf), "  Pitch (theta)       : %10.2f deg", pitch);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Yaw (psi)
+    float yaw = DataRefManager::getFloat("sim/flightmodel/position/psi");
+    snprintf(buf, sizeof(buf), "  Yaw (psi)           : %10.2f deg", yaw);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Angular Velocity Section
+    // Angular Velocity Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🌪️ ANGULAR VELOCITIES", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "ANGULAR VELOCITIES", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Angular Velocity", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // Roll rate
+    float rollRate = DataRefManager::getFloat("sim/flightmodel/position/Prad");
+    snprintf(buf, sizeof(buf), "  Roll Rate (P)       : %10.3f rad/s", rollRate);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Pitch rate
+    float pitchRate = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
+    snprintf(buf, sizeof(buf), "  Pitch Rate (Q)      : %10.3f rad/s", pitchRate);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Yaw rate
+    float yawRate = DataRefManager::getFloat("sim/flightmodel/position/Rrad");
+    snprintf(buf, sizeof(buf), "  Yaw Rate (R)        : %10.3f rad/s", yawRate);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     return lineOffset;
 }
 
 int UIHandler::Internal::drawSensorsTabContent(int left, int top, int right, int bottom, int startOffset) {
     int lineOffset = startOffset;
-    int drawnLines = 0;
+    char buf[512];
     float headerColor[3], contentColor[3];
 
     memcpy(headerColor, Colors::HEADER_TEXT, sizeof(headerColor));
@@ -664,37 +723,88 @@ int UIHandler::Internal::drawSensorsTabContent(int left, int top, int right, int
 
     int currentTabIndex = static_cast<int>(g_uiState.currentTab);
 
-    // Acceleration Section
+    // Acceleration Section with REAL DATA
     int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "⚡ ACCELERATION (BODY FRAME)", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "ACCELERATION (BODY FRAME)", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Acceleration (BODY)", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // X acceleration
+    float xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth;
+    snprintf(buf, sizeof(buf), "  X Acceleration      : %10.2f m/s²", xacc);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Y acceleration
+    float yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth;
+    snprintf(buf, sizeof(buf), "  Y Acceleration      : %10.2f m/s²", yacc);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Z acceleration
+    float zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth;
+    snprintf(buf, sizeof(buf), "  Z Acceleration      : %10.2f m/s²", zacc);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Airspeed Section
+    // Airspeed Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "💨 AIRSPEED DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "AIRSPEED DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Airspeed", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // Indicated airspeed
+    float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed");
+    snprintf(buf, sizeof(buf), "  Indicated Airspeed  : %10.1f kts", ias);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // True airspeed
+    float tas = DataRefManager::getFloat("sim/flightmodel/position/true_airspeed");
+    snprintf(buf, sizeof(buf), "  True Airspeed       : %10.1f kts", tas);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Ground speed
+    float groundSpeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
+    snprintf(buf, sizeof(buf), "  Ground Speed        : %10.1f kts", groundSpeed);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Environmental Sensors Section
+    // Environmental Sensors Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🌡️ ENVIRONMENTAL SENSORS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "ENVIRONMENTAL SENSORS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "Sensors", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
+    // Barometric pressure
+    float pressureAlt = DataRefManager::getFloat("sim/cockpit2/gauges/indicators/barometric_pressure_in_hg");
+    snprintf(buf, sizeof(buf), "  Barometric Pressure : %10.2f inHg", pressureAlt);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Outside temperature
+    float oat = DataRefManager::getFloat("sim/cockpit2/temperature/outside_air_temp_degc");
+    snprintf(buf, sizeof(buf), "  Outside Air Temp    : %10.1f °C", oat);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     return lineOffset;
 }
 
 int UIHandler::Internal::drawControlsTabContent(int left, int top, int right, int bottom, int startOffset) {
     int lineOffset = startOffset;
-    int drawnLines = 0;
-    float headerColor[3], contentColor[3], airframeColor[3];
     char buf[512];
+    float headerColor[3], contentColor[3], airframeColor[3];
 
     memcpy(headerColor, Colors::HEADER_TEXT, sizeof(headerColor));
     memcpy(contentColor, Colors::CONTENT_TEXT, sizeof(contentColor));
@@ -702,9 +812,9 @@ int UIHandler::Internal::drawControlsTabContent(int left, int top, int right, in
 
     int currentTabIndex = static_cast<int>(g_uiState.currentTab);
 
-    // Aircraft Configuration Section
+    // Aircraft Configuration Section with REAL DATA
     int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "✈️ AIRCRAFT CONFIGURATION", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "AIRCRAFT CONFIGURATION", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     // Get and display formatted config with better formatting
@@ -720,45 +830,16 @@ int UIHandler::Internal::drawControlsTabContent(int left, int top, int right, in
         drawSmartText(left + 35, scrolledY, lineBuffer, airframeColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
         lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
     }
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // RC Information Section  
+    // Actuator Controls Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🎮 RC INPUT DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "ACTUATOR CONTROLS DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    lineOffset = drawDataRefCategory(left, top, contentColor, lineOffset, "RC Information", g_uiState.contentAreaTop, g_uiState.contentAreaBottom, drawnLines);
-    lineOffset += getScaledLayout(Layout::SECTION_SPACING);
-
-    // Actuator Controls Section
-    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "⚙️ ACTUATOR CONTROLS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-    lineOffset += getScaledLayout(Layout::HEADER_SPACING);
-
-    // Draw actuator controls with enhanced formatting
-    auto& hilActuatorControlsData = MAVLinkManager::hilActuatorControlsData;
-
-    // Timestamp
-    snprintf(buf, sizeof(buf), "Timestamp: %llu μs", hilActuatorControlsData.timestamp);
-    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-
-    // Controls (show first 8 with better formatting)
-    for (int i = 0; i < 8; ++i) {
-        snprintf(buf, sizeof(buf), "Control %d: %7.3f", i, hilActuatorControlsData.controls[i]);
-        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-        drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-    }
-
-    // Mode and Flags
-    snprintf(buf, sizeof(buf), "Mode: %u", hilActuatorControlsData.mode);
-    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-
-    snprintf(buf, sizeof(buf), "Flags: 0x%llX", hilActuatorControlsData.flags);
+    // Show actuator flags if available
+    snprintf(buf, sizeof(buf), "Actuator control flags: %d", MAVLinkManager::hilActuatorControlsData.flags);
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
@@ -769,25 +850,32 @@ int UIHandler::Internal::drawControlsTabContent(int left, int top, int right, in
 int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int bottom, int startOffset) {
     int lineOffset = startOffset;
     char buf[512];
-    float headerColor[3], contentColor[3], mixingColor[3], linkColor[3];
+    float headerColor[3], contentColor[3], mixingColor[3], linkColor[3], channelColor[3];
 
     memcpy(headerColor, Colors::HEADER_TEXT, sizeof(headerColor));
     memcpy(contentColor, Colors::CONTENT_TEXT, sizeof(contentColor));
     memcpy(mixingColor, Colors::MIXING_CONTENT, sizeof(mixingColor));
     memcpy(linkColor, Colors::LINK_TEXT, sizeof(linkColor));
+    memcpy(channelColor, Colors::AIRFRAME_TEXT, sizeof(channelColor));
 
     int currentTabIndex = static_cast<int>(g_uiState.currentTab);
 
     // Enhanced Airframe Configuration Header
     int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "🔧 AIRFRAME CONFIGURATION MAPPING", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "AIRFRAME CONFIG MAPPING", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     // Active airframe display with better visibility
     std::string activeAirframe = ConfigManager::getActiveAirframeName();
-    snprintf(buf, sizeof(buf), "Active Airframe: %s", activeAirframe.c_str());
-    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 35, scrolledY, buf, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    if (activeAirframe.empty()) {
+        snprintf(buf, sizeof(buf), "Active Airframe: %s NOT CONFIGURED %s", Status::WARNING_ICON, Status::WARNING_ICON);
+        drawSmartText(left + 35, scrolledY, buf, (float*)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    }
+    else {
+        snprintf(buf, sizeof(buf), "Active Airframe: %s", activeAirframe.c_str());
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 35, scrolledY, buf, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    }
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     // Configuration file location with link styling
@@ -797,7 +885,7 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
 
     // Channel mapping header
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "📡 CHANNEL MAPPINGS (PX4 → X-Plane)", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "CHANNEL MAPPINGS (PX4 -> X-Plane)", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     // Enhanced user instructions
@@ -807,39 +895,103 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
         "Channel mappings are defined in the config.ini file for each airframe."
     };
 
-    for (const auto& infoText : infoTexts) {
+    for (const auto& info : infoTexts) {
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-        drawSmartText(left + 35, scrolledY, (char*)infoText, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        drawSmartText(left + 35, scrolledY, info, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
         lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
     }
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Enhanced example channel mappings
+    // Enhanced Channel Configuration Display with REAL DATA from ConfigManager
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "📋 EXAMPLE CHANNEL MAPPINGS:", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "CHANNEL CONFIGURATIONS:", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    const char* exampleMappings[] = {
-        "Channel 0 → sim/flightmodel/engine/ENGN_thro_use[0] (Motor 1 Throttle)",
-        "Channel 1 → sim/flightmodel/engine/ENGN_thro_use[1] (Motor 2 Throttle)",
-        "Channel 2 → sim/flightmodel/engine/ENGN_thro_use[2] (Motor 3 Throttle)",
-        "Channel 3 → sim/flightmodel/engine/ENGN_thro_use[3] (Motor 4 Throttle)",
-        "Channel 4 → sim/flightmodel/controls/wing2l_ail1def (Left Aileron)",
-        "Channel 5 → sim/flightmodel/controls/wing2r_ail1def (Right Aileron)",
-        "Channel 6 → sim/flightmodel/controls/hstab1_elv1def (Elevator)",
-        "Channel 7 → sim/flightmodel/controls/vstab1_rud1def (Rudder)"
-    };
+    if (!ConfigManager::actuatorConfigs.empty()) {
+        // Display actual channel configurations from ConfigManager
+        for (const auto& [channelNum, config] : ConfigManager::actuatorConfigs) {
+            // Channel header
+            snprintf(buf, sizeof(buf), "Channel %d:", channelNum);
+            scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+            drawSmartText(left + 35, scrolledY, buf, channelColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+            lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
-    for (const auto& mapping : exampleMappings) {
+            // Display each dataref in this channel
+            for (const auto& datarefConfig : config.getDatarefConfigs()) {
+                // Dataref name
+                snprintf(buf, sizeof(buf), "  Dataref: %s", datarefConfig.datarefName.c_str());
+                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                drawSmartText(left + 50, scrolledY, buf, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+                // Data type
+                const char* typeStr = "Unknown";
+                switch (datarefConfig.dataType) {
+                case FLOAT_SINGLE: typeStr = "Float"; break;
+                case FLOAT_ARRAY: typeStr = "Float Array"; break;
+                default: typeStr = "Unknown"; break;
+                }
+                snprintf(buf, sizeof(buf), "  Type: %s", typeStr);
+                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                drawSmartText(left + 50, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+                // Array indices if applicable
+                if (datarefConfig.dataType == FLOAT_ARRAY && !datarefConfig.arrayIndices.empty()) {
+                    std::string indicesStr = "  Indices: [";
+                    for (size_t i = 0; i < datarefConfig.arrayIndices.size(); ++i) {
+                        if (i > 0) indicesStr += ", ";
+                        indicesStr += std::to_string(datarefConfig.arrayIndices[i]);
+                    }
+                    indicesStr += "]";
+
+                    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                    drawSmartText(left + 50, scrolledY, indicesStr.c_str(), contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+                }
+
+                // Value range
+                snprintf(buf, sizeof(buf), "  Range: [%.2f, %.2f]", datarefConfig.range.first, datarefConfig.range.second);
+                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                drawSmartText(left + 50, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+                // Real-time current value if possible
+                try {
+                    float currentValue = DataRefManager::getFloat(datarefConfig.datarefName.c_str());
+                    snprintf(buf, sizeof(buf), "  Current Value: %.3f", currentValue);
+                    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                    drawSmartText(left + 50, scrolledY, buf, channelColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+                }
+                catch (...) {
+                    // Ignore errors reading dataref values
+                }
+
+                lineOffset += getScaledLayout(Layout::LINE_HEIGHT / 2); // Small gap between datarefs
+            }
+
+            lineOffset += getScaledLayout(Layout::LINE_HEIGHT); // Gap between channels
+        }
+    }
+    else {
+        // No configurations found
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-        drawSmartText(left + 40, scrolledY, (char*)mapping, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        snprintf(buf, sizeof(buf), "%s No channel configurations found.", Status::WARNING_ICON);
+        drawSmartText(left + 35, scrolledY, buf, (float *)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 35, scrolledY, "Check config.ini file and restart X-Plane.", contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
         lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
     }
+
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Enhanced configuration instructions
+    // Configuration Help Section
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "⚙️ CONFIGURATION GUIDE", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "CONFIGURATION HELP:", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     const char* instructions[] = {
@@ -870,72 +1022,23 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
     return lineOffset;
 }
 
+// =================================================================
+// HELPER FUNCTIONS
+// =================================================================
+
 bool UIHandler::Internal::handleTabClick(int mouseX, int mouseY, int windowLeft, int windowTop, int windowRight, int windowBottom) {
-    // Check if click is in tab header area with better detection
+    int windowWidth = windowRight - windowLeft;
+    int tabWidth = windowWidth / Tabs::TAB_COUNT;
     int tabTop = windowTop - getScaledSize(8);
     int tabBottom = windowTop - getScaledLayout(Layout::TAB_HEIGHT) - getScaledSize(8);
 
-    if (mouseY < tabBottom || mouseY > tabTop) {
-        return false; // Click not in tab area
-    }
-
-    // Calculate tab widths
-    int windowWidth = windowRight - windowLeft;
-    int tabWidth = windowWidth / Tabs::TAB_COUNT;
-
-    // Determine which tab was clicked
-    for (int i = 0; i < Tabs::TAB_COUNT; i++) {
-        int tabLeft = windowLeft + (i * tabWidth);
-        int tabRight = tabLeft + tabWidth;
-
-        if (mouseX >= tabLeft && mouseX <= tabRight) {
-            switchToTab(static_cast<Tab>(i));
-            return true; // Tab switch handled
+    // Check if click is within tab area
+    if (mouseY >= tabBottom && mouseY <= tabTop) {
+        int clickedTab = (mouseX - windowLeft) / tabWidth;
+        if (clickedTab >= 0 && clickedTab < Tabs::TAB_COUNT) {
+            switchToTab(static_cast<Tab>(clickedTab));
+            return true;
         }
     }
-
-    return false; // No tab clicked
-}
-
-int UIHandler::Internal::drawDataRefCategory(int left, int top, float color[3], int lineOffset, const char* categoryFilter, int contentTop, int contentBottom, int& drawnLines) {
-    for (const auto& item : DataRefManager::dataRefs) {
-        // Filter by category
-        if (strcmp(item.category, categoryFilter) != 0) {
-            continue;
-        }
-
-        // Get value string
-        std::string valueStr;
-        if (item.type == DRT_FLOAT) {
-            float value = DataRefManager::getFloat(item.dataRef) * item.multiplier;
-            valueStr = std::to_string(value);
-        }
-        else if (item.type == DRT_DOUBLE) {
-            double value = DataRefManager::getDouble(item.dataRef) * item.multiplier;
-            valueStr = std::to_string(value);
-        }
-        else if (item.type == DRT_INT) {
-            int value = DataRefManager::getInt(item.dataRef) * static_cast<int>(item.multiplier);
-            valueStr = std::to_string(value);
-        }
-        else if (item.type == DRT_FLOAT_ARRAY) {
-            std::vector<float> arrayValues = DataRefManager::getFloatArray(item.dataRef);
-            valueStr = DataRefManager::arrayToString(arrayValues);
-        }
-
-        // Format and draw line with improved formatting
-        char buf[512];
-        snprintf(buf, sizeof(buf), "  %-25s: %12s %s", item.title, valueStr.c_str(), item.unit);
-
-        int currentTabIndex = static_cast<int>(g_uiState.currentTab);
-        int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-
-        if (drawSmartText(left + 35, scrolledY, buf, color, contentTop, contentBottom)) {
-            drawnLines++;
-        }
-
-        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-    }
-
-    return lineOffset;
+    return false;
 }

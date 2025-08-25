@@ -148,24 +148,24 @@ namespace UIConstants {
     }
 
     // =================================================================
-    // STATUS INDICATORS AND ICONS
+    // STATUS INDICATORS AND ICONS - ASCII COMPATIBLE
     // =================================================================
 
     namespace Status {
-        // Connection status indicators - clear and visible
-        constexpr const char* CONNECTED_ICON = "●";      // Solid circle (better than emoji)
-        constexpr const char* DISCONNECTED_ICON = "○";   // Empty circle
-        constexpr const char* WARNING_ICON = "▲";        // Triangle
+        // Connection status indicators - ASCII only for compatibility
+        constexpr const char* CONNECTED_ICON = "*";        // Asterisk (connected)
+        constexpr const char* DISCONNECTED_ICON = "o";     // Lowercase o (disconnected)
+        constexpr const char* WARNING_ICON = "!";          // Exclamation mark (warning)
 
         // Status text
         constexpr const char* CONNECTED_TEXT = "CONNECTED";
         constexpr const char* DISCONNECTED_TEXT = "DISCONNECTED";
         constexpr const char* CONNECTING_TEXT = "CONNECTING...";
 
-        // UI indicators
-        constexpr const char* SCROLL_INDICATOR = "↕";
-        constexpr const char* SEARCH_ICON = "🔍";
-        constexpr const char* LINK_ICON = "→";
+        // UI indicators - ASCII only
+        constexpr const char* SCROLL_INDICATOR = "|";      // Pipe for scroll
+        constexpr const char* SEARCH_ICON = "?";           // Question mark for search
+        constexpr const char* LINK_ICON = ">";             // Greater than for links
     }
 
     // =================================================================

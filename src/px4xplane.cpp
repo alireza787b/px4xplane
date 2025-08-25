@@ -9,6 +9,7 @@
  * - Clear status indicators and visual feedback
  * - Production-ready code architecture and error handling
  * - Easy extensibility for adding new data fields
+ * - Dynamic menu system with real-time connection status updates
  *
  * PRESERVED FUNCTIONALITY:
  * - All original PX4 SITL communication and data handling
@@ -81,6 +82,9 @@ static XPLMMenuID g_airframesMenu = nullptr;
 static int g_menuContainerIdx = -1;
 static XPLMCommandRef g_toggleConnectionCmd = nullptr;
 
+// NEW: Dynamic menu system variables
+static int g_connectionMenuItemIndex = -1;  // Track connection menu item position
+
 // Menu item identifiers (string-based for robustness)
 #define MENU_ITEM_DATA_INSPECTOR "Data Inspector"
 #define MENU_ITEM_ABOUT "About"
@@ -117,6 +121,7 @@ void destroyWindows();
 void createMainMenu();
 void createAirframesMenu();
 void refreshAirframesMenu();
+void updateConnectionMenuItem();  // NEW: Dynamic menu update function
 void menuHandler(void* menuRef, void* itemRef);
 void airframesMenuHandler(void* menuRef, void* itemRef);
 
@@ -150,42 +155,24 @@ void createMainWindow() {
 
     debugLog("Creating main window with professional UI system...");
 
-    // Get screen dimensions for intelligent positioning
-    int screenLeft, screenBottom, screenRight, screenTop;
-    XPLMGetScreenBoundsGlobal(&screenLeft, &screenTop, &screenRight, &screenBottom);
-
-    int screenWidth = screenRight - screenLeft;
-    int screenHeight = screenTop - screenBottom;
-
-    // Calculate window size with UI scaling support
-    float uiScale = UIConstants::XPlaneColors::getUIScale();
-    int windowWidth = std::max<int>(UIConstants::getScaledLayout(900), (int)(screenWidth * 0.45));
-    int windowHeight = std::max<int>(UIConstants::getScaledLayout(700), (int)(screenHeight * 0.75));
-
-    // Position window towards left side of screen (better for dual monitor setups)
-    int windowLeft = screenLeft + (int)(screenWidth * 0.05);
-    int windowBottom = screenBottom + (int)(screenHeight * 0.1);
-    int windowRight = windowLeft + windowWidth;
-    int windowTop = windowBottom + windowHeight;
-
-    // Create window with modern X-Plane SDK parameters
-    XPLMCreateWindow_t params;
-    memset(&params, 0, sizeof(params));
+    XPLMCreateWindow_t params = {};
     params.structSize = sizeof(params);
-    params.visible = 1;
-    params.drawWindowFunc = UIHandler::drawMainWindow;      // Use UIHandler
-    params.handleMouseClickFunc = UIHandler::handleMainWindowMouse;  // Use UIHandler
+    params.visible = 0;
+    params.drawWindowFunc = UIHandler::drawMainWindow;
+    params.handleMouseClickFunc = UIHandler::handleMainWindowMouse;
     params.handleRightClickFunc = nullptr;
-    params.handleMouseWheelFunc = UIHandler::handleMainWindowWheel;  // Use UIHandler
+    params.handleMouseWheelFunc = UIHandler::handleMainWindowWheel;
     params.handleKeyFunc = nullptr;
     params.handleCursorFunc = nullptr;
     params.refcon = nullptr;
     params.layer = xplm_WindowLayerFloatingWindows;
     params.decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle;
-    params.left = windowLeft;
-    params.bottom = windowBottom;
-    params.right = windowRight;
-    params.top = windowTop;
+
+    // Set reasonable default size and position
+    params.left = 100;
+    params.bottom = 200;
+    params.right = params.left + UIConstants::getScaledLayout(UIConstants::Layout::MIN_WINDOW_WIDTH);
+    params.top = params.bottom + UIConstants::getScaledLayout(UIConstants::Layout::MIN_WINDOW_HEIGHT);
 
     g_mainWindow = XPLMCreateWindowEx(&params);
 
@@ -194,17 +181,10 @@ void createMainWindow() {
         return;
     }
 
-    // Configure window properties
     XPLMSetWindowPositioningMode(g_mainWindow, xplm_WindowPositionFree, -1);
     XPLMSetWindowTitle(g_mainWindow, PX4XPlaneVersion::getMainWindowTitle());
 
-    // Set reasonable resize limits
-    XPLMSetWindowResizingLimits(g_mainWindow,
-        UIConstants::Layout::MIN_WINDOW_WIDTH,
-        UIConstants::Layout::MIN_WINDOW_HEIGHT,
-        windowWidth + 400, windowHeight + 300);
-
-    debugLog("Main window created successfully with professional UI system");
+    debugLog("Main window created successfully with professional UI");
 }
 
 void createAboutWindow() {
@@ -213,41 +193,30 @@ void createAboutWindow() {
         return;
     }
 
-    debugLog("Creating about dialog...");
+    debugLog("Creating about window...");
 
-    // Get screen dimensions for centering
-    int screenLeft, screenBottom, screenRight, screenTop;
-    XPLMGetScreenBoundsGlobal(&screenLeft, &screenTop, &screenRight, &screenBottom);
-
-    int screenWidth = screenRight - screenLeft;
-    int screenHeight = screenTop - screenBottom;
-
-    // Calculate centered dialog dimensions (larger for Phase 3 content)
-    int dialogWidth = UIConstants::getScaledLayout(700);
-    int dialogHeight = UIConstants::getScaledLayout(600);
-
-    int dialogLeft = screenLeft + (screenWidth - dialogWidth) / 2;
-    int dialogBottom = screenBottom + (screenHeight - dialogHeight) / 2;
-    int dialogRight = dialogLeft + dialogWidth;
-    int dialogTop = dialogBottom + dialogHeight;
-
-    XPLMCreateWindow_t params;
-    memset(&params, 0, sizeof(params));
+    XPLMCreateWindow_t params = {};
     params.structSize = sizeof(params);
-    params.visible = 1;
-    params.drawWindowFunc = UIHandler::drawAboutWindow;     // Use UIHandler
-    params.handleMouseClickFunc = UIHandler::handleAboutWindowMouse; // Use UIHandler
+    params.visible = 0;
+    params.drawWindowFunc = UIHandler::drawAboutWindow;
+    params.handleMouseClickFunc = UIHandler::handleAboutWindowMouse;
     params.handleRightClickFunc = nullptr;
     params.handleMouseWheelFunc = nullptr;
     params.handleKeyFunc = nullptr;
     params.handleCursorFunc = nullptr;
     params.refcon = nullptr;
-    params.layer = xplm_WindowLayerFloatingWindows;
+    params.layer = xplm_WindowLayerModal;
     params.decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle;
-    params.left = dialogLeft;
-    params.bottom = dialogBottom;
-    params.right = dialogRight;
-    params.top = dialogTop;
+
+    // Center about window with reasonable size
+    int screenWidth, screenHeight;
+    XPLMGetScreenSize(&screenWidth, &screenHeight);
+    int windowWidth = 600;
+    int windowHeight = 500;
+    params.left = (screenWidth - windowWidth) / 2;
+    params.right = params.left + windowWidth;
+    params.bottom = (screenHeight - windowHeight) / 2;
+    params.top = params.bottom + windowHeight;
 
     g_aboutWindow = XPLMCreateWindowEx(&params);
 
@@ -325,8 +294,29 @@ void destroyWindows() {
 }
 
 // =================================================================
-// MENU SYSTEM - Enhanced with Dynamic Text
+// MENU SYSTEM - Enhanced with Dynamic Text Updates
 // =================================================================
+
+void updateConnectionMenuItem() {
+    if (g_mainMenu == nullptr) {
+        debugLog("ERROR: Cannot update connection menu item - main menu is null");
+        return;
+    }
+
+    // Remove existing connection menu item if it exists
+    if (g_connectionMenuItemIndex != -1) {
+        XPLMRemoveMenuItem(g_mainMenu, g_connectionMenuItemIndex);
+        debugLog("Removed old connection menu item");
+    }
+
+    // Get current connection state and appropriate menu text
+    const char* menuText = UIHandler::getConnectionMenuText();
+
+    // Add new connection menu item with updated text
+    g_connectionMenuItemIndex = XPLMAppendMenuItemWithCommand(g_mainMenu, menuText, g_toggleConnectionCmd);
+
+    debugLog(("Updated connection menu item text to: " + std::string(menuText)).c_str());
+}
 
 void menuHandler(void* menuRef, void* itemRef) {
     debugLog("Main menu handler called");
@@ -418,21 +408,28 @@ int toggleConnectionHandler(XPLMCommandRef command, XPLMCommandPhase phase, void
 
 void toggleConnection() {
     debugLog("toggleConnection() called");
-    if (ConnectionManager::isConnected()) {
+
+    // Store previous connection state for comparison
+    bool wasConnected = ConnectionManager::isConnected();
+
+    if (wasConnected) {
         debugLog("Currently connected, attempting to disconnect");
         ConnectionManager::disconnect();
     }
     else {
-        debugLog("Currently disconnected, attempting to set up server socket");
+        debugLog("Currently disconnected, attempting to connect to PX4 SITL");
         ConnectionManager::setupServerSocket();
     }
 
-    // Update menu text dynamically
-    if (g_mainMenu != nullptr) {
-        // Find and update the toggle connection menu item
-        // Note: X-Plane SDK doesn't provide direct menu text update, 
-        // but the text is handled dynamically by UIHandler::getConnectionMenuText()
-        debugLog("Connection state changed - menu will update on next display");
+    // Update menu text dynamically after connection state change
+    bool isNowConnected = ConnectionManager::isConnected();
+    if (wasConnected != isNowConnected) {
+        debugLog("Connection state changed - updating menu text");
+        updateConnectionMenuItem();
+        debugLog("Menu text updated successfully");
+    }
+    else {
+        debugLog("Connection state unchanged - no menu update needed");
     }
 }
 
@@ -451,7 +448,7 @@ void createMainMenu() {
     // Create airframes submenu
     createAirframesMenu();
 
-    // Add menu items
+    // Add static menu items
     XPLMAppendMenuItem(g_mainMenu, MENU_ITEM_DATA_INSPECTOR, (void*)MENU_ITEM_DATA_INSPECTOR, 1);
     XPLMAppendMenuItem(g_mainMenu, MENU_ITEM_ABOUT, (void*)MENU_ITEM_ABOUT, 1);
     XPLMAppendMenuSeparator(g_mainMenu);
@@ -462,11 +459,10 @@ void createMainMenu() {
         XPLMRegisterCommandHandler(g_toggleConnectionCmd, toggleConnectionHandler, 1, (void*)0);
     }
 
-    // Add connection menu item with dynamic text
-    // Note: The actual displayed text will be managed by UIHandler::getConnectionMenuText()
-    XPLMAppendMenuItemWithCommand(g_mainMenu, UIHandler::getConnectionMenuText(), g_toggleConnectionCmd);
+    // Add connection menu item with initial text (will be updated dynamically)
+    updateConnectionMenuItem();
 
-    debugLog("Menu system created successfully");
+    debugLog("Menu system created successfully with dynamic connection menu");
 }
 
 // =================================================================
@@ -551,7 +547,7 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
     UIConstants::XPlaneColors::initialize();
     UIHandler::initialize();
 
-    // Create menu system
+    // Create menu system with dynamic updates
     createMainMenu();
 
     // Initialize platform-specific networking
@@ -593,6 +589,9 @@ PLUGIN_API void XPluginStop(void) {
         g_mainMenu = nullptr;
     }
 
+    // Reset menu tracking variables
+    g_connectionMenuItemIndex = -1;
+
     // Destroy windows
     destroyWindows();
 
@@ -610,6 +609,8 @@ PLUGIN_API void XPluginStop(void) {
 
 PLUGIN_API int XPluginEnable(void) {
     debugLog("Plugin enabled (v2.5.0 - Beta Production Ready)");
+    // Update menu to reflect current state on plugin enable
+    updateConnectionMenuItem();
     return 1;
 }
 
@@ -617,6 +618,8 @@ PLUGIN_API void XPluginDisable(void) {
     debugLog("Plugin disabled (v2.5.0 - Beta Production Ready)");
     if (ConnectionManager::isConnected()) {
         ConnectionManager::disconnect();
+        // Update menu to reflect disconnected state
+        updateConnectionMenuItem();
     }
 }
 
@@ -627,6 +630,8 @@ PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFrom, int inMessage, void* 
         break;
     case XPLM_MSG_PLANE_LOADED:
         debugLog("New aircraft loaded");
+        // Update menu in case connection state needs to be reflected
+        updateConnectionMenuItem();
         break;
     default:
         // Handle other messages as needed
