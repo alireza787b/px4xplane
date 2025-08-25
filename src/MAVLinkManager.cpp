@@ -80,14 +80,14 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	constexpr float ACCEL_QUANTIZATION_MG = 0.5f;          // Quantization in milli-g (typical for 16-bit IMU)
 
 	// Realistic IMU noise characteristics (based on commercial grade IMUs)
-	constexpr float ACCEL_WHITE_NOISE_STD = 0.02f;         // m/s² white noise (~2 mg RMS)
-	constexpr float ACCEL_BIAS_DRIFT_AMPLITUDE = 0.01f;    // m/s² slow bias drift amplitude  
+	constexpr float ACCEL_WHITE_NOISE_STD = 0.06f;         // m/s² white noise (~2 mg RMS)
+	constexpr float ACCEL_BIAS_DRIFT_AMPLITUDE = 0.00f;    // m/s² slow bias drift amplitude  
 	constexpr float THERMAL_DRIFT_PERIOD_SEC = 600.0f;     // 10-minute thermal cycle
 
 	// Vibration characteristics (configurable based on vehicle type)
-	constexpr float BASE_VIBRATION_FREQ = 45.0f;           // Base vibration frequency [Hz]
-	constexpr float VIBRATION_AMPLITUDE = 0.015f;          // Realistic vibration amplitude [m/s²]
-	constexpr float PROPWASH_FACTOR = 1.2f;                // Propwash frequency multiplier
+	constexpr float BASE_VIBRATION_FREQ = 100.0f;           // Base vibration frequency [Hz]
+	constexpr float VIBRATION_AMPLITUDE = 0.010f;          // Realistic vibration amplitude [m/s²]
+	constexpr float PROPWASH_FACTOR = 1.1f;                // Propwash frequency multiplier
 
 	// IMU update rate and response characteristics
 	constexpr double IMU_UPDATE_PERIOD_SEC = 0.001;        // 1kHz IMU update rate

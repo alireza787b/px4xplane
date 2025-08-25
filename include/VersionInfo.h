@@ -25,7 +25,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* VERSION = "2.5.0";
 
     /** Version phase description */
-    constexpr const char* PHASE = "Beta - Production Ready";
+    constexpr const char* PHASE = "Beta";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2025";
@@ -47,7 +47,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* REPOSITORY_URL = "https://github.com/alireza787b/px4xplane";
 
     /** Project description */
-    constexpr const char* DESCRIPTION = "Hardware-in-the-Loop interface for PX4 SITL and X-Plane";
+    constexpr const char* DESCRIPTION = "Software-in-the-Loop interface for PX4 and X-Plane";
 
     // =================================================================
     // PLUGIN IDENTIFIERS - Used by X-Plane

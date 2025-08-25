@@ -98,7 +98,6 @@ void UIHandler::drawMainWindow(XPLMWindowID windowID, void* refcon) {
     // Draw complete professional UI
     Internal::drawBackground(l, t, r, b);
     Internal::drawTabHeaders(l, t, r, b);
-    Internal::drawSearchBox(l, t, r, b);
     Internal::drawTabContent(l, t, r, b);
     Internal::drawScrollbar(l, t, r, b);
     Internal::drawFooter(l, t, r, b);
@@ -523,7 +522,7 @@ void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int wi
     XPLMDrawString(linkColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
     lineOffset += getScaledSize(25);
 
-    snprintf(buf, sizeof(buf), "%s Documentation: %s/wiki", Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
+    snprintf(buf, sizeof(buf), "%s Documentation: %s/docs", Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
     XPLMDrawString(linkColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
     lineOffset += getScaledSize(25);
 
@@ -785,8 +784,12 @@ int UIHandler::Internal::drawSensorsTabContent(int left, int top, int right, int
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     // Barometric pressure
-    float pressureAlt = DataRefManager::getFloat("sim/cockpit2/gauges/indicators/barometric_pressure_in_hg");
-    snprintf(buf, sizeof(buf), "  Barometric Pressure : %10.2f inHg", pressureAlt);
+    constexpr float FEET_TO_METERS = 0.3048f;
+    float raw_pressure_altitude_ft = DataRefManager::getFloat("sim/flightmodel2/position/pressure_altitude");
+    float raw_pressure_altitude_m = raw_pressure_altitude_ft * FEET_TO_METERS;
+    // Calculate raw barometric pressure from altitude using ISA model
+    float raw_pressure_hPa = DataRefManager::calculatePressureFromAltitude(raw_pressure_altitude_m);
+    snprintf(buf, sizeof(buf), "  Barometric Pressure : %.1f hPa", raw_pressure_hPa);
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
@@ -1014,7 +1017,7 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
 
     // Additional help link
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    snprintf(buf, sizeof(buf), "%s For detailed configuration examples, visit: %s/wiki",
+    snprintf(buf, sizeof(buf), "%s For detailed configuration examples, visit: %s/docs",
         Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
     drawSmartText(left + 35, scrolledY, buf, linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
