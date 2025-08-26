@@ -76,7 +76,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 
 	// Accelerometer filtering configuration
 	constexpr float ACCEL_FILTER_ALPHA = 0.98f;            // Low-pass filter strength (less aggressive than GPS/baro)
-	constexpr int ACCEL_MEDIAN_WINDOW_SIZE = 3;             // Small window for high-rate sensor (3-5 recommended)
+	constexpr int ACCEL_MEDIAN_WINDOW_SIZE = 5;             // Small window for high-rate sensor (3-5 recommended)
 	constexpr float ACCEL_QUANTIZATION_MG = 0.5f;          // Quantization in milli-g (typical for 16-bit IMU)
 
 	// Realistic IMU noise characteristics (based on commercial grade IMUs)

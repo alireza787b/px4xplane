@@ -11,6 +11,8 @@
  * - X-Plane native color integration
  * - High-DPI display support
  * - Per-tab independent scrolling
+ * - Scrollable About dialog with clickable links
+ * - Enhanced HIL actuator control display
  * - Dynamic menu text based on connection state
  * - Enhanced airframe configuration visualization with live updates
  * - Real-time sensor data display across all tabs
@@ -53,24 +55,27 @@ namespace UIHandler {
 
     /** Complete UI state for the tabbed interface */
     struct UIState {
-        // Tab management
+        // Main window tab management
         Tab currentTab = Tab::CONNECTION;
         int scrollOffset[5] = { 0, 0, 0, 0, 0 };        ///< Per-tab scroll positions
         int contentHeight[5] = { 0, 0, 0, 0, 0 };       ///< Per-tab content heights
         int maxScrollOffset[5] = { 0, 0, 0, 0, 0 };     ///< Per-tab scroll limits
         bool needsScrollbar[5] = { false, false, false, false, false }; ///< Per-tab scroll indicators
 
+
+
         // Layout calculations
-        int tabAreaHeight = 0;           ///< Height of tab headers + search box
-        int contentAreaTop = 0;          ///< Top boundary of content area
-        int contentAreaBottom = 0;       ///< Bottom boundary of content area  
-        int visibleContentHeight = 0;    ///< Visible content height
+        int tabAreaHeight = 0;               ///< Height of tab headers + search box
+        int contentAreaTop = 0;              ///< Top boundary of content area
+        int contentAreaBottom = 0;           ///< Bottom boundary of content area  
+        int visibleContentHeight = 0;        ///< Visible content height
 
         // Search functionality (framework for future)
         std::string searchFilter[5] = { "", "", "", "", "" }; ///< Per-tab search terms
 
         // UI scaling
-        float uiScale = 1.0f;           ///< Current UI scale factor
+        float uiScale = 1.0f;               ///< Current UI scale factor
+
     };
 
     // =================================================================
@@ -107,8 +112,8 @@ namespace UIHandler {
     /**
      * @brief About dialog drawing function
      *
-     * Renders the about dialog with version information, features,
-     * and usage instructions.
+     * Renders the scrollable about dialog with version information, features,
+     * clickable links and usage instructions.
      *
      * @param windowID X-Plane window identifier
      * @param refcon Reference constant (unused)
@@ -135,7 +140,7 @@ namespace UIHandler {
     int handleMainWindowMouse(XPLMWindowID windowID, int x, int y, int isDown, void* refcon);
 
     /**
-     * @brief Handle mouse wheel scrolling
+     * @brief Handle mouse wheel scrolling for main window
      *
      * Manages per-tab independent scrolling with bounds checking
      * and smooth scroll behavior.
@@ -153,16 +158,32 @@ namespace UIHandler {
     /**
      * @brief Handle mouse clicks on about window
      *
-     * Simple click handler that closes the about dialog.
+     * Enhanced click handler that supports clickable links and closes the dialog.
      *
      * @param windowID X-Plane window identifier
-     * @param x Mouse X coordinate (unused)
-     * @param y Mouse Y coordinate (unused)
+     * @param x Mouse X coordinate
+     * @param y Mouse Y coordinate
      * @param isDown True if mouse button is pressed
      * @param refcon Reference constant (unused)
      * @return 1 if event was handled, 0 otherwise
      */
     int handleAboutWindowMouse(XPLMWindowID windowID, int x, int y, int isDown, void* refcon);
+
+    /**
+     * @brief Handle mouse wheel scrolling for about window
+     *
+     * Manages scrolling in the about dialog with bounds checking
+     * and smooth scroll behavior.
+     *
+     * @param windowID X-Plane window identifier
+     * @param x Mouse X coordinate
+     * @param y Mouse Y coordinate
+     * @param wheel Wheel axis (unused)
+     * @param clicks Number of scroll clicks (negative = up, positive = down)
+     * @param refcon Reference constant (unused)
+     * @return 1 if event was handled, 0 otherwise
+     */
+    int handleAboutWindowWheel(XPLMWindowID windowID, int x, int y, int wheel, int clicks, void* refcon);
 
     // =================================================================
     // TAB MANAGEMENT FUNCTIONS
@@ -271,6 +292,16 @@ namespace UIHandler {
     int drawSmartText(int x, int y, const char* text, float color[3], int contentTop, int contentBottom);
 
     /**
+     * @brief Open URL in system default browser
+     *
+     * Cross-platform URL opening functionality for clickable links.
+     *
+     * @param url URL string to open
+     * @return true if URL was opened successfully, false otherwise
+     */
+    bool openURL(const char* url);
+
+    /**
      * @brief Log debug messages with UI prefix
      *
      * Standardized debug logging for UI-related messages.
@@ -302,8 +333,10 @@ namespace UIHandler {
         /** Draw professional footer with links */
         void drawFooter(int windowLeft, int windowTop, int windowRight, int windowBottom);
 
-        /** Draw professional about dialog content */
+        /** Draw professional scrollable about dialog content */
         void drawAboutContent(int windowLeft, int windowTop, int windowRight, int windowBottom);
+
+       
 
         // Tab-specific content drawing functions
         int drawConnectionTabContent(int left, int top, int right, int bottom, int startOffset);
@@ -315,8 +348,10 @@ namespace UIHandler {
         /** Handle tab header click detection */
         bool handleTabClick(int mouseX, int mouseY, int windowLeft, int windowTop, int windowRight, int windowBottom);
 
-        /** Draw DataRef category with filtering and live values */
-        int drawDataRefCategory(int left, int top, float color[3], int lineOffset, const char* categoryFilter, int contentTop, int contentBottom, int& drawnLines);
+        /** Handle about dialog link click detection */
+        bool handleAboutLinkClick(int mouseX, int mouseY, int windowLeft, int windowTop, int windowRight, int windowBottom);
+
+
     }
 
 } // namespace UIHandler

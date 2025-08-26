@@ -4,7 +4,7 @@
  *
  * This header provides a professional UI constants system optimized for readability
  * against X-Plane's dark theme. Features high-contrast colors, proper font handling,
- * and scalable layout dimensions for production use.
+ * scalable layout dimensions, and enhanced about dialog support for production use.
  *
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
@@ -18,6 +18,8 @@
 
 #include "XPLMDataAccess.h"
 #include "XPLMGraphics.h"  // For font constants
+#include <stdio.h>
+#include <math.h>
 
 namespace UIConstants {
 
@@ -63,6 +65,29 @@ namespace UIConstants {
         constexpr int TAB_PADDING = 15;
     }
 
+    namespace AboutDialog {
+        /** About dialog content margin */
+        constexpr int CONTENT_MARGIN = 30;
+
+        /** About dialog minimum visible height */
+        constexpr int MIN_VISIBLE_HEIGHT = 400;
+
+        /** About dialog scrollbar margin */
+        constexpr int SCROLLBAR_MARGIN = 10;
+
+        /** About dialog line height */
+        constexpr int LINE_HEIGHT = 20;
+
+        /** About dialog section spacing */
+        constexpr int SECTION_SPACING = 25;
+
+        /** About dialog header spacing */
+        constexpr int HEADER_SPACING = 25;
+
+        /** About dialog link click tolerance */
+        constexpr int LINK_CLICK_TOLERANCE = 5;
+    }
+
     namespace Scrolling {
         /** Pixels per scroll wheel click */
         constexpr int SCROLL_SPEED = 30;
@@ -72,6 +97,9 @@ namespace UIConstants {
 
         /** Scrollbar track margin */
         constexpr int TRACK_MARGIN = 8;
+
+        /** Smooth scrolling damping factor */
+        constexpr float SMOOTH_FACTOR = 0.15f;
     }
 
     // =================================================================
@@ -106,9 +134,18 @@ namespace UIConstants {
         constexpr float FOOTER_TEXT[3] = { 0.8f, 0.8f, 0.9f };    // Light gray
         constexpr float LINK_TEXT[3] = { 0.5f, 0.8f, 1.0f };      // Light blue for links
 
+        // Enhanced HIL data colors
+        constexpr float HIL_ACTIVE[3] = { 0.2f, 1.0f, 0.2f };     // Active channel color
+        constexpr float HIL_INACTIVE[3] = { 0.5f, 0.5f, 0.5f };   // Inactive channel color
+        constexpr float HIL_VALUE[3] = { 0.9f, 1.0f, 0.6f };      // HIL value highlight
+
         // Border and separator colors
         constexpr float BORDER[3] = { 0.6f, 0.6f, 0.8f };        // Light gray-blue
         constexpr float SEPARATOR[3] = { 0.5f, 0.5f, 0.7f };     // Medium gray-blue
+
+        // About dialog specific colors
+        constexpr float ABOUT_TITLE[3] = { 1.0f, 1.0f, 0.6f };   // Bright yellow-white
+        constexpr float ABOUT_SECTION[3] = { 0.8f, 1.0f, 1.0f }; // Light cyan
     }
 
     // =================================================================
@@ -166,6 +203,32 @@ namespace UIConstants {
         constexpr const char* SCROLL_INDICATOR = "|";      // Pipe for scroll
         constexpr const char* SEARCH_ICON = "?";           // Question mark for search
         constexpr const char* LINK_ICON = ">";             // Greater than for links
+
+        // HIL data indicators
+        constexpr const char* HIL_ACTIVE_ICON = "+";       // Plus for active channels
+        constexpr const char* HIL_INACTIVE_ICON = "-";     // Minus for inactive channels
+        constexpr const char* HIL_DATA_ICON = "#";         // Hash for HIL data sections
+    }
+
+    // =================================================================
+    // HIL ACTUATOR CONTROL CONSTANTS
+    // =================================================================
+
+    namespace HIL {
+        /** Maximum number of HIL actuator channels */
+        constexpr int MAX_ACTUATOR_CHANNELS = 16;
+
+        /** HIL value active threshold */
+        constexpr float ACTIVE_THRESHOLD = 0.001f;
+
+        /** HIL value display precision (decimal places) */
+        constexpr int VALUE_PRECISION = 3;
+
+        /** HIL channel display columns for layout */
+        constexpr int DISPLAY_COLUMNS = 2;
+
+        /** HIL timestamp format buffer size */
+        constexpr int TIMESTAMP_BUFFER_SIZE = 32;
     }
 
     // =================================================================
@@ -226,6 +289,21 @@ namespace UIConstants {
                 if (color[i] < 0.3f) color[i] = 0.3f + (color[i] * 0.7f);
             }
         }
+    }
+
+    /** Format HIL value for display with proper precision */
+    inline void formatHILValue(char* buffer, size_t bufferSize, float value) {
+        snprintf(buffer, bufferSize, "%+6.3f", value);
+    }
+
+    /** Check if HIL channel is active based on threshold */
+    inline bool isHILChannelActive(float value) {
+        return (fabs(value) > HIL::ACTIVE_THRESHOLD);
+    }
+
+    /** Format timestamp for HIL display */
+    inline void formatHILTimestamp(char* buffer, size_t bufferSize, uint64_t timestamp_us) {
+        snprintf(buffer, bufferSize, "%llu us", (unsigned long long)timestamp_us);
     }
 
 } // namespace UIConstants

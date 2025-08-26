@@ -543,6 +543,8 @@ PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
         debugLog("Enabled modern native widget windows");
     }
 
+    ConfigManager::loadConfiguration();
+
     // Initialize UI system first
     UIConstants::XPlaneColors::initialize();
     UIHandler::initialize();

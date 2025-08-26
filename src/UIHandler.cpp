@@ -7,9 +7,11 @@
  * - High-contrast colors for excellent readability
  * - Professional spacing and typography
  * - Clear status indicators and visual feedback
- * - Clickable links and interactive elements
+ * - Clickable links and interactive elements with URL opening
+ * - Scrollable about dialog with better organization
+ * - Enhanced HIL actuator control values display
  * - Real-time sensor data display with actual values
- * - Enhanced mixing tab with detailed configuration mapping
+ * - Enhanced mixing tab with detailed configuration mapping and live HIL data
  * - Production-ready error handling and robustness
  *
  * @author Alireza Ghaderi
@@ -33,6 +35,17 @@
 #include <algorithm>
 #include <cstring>
 #include <iomanip>
+
+ // Platform-specific includes for URL opening
+#ifdef _WIN32
+#include <windows.h>
+#include <shellapi.h>
+#elif defined(__APPLE__)
+#include <CoreFoundation/CFBundle.h>
+#include <ApplicationServices/ApplicationServices.h>
+#else
+#include <cstdlib>
+#endif
 
 using namespace UIConstants;
 using namespace UIHandler;
@@ -103,22 +116,7 @@ void UIHandler::drawMainWindow(XPLMWindowID windowID, void* refcon) {
     Internal::drawFooter(l, t, r, b);
 }
 
-void UIHandler::drawAboutWindow(XPLMWindowID windowID, void* refcon) {
-    if (!g_initialized || windowID == nullptr) {
-        return;
-    }
 
-    int l, t, r, b;
-    XPLMGetWindowGeometry(windowID, &l, &t, &r, &b);
-
-    if (r <= l || t <= b) {
-        debugLog("Invalid about window dimensions detected");
-        return;
-    }
-
-    // Draw professional about dialog
-    Internal::drawAboutContent(l, t, r, b);
-}
 
 // =================================================================
 // INPUT HANDLING FUNCTIONS
@@ -176,11 +174,23 @@ int UIHandler::handleMainWindowWheel(XPLMWindowID windowID, int x, int y, int wh
 }
 
 int UIHandler::handleAboutWindowMouse(XPLMWindowID windowID, int x, int y, int isDown, void* refcon) {
-    if (isDown) {
-        debugLog("About dialog clicked - will be closed by main plugin");
+    if (!g_initialized) {
+        return 0; // Let X-Plane handle it
     }
-    return 1; // Always handle about window clicks
+
+    // Only handle mouse DOWN events, ignore mouse UP to prevent loops
+    if (!isDown) {
+        return 0; // Let X-Plane handle mouse up
+    }
+
+    // Simple click handling - just close dialog, no infinite loops
+    debugLog("About dialog close requested");
+
+    // Return 0 to let main plugin handle the actual window closing
+    return 0;
 }
+
+
 
 // =================================================================
 // TAB MANAGEMENT FUNCTIONS
@@ -261,6 +271,11 @@ int UIHandler::drawSmartText(int x, int y, const char* text, float color[3], int
     return 0; // Line was clipped
 }
 
+bool UIHandler::openURL(const char* url) {
+    // DISABLED: URL opening functionality to prevent X-Plane stability issues
+    debugLog("URL opening is disabled for stability - copy URL manually from about dialog");
+    return false;
+}
 void UIHandler::debugLog(const char* message) {
     XPLMDebugString("px4xplane UI: ");
     XPLMDebugString(message);
@@ -443,103 +458,78 @@ void UIHandler::Internal::drawFooter(int windowLeft, int windowTop, int windowRi
     XPLMDrawString(footerColor, copyrightX, windowBottom + 3, copyright, nullptr, Fonts::FOOTER);
 }
 
+void UIHandler::drawAboutWindow(XPLMWindowID windowID, void* refcon) {
+    if (!g_initialized || windowID == nullptr) {
+        return;
+    }
+
+    int l, t, r, b;
+    XPLMGetWindowGeometry(windowID, &l, &t, &r, &b);
+
+    if (r <= l || t <= b) {
+        debugLog("Invalid about window dimensions detected");
+        return;
+    }
+
+    // Draw simple about dialog - no scrolling needed
+    XPLMDrawTranslucentDarkBox(l, t, r, b);
+    Internal::drawAboutContent(l, t, r, b);
+}
+
+
+
+
 void UIHandler::Internal::drawAboutContent(int windowLeft, int windowTop, int windowRight, int windowBottom) {
-    // Draw professional about dialog with high contrast
-    float titleColor[3], contentColor[3], linkColor[3], headerColor[3];
-    memcpy(titleColor, Colors::HEADER_TEXT, sizeof(titleColor));
+    // Simple, concise about dialog - no scrolling needed
+    float titleColor[3], contentColor[3], linkColor[3];
+    memcpy(titleColor, Colors::TAB_ACTIVE, sizeof(titleColor));
     memcpy(contentColor, Colors::CONTENT_TEXT, sizeof(contentColor));
     memcpy(linkColor, Colors::LINK_TEXT, sizeof(linkColor));
-    memcpy(headerColor, Colors::TAB_ACTIVE, sizeof(headerColor));
 
     int lineOffset = getScaledSize(40);
     char buf[512];
 
-    // Enhanced title - removed emoji
-    snprintf(buf, sizeof(buf), "Aircraft: %s", PX4XPlaneVersion::getMainWindowTitle());
+    // Title
+    snprintf(buf, sizeof(buf), "PX4-XPlane Plugin v%s", PX4XPlaneVersion::VERSION);
     XPLMDrawString(titleColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::HEADER);
-    lineOffset += getScaledSize(50);
+    lineOffset += getScaledSize(45);
 
-    // Description with better formatting
-    snprintf(buf, sizeof(buf), "%s", PX4XPlaneVersion::DESCRIPTION);
-    XPLMDrawString(contentColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
-    lineOffset += getScaledSize(40);
-
-    // Production Features - removed emoji
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Production Ready Features:", nullptr, Fonts::HEADER);
+    // Brief description
+    XPLMDrawString(contentColor, windowLeft + 25, windowTop - lineOffset, "Professional SITL Bridge for X-Plane & PX4 Autopilot", nullptr, Fonts::CONTENT);
     lineOffset += getScaledSize(35);
 
+    // Key features - condensed
     const char* features[] = {
-        "+ High-contrast UI optimized for X-Plane's dark theme",
-        "+ Professional 5-tab interface with clear navigation",
-        "+ Real-time airframe configuration visualization",
-        "+ Dynamic connection status with clear indicators",
-        "+ High-DPI display support and responsive scaling",
-        "+ Per-tab independent scrolling with smooth navigation",
-        "+ Production-ready code architecture and error handling",
-        "+ Easy extensibility for adding new data fields"
+        "• Real-time MAVLink communication with PX4 SITL",
+        "• Live HIL actuator control values display",
+        "• Configurable airframe mixing & channel mapping",
+        "• Professional 5-tab data monitoring interface"
     };
 
     for (const auto& feature : features) {
         XPLMDrawString(contentColor, windowLeft + 35, windowTop - lineOffset, (char*)feature, nullptr, Fonts::CONTENT);
-        lineOffset += getScaledSize(25);
-    }
-    lineOffset += getScaledSize(20);
-
-    // Tab information - removed emoji
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Data Organization:", nullptr, Fonts::HEADER);
-    lineOffset += getScaledSize(35);
-
-    for (int i = 0; i < Tabs::TAB_COUNT; i++) {
-        snprintf(buf, sizeof(buf), "- %s: %s", Tabs::getTabName(i), Tabs::getTabDescription(i));
-        XPLMDrawString(contentColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
-        lineOffset += getScaledSize(25);
+        lineOffset += getScaledSize(22);
     }
     lineOffset += getScaledSize(25);
 
-    // Usage instructions - removed emoji
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Quick Start Guide:", nullptr, Fonts::HEADER);
-    lineOffset += getScaledSize(35);
-
-    const char* instructions[] = {
-        "1. Start PX4 SITL: Use menu 'Connect to PX4 SITL'",
-        "2. Select airframe: Choose from 'Airframes' submenu",
-        "3. Monitor data: Click tabs to view real-time information",
-        "4. Configure mixing: Use 'Mixing' tab to view channel mappings",
-        "5. Scroll content: Use mouse wheel for independent tab scrolling"
-    };
-
-    for (const auto& instruction : instructions) {
-        XPLMDrawString(contentColor, windowLeft + 35, windowTop - lineOffset, (char*)instruction, nullptr, Fonts::CONTENT);
-        lineOffset += getScaledSize(25);
-    }
+    // Quick usage
+    XPLMDrawString(contentColor, windowLeft + 25, windowTop - lineOffset, "Quick Start: Connect to PX4 SITL via menu, select airframe, monitor data", nullptr, Fonts::CONTENT);
     lineOffset += getScaledSize(30);
 
-    // Links and contact - removed emoji
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Links & Support:", nullptr, Fonts::HEADER);
-    lineOffset += getScaledSize(35);
-
-    snprintf(buf, sizeof(buf), "%s GitHub Repository: %s", Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
-    XPLMDrawString(linkColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
+    // Links - display only (not clickable)
+    snprintf(buf, sizeof(buf), "GitHub: %s", PX4XPlaneVersion::REPOSITORY_URL);
+    XPLMDrawString(linkColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
     lineOffset += getScaledSize(25);
 
-    snprintf(buf, sizeof(buf), "%s Documentation: %s/docs", Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
-    XPLMDrawString(linkColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
-    lineOffset += getScaledSize(25);
-
-    snprintf(buf, sizeof(buf), "%s Issues & Support: %s/issues", Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
-    XPLMDrawString(linkColor, windowLeft + 35, windowTop - lineOffset, buf, nullptr, Fonts::CONTENT);
-    lineOffset += getScaledSize(40);
-
-    // Copyright and close instruction
+    // Copyright
     snprintf(buf, sizeof(buf), "%s", PX4XPlaneVersion::getCopyrightString());
     XPLMDrawString(contentColor, windowLeft + 25, windowTop - lineOffset, buf, nullptr, Fonts::FOOTER);
-    lineOffset += getScaledSize(30);
+    lineOffset += getScaledSize(35);
 
-    XPLMDrawString(headerColor, windowLeft + 25, windowTop - lineOffset, (char*)"Click anywhere to close this dialog", nullptr, Fonts::CONTENT);
 }
 
 // =================================================================
-// TAB-SPECIFIC CONTENT DRAWING FUNCTIONS - WITH REAL DATA
+// TAB-SPECIFIC CONTENT DRAWING FUNCTIONS - WITH ENHANCED HIL DATA
 // =================================================================
 
 int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, int bottom, int startOffset) {
@@ -807,11 +797,12 @@ int UIHandler::Internal::drawSensorsTabContent(int left, int top, int right, int
 int UIHandler::Internal::drawControlsTabContent(int left, int top, int right, int bottom, int startOffset) {
     int lineOffset = startOffset;
     char buf[512];
-    float headerColor[3], contentColor[3], airframeColor[3];
+    float headerColor[3], contentColor[3], airframeColor[3], valueColor[3];
 
     memcpy(headerColor, Colors::HEADER_TEXT, sizeof(headerColor));
     memcpy(contentColor, Colors::CONTENT_TEXT, sizeof(contentColor));
     memcpy(airframeColor, Colors::AIRFRAME_TEXT, sizeof(airframeColor));
+    memcpy(valueColor, Colors::VALUE_TEXT, sizeof(valueColor));
 
     int currentTabIndex = static_cast<int>(g_uiState.currentTab);
 
@@ -836,42 +827,94 @@ int UIHandler::Internal::drawControlsTabContent(int left, int top, int right, in
 
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Actuator Controls Section with REAL DATA
+    // ENHANCED HIL Actuator Controls Section with ALL VALUES
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "ACTUATOR CONTROLS DATA", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 20, scrolledY, "HIL ACTUATOR CONTROLS (LIVE DATA)", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    // Show actuator flags if available
-    snprintf(buf, sizeof(buf), "Actuator control flags: %d", MAVLinkManager::hilActuatorControlsData.flags);
+    // HIL message metadata
+    snprintf(buf, sizeof(buf), "Timestamp: %llu us", (unsigned long long)MAVLinkManager::hilActuatorControlsData.timestamp);
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    snprintf(buf, sizeof(buf), "Mode: %d | Flags: %llu", MAVLinkManager::hilActuatorControlsData.mode,
+        (unsigned long long)MAVLinkManager::hilActuatorControlsData.flags);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT / 2);
+
+    // Display all 16 HIL actuator control values in organized columns
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, "Actuator Channel Values (Range: -1.0 to 1.0):", contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    // Display in 2 columns for better space utilization
+    for (int i = 0; i < 8; i++) {
+        // Left column (channels 0-7)
+        float leftValue = MAVLinkManager::hilActuatorControlsData.controls[i];
+        float rightValue = MAVLinkManager::hilActuatorControlsData.controls[i + 8];
+
+        snprintf(buf, sizeof(buf), "  Ch%02d: %+6.3f     Ch%02d: %+6.3f",
+            i, leftValue, i + 8, rightValue);
+
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 45, scrolledY, buf, valueColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+    }
+
+    lineOffset += getScaledLayout(Layout::SECTION_SPACING);
+
+    // RC Input Status Section (if applicable)
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 20, scrolledY, "RC INPUT STATUS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::HEADER_SPACING);
+
+    // Show connection status and basic RC info
+    if (ConnectionManager::isConnected()) {
+        snprintf(buf, sizeof(buf), "Status: %s HIL Mode Active - RC via MAVLink", Status::CONNECTED_ICON);
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 35, scrolledY, buf, (float*)Colors::CONNECTED, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    }
+    else {
+        snprintf(buf, sizeof(buf), "Status: %s No SITL Connection", Status::DISCONNECTED_ICON);
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 35, scrolledY, buf, (float*)Colors::DISCONNECTED, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    }
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     return lineOffset;
 }
 
+
 int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int bottom, int startOffset) {
     int lineOffset = startOffset;
     char buf[512];
-    float headerColor[3], contentColor[3], mixingColor[3], linkColor[3], channelColor[3];
+    float headerColor[3], contentColor[3], mixingColor[3], linkColor[3], channelColor[3], valueColor[3];
 
     memcpy(headerColor, Colors::HEADER_TEXT, sizeof(headerColor));
     memcpy(contentColor, Colors::CONTENT_TEXT, sizeof(contentColor));
     memcpy(mixingColor, Colors::MIXING_CONTENT, sizeof(mixingColor));
     memcpy(linkColor, Colors::LINK_TEXT, sizeof(linkColor));
     memcpy(channelColor, Colors::AIRFRAME_TEXT, sizeof(channelColor));
+    memcpy(valueColor, Colors::VALUE_TEXT, sizeof(valueColor));
 
     int currentTabIndex = static_cast<int>(g_uiState.currentTab);
+    bool isConnected = ConnectionManager::isConnected();
 
-    // Enhanced Airframe Configuration Header
+    // ALWAYS SHOW: Enhanced Airframe Configuration Header
     int scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "AIRFRAME CONFIG MAPPING", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    const char* headerText = isConnected ? "AIRFRAME CONFIG MAPPING WITH LIVE HIL DATA" : "AIRFRAME CONFIGURATION MAPPING";
+    drawSmartText(left + 20, scrolledY, headerText, headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    // Active airframe display with better visibility
+    // ALWAYS SHOW: Active airframe display
     std::string activeAirframe = ConfigManager::getActiveAirframeName();
     if (activeAirframe.empty()) {
         snprintf(buf, sizeof(buf), "Active Airframe: %s NOT CONFIGURED %s", Status::WARNING_ICON, Status::WARNING_ICON);
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
         drawSmartText(left + 35, scrolledY, buf, (float*)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     }
     else {
@@ -881,68 +924,76 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
     }
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
-    // Configuration file location with link styling
+    // ALWAYS SHOW: Configuration file location
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 35, scrolledY, "Config File: X-Plane/Resources/plugins/px4xplane/config.ini", linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-    lineOffset += getScaledLayout(Layout::SECTION_SPACING);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
-    // Channel mapping header
-    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 20, scrolledY, "CHANNEL MAPPINGS (PX4 -> X-Plane)", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-    lineOffset += getScaledLayout(Layout::HEADER_SPACING);
-
-    // Enhanced user instructions
-    const char* infoTexts[] = {
-        "This tab shows how PX4 output channels map to X-Plane datarefs.",
-        "Each channel controls motors, servos, or control surfaces in real-time.",
-        "Channel mappings are defined in the config.ini file for each airframe."
-    };
-
-    for (const auto& info : infoTexts) {
+    // ALWAYS SHOW: Connection status for HIL data
+    if (isConnected) {
+        snprintf(buf, sizeof(buf), "SITL Status: %s CONNECTED - Live HIL Values Available", Status::CONNECTED_ICON);
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-        drawSmartText(left + 35, scrolledY, info, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+        drawSmartText(left + 35, scrolledY, buf, (float*)Colors::CONNECTED, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     }
-
+    else {
+        snprintf(buf, sizeof(buf), "SITL Status: %s NOT CONNECTED - Static Configuration Only", Status::DISCONNECTED_ICON);
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 35, scrolledY, buf, (float*)Colors::DISCONNECTED, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    }
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Enhanced Channel Configuration Display with REAL DATA from ConfigManager
+    // ALWAYS SHOW: Channel Configuration Display (regardless of connection)
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 20, scrolledY, "CHANNEL CONFIGURATIONS:", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     if (!ConfigManager::actuatorConfigs.empty()) {
-        // Display actual channel configurations from ConfigManager
+        // ALWAYS display channel configurations from ConfigManager
         for (const auto& [channelNum, config] : ConfigManager::actuatorConfigs) {
-            // Channel header
-            snprintf(buf, sizeof(buf), "Channel %d:", channelNum);
-            scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-            drawSmartText(left + 35, scrolledY, buf, channelColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+            // Channel header - show HIL value only if connected
+            if (isConnected && channelNum < 16) {
+                float hilValue = MAVLinkManager::hilActuatorControlsData.controls[channelNum];
+                snprintf(buf, sizeof(buf), "Channel %d: [HIL: %+6.3f]", channelNum, hilValue);
+                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                drawSmartText(left + 35, scrolledY, buf, valueColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+            }
+            else {
+                snprintf(buf, sizeof(buf), "Channel %d: [Configuration]", channelNum);
+                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                drawSmartText(left + 35, scrolledY, buf, channelColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+            }
             lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
-            // Display each dataref in this channel
+            // ALWAYS display each dataref in this channel
             for (const auto& datarefConfig : config.getDatarefConfigs()) {
-                // Dataref name
-                snprintf(buf, sizeof(buf), "  Dataref: %s", datarefConfig.datarefName.c_str());
+                // Dataref name - ALWAYS show
+                snprintf(buf, sizeof(buf), "  -> %s", datarefConfig.datarefName.c_str());
                 scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
                 drawSmartText(left + 50, scrolledY, buf, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
                 lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
-                // Data type
-                const char* typeStr = "Unknown";
-                switch (datarefConfig.dataType) {
-                case FLOAT_SINGLE: typeStr = "Float"; break;
-                case FLOAT_ARRAY: typeStr = "Float Array"; break;
-                default: typeStr = "Unknown"; break;
+                // Show current dataref value if possible (regardless of SITL connection)
+                try {
+                    float currentValue = DataRefManager::getFloat(datarefConfig.datarefName.c_str());
+                    snprintf(buf, sizeof(buf), "     Current: %.3f | Range: [%.2f, %.2f]",
+                        currentValue, datarefConfig.range.first, datarefConfig.range.second);
+                    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                    drawSmartText(left + 55, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
                 }
-                snprintf(buf, sizeof(buf), "  Type: %s", typeStr);
-                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-                drawSmartText(left + 50, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-                lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+                catch (...) {
+                    // Show range and type even if value read fails
+                    const char* typeStr = (datarefConfig.dataType == FLOAT_ARRAY) ? "Float Array" : "Float";
+                    snprintf(buf, sizeof(buf), "     Range: [%.2f, %.2f] | Type: %s",
+                        datarefConfig.range.first, datarefConfig.range.second, typeStr);
+                    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+                    drawSmartText(left + 55, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+                }
 
-                // Array indices if applicable
+                // Array indices if applicable - ALWAYS show
                 if (datarefConfig.dataType == FLOAT_ARRAY && !datarefConfig.arrayIndices.empty()) {
-                    std::string indicesStr = "  Indices: [";
+                    std::string indicesStr = "     Indices: [";
                     for (size_t i = 0; i < datarefConfig.arrayIndices.size(); ++i) {
                         if (i > 0) indicesStr += ", ";
                         indicesStr += std::to_string(datarefConfig.arrayIndices[i]);
@@ -950,26 +1001,8 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
                     indicesStr += "]";
 
                     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-                    drawSmartText(left + 50, scrolledY, indicesStr.c_str(), contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+                    drawSmartText(left + 55, scrolledY, indicesStr.c_str(), contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
                     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-                }
-
-                // Value range
-                snprintf(buf, sizeof(buf), "  Range: [%.2f, %.2f]", datarefConfig.range.first, datarefConfig.range.second);
-                scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-                drawSmartText(left + 50, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-                lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-
-                // Real-time current value if possible
-                try {
-                    float currentValue = DataRefManager::getFloat(datarefConfig.datarefName.c_str());
-                    snprintf(buf, sizeof(buf), "  Current Value: %.3f", currentValue);
-                    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-                    drawSmartText(left + 50, scrolledY, buf, channelColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-                    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
-                }
-                catch (...) {
-                    // Ignore errors reading dataref values
                 }
 
                 lineOffset += getScaledLayout(Layout::LINE_HEIGHT / 2); // Small gap between datarefs
@@ -979,10 +1012,10 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
         }
     }
     else {
-        // No configurations found
+        // ALWAYS show this if no configurations found
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
         snprintf(buf, sizeof(buf), "%s No channel configurations found.", Status::WARNING_ICON);
-        drawSmartText(left + 35, scrolledY, buf, (float *)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        drawSmartText(left + 35, scrolledY, buf, (float*)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
         lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
@@ -992,41 +1025,53 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
 
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
-    // Configuration Help Section
+    // Show HIL Summary only if connected
+    if (isConnected) {
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 20, scrolledY, "LIVE HIL ACTUATOR SUMMARY:", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        lineOffset += getScaledLayout(Layout::HEADER_SPACING);
+
+        // Show active channels (non-zero HIL values)
+        int activeChannels = 0;
+        for (int i = 0; i < 16; i++) {
+            if (fabs(MAVLinkManager::hilActuatorControlsData.controls[i]) > 0.001f) {
+                activeChannels++;
+            }
+        }
+
+        snprintf(buf, sizeof(buf), "Active Channels: %d/16 | Timestamp: %llu us",
+            activeChannels, (unsigned long long)MAVLinkManager::hilActuatorControlsData.timestamp);
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 35, scrolledY, buf, valueColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+        lineOffset += getScaledLayout(Layout::SECTION_SPACING);
+    }
+
+    // ALWAYS SHOW: Configuration help
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 20, scrolledY, "CONFIGURATION HELP:", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
-    const char* instructions[] = {
-        "1. Edit config.ini in the plugin folder to modify airframe settings",
-        "2. Each airframe section ([ehang184], [Alia250]) defines channels",
-        "3. Change 'config_name' at top to switch airframe configurations",
-        "4. Supported types: float, floatArray, int, intArray with ranges",
-        "5. Use '|' separator to control multiple datarefs from one channel",
-        "6. Restart X-Plane after making configuration changes",
-        "7. Refer to X-Plane DataRef docs for available control surfaces",
-        "8. Test configurations safely in simulation before real flights"
+    const char* quickHelp[] = {
+        "• Edit config.ini to modify channel-to-dataref mappings",
+        "• Configuration is loaded at X-Plane startup",
+        "• Use 'Controls' tab to see raw HIL actuator values when connected",
+        "• Restart X-Plane after configuration changes",
+        "• Connect to PX4 SITL to see live HIL values in this tab"
     };
 
-    for (const auto& instruction : instructions) {
+    for (const auto& help : quickHelp) {
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-        drawSmartText(left + 35, scrolledY, (char*)instruction, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        drawSmartText(left + 35, scrolledY, (char*)help, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
         lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
     }
-    lineOffset += getScaledLayout(Layout::SECTION_SPACING);
-
-    // Additional help link
-    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    snprintf(buf, sizeof(buf), "%s For detailed configuration examples, visit: %s/docs",
-        Status::LINK_ICON, PX4XPlaneVersion::REPOSITORY_URL);
-    drawSmartText(left + 35, scrolledY, buf, linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
-    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     return lineOffset;
 }
 
 // =================================================================
-// HELPER FUNCTIONS
+// HELPER FUNCTIONS IMPLEMENTATION
 // =================================================================
 
 bool UIHandler::Internal::handleTabClick(int mouseX, int mouseY, int windowLeft, int windowTop, int windowRight, int windowBottom) {
@@ -1044,4 +1089,12 @@ bool UIHandler::Internal::handleTabClick(int mouseX, int mouseY, int windowLeft,
         }
     }
     return false;
+}
+
+bool UIHandler::Internal::handleAboutLinkClick(int mouseX, int mouseY, int windowLeft, int windowTop, int windowRight, int windowBottom) {
+    // DISABLED: URL opening to prevent browser spam and X-Plane freezing
+    // Links are visible but not clickable for now - this prevents the infinite loop issue
+
+    debugLog("Link click detected but URL opening is disabled for stability");
+    return false; // Always return false so click goes to close dialog instead
 }

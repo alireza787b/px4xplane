@@ -3,7 +3,8 @@
  * @brief Production-Ready UI Constants Implementation for X-Plane Plugin
  *
  * Implementation of high-contrast, readable UI system optimized for X-Plane's
- * dark theme. Features proper font initialization and runtime constants.
+ * dark theme. Features proper font initialization, runtime constants, and
+ * enhanced support for HIL data display and scrollable dialogs.
  *
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
@@ -17,6 +18,7 @@
 #include "XPLMGraphics.h"  // For font constants
 #include "XPLMUtilities.h"
 #include <cstring>
+#include <cmath>
 
 using namespace UIConstants;
 
@@ -64,8 +66,8 @@ const char* Tabs::getTabName(int index) {
         "Connection",    // Tab 0: Connection status, system info
         "Position",      // Tab 1: GPS, attitude, navigation  
         "Sensors",       // Tab 2: IMU, pressure, temperature
-        "Controls",      // Tab 3: RC inputs, actuators
-        "Mixing"         // Tab 4: Airframe config visualization
+        "Controls",      // Tab 3: RC inputs, actuators, HIL data
+        "Mixing"         // Tab 4: Airframe config visualization with live HIL
     };
 
     if (index >= 0 && index < TAB_COUNT) {
@@ -79,8 +81,8 @@ const char* Tabs::getTabDescription(int index) {
         "System Status & Connection Info",
         "GPS, Attitude & Navigation Data",
         "IMU, Environment & Sensor Data",
-        "RC Inputs, Actuators & Aircraft",
-        "Airframe Configuration & DataRef Mapping"
+        "RC Inputs, HIL Actuators & Aircraft Config",
+        "Airframe Configuration & Live HIL Mapping"
     };
 
     if (index >= 0 && index < TAB_COUNT) {
@@ -109,7 +111,7 @@ void XPlaneColors::initialize() {
     }
 
     s_initialized = true;
-    XPLMDebugString("px4xplane: X-Plane integration initialized successfully\n");
+    XPLMDebugString("px4xplane: X-Plane integration initialized successfully with enhanced HIL support\n");
 }
 
 float XPlaneColors::getUIScale() {
