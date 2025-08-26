@@ -61,11 +61,11 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// ========================================================================
 
 	// Realistic noise levels that match EKF2_ACC_NOISE expectations
-	constexpr float ACCEL_WHITE_NOISE_STD = 0.00f;        // 0.8 mg RMS (reduced from 0.06!)
+	constexpr float ACCEL_WHITE_NOISE_STD = 0.003f;        // 0.8 mg RMS (reduced from 0.06!)
 	constexpr float ACCEL_QUANTIZATION_MG = 2.0f;          // Relaxed quantization
 
 	// Simplified, gentle filtering (no more aggressive cascaded filters)
-	constexpr float ACCEL_FILTER_ALPHA = 0.85f;            // Gentle 85% filter (was 98%!)
+	constexpr float ACCEL_FILTER_ALPHA = 0.75f;            // Gentle 9% filter (was 98%!)
 	constexpr int ACCEL_MEDIAN_WINDOW_SIZE = 3;             // Smaller window (was 5)
 
 	// No thermal drift or complex bias modeling for simulation
