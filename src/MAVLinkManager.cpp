@@ -676,36 +676,42 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	// 3. Convert pressure altitude from feet to meters
 	float basePressureAltitude_m = basePressureAltitude_ft * FeetToMeters;
 
-	// 4. Initialize random number generator and Gaussian distribution for noise
-	//    - Mean (mu) = 0 meters (no bias)
-	//    - Standard Deviation (sigma) = 0.05 meters (reflecting realistic sensor variance)
-	static std::default_random_engine generator(std::random_device{}());
-	static std::normal_distribution<float> distribution(0.0f, 0.001f); // mean=0m, sigma=0.05m
+	// 4. NO quantization on barometer - let it vary naturally
+	//    PX4's "STALE" error can occur when values are too constant.
+	//    The natural float variations from X-Plane are actually beneficial for PX4
+	//    to detect that the sensor is alive and updating.
 
-	// 5. Generate noise and add it to the base pressure altitude
+	// 5. Initialize random number generator and Gaussian distribution for realistic noise
+	//    - Mean (mu) = 0 meters (no bias)
+	//    - Standard Deviation (sigma) = 0.01 meters (1cm - realistic barometer variance)
+	//    This noise level ensures PX4 sees the sensor as active while remaining accurate
+	static std::default_random_engine generator(std::random_device{}());
+	static std::normal_distribution<float> distribution(0.0f, 0.01f);
+
+	// 6. Generate noise and add it directly to the base altitude
 	float altitudeNoise_m = distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
-	// 6. Calculate barometric pressure from the noisy pressure altitude using ISA
+	// 7. Calculate barometric pressure from the noisy pressure altitude using ISA
 	float noisyPressure_hPa = DataRefManager::calculatePressureFromAltitude(noisyPressureAltitude_m);
 
-	// 7. Assign the noisy barometric pressure to the HIL_SENSOR message
+	// 8. Assign the noisy barometric pressure to the HIL_SENSOR message
 	hil_sensor.abs_pressure = noisyPressure_hPa;
 
-	// 8. Assign the noisy pressure altitude to the HIL_SENSOR message
+	// 9. Assign the noisy pressure altitude to the HIL_SENSOR message
 	hil_sensor.pressure_alt = noisyPressureAltitude_m;
 
-	// 9. Retrieve Indicated Airspeed (IAS) from the simulation in knots
+	// 10. Retrieve Indicated Airspeed (IAS) from the simulation in knots
 	// DataRef: "sim/flightmodel/position/indicated_airspeed"
 	float ias_knots = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed"); // IAS in knots
 
-	// 10. Convert IAS from knots to meters per second (m/s)
+	// 11. Convert IAS from knots to meters per second (m/s)
 	float ias_m_s = ias_knots * 0.514444f; // 1 knot = 0.514444 m/s
 
-	// 11. Calculate dynamic pressure using the formula:
+	// 12. Calculate dynamic pressure using the formula:
 	//     q = 0.5 * rho * V^2
 	//     where:
-	//     - rho (Air Density) = Sea-Level Air Density (1.225 kg/m³)
+	//     - rho (Air Density) = Sea-Level Air Density (1.225 kg/mï¿½)
 	//     - V (Airspeed) = IAS in m/s
 	float dynamicPressure_Pa = 0.5f * DataRefManager::AirDensitySeaLevel * ias_m_s * ias_m_s; // Dynamic pressure in Pascals
 
@@ -789,7 +795,14 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
 void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	hil_gps.lat = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/latitude") * 1e7);
 	hil_gps.lon = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/longitude") * 1e7);
-	hil_gps.alt = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/elevation") * 1e3);
+
+	// Quantize GPS altitude to 5mm resolution to simulate realistic GPS characteristics.
+	// This prevents floating-point precision artifacts from creating micro-oscillations
+	// while using finer resolution than 1cm to avoid discrete jumps.
+	// Real high-quality GPS has 5-10mm vertical accuracy in good conditions.
+	float elevation_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
+	float elevation_5mm = std::round(elevation_m * 200.0f);  // Round to 0.5cm (5mm)
+	hil_gps.alt = static_cast<int32_t>(elevation_5mm * 5.0f);  // Convert 5mm units to mm
 }
 
 /**

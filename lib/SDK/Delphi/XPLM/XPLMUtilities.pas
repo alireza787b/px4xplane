@@ -306,6 +306,10 @@ TYPE
      ,xplm_Language_Chinese                    = 10
 {$ENDIF XPLM300}
  
+{$IFDEF XPLM400}
+     ,xplm_Language_Ukrainian                  = 11
+{$ENDIF XPLM400}
+ 
    );
    PXPLMLanguageCode = ^XPLMLanguageCode;
 

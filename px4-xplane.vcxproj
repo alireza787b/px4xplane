@@ -49,10 +49,10 @@
     <TargetExt>.xpl</TargetExt>
     <GenerateManifest>false</GenerateManifest>
     <TargetName>win</TargetName>
-    <IncludePath>C:\Users\Alireza\source\repos\px4xplane\include;C:\Users\Alireza\vcpkg\installed\x64-windows\include;C:\Users\Alireza\source\repos\px4xplane\lib\SDK\CHeaders\XPLM;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\Alireza\source\repos\px4xplane\lib;C:\Users\Alireza\vcpkg\installed\x64-windows\lib;C:\Users\Alireza\GeographicLib\lib;C:\Users\Alireza\source\repos\px4xplane\lib\SDK\Libraries\Win;$(LibraryPath)</LibraryPath>
-    <ExternalIncludePath>C:\Users\Alireza\source\repos\px4xplane\lib\simpleini;$(ExternalIncludePath)</ExternalIncludePath>
-    <SourcePath>C:\Users\Alireza\source\repos\px4xplane\src;$(SourcePath)</SourcePath>
+    <IncludePath>$(ProjectDir)include;$(ProjectDir)lib;$(ProjectDir)lib\SDK\CHeaders\XPLM;$(VC_IncludePath);$(WindowsSDK_IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)lib\SDK\Libraries\Win;$(ProjectDir)lib\GeographicLib\lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
+    <ExternalIncludePath>$(ProjectDir)lib\simpleini;$(ProjectDir)lib\Eigen;$(ProjectDir)lib\XYZgeomag\src;%(ExternalIncludePath)</ExternalIncludePath>
+    <SourcePath>$(ProjectDir)src;%(SourcePath)</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>.\Debug\plugins\$(TargetName)\64\</OutDir>
@@ -71,7 +71,7 @@
       <Optimization>MaxSpeed</Optimization>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <WarningLevel>Level3</WarningLevel>
-      <AdditionalIncludeDirectories>SDK\CHeaders\XPLM;SDK\CHeaders\Widgets;C:\Users\Alireza\source\repos\px4xplane\mavlink\c_library_v2\all;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)lib\SDK\CHeaders\XPLM;$(ProjectDir)lib\SDK\CHeaders\Widgets;$(ProjectDir)lib\mavlink\c_library_v2;$(ProjectDir)lib\Eigen;$(ProjectDir)lib\GeographicLib\include;$(ProjectDir)lib\simpleini;$(ProjectDir)lib\XYZgeomag\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WINVER=0x0601;_WIN32_WINNT=0x0601;_WIN32_WINDOWS=0x0601;WIN32;NDEBUG;_WINDOWS;_USRDLL;SIMDATA_EXPORTS;IBM=1;XPLM200=1;XPLM210=1;XPLM300=1;XPLM301=1;XPLM302=1;XPLM303=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AssemblerListingLocation>.\Release\64\</AssemblerListingLocation>
       <PrecompiledHeaderOutputFile>.\Release\64\px4-xplane.pch</PrecompiledHeaderOutputFile>
@@ -164,6 +164,7 @@
     <ClCompile Include="src\MAVLinkManager.cpp" />
     <ClCompile Include="src\px4xplane.cpp" />
     <ClCompile Include="src\TimeManager.cpp" />
+    <ClCompile Include="src\UIConstants.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="config\ini.h" />
@@ -173,6 +174,8 @@
     <ClInclude Include="include\DataRefManager.h" />
     <ClInclude Include="include\TimeManager.h" />
     <ClInclude Include="include\MAVLinkManager.h" />
+    <ClInclude Include="include\UIConstants.h" />
+    <ClInclude Include="include\VersionInfo.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="XYZgeomag\src\XYZgeomag.hpp" />
   </ItemGroup>

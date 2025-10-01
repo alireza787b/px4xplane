@@ -28,6 +28,8 @@
 #include <netinet/in.h> // For TCP/IP
 #endif
 #include "MAVLinkManager.h"
+#include "VersionInfo.h"
+#include "UIConstants.h"
 
 #ifndef XPLM300
 #error This is made to be compiled against the XPLM300 SDK
@@ -68,7 +70,8 @@ void debugLog(const char* message) {
 
 int drawHeader(int l, int t, float col_white[]) {
 	char header[512];
-	snprintf(header, sizeof(header), "PX4-XPlane Interface v1.1.0");
+	// Use centralized version info for consistent branding
+	snprintf(header, sizeof(header), "PX4-XPlane Interface %s", PX4XPlaneVersion::getFullVersionString());
 	XPLMDrawString(col_white, l + 10, t - 20, header, NULL, xplmFont_Proportional);
 	return l + 20;
 }
@@ -93,9 +96,24 @@ int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int co
 		lineOffset += 20;
 	}
 
-	// Draw Connection Status
+	// Draw Connection Status with high-contrast color coding
 	const std::string& status = ConnectionManager::getStatus();
-	snprintf(buf, sizeof(buf), "Status: %s", status.c_str());
+	bool isConnected = ConnectionManager::isConnected();
+
+	// Use professional color indicators
+	float statusColor[3];
+	if (isConnected) {
+		memcpy(statusColor, UIConstants::Colors::CONNECTED, sizeof(statusColor));
+		snprintf(buf, sizeof(buf), "%s Status: %s", UIConstants::Status::CONNECTED_ICON, UIConstants::Status::CONNECTED_TEXT);
+	} else {
+		memcpy(statusColor, UIConstants::Colors::DISCONNECTED, sizeof(statusColor));
+		snprintf(buf, sizeof(buf), "%s Status: %s", UIConstants::Status::DISCONNECTED_ICON, UIConstants::Status::DISCONNECTED_TEXT);
+	}
+	XPLMDrawString(statusColor, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	// Show detailed status message
+	snprintf(buf, sizeof(buf), "Details: %s", status.c_str());
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
 	lineOffset += 20;
 
@@ -122,9 +140,16 @@ PLUGIN_API int XPluginStart(
 	char* outSig,
 	char* outDesc)
 {
-	strcpy(outName, "PX4 to X-Plane");
-	strcpy(outSig, "alireza787.px4xplane");
-	strcpy(outDesc, "PX4 SITL Interface for X-Plane.");
+	// Use centralized version information
+	strcpy(outName, PX4XPlaneVersion::PLUGIN_NAME);
+	strcpy(outSig, PX4XPlaneVersion::PLUGIN_SIGNATURE);
+	strcpy(outDesc, PX4XPlaneVersion::getBuildInfo());
+
+	// Initialize professional UI system
+	UIConstants::XPlaneColors::initialize();
+
+	debugLog("Plugin starting with enhanced UI system...");
+	debugLog(("Version: " + std::string(PX4XPlaneVersion::getFullVersionString())).c_str());
 
 	create_menu();
 

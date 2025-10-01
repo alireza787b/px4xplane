@@ -81,8 +81,8 @@ CONST
     { X-Plane itself                                                             }
    XPLM_PLUGIN_XPLANE   = (0);
 
-    { The current XPLM revision is 4.00 (400).                                   }
-   kXPLM_Version        = (400);
+    { The current XPLM revision is 4.1.1 (411).                                  }
+   kXPLM_Version        = (411);
 
    {
     XPLMKeyFlags
@@ -444,6 +444,51 @@ TYPE
      buffer[150]              : XPLMChar;
    END;
    PXPLMFixedString150_t = ^XPLMFixedString150_t;
+{$IFDEF XPLM200}
+   {
+    XPLMCursorStatus
+    
+    XPLMCursorStatus describes how you would like X-Plane to manage the cursor.
+    See XPLMHandleCursor_f for more info.
+   }
+TYPE
+   XPLMCursorStatus = (
+     { X-Plane manages the cursor normally, plugin does not affect the cusrsor.   }
+      xplm_CursorDefault                       = 0
+ 
+     { X-Plane hides the cursor.                                                  }
+     ,xplm_CursorHidden                        = 1
+ 
+     { X-Plane shows the cursor as the default arrow.                             }
+     ,xplm_CursorArrow                         = 2
+ 
+     { X-Plane shows the cursor but lets you select an OS cursor.                 }
+     ,xplm_CursorCustom                        = 3
+ 
+   );
+   PXPLMCursorStatus = ^XPLMCursorStatus;
+{$ENDIF XPLM200}
+   {
+    XPLMMouseStatus
+    
+        When the mouse is clicked, your mouse click routine is called
+        repeatedly.  It is first called with the mouse down message.  It is
+        then called zero or more times with the mouse-drag message, and finally
+        it is called once with the mouse up message.  All of these messages
+        will be directed to the same window; you are guaranteed to not receive
+        a drag or mouse-up event without first receiving the corresponding
+        mouse-down.
+   }
+TYPE
+   XPLMMouseStatus = (
+      xplm_MouseDown                           = 1
+ 
+     ,xplm_MouseDrag                           = 2
+ 
+     ,xplm_MouseUp                             = 3
+ 
+   );
+   PXPLMMouseStatus = ^XPLMMouseStatus;
 
 IMPLEMENTATION
 
