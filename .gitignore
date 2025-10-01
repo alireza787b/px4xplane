@@ -363,4 +363,5 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # vscode folder
-.vscode/
+.vscode/lib/Eigen/
+lib/GeographicLib/

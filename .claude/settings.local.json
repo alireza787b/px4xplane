@@ -15,7 +15,8 @@
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" /p:Configuration=Release /p:Platform=x64 /t:Clean,Build /v:minimal)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" /p:Configuration=Release /p:Platform=x64 /t:Build /v:m)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" px4-xplane.vcxproj -p:Configuration=Release -p:Platform=x64 -v:m)",
-      "Bash(cmd /c dir:*)"
+      "Bash(cmd /c dir:*)",
+      "Bash(git add:*)"
     ],
     "deny": [],
     "ask": []
