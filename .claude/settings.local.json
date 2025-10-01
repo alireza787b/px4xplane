@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(dir:*)",
+      "Bash(msbuild:*)",
+      "Bash(where devenv)",
+      "Bash(where \"C:\\Program Files\\Microsoft Visual Studio\\2022\\Professional\\Common7\\IDE\\devenv.exe\")",
+      "Bash(where \"C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Professional\\Common7\\IDE\\devenv.exe\")",
+      "WebFetch(domain:discuss.px4.io)",
+      "WebFetch(domain:docs.px4.io)",
+      "WebFetch(domain:github.com)",
+      "Bash(find:*)",
+      "Bash(where msbuild)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" /p:Configuration=Release /p:Platform=x64 /t:Clean,Build /v:minimal)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" /p:Configuration=Release /p:Platform=x64 /t:Build /v:m)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" px4-xplane.vcxproj -p:Configuration=Release -p:Platform=x64 -v:m)",
+      "Bash(cmd /c dir:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

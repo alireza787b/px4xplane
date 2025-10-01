@@ -1,642 +1,524 @@
-﻿/**
- * @file px4xplane.cpp
- * @brief PX4-XPlane Interface Plugin - Production Ready Beta v2.5.0
- *
- * PRODUCTION BETA FEATURES:
- * - High-contrast UI optimized for X-Plane's dark theme
- * - Professional 5-tab interface with excellent readability
- * - Real-time airframe configuration visualization
- * - Clear status indicators and visual feedback
- * - Production-ready code architecture and error handling
- * - Easy extensibility for adding new data fields
- * - Dynamic menu system with real-time connection status updates
- *
- * PRESERVED FUNCTIONALITY:
- * - All original PX4 SITL communication and data handling
- * - Complete airframe support and configuration management
- * - MAVLink messaging and sensor data transmission
- * - Flight loop callback and timing management
- * - Cross-platform compatibility (Windows, macOS, Linux)
- *
- * @author Alireza Ghaderi
- * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
- * @license MIT License
- * @version 2.5.0 (Beta - Production Ready)
- * @url https://github.com/alireza787b/px4xplane
- */
-
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include "XPLMDataAccess.h"
 #include "XPLMMenus.h"
 #include "XPLMProcessing.h"
-#include "XPLMUtilities.h"
-
- // Standard library includes
 #include <string>
 #include <stdio.h>
 #include <vector>
-#include <functional>
+#include <functional> // Include this
 #include <variant>
 #include <fstream>
 #include <sstream>
 #include <map>
-#include <algorithm>
-#include <cstring>
-
-// Core plugin includes
 #include "ConfigReader.h"
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
-#include "MAVLinkManager.h"
+#include <algorithm>
 
-// New UI system includes
-#include "VersionInfo.h"
-#include "UIConstants.h"
-#include "UIHandler.h"
 
-// Platform-specific includes
+
 #if IBM
 #include <windows.h>
 #endif
 #if LIN || APL
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <unistd.h>  // For TCP/IP
+#include <sys/socket.h> // For TCP/IP
+#include <netinet/in.h> // For TCP/IP
 #endif
+#include "MAVLinkManager.h"
+#include "VersionInfo.h"
+#include "UIConstants.h"
 
 #ifndef XPLM300
-#error This plugin requires X-Plane SDK XPLM300 or later
+#error This is made to be compiled against the XPLM300 SDK
 #endif
-#include <XPLMPlugin.h>
 
-// =================================================================
-// GLOBAL VARIABLES - Core Plugin State
-// =================================================================
+static XPLMWindowID g_window;
+static XPLMMenuID g_menu_id;
+static XPLMMenuID airframesMenu; // Global variable for the airframes submenu
+static int g_airframesMenuItemIndex; // Global variable to store the index of the airframes submenu
 
-static XPLMWindowID g_mainWindow = nullptr;
-static XPLMWindowID g_aboutWindow = nullptr;
-static XPLMMenuID g_mainMenu = nullptr;
-static XPLMMenuID g_airframesMenu = nullptr;
-static int g_menuContainerIdx = -1;
-static XPLMCommandRef g_toggleConnectionCmd = nullptr;
 
-// NEW: Dynamic menu system variables
-static int g_connectionMenuItemIndex = -1;  // Track connection menu item position
+// Global variable to hold our command reference
+static XPLMCommandRef toggleEnableCmd;
 
-// Menu item identifiers (string-based for robustness)
-#define MENU_ITEM_DATA_INSPECTOR "Data Inspector"
-#define MENU_ITEM_ABOUT "About"
-#define MENU_ITEM_TOGGLE_CONNECTION "Toggle Connection"
-#define MENU_ITEM_AIRFRAMES "Airframes"
+static int g_enabled = 0; // Used to toggle connection state
 
-// Update frequencies for MAVLink messaging (unchanged from original)
-const float BASE_SENSOR_UPDATE_PERIOD = 0.001f;  // 1000 Hz for IMU
-const float BASE_GPS_UPDATE_PERIOD = 0.1f;       // 10 Hz for GPS  
-const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.05f; // 20 Hz
-const float BASE_RC_UPDATE_PERIOD = 0.05f;       // 20 Hz
 
-// Timing variables for flight loop (unchanged from original)
+
+
+
+void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon);
+void menu_handler(void* in_menu_ref, void* in_item_ref);
+int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefcon);
+void create_menu();
+void toggleEnable();
+void updateMenuItems();
+float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
+
+
+// Debugging function - Logs a message to the X-Plane log
+void debugLog(const char* message) {
+	XPLMDebugString("px4xplane: ");
+	XPLMDebugString(message);
+	XPLMDebugString("\n");
+}
+
+
+
+int drawHeader(int l, int t, float col_white[]) {
+	char header[512];
+	// Use centralized version info for consistent branding
+	snprintf(header, sizeof(header), "PX4-XPlane Interface %s", PX4XPlaneVersion::getFullVersionString());
+	XPLMDrawString(col_white, l + 10, t - 20, header, NULL, xplmFont_Proportional);
+	return l + 20;
+}
+
+int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int columnWidth) {
+	char buf[512];
+	int droneConfigOffset = 20; // Adjust this offset as needed
+
+
+
+	// Get the formatted drone configuration string
+	std::string droneConfigStr = DataRefManager::GetFormattedDroneConfig();
+	// Split the string into two lines for display
+	std::istringstream iss(droneConfigStr);
+	std::string line;
+	while (std::getline(iss, line)) {
+		char lineBuffer[512]; // Ensure this buffer is large enough
+		strncpy(lineBuffer, line.c_str(), sizeof(lineBuffer));
+		lineBuffer[sizeof(lineBuffer) - 1] = '\0'; // Ensure null termination
+
+		XPLMDrawString(col_white, l + droneConfigOffset, t - lineOffset, lineBuffer, NULL, xplmFont_Proportional);
+		lineOffset += 20;
+	}
+
+	// Draw Connection Status with high-contrast color coding
+	const std::string& status = ConnectionManager::getStatus();
+	bool isConnected = ConnectionManager::isConnected();
+
+	// Use professional color indicators
+	float statusColor[3];
+	if (isConnected) {
+		memcpy(statusColor, UIConstants::Colors::CONNECTED, sizeof(statusColor));
+		snprintf(buf, sizeof(buf), "%s Status: %s", UIConstants::Status::CONNECTED_ICON, UIConstants::Status::CONNECTED_TEXT);
+	} else {
+		memcpy(statusColor, UIConstants::Colors::DISCONNECTED, sizeof(statusColor));
+		snprintf(buf, sizeof(buf), "%s Status: %s", UIConstants::Status::DISCONNECTED_ICON, UIConstants::Status::DISCONNECTED_TEXT);
+	}
+	XPLMDrawString(statusColor, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	// Show detailed status message
+	snprintf(buf, sizeof(buf), "Details: %s", status.c_str());
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	// Draw SITL Frequency
+	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", DataRefManager::SIM_Timestep);
+	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
+	lineOffset += 20;
+
+	return lineOffset;
+}
+
+void drawFooter(int l, int b, float col_white[]) {
+	char footer[512];
+	snprintf(footer, sizeof(footer), "Copyright (c) Alireza Ghaderi - https://github.com/alireza787b/px4xplane");
+	XPLMDrawString(col_white, l + 10, b + 10, footer, NULL, xplmFont_Proportional);
+}
+
+
+PLUGIN_API void XPluginStop(void);
+
+
+PLUGIN_API int XPluginStart(
+	char* outName,
+	char* outSig,
+	char* outDesc)
+{
+	// Use centralized version information
+	strcpy(outName, PX4XPlaneVersion::PLUGIN_NAME);
+	strcpy(outSig, PX4XPlaneVersion::PLUGIN_SIGNATURE);
+	strcpy(outDesc, PX4XPlaneVersion::getBuildInfo());
+
+	// Initialize professional UI system
+	UIConstants::XPlaneColors::initialize();
+
+	debugLog("Plugin starting with enhanced UI system...");
+	debugLog(("Version: " + std::string(PX4XPlaneVersion::getFullVersionString())).c_str());
+
+	create_menu();
+
+	XPLMCreateWindow_t params;
+	params.structSize = sizeof(params);
+	params.visible = 0; // Window is initially invisible
+	params.drawWindowFunc = draw_px4xplane;
+	// Note on handlers:
+	// Note on handlers:
+	// Register real handlers here as needed
+	params.handleMouseClickFunc = NULL; // Example: mouse_handler;
+	params.handleRightClickFunc = NULL;
+	params.handleMouseWheelFunc = NULL;
+	params.handleKeyFunc = NULL;
+	params.handleCursorFunc = NULL;
+	params.refcon = NULL;
+	params.layer = xplm_WindowLayerFloatingWindows;
+	params.decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle;
+
+	int left, bottom, right, top;
+	XPLMGetScreenBoundsGlobal(&left, &top, &right, &bottom);
+
+	int screenWidth = right - left;
+	int screenHeight = top - bottom;
+	int windowWidth = (screenWidth * 0.3 > 550) ? static_cast<int>(screenWidth * 0.3) : 550;
+
+	params.left = left + screenWidth * 0.1; // 10% from the left edge of the screen
+	params.bottom = bottom + screenHeight * 0.1; // 10% from the bottom edge of the screen
+	params.right = params.left + windowWidth;
+	params.top = params.bottom + screenHeight * 0.5; // Initial height, adjust as needed
+
+
+
+	g_window = XPLMCreateWindowEx(&params);
+
+	XPLMSetWindowPositioningMode(g_window, xplm_WindowPositionFree, -1);
+	XPLMSetWindowTitle(g_window, "PX4 to X-Plane");
+	XPLMSetWindowResizingLimits(g_window, 600, 200, windowWidth, 1000); // Set minimum width to 550px
+
+
+
+#if IBM
+	if (!ConnectionManager::initializeWinSock()) {
+		XPLMDebugString("initializeWinSock failed \n");
+	}
+#endif
+
+	// Register the flight loop callback to be called at the next cycle
+	XPLMRegisterFlightLoopCallback(MyFlightLoopCallback, -1.0f, NULL);
+
+
+	debugLog("Plugin started successfully");
+
+
+	return 1;
+}
+
+
+// Define a handler for the command like this
+int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefcon)
+{
+	if (inPhase == xplm_CommandBegin)
+		toggleEnable(); // Call your function to toggle enable/disable
+	return 0;
+}
+
+void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
+	int l, t, r, b;
+	XPLMGetWindowGeometry(in_window_id, &l, &t, &r, &b);
+	float col_white[] = { 1.0, 1.0, 1.0 };
+	int lineOffset = 20;
+	int columnWidth = 350; // Adjust as needed
+
+	// Draw Header
+	lineOffset = drawHeader(l, t, col_white);
+
+	// Draw Status and Configuration
+	lineOffset = drawStatusAndConfig(l, t, col_white, lineOffset, columnWidth);
+
+	// Draw DataRefs
+	lineOffset = DataRefManager::drawDataRefs(in_window_id, l, t, col_white, lineOffset);
+
+	// Draw Actuator Controls
+	int rightColumnPosition = l + columnWidth;
+	lineOffset = 20;
+	lineOffset = DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
+
+	// Draw Actual Throttle
+	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset + 20);
+
+	// Draw Footer
+	drawFooter(l, b, col_white);
+}
+
+// Function to refresh the airframes submenu to indicate the active airframe.
+void refreshAirframesMenu() {
+	// Clear the current submenu items.
+	XPLMClearAllMenuItems(airframesMenu);
+
+	// Repopulate the submenu with updated airframe names and active status.
+	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+	for (const std::string& name : airframeNames) {
+		// Append each airframe to the submenu and mark the active one.
+		XPLMAppendMenuItem(airframesMenu, (name + (name == ConfigManager::getActiveAirframeName() ? " *" : "")).c_str(), (void*)new std::string(name), 1);
+	}
+}
+
+
+void menu_handler(void* in_menu_ref, void* in_item_ref) {
+	//TODO: Remember here there is a problem. handler cant find when we click on airframes. now I did a hack and put that in else when it is not part of main list menu. we should fix this later.
+	debugLog("Menu handler called");
+
+	if (in_menu_ref == (void*)g_menu_id) {
+		if ((int)(intptr_t)in_item_ref == g_airframesMenuItemIndex) {
+			debugLog("Airframes submenu selected");
+			// The submenu itself was clicked; specific handling if needed
+		}
+		else {
+			// Handling other main menu items
+			if (in_item_ref == (void*)0) {
+				XPLMSetWindowIsVisible(g_window, 1);
+				debugLog("Show Data menu item selected");
+			}
+			else if (in_item_ref == (void*)1) {
+				toggleEnable();
+				debugLog("Toggle enable menu item selected");
+			}
+		}
+	}
+	else {
+		// Handling airframes submenu interactions
+		debugLog("Entered airframe submenu handler");
+
+		int index = (int)(intptr_t)in_item_ref;
+		std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+
+		if (index >= 0 && index < airframeNames.size()) {
+			const std::string& selectedAirframe = airframeNames[index];
+			debugLog(("Airframe selected: " + selectedAirframe).c_str());
+
+			ConfigManager::setActiveAirframeName(selectedAirframe);
+			refreshAirframesMenu();
+		}
+	}
+
+}
+
+
+
+void toggleEnable() {
+	XPLMDebugString("px4xplane: toggleEnable() called.\n");
+	if (ConnectionManager::isConnected()) {
+		XPLMDebugString("px4xplane: Currently connected, attempting to disconnect.\n");
+		ConnectionManager::disconnect();
+	}
+	else {
+		XPLMDebugString("px4xplane: Currently disconnected, attempting to set up server socket.\n");
+		ConnectionManager::setupServerSocket();
+	}
+	updateMenuItems(); // Update menu items after toggling connection
+}
+
+
+int getDataRefInt(const char* dataRefName) {
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (!dataRef) return -1; // or some error value
+	return XPLMGetDatai(dataRef);
+}
+
+float getDataRefFloat(const char* dataRefName) {
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (!dataRef) return -1.0f; // or some error value
+	return XPLMGetDataf(dataRef);
+}
+
+double getDataRefDouble(const char* dataRefName) {
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (!dataRef) return -1.0; // or some error value
+	return XPLMGetDatad(dataRef);
+}
+
+std::vector<float> getDataRefFloatArray(const char* dataRefName) {
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	std::vector<float> result;
+
+	if (!dataRef) return result; // Return an empty vector if the data ref is not found
+
+	int arraySize = XPLMGetDatavf(dataRef, NULL, 0, 0);
+	if (arraySize > 0) {
+		result.resize(arraySize);
+		XPLMGetDatavf(dataRef, result.data(), 0, arraySize);
+	}
+
+	return result;
+}
+
+
+
+void create_menu() {
+	debugLog("Creating plugin menu");
+
+	int menu_container_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "PX4 X-Plane", NULL, 1);
+	g_menu_id = XPLMCreateMenu("px4xplane", XPLMFindPluginsMenu(), menu_container_idx, menu_handler, NULL);
+
+	// Save the index of the airframes submenu in the main menu
+	g_airframesMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Airframes", NULL, 1);
+	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, NULL);
+
+
+	debugLog("Airframes submenu created");
+
+	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+	std::string activeAirframe = ConfigManager::getActiveAirframeName();
+	for (size_t i = 0; i < airframeNames.size(); ++i) {
+		const std::string& name = airframeNames[i];
+		std::string menuItemName = name;
+		if (name == activeAirframe) {
+			menuItemName += " *";
+		}
+		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
+	}
+
+	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
+	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
+	XPLMAppendMenuSeparator(g_menu_id);
+	XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);
+	XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
+
+	updateMenuItems();
+
+	debugLog("Menu created successfully");
+}
+
+
+void updateMenuItems() {
+	XPLMClearAllMenuItems(g_menu_id);
+
+	// Recreate the main menu items
+	// Important: Update the airframesMenuItemIndex to reflect the new index after clearing
+	g_airframesMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Airframes", NULL, 1);
+	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, NULL);
+
+	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
+	std::string activeAirframe = ConfigManager::getActiveAirframeName();
+	for (size_t i = 0; i < airframeNames.size(); ++i) {
+		const std::string& name = airframeNames[i];
+		std::string menuItemName = name;
+		if (name == activeAirframe) {
+			menuItemName += " *";
+		}
+		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
+	}
+
+	// Recreate the remaining main menu items
+	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	XPLMAppendMenuSeparator(g_menu_id);
+	if (ConnectionManager::isConnected()) {
+		XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
+	}
+	else {
+		XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);
+	}
+}
+
+
+// Placeholder function for handling airframe selection commands.
+void handleAirframeSelection(const std::string& airframeName) {
+	// TODO: Implement the logic for when a user selects an airframe from the "Airframes" submenu.
+	debugLog(("Airframe selected: " + airframeName).c_str());
+	// Perform necessary actions to activate the selected airframe.
+}
+
+
+
+
+// Constants for update frequencies (in seconds)
+const float BASE_SENSOR_UPDATE_PERIOD = 0.01f; // 100 Hz
+const float BASE_GPS_UPDATE_PERIOD = 0.05f;     // 20 Hz
+const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.1f; // 10 Hz
+const float BASE_RC_UPDATE_PERIOD = 0.1f;     // 10z
+
+// Global timing variables
 float timeSinceLastSensorUpdate = 0.0f;
 float timeSinceLastGpsUpdate = 0.0f;
-float timeSinceLastStateQuaternionUpdate = 0.0f;
-float timeSinceLastRcUpdate = 0.0f;
+float timeSinceLastStateQuaternionUpdate = 0.0f; // Optional
+float timeSinceLastRcUpdate = 0.0f; // Optional
+
 float lastFlightTime = 0.0f;
 
-// =================================================================
-// FORWARD DECLARATIONS
-// =================================================================
+float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
+	// Ensure we're connected before proceeding
+	if (!ConnectionManager::isConnected()) return -1.0f;
 
-// Window management functions
-void createMainWindow();
-void createAboutWindow();
-void showMainWindow();
-void showAboutWindow();
-void hideMainWindow();
-void hideAboutWindow();
-void destroyWindows();
+	float currentFlightTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 
-// Menu system functions
-void createMainMenu();
-void createAirframesMenu();
-void refreshAirframesMenu();
-void updateConnectionMenuItem();  // NEW: Dynamic menu update function
-void menuHandler(void* menuRef, void* itemRef);
-void airframesMenuHandler(void* menuRef, void* itemRef);
+	// Check for new flight start
+	if (currentFlightTime < lastFlightTime) {
+		if (ConnectionManager::isConnected()) {
+			toggleEnable();
+		}
+	}
 
-// Core plugin functions
-void toggleConnection();
-int toggleConnectionHandler(XPLMCommandRef command, XPLMCommandPhase phase, void* refcon);
-float flightLoopCallback(float elapsedSinceLastCall, float elapsedTimeSinceLastFlightLoop, int counter, void* refcon);
+	// Update timing variables
+	timeSinceLastSensorUpdate += inElapsedSinceLastCall;
+	timeSinceLastGpsUpdate += inElapsedSinceLastCall;
+	timeSinceLastStateQuaternionUpdate += inElapsedSinceLastCall;
+	timeSinceLastRcUpdate += inElapsedSinceLastCall;
 
-// Utility functions
-void debugLog(const char* message);
+	// Send sensor data at high frequency
+	if (timeSinceLastSensorUpdate >= BASE_SENSOR_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILSensor(uint8_t(0));
+		timeSinceLastSensorUpdate = 0.0f;
+	}
 
-// =================================================================
-// UTILITY FUNCTIONS
-// =================================================================
+	// Send GPS data at a lower frequency
+	if (timeSinceLastGpsUpdate >= BASE_GPS_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILGPS();
+		timeSinceLastGpsUpdate = 0.0f;
+	}
 
-void debugLog(const char* message) {
-    XPLMDebugString("px4xplane: ");
-    XPLMDebugString(message);
-    XPLMDebugString("\n");
+	// Optional: Send state quaternion data
+	if (timeSinceLastStateQuaternionUpdate >= BASE_STATE_QUAT_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILStateQuaternion();
+		timeSinceLastStateQuaternionUpdate = 0.0f;
+	}
+
+	// Optional: Send RC data
+	if (timeSinceLastRcUpdate >= BASE_RC_UPDATE_PERIOD) {
+		MAVLinkManager::sendHILRCInputs();
+		timeSinceLastRcUpdate = 0.0f;
+	}
+
+
+	// Continuously receive and process actuator data
+	ConnectionManager::receiveData();
+
+	// Actuator overrides
+	DataRefManager::overrideActuators();
+
+	// Update the SITL timestep with the loop callback rate
+	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
+
+	lastFlightTime = currentFlightTime;
+
+	// Always return a negative value to continue calling this function every frame
+	return 0.005f; // Continue calling at the next cycle
+	//return -1.0f;
 }
 
-// =================================================================
-// WINDOW MANAGEMENT FUNCTIONS - Integrated with UIHandler
-// =================================================================
 
-void createMainWindow() {
-    if (g_mainWindow != nullptr) {
-        debugLog("Main window already exists");
-        return;
-    }
 
-    debugLog("Creating main window with professional UI system...");
 
-    XPLMCreateWindow_t params = {};
-    params.structSize = sizeof(params);
-    params.visible = 0;
-    params.drawWindowFunc = UIHandler::drawMainWindow;
-    params.handleMouseClickFunc = UIHandler::handleMainWindowMouse;
-    params.handleRightClickFunc = nullptr;
-    params.handleMouseWheelFunc = UIHandler::handleMainWindowWheel;
-    params.handleKeyFunc = nullptr;
-    params.handleCursorFunc = nullptr;
-    params.refcon = nullptr;
-    params.layer = xplm_WindowLayerFloatingWindows;
-    params.decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle;
 
-    // Set reasonable default size and position
-    params.left = 100;
-    params.bottom = 200;
-    params.right = params.left + UIConstants::getScaledLayout(UIConstants::Layout::MIN_WINDOW_WIDTH);
-    params.top = params.bottom + UIConstants::getScaledLayout(UIConstants::Layout::MIN_WINDOW_HEIGHT);
 
-    g_mainWindow = XPLMCreateWindowEx(&params);
 
-    if (g_mainWindow == nullptr) {
-        debugLog("ERROR: Failed to create main window!");
-        return;
-    }
 
-    XPLMSetWindowPositioningMode(g_mainWindow, xplm_WindowPositionFree, -1);
-    XPLMSetWindowTitle(g_mainWindow, PX4XPlaneVersion::getMainWindowTitle());
-
-    debugLog("Main window created successfully with professional UI");
-}
-
-void createAboutWindow() {
-    if (g_aboutWindow != nullptr) {
-        debugLog("About window already exists");
-        return;
-    }
-
-    debugLog("Creating about window...");
-
-    XPLMCreateWindow_t params = {};
-    params.structSize = sizeof(params);
-    params.visible = 0;
-    params.drawWindowFunc = UIHandler::drawAboutWindow;
-    params.handleMouseClickFunc = UIHandler::handleAboutWindowMouse;
-    params.handleRightClickFunc = nullptr;
-    params.handleMouseWheelFunc = nullptr;
-    params.handleKeyFunc = nullptr;
-    params.handleCursorFunc = nullptr;
-    params.refcon = nullptr;
-    params.layer = xplm_WindowLayerModal;
-    params.decorateAsFloatingWindow = xplm_WindowDecorationRoundRectangle;
-
-    // Center about window with reasonable size
-    int screenWidth, screenHeight;
-    XPLMGetScreenSize(&screenWidth, &screenHeight);
-    int windowWidth = 600;
-    int windowHeight = 500;
-    params.left = (screenWidth - windowWidth) / 2;
-    params.right = params.left + windowWidth;
-    params.bottom = (screenHeight - windowHeight) / 2;
-    params.top = params.bottom + windowHeight;
-
-    g_aboutWindow = XPLMCreateWindowEx(&params);
-
-    if (g_aboutWindow == nullptr) {
-        debugLog("ERROR: Failed to create about window!");
-        return;
-    }
-
-    XPLMSetWindowPositioningMode(g_aboutWindow, xplm_WindowPositionFree, -1);
-    XPLMSetWindowTitle(g_aboutWindow, PX4XPlaneVersion::getAboutWindowTitle());
-
-    debugLog("About window created successfully");
-}
-
-void showMainWindow() {
-    debugLog("Showing main window...");
-
-    if (g_mainWindow == nullptr) {
-        createMainWindow();
-    }
-
-    if (g_mainWindow != nullptr) {
-        XPLMSetWindowIsVisible(g_mainWindow, 1);
-        XPLMBringWindowToFront(g_mainWindow);
-        debugLog("Main window should now be visible");
-    }
-    else {
-        debugLog("ERROR: Failed to show main window - window is null");
-    }
-}
-
-void showAboutWindow() {
-    debugLog("Showing about window...");
-
-    if (g_aboutWindow == nullptr) {
-        createAboutWindow();
-    }
-
-    if (g_aboutWindow != nullptr) {
-        XPLMSetWindowIsVisible(g_aboutWindow, 1);
-        XPLMBringWindowToFront(g_aboutWindow);
-        debugLog("About window should now be visible");
-    }
-    else {
-        debugLog("ERROR: Failed to show about window - window is null");
-    }
-}
-
-void hideMainWindow() {
-    if (g_mainWindow != nullptr) {
-        XPLMSetWindowIsVisible(g_mainWindow, 0);
-        debugLog("Main window hidden");
-    }
-}
-
-void hideAboutWindow() {
-    if (g_aboutWindow != nullptr) {
-        XPLMSetWindowIsVisible(g_aboutWindow, 0);
-        debugLog("About window hidden");
-    }
-}
-
-void destroyWindows() {
-    if (g_aboutWindow != nullptr) {
-        XPLMDestroyWindow(g_aboutWindow);
-        g_aboutWindow = nullptr;
-        debugLog("About window destroyed");
-    }
-
-    if (g_mainWindow != nullptr) {
-        XPLMDestroyWindow(g_mainWindow);
-        g_mainWindow = nullptr;
-        debugLog("Main window destroyed");
-    }
-}
-
-// =================================================================
-// MENU SYSTEM - Enhanced with Dynamic Text Updates
-// =================================================================
-
-void updateConnectionMenuItem() {
-    if (g_mainMenu == nullptr) {
-        debugLog("ERROR: Cannot update connection menu item - main menu is null");
-        return;
-    }
-
-    // Remove existing connection menu item if it exists
-    if (g_connectionMenuItemIndex != -1) {
-        XPLMRemoveMenuItem(g_mainMenu, g_connectionMenuItemIndex);
-        debugLog("Removed old connection menu item");
-    }
-
-    // Get current connection state and appropriate menu text
-    const char* menuText = UIHandler::getConnectionMenuText();
-
-    // Add new connection menu item with updated text
-    g_connectionMenuItemIndex = XPLMAppendMenuItemWithCommand(g_mainMenu, menuText, g_toggleConnectionCmd);
-
-    debugLog(("Updated connection menu item text to: " + std::string(menuText)).c_str());
-}
-
-void menuHandler(void* menuRef, void* itemRef) {
-    debugLog("Main menu handler called");
-
-    if (itemRef == nullptr) {
-        debugLog("ERROR: Menu item reference is null");
-        return;
-    }
-
-    const char* itemName = (const char*)itemRef;
-    debugLog(("Menu item selected: " + std::string(itemName)).c_str());
-
-    if (strcmp(itemName, MENU_ITEM_DATA_INSPECTOR) == 0) {
-        debugLog("Data Inspector menu item selected - showing main window");
-        showMainWindow();
-    }
-    else if (strcmp(itemName, MENU_ITEM_ABOUT) == 0) {
-        debugLog("About menu item selected - showing about window");
-        showAboutWindow();
-    }
-    else if (strcmp(itemName, MENU_ITEM_TOGGLE_CONNECTION) == 0) {
-        debugLog("Toggle connection menu item selected");
-        toggleConnection();
-    }
-}
-
-void airframesMenuHandler(void* menuRef, void* itemRef) {
-    debugLog("Airframes menu handler called");
-
-    if (itemRef == nullptr) {
-        debugLog("ERROR: Airframe menu item reference is null");
-        return;
-    }
-
-    const char* airframeName = (const char*)itemRef;
-    debugLog(("Airframe selected: " + std::string(airframeName)).c_str());
-
-    ConfigManager::setActiveAirframeName(std::string(airframeName));
-    refreshAirframesMenu();
-}
-
-void createAirframesMenu() {
-    if (g_airframesMenu != nullptr) {
-        XPLMDestroyMenu(g_airframesMenu);
-        g_airframesMenu = nullptr;
-    }
-
-    int airframesIdx = XPLMAppendMenuItem(g_mainMenu, MENU_ITEM_AIRFRAMES, nullptr, 1);
-    g_airframesMenu = XPLMCreateMenu("Airframes", g_mainMenu, airframesIdx, airframesMenuHandler, nullptr);
-
-    if (g_airframesMenu == nullptr) {
-        debugLog("ERROR: Failed to create airframes submenu!");
-        return;
-    }
-
-    refreshAirframesMenu();
-}
-
-void refreshAirframesMenu() {
-    if (g_airframesMenu == nullptr) {
-        debugLog("WARNING: Airframes menu is null in refresh");
-        return;
-    }
-
-    XPLMClearAllMenuItems(g_airframesMenu);
-
-    std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
-    std::string activeAirframe = ConfigManager::getActiveAirframeName();
-
-    debugLog(("Refreshing airframes menu with " + std::to_string(airframeNames.size()) + " items").c_str());
-
-    for (const std::string& name : airframeNames) {
-        std::string menuItemName = name + (name == activeAirframe ? " *" : "");
-        char* itemRef = new char[name.length() + 1];
-        strcpy(itemRef, name.c_str());
-        XPLMAppendMenuItem(g_airframesMenu, menuItemName.c_str(), itemRef, 1);
-    }
-
-    debugLog("Airframes menu refreshed successfully");
-}
-
-int toggleConnectionHandler(XPLMCommandRef command, XPLMCommandPhase phase, void* refcon) {
-    if (phase == xplm_CommandBegin) {
-        debugLog("Toggle connection command executed");
-        toggleConnection();
-    }
-    return 0;
-}
-
-void toggleConnection() {
-    debugLog("toggleConnection() called");
-
-    // Store previous connection state for comparison
-    bool wasConnected = ConnectionManager::isConnected();
-
-    if (wasConnected) {
-        debugLog("Currently connected, attempting to disconnect");
-        ConnectionManager::disconnect();
-    }
-    else {
-        debugLog("Currently disconnected, attempting to connect to PX4 SITL");
-        ConnectionManager::setupServerSocket();
-    }
-
-    // Update menu text dynamically after connection state change
-    bool isNowConnected = ConnectionManager::isConnected();
-    if (wasConnected != isNowConnected) {
-        debugLog("Connection state changed - updating menu text");
-        updateConnectionMenuItem();
-        debugLog("Menu text updated successfully");
-    }
-    else {
-        debugLog("Connection state unchanged - no menu update needed");
-    }
-}
-
-void createMainMenu() {
-    debugLog("Creating plugin menu system...");
-
-    // Create main menu container
-    g_menuContainerIdx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "PX4 X-Plane", nullptr, 1);
-    g_mainMenu = XPLMCreateMenu("PX4 X-Plane", XPLMFindPluginsMenu(), g_menuContainerIdx, menuHandler, nullptr);
-
-    if (g_mainMenu == nullptr) {
-        debugLog("ERROR: Failed to create main menu!");
-        return;
-    }
-
-    // Create airframes submenu
-    createAirframesMenu();
-
-    // Add static menu items
-    XPLMAppendMenuItem(g_mainMenu, MENU_ITEM_DATA_INSPECTOR, (void*)MENU_ITEM_DATA_INSPECTOR, 1);
-    XPLMAppendMenuItem(g_mainMenu, MENU_ITEM_ABOUT, (void*)MENU_ITEM_ABOUT, 1);
-    XPLMAppendMenuSeparator(g_mainMenu);
-
-    // Create toggle connection command
-    g_toggleConnectionCmd = XPLMCreateCommand("px4xplane/toggleConnection", "Toggle PX4-XPlane connection");
-    if (g_toggleConnectionCmd != nullptr) {
-        XPLMRegisterCommandHandler(g_toggleConnectionCmd, toggleConnectionHandler, 1, (void*)0);
-    }
-
-    // Add connection menu item with initial text (will be updated dynamically)
-    updateConnectionMenuItem();
-
-    debugLog("Menu system created successfully with dynamic connection menu");
-}
-
-// =================================================================
-// CORE PLUGIN FUNCTIONALITY - Flight Loop (PRESERVED FROM ORIGINAL)
-// =================================================================
-
-float flightLoopCallback(float elapsedSinceLastCall, float elapsedTimeSinceLastFlightLoop, int counter, void* refcon) {
-    // Check connection status
-    if (!ConnectionManager::isConnected()) {
-        return 0.005f; // Continue checking at 200Hz even when disconnected
-    }
-
-    // Handle flight time reset (aircraft change detection)
-    float currentFlightTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
-    if (currentFlightTime < lastFlightTime) {
-        if (ConnectionManager::isConnected()) {
-            debugLog("Flight time reset detected - toggling connection");
-            toggleConnection();
-        }
-    }
-
-    // Update timing accumulators
-    timeSinceLastSensorUpdate += elapsedSinceLastCall;
-    timeSinceLastGpsUpdate += elapsedSinceLastCall;
-    timeSinceLastStateQuaternionUpdate += elapsedSinceLastCall;
-    timeSinceLastRcUpdate += elapsedSinceLastCall;
-
-    // Send sensor data at 1000 Hz
-    if (timeSinceLastSensorUpdate >= BASE_SENSOR_UPDATE_PERIOD) {
-        MAVLinkManager::sendHILSensor(uint8_t(0));
-        timeSinceLastSensorUpdate = 0.0f;
-    }
-
-    // Send GPS data at 10 Hz
-    if (timeSinceLastGpsUpdate >= BASE_GPS_UPDATE_PERIOD) {
-        MAVLinkManager::sendHILGPS();
-        timeSinceLastGpsUpdate = 0.0f;
-    }
-
-    // Send state quaternion at 20 Hz
-    if (timeSinceLastStateQuaternionUpdate >= BASE_STATE_QUAT_UPDATE_PERIOD) {
-        MAVLinkManager::sendHILStateQuaternion();
-        timeSinceLastStateQuaternionUpdate = 0.0f;
-    }
-
-    // Send RC inputs at 20 Hz
-    if (timeSinceLastRcUpdate >= BASE_RC_UPDATE_PERIOD) {
-        MAVLinkManager::sendHILRCInputs();
-        timeSinceLastRcUpdate = 0.0f;
-    }
-
-    // Handle incoming data and actuator override
-    ConnectionManager::receiveData();
-    DataRefManager::overrideActuators();
-
-    // Update simulation timestep
-    DataRefManager::SIM_Timestep = elapsedSinceLastCall;
-    lastFlightTime = currentFlightTime;
-
-    return 0.005f; // Continue at 200Hz
-}
-
-// =================================================================
-// X-PLANE PLUGIN API - Standard Interface (ENHANCED FOR PHASE 3)
-// =================================================================
-
-PLUGIN_API int XPluginStart(char* outName, char* outSig, char* outDesc) {
-    // Set plugin identification using centralized version info
-    strcpy(outName, PX4XPlaneVersion::PLUGIN_NAME);
-    strcpy(outSig, PX4XPlaneVersion::PLUGIN_SIGNATURE);
-    strcpy(outDesc, PX4XPlaneVersion::getBuildInfo());
-
-    debugLog("Plugin starting (v2.5.0 - Beta Production Ready)...");
-
-    // Enable modern X-Plane features
-    if (XPLMHasFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS")) {
-        XPLMEnableFeature("XPLM_USE_NATIVE_WIDGET_WINDOWS", 1);
-        debugLog("Enabled modern native widget windows");
-    }
-
-    ConfigManager::loadConfiguration();
-
-    // Initialize UI system first
-    UIConstants::XPlaneColors::initialize();
-    UIHandler::initialize();
-
-    // Create menu system with dynamic updates
-    createMainMenu();
-
-    // Initialize platform-specific networking
-#if IBM
-    if (!ConnectionManager::initializeWinSock()) {
-        debugLog("ERROR: Windows socket initialization failed");
-        return 0;
-    }
-#endif
-
-    // Register flight loop callback
-    XPLMRegisterFlightLoopCallback(flightLoopCallback, -1.0f, nullptr);
-
-    debugLog("Plugin started successfully (v2.5.0 - Beta Production Ready)");
-    debugLog(("Version: " + std::string(PX4XPlaneVersion::getFullVersionString())).c_str());
-
-    return 1; // Success
-}
 
 PLUGIN_API void XPluginStop(void) {
-    debugLog("Plugin stopping (v2.5.0 - Beta Production Ready)...");
+	// Unregister the flight loop callback
+	if (ConnectionManager::isConnected()) {
+		toggleEnable();
+	}
 
-    // Disconnect if still connected
-    if (ConnectionManager::isConnected()) {
-        toggleConnection();
-    }
-
-    // Unregister flight loop callback
-    XPLMUnregisterFlightLoopCallback(flightLoopCallback, nullptr);
-
-    // Destroy menu system
-    if (g_airframesMenu != nullptr) {
-        XPLMDestroyMenu(g_airframesMenu);
-        g_airframesMenu = nullptr;
-    }
-
-    if (g_mainMenu != nullptr) {
-        XPLMDestroyMenu(g_mainMenu);
-        g_mainMenu = nullptr;
-    }
-
-    // Reset menu tracking variables
-    g_connectionMenuItemIndex = -1;
-
-    // Destroy windows
-    destroyWindows();
-
-    // Clean up UI system
-    UIHandler::cleanup();
-
-    // Clean up platform-specific resources
+	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 #if IBM
-    ConnectionManager::cleanupWinSock();
-    debugLog("Windows socket system cleaned up");
+	ConnectionManager::cleanupWinSock();
+	XPLMDebugString("px4xplane: WinSock cleaned up\n");
 #endif
-
-    debugLog("Plugin stopped successfully (v2.5.0 - Beta Production Ready)");
-}
-
-PLUGIN_API int XPluginEnable(void) {
-    debugLog("Plugin enabled (v2.5.0 - Beta Production Ready)");
-    // Update menu to reflect current state on plugin enable
-    updateConnectionMenuItem();
-    return 1;
-}
-
-PLUGIN_API void XPluginDisable(void) {
-    debugLog("Plugin disabled (v2.5.0 - Beta Production Ready)");
-    if (ConnectionManager::isConnected()) {
-        ConnectionManager::disconnect();
-        // Update menu to reflect disconnected state
-        updateConnectionMenuItem();
-    }
-}
-
-PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFrom, int inMessage, void* inParam) {
-    switch (inMessage) {
-    case XPLM_MSG_PLANE_CRASHED:
-        debugLog("Aircraft crashed - maintaining connection");
-        break;
-    case XPLM_MSG_PLANE_LOADED:
-        debugLog("New aircraft loaded");
-        // Update menu in case connection state needs to be reflected
-        updateConnectionMenuItem();
-        break;
-    default:
-        // Handle other messages as needed
-        break;
-    }
+	// ...
+	XPLMDebugString("px4xplane: Plugin stopped\n");
 }
