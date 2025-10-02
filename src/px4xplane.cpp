@@ -428,6 +428,7 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 // Constants for update frequencies (in seconds)
 // 250Hz for HIL_SENSOR improves EKF2 timing and prevents BARO STALE errors
+// IMPORTANT: Flight loop must be called at >= 250Hz (0.004s) to support this rate
 const float BASE_SENSOR_UPDATE_PERIOD = 0.004f; // 250 Hz
 const float BASE_GPS_UPDATE_PERIOD = 0.05f;     // 20 Hz
 const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.1f; // 10 Hz
@@ -496,9 +497,10 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	lastFlightTime = currentFlightTime;
 
-	// Return -1.0f to be called every flight loop frame (most robust for varying FPS)
-	// This ensures messages are sent at correct rates regardless of frame rate
-	return -1.0f;
+	// Return 0.004f to be called at 250Hz (every 4ms)
+	// This ensures consistent timing for HIL_SENSOR messages at 250Hz
+	// Flight loop callback rate MUST match or exceed the highest message rate
+	return 0.004f;
 }
 
 

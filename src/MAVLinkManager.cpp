@@ -821,18 +821,20 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
  * @param hil_sensor Reference to the HIL_SENSOR message where the magnetic field data will be set.
  */
 void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
-	// Retrieve the aircraft's current heading, roll, and pitch from the simulation
-	float yaw_mag = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
-	float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
-	float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
+	// Get Earth's magnetic field in NED coordinates (calculated by WMM2020)
+	Eigen::Vector3f mag_NED = DataRefManager::earthMagneticFieldNED;
 
-	// Convert the retrieved angles from degrees to radians for further calculations
-	float yaw_rad = yaw_mag * M_PI / 180.0f;
-	float roll_rad = roll * M_PI / 180.0f;
-	float pitch_rad = pitch * M_PI / 180.0f;
+	// Get aircraft attitude quaternion from X-Plane
+	// X-Plane quaternion format: [w, x, y, z] (scalar first)
+	// This represents the rotation from NED to body frame
+	std::vector<float> q = DataRefManager::getFloatArray("sim/flightmodel/position/q");
+	Eigen::Quaternionf attitude(q[0], q[1], q[2], q[3]); // w, x, y, z
 
-	// Rotate the precalculated Earth's magnetic field from NED to the aircraft's body frame
-	Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(DataRefManager::earthMagneticFieldNED, roll_rad, pitch_rad, yaw_rad);
+	// Rotate magnetic field from NED to body frame using full attitude
+	// Method: R_body_ned = quaternion.toRotationMatrix().transpose()
+	// This properly handles roll, pitch, and yaw rotations
+	Eigen::Matrix3f R_body_ned = attitude.toRotationMatrix().transpose();
+	Eigen::Vector3f bodyMagneticField = R_body_ned * mag_NED;
 
 	// CRITICAL: Do NOT override with NED frame - PX4 needs body frame magnetometer!
 	// bodyMagneticField = DataRefManager::earthMagneticFieldNED;  // WRONG - This breaks heading!
@@ -847,17 +849,23 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	hil_sensor.ymag = bodyMagneticField(1) + ymagNoise;
 	hil_sensor.zmag = bodyMagneticField(2) + zmagNoise;
 
-	// Debug logging for magnetometer
+	// Debug logging for magnetometer with complete attitude information
 	static int magLogCount = 0;
 	if (ConfigManager::debug_log_sensor_values && magLogCount++ % 100 == 0) {
+		float roll = DataRefManager::getFloat("sim/flightmodel/position/phi");
+		float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
+		float yaw_true = DataRefManager::getFloat("sim/flightmodel/position/psi");
+		float mag_psi = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
+		float mag_variation = DataRefManager::getFloat("sim/flightmodel/position/magnetic_variation");
 		char buf[512];
 		snprintf(buf, sizeof(buf),
-			"px4xplane: [MAG] Body[%.3f,%.3f,%.3f]G NED[%.3f,%.3f,%.3f]G RPY[%.1f°,%.1f°,%.1f°]\n",
+			"px4xplane: [MAG] Body[%.3f,%.3f,%.3f]G NED[%.3f,%.3f,%.3f]G Q[%.3f,%.3f,%.3f,%.3f] RPY[%.1f°,%.1f°,%.1f°] MagHdg=%.1f° Var=%.1f°\n",
 			hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag,
 			DataRefManager::earthMagneticFieldNED.x(),
 			DataRefManager::earthMagneticFieldNED.y(),
 			DataRefManager::earthMagneticFieldNED.z(),
-			roll, pitch, yaw_mag);
+			q[0], q[1], q[2], q[3],
+			roll, pitch, yaw_true, mag_psi, mag_variation);
 		XPLMDebugString(buf);
 	}
 }
@@ -918,12 +926,12 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
-	// Improved GPS accuracy values for faster EKF2 convergence in SITL
-	// eph = horizontal position uncertainty in cm (30 = 0.3m)
-	// epv = vertical position uncertainty in cm (50 = 0.5m)
-	// Lower values indicate higher confidence, allowing faster global position lock
-	hil_gps.eph = static_cast<uint16_t>(30); // 0.3m horizontal accuracy (was 0.8m)
-	hil_gps.epv = static_cast<uint16_t>(50); // 0.5m vertical accuracy (was 1.0m)
+	// GPS accuracy values matched to working d25f24d version
+	// eph = horizontal position uncertainty in cm (80 = 0.8m)
+	// epv = vertical position uncertainty in cm (100 = 1.0m)
+	// These conservative values work reliably with PX4 EKF2 in SITL
+	hil_gps.eph = static_cast<uint16_t>(80); // 0.8m horizontal accuracy
+	hil_gps.epv = static_cast<uint16_t>(100); // 1.0m vertical accuracy
 	hil_gps.satellites_visible = static_cast<uint16_t>(16); // 16 satellites visible in good conditions
 
 	// Debug logging for GPS accuracy

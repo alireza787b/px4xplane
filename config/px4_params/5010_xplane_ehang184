@@ -193,8 +193,9 @@ param set-default MIS_YAW_TMT 5.0000
 param set-default NAV_MC_ALT_RAD 2.0000
 
 
-# ---- CRITICAL EKF2 PARAMETERS (copied from working Alia-250) ----
-# These parameters are essential for proper sensor fusion in X-Plane SITL
+# ---- CRITICAL EKF2 PARAMETERS ----
+# Tuned for X-Plane SITL with 250Hz HIL_SENSOR and quantized GPS/Baro altitude
+# These parameters ensure stable EKF2 fusion without breaking heading estimation
 
 param set-default EKF2_ABIAS_INIT 0.0000
 param set-default EKF2_ABL_LIM 0.8000
@@ -203,31 +204,17 @@ param set-default EKF2_ACC_NOISE 1.0000
 param set-default EKF2_AGP_CTRL 3
 param set-default EKF2_ASP_DELAY 0.0000
 param set-default EKF2_AVEL_DELAY 0.0000
+
+# Barometer noise tuned for 3cm Gaussian noise + 5mm quantization
 param set-default EKF2_BARO_NOISE 0.1000
+
+# GPS parameters
 param set-default EKF2_GPS_DELAY 0.0000
 param set-default EKF2_GPS_P_NOISE 0.0100
 param set-default EKF2_GPS_V_NOISE 0.0100
+
+# Multi-IMU and other settings
 param set-default EKF2_MULTI_IMU 1
 param set-default EKF2_REQ_VDRIFT 1.0000
 param set-default IMU_GYRO_RATEMAX 100
 param set-default IMU_INTEG_RATE 100
-
-# ---- MAGNETOMETER CONFIGURATION (copied from working Alia-250) ----
-# EKF2_MAG_TYPE: 0=Automatic (use mag for heading fusion)
-# EKF2_MAG_DELAY: Magnetometer measurement delay (1.0ms for SITL)
-# EKF2_SYNT_MAG_Z: Synthesize Z-axis mag component (helps with heading stability)
-param set-default EKF2_MAG_TYPE 0
-param set-default EKF2_MAG_DELAY 1.0000
-param set-default EKF2_SYNT_MAG_Z 1
-
-# Innovation gate parameters - Keep existing relaxed values for X-Plane SITL
-# Higher values allow more sensor variation before rejecting measurements
-# Tuned for 250Hz HIL_SENSOR rate and quantized altitude sources
-param set-default EKF2_BARO_GATE 8.0
-param set-default EKF2_GPS_V_GATE 8.0
-
-# Preflight check parameters - Relaxed for SITL
-# COM_ARM_EKF_VEL: vertical velocity check tolerance (0.8 m/s allows arming with small drift)
-# COM_ARM_EKF_HGT: height estimate check tolerance (1.0m allows arming with small height variance)
-param set-default COM_ARM_EKF_VEL 0.8
-param set-default COM_ARM_EKF_HGT 1.0
