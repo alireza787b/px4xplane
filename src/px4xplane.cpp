@@ -427,10 +427,11 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 
 // Constants for update frequencies (in seconds)
-const float BASE_SENSOR_UPDATE_PERIOD = 0.01f; // 100 Hz
+// 250Hz for HIL_SENSOR improves EKF2 timing and prevents BARO STALE errors
+const float BASE_SENSOR_UPDATE_PERIOD = 0.004f; // 250 Hz
 const float BASE_GPS_UPDATE_PERIOD = 0.05f;     // 20 Hz
 const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.1f; // 10 Hz
-const float BASE_RC_UPDATE_PERIOD = 0.1f;     // 10z
+const float BASE_RC_UPDATE_PERIOD = 0.1f;     // 10 Hz
 
 // Global timing variables
 float timeSinceLastSensorUpdate = 0.0f;

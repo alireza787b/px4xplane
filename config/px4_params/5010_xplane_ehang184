@@ -193,6 +193,9 @@ param set-default MIS_YAW_TMT 5.0000
 param set-default NAV_MC_ALT_RAD 2.0000
 
 
+# ---- CRITICAL EKF2 PARAMETERS (copied from working Alia-250) ----
+# These parameters are essential for proper sensor fusion in X-Plane SITL
+
 param set-default EKF2_ABIAS_INIT 0.0000
 param set-default EKF2_ABL_LIM 0.8000
 param set-default EKF2_ABL_TAU 0.1000
@@ -208,4 +211,23 @@ param set-default EKF2_MULTI_IMU 1
 param set-default EKF2_REQ_VDRIFT 1.0000
 param set-default IMU_GYRO_RATEMAX 100
 param set-default IMU_INTEG_RATE 100
-less
+
+# ---- MAGNETOMETER CONFIGURATION (copied from working Alia-250) ----
+# EKF2_MAG_TYPE: 0=Automatic (use mag for heading fusion)
+# EKF2_MAG_DELAY: Magnetometer measurement delay (1.0ms for SITL)
+# EKF2_SYNT_MAG_Z: Synthesize Z-axis mag component (helps with heading stability)
+param set-default EKF2_MAG_TYPE 0
+param set-default EKF2_MAG_DELAY 1.0000
+param set-default EKF2_SYNT_MAG_Z 1
+
+# Innovation gate parameters - Keep existing relaxed values for X-Plane SITL
+# Higher values allow more sensor variation before rejecting measurements
+# Tuned for 250Hz HIL_SENSOR rate and quantized altitude sources
+param set-default EKF2_BARO_GATE 8.0
+param set-default EKF2_GPS_V_GATE 8.0
+
+# Preflight check parameters - Relaxed for SITL
+# COM_ARM_EKF_VEL: vertical velocity check tolerance (0.8 m/s allows arming with small drift)
+# COM_ARM_EKF_HGT: height estimate check tolerance (1.0m allows arming with small height variance)
+param set-default COM_ARM_EKF_VEL 0.8
+param set-default COM_ARM_EKF_HGT 1.0

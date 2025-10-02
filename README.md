@@ -1,8 +1,8 @@
-# PixEagle - PX4 X-Plane Plugin
+# PX4-XPlane - PX4 X-Plane Integration Plugin
 
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Latest Release - PixEagle Version 2.5.0 (August 2025)
+## Latest Release - Version 2.5.0 (January 2025)
 
 ### 🎥 Video Tutorials
 
@@ -12,15 +12,20 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 👉 [Watch the current demo and installation guide here!](https://youtu.be/oQTlBVXqR04)
 
-**🆕 NEW VIDEO COMING SOON:** A comprehensive PixEagle 2.5 tutorial showcasing the latest improvements, enhanced UI, and cross-platform support will be available soon! Stay tuned for the updated demonstration.
+**🆕 NEW VIDEO COMING SOON:** A comprehensive PX4-XPlane 2.5 tutorial showcasing the latest improvements, enhanced UI, and cross-platform support will be available soon! Stay tuned for the updated demonstration.
 
-### What's New in PixEagle 2.5
+### What's New in Version 2.5.0
 
-- **🎯 Enhanced GPS Position Accuracy**: Implemented advanced GPS coordinate smoothing with minimal low-pass filtering to eliminate micro-jitter while maintaining high responsiveness. This significantly improves PX4 EKF2 estimator stability.
-- **🖥️ Improved User Interface**: Enhanced in-menu interface for better user experience and easier configuration management (available now).
-- **🐧🍎 Cross-Platform Support**: Native Linux and macOS makefile support for seamless compilation across all major platforms (available now).
-- **⚡ Sensor Improvements**: Continued refinements to sensor data processing and filtering algorithms.
-- **🔧 Stability Enhancements**: Multiple under-the-hood improvements for more reliable simulation performance.
+- **🎯 Critical Sensor Stability Fix**: Resolved BARO STALE errors and vertical velocity oscillation issues:
+  - Increased HIL_SENSOR update rate from 100Hz to 250Hz (matches PX4 Gazebo SITL standard)
+  - Enhanced barometer noise modeling (3cm std dev) for proper liveness detection
+  - Synchronized GPS-Barometer altitude quantization (5mm resolution) to eliminate EKF2 innovation conflicts
+  - Relaxed EKF2 innovation gates (BARO_GATE, GPS_V_GATE: 8.0) for SITL environment
+  - Tuned COM_ARM_EKF_VEL parameter (0.8) to prevent false preflight velocity errors
+- **🖥️ Enhanced User Interface**: Professional high-contrast UI system with centralized version management and color-coded status indicators
+- **🐧🍎 Cross-Platform Support**: Native Linux and macOS makefile support for seamless compilation across all major platforms
+- **📦 Portability Improvements**: Project uses relative paths and external dependencies properly excluded from version control
+- **🔧 Stability Enhancements**: Multiple under-the-hood improvements for reliable SITL simulation performance
 
 ### Previous Features (v2.0.0)
 - **Sensor Improvements**: Fixed many sensor problems and inconsistencies.
@@ -145,13 +150,34 @@ This guide will walk you through the process of setting up custom configurations
 
 ---
 
-## Technical Improvements in PixEagle 2.5
+## Technical Improvements in Version 2.5.0
 
-### GPS Position Enhancement
-PixEagle 2.5 introduces sophisticated GPS coordinate smoothing that eliminates micro-jitter while maintaining sub-meter accuracy. The implementation uses minimal low-pass filtering on latitude and longitude coordinates, and combines smoothing with precision rounding for elevation data. This results in significantly improved PX4 EKF2 estimator stability without compromising responsiveness.
+### Sensor Stability and EKF2 Performance
+Version 2.5.0 addresses critical sensor timing and fusion issues that previously caused BARO STALE errors and vertical velocity instability:
+
+**HIL_SENSOR Update Rate Optimization**
+- Increased from 100Hz to 250Hz to match PX4's lockstep timing expectations
+- Prevents sensor timeout/STALE errors by ensuring consistent high-frequency updates
+- Aligns with PX4 Gazebo SITL standard for optimal sensor fusion
+
+**Barometer Modeling**
+- Enhanced noise model (3cm standard deviation) ensures PX4 properly detects sensor liveness
+- Synchronized altitude quantization (5mm) with GPS to eliminate innovation conflicts
+- Prevents temporal misalignment between different height sources in EKF2
+
+**EKF2 Parameter Tuning**
+- Relaxed innovation gates (EKF2_BARO_GATE: 8.0, EKF2_GPS_V_GATE: 8.0) for SITL environment
+- Adjusted COM_ARM_EKF_VEL (0.8) to prevent false velocity limit exceeded errors
+- Optimized for simulation timing characteristics while maintaining accuracy
+
+### User Interface Enhancements
+Professional high-contrast UI system with:
+- Centralized version management (VersionInfo.h)
+- Color-coded connection status indicators
+- Improved readability and real-time debugging information
 
 ### Cross-Platform Compatibility
-With native Linux and macOS makefile support, PixEagle 2.5 ensures seamless compilation and operation across all major platforms, making it accessible to a broader range of developers and researchers.
+With native Linux and macOS makefile support, PX4-XPlane 2.5.0 ensures seamless compilation and operation across all major platforms, making it accessible to a broader range of developers and researchers.
 
 ---
 

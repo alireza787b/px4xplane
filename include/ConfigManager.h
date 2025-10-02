@@ -102,6 +102,11 @@ public:
 
     static int MEDIAN_FILTER_WINDOW_SIZE;
 
+    // Debug logging configuration
+    static bool debug_verbose_logging;
+    static bool debug_log_sensor_timing;
+    static bool debug_log_sensor_values;
+
 
 private:
     static std::vector<int> parseMotorIndices(const std::string& indicesStr);

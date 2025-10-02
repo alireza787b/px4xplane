@@ -189,6 +189,9 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 
 	if (!ConnectionManager::isConnected()) return;
 
+	static uint64_t lastSensorTime = 0;
+	static int sensorCount = 0;
+
 	mavlink_message_t msg;
 	mavlink_hil_sensor_t hil_sensor;
 
@@ -198,6 +201,16 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	else {
 		hil_sensor.time_usec = TimeManager::getCurrentTimeUsec();
 	}
+
+	// Debug logging for sensor timing
+	if (ConfigManager::debug_log_sensor_timing && sensorCount++ % 100 == 0) {
+		uint64_t timeDelta = (lastSensorTime > 0) ? (hil_sensor.time_usec - lastSensorTime) : 0;
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [SENSOR_TIMING] HIL_SENSOR #%d, dt=%.3f ms, rate=%.1f Hz\n",
+			sensorCount, timeDelta / 1000.0, (timeDelta > 0) ? (1000000.0 / timeDelta) : 0.0);
+		XPLMDebugString(buf);
+	}
+	lastSensorTime = hil_sensor.time_usec;
 
 	hil_sensor.id = uint8_t(sensor_id);
 
@@ -270,6 +283,9 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 void MAVLinkManager::sendHILGPS() {
 	if (!ConnectionManager::isConnected()) return;
 
+	static uint64_t lastGPSTime = 0;
+	static int gpsCount = 0;
+
 	mavlink_message_t msg;
 	mavlink_hil_gps_t hil_gps;
 
@@ -279,6 +295,16 @@ void MAVLinkManager::sendHILGPS() {
 	else {
 		hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
 	}
+
+	// Debug logging for GPS timing
+	if (ConfigManager::debug_log_sensor_timing && gpsCount++ % 20 == 0) {
+		uint64_t timeDelta = (lastGPSTime > 0) ? (hil_gps.time_usec - lastGPSTime) : 0;
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [GPS_TIMING] HIL_GPS #%d, dt=%.3f ms, rate=%.1f Hz\n",
+			gpsCount, timeDelta / 1000.0, (timeDelta > 0) ? (1000000.0 / timeDelta) : 0.0);
+		XPLMDebugString(buf);
+	}
+	lastGPSTime = hil_gps.time_usec;
 
 	// Set various GPS data components
 	setGPSTimeAndFix(hil_gps);
@@ -290,6 +316,20 @@ void MAVLinkManager::sendHILGPS() {
 
 	// Check if the magnetic field needs to be updated
 	updateMagneticFieldIfExceededTreshold(hil_gps);
+
+	// Debug logging for complete GPS message
+	static int gpsFullLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && gpsFullLogCount++ % 100 == 0) {
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [GPS_FULL] fix=%u, lat=%d, lon=%d, alt=%dmm, eph=%ucm, epv=%ucm, "
+			"vn=%dcm/s, ve=%dcm/s, vd=%dcm/s, vel=%ucm/s, cog=%u, yaw=%u, sats=%u\n",
+			hil_gps.fix_type, hil_gps.lat, hil_gps.lon, hil_gps.alt,
+			hil_gps.eph, hil_gps.epv,
+			hil_gps.vn, hil_gps.ve, hil_gps.vd, hil_gps.vel,
+			hil_gps.cog, hil_gps.yaw, hil_gps.satellites_visible);
+		XPLMDebugString(buf);
+	}
 
 	// Encode and send the MAVLink message
 	mavlink_msg_hil_gps_encode(1, 1, &msg, &hil_gps);
@@ -378,10 +418,42 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 		hil_state.time_usec = TimeManager::getCurrentTimeUsec();
 	}
 
-	// Retrieve quaternion data from X-Plane.
+	// Retrieve quaternion data from X-Plane
+	// X-Plane quaternions are already in the correct frame for PX4 - send directly
 	std::vector<float> q = DataRefManager::getFloatArray("sim/flightmodel/position/q");
 	for (int i = 0; i < 4; ++i) {
 		hil_state.attitude_quaternion[i] = q[i];
+	}
+
+	// Debug logging for quaternion attitude
+	static int quatLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && quatLogCount++ % 100 == 0) {
+		// Convert quaternion to Euler angles for verification
+		float w = q[0];
+		float x = q[1];
+		float y = q[2];
+		float z = q[3];
+
+		// Roll (x-axis rotation)
+		float sinr_cosp = 2.0f * (w * x + y * z);
+		float cosr_cosp = 1.0f - 2.0f * (x * x + y * y);
+		float roll = atan2(sinr_cosp, cosr_cosp) * 180.0f / M_PI;
+
+		// Pitch (y-axis rotation)
+		float sinp = 2.0f * (w * y - z * x);
+		float pitch = asin(sinp) * 180.0f / M_PI;
+
+		// Yaw (z-axis rotation)
+		float siny_cosp = 2.0f * (w * z + x * y);
+		float cosy_cosp = 1.0f - 2.0f * (y * y + z * z);
+		float yaw = atan2(siny_cosp, cosy_cosp) * 180.0f / M_PI;
+		if (yaw < 0.0f) yaw += 360.0f;  // Convert to 0-360 range
+
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [QUAT] q[%.3f,%.3f,%.3f,%.3f] = RPY[%.1f°,%.1f°,%.1f°]\n",
+			w, x, y, z, roll, pitch, yaw);
+		XPLMDebugString(buf);
 	}
 
 	// Angular velocity data (roll, pitch, yaw rates)
@@ -676,21 +748,32 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	// 3. Convert pressure altitude from feet to meters
 	float basePressureAltitude_m = basePressureAltitude_ft * FeetToMeters;
 
-	// 4. NO quantization on barometer - let it vary naturally
-	//    PX4's "STALE" error can occur when values are too constant.
-	//    The natural float variations from X-Plane are actually beneficial for PX4
-	//    to detect that the sensor is alive and updating.
+	// 4. Quantize barometer altitude to 5mm resolution (SAME as GPS altitude)
+	//    This synchronization prevents GPS-Baro innovation conflicts in EKF2.
+	//    Using same 5mm resolution ensures both height sources remain consistent.
+	float basePressureAltitude_5mm = std::round(basePressureAltitude_m * 200.0f);  // Round to 5mm
+	float quantizedPressureAltitude_m = basePressureAltitude_5mm / 200.0f;  // Convert back to meters
 
-	// 5. Initialize random number generator and Gaussian distribution for realistic noise
+	// 5. Add realistic Gaussian noise to simulate barometer sensor characteristics
 	//    - Mean (mu) = 0 meters (no bias)
-	//    - Standard Deviation (sigma) = 0.01 meters (1cm - realistic barometer variance)
-	//    This noise level ensures PX4 sees the sensor as active while remaining accurate
+	//    - Standard Deviation (sigma) = 0.03 meters (3cm)
+	//    3cm noise provides good balance: prevents STALE errors while matching realistic sensor characteristics
+	//    Note: Tuned with EKF2_BARO_NOISE parameter for optimal fusion
 	static std::default_random_engine generator(std::random_device{}());
-	static std::normal_distribution<float> distribution(0.0f, 0.01f);
+	static std::normal_distribution<float> distribution(0.0f, 0.03f);
 
-	// 6. Generate noise and add it directly to the base altitude
+	// 6. Generate noise and add it to the quantized altitude
 	float altitudeNoise_m = distribution(generator);
-	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
+	float noisyPressureAltitude_m = quantizedPressureAltitude_m + altitudeNoise_m;
+
+	// Debug logging for barometer values
+	static int baroLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && baroLogCount++ % 50 == 0) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [BARO] Alt: %.3fm (base: %.3fm, quantized: %.3fm, noise: %.4fm)\n",
+			noisyPressureAltitude_m, basePressureAltitude_m, quantizedPressureAltitude_m, altitudeNoise_m);
+		XPLMDebugString(buf);
+	}
 
 	// 7. Calculate barometric pressure from the noisy pressure altitude using ISA
 	float noisyPressure_hPa = DataRefManager::calculatePressureFromAltitude(noisyPressureAltitude_m);
@@ -715,10 +798,10 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	//     - V (Airspeed) = IAS in m/s
 	float dynamicPressure_Pa = 0.5f * DataRefManager::AirDensitySeaLevel * ias_m_s * ias_m_s; // Dynamic pressure in Pascals
 
-	// 12. Convert dynamic pressure from Pascals (Pa) to hectopascals (hPa)
+	// 13. Convert dynamic pressure from Pascals (Pa) to hectopascals (hPa)
 	float dynamicPressure_hPa = dynamicPressure_Pa * 0.01f; // 1 hPa = 100 Pa
 
-	// 13. Assign the calculated differential pressure to the HIL_SENSOR message
+	// 14. Assign the calculated differential pressure to the HIL_SENSOR message
 	hil_sensor.diff_pressure = dynamicPressure_hPa;
 }
 
@@ -744,14 +827,14 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	float pitch = DataRefManager::getFloat("sim/flightmodel/position/theta");
 
 	// Convert the retrieved angles from degrees to radians for further calculations
-	float yaw_rad = (yaw_mag) * M_PI / 180.0f;
-	float roll_rad = roll * M_PI * 0 / 180.0f;
-	float pitch_rad = pitch * M_PI * 0 / 180.0f;
+	float yaw_rad = yaw_mag * M_PI / 180.0f;
+	float roll_rad = roll * M_PI / 180.0f;
+	float pitch_rad = pitch * M_PI / 180.0f;
 
 	// Rotate the precalculated Earth's magnetic field from NED to the aircraft's body frame
 	Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(DataRefManager::earthMagneticFieldNED, roll_rad, pitch_rad, yaw_rad);
 
-	//bodyMagneticField = DataRefManager::earthMagneticFieldNED;
+	bodyMagneticField = DataRefManager::earthMagneticFieldNED;
 
 	// Generate random noise values to simulate real-world magnetometer inaccuracies
 	float xmagNoise = noiseDistribution_mag(gen);
@@ -762,6 +845,20 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	hil_sensor.xmag = bodyMagneticField(0) + xmagNoise;
 	hil_sensor.ymag = bodyMagneticField(1) + ymagNoise;
 	hil_sensor.zmag = bodyMagneticField(2) + zmagNoise;
+
+	// Debug logging for magnetometer
+	static int magLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && magLogCount++ % 100 == 0) {
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [MAG] Body[%.3f,%.3f,%.3f]G NED[%.3f,%.3f,%.3f]G RPY[%.1f°,%.1f°,%.1f°]\n",
+			hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag,
+			DataRefManager::earthMagneticFieldNED.x(),
+			DataRefManager::earthMagneticFieldNED.y(),
+			DataRefManager::earthMagneticFieldNED.z(),
+			roll, pitch, yaw_mag);
+		XPLMDebugString(buf);
+	}
 }
 
 
@@ -803,6 +900,15 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	float elevation_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
 	float elevation_5mm = std::round(elevation_m * 200.0f);  // Round to 0.5cm (5mm)
 	hil_gps.alt = static_cast<int32_t>(elevation_5mm * 5.0f);  // Convert 5mm units to mm
+
+	// Debug logging for GPS altitude
+	static int gpsAltLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && gpsAltLogCount++ % 20 == 0) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [GPS] Alt: %dmm (%.3fm raw, %.3fm quantized)\n",
+			hil_gps.alt, elevation_m, elevation_5mm / 200.0f);
+		XPLMDebugString(buf);
+	}
 }
 
 /**
@@ -811,9 +917,22 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
-	hil_gps.eph = static_cast<uint16_t>(80); // Assuming high accuracy due to simulation environment
-	hil_gps.epv = static_cast<uint16_t>(100);
-	hil_gps.satellites_visible = static_cast<uint16_t>(16);; // Assuming 16 satellites visible in good conditions
+	// Improved GPS accuracy values for faster EKF2 convergence in SITL
+	// eph = horizontal position uncertainty in cm (30 = 0.3m)
+	// epv = vertical position uncertainty in cm (50 = 0.5m)
+	// Lower values indicate higher confidence, allowing faster global position lock
+	hil_gps.eph = static_cast<uint16_t>(30); // 0.3m horizontal accuracy (was 0.8m)
+	hil_gps.epv = static_cast<uint16_t>(50); // 0.5m vertical accuracy (was 1.0m)
+	hil_gps.satellites_visible = static_cast<uint16_t>(16); // 16 satellites visible in good conditions
+
+	// Debug logging for GPS accuracy
+	static int gpsAccLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && gpsAccLogCount++ % 100 == 0) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [GPS_ACC] eph=%ucm, epv=%ucm, sats=%u\n",
+			hil_gps.eph, hil_gps.epv, hil_gps.satellites_visible);
+		XPLMDebugString(buf);
+	}
 }
 
 /**
@@ -854,6 +973,15 @@ void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
 	//hil_gps.vel = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100.0);
 	hil_gps.vel = static_cast<uint16_t>(sqrt(ogl_vx * ogl_vx + ogl_vy * ogl_vy + ogl_vz * ogl_vz));
 
+	// Debug logging for GPS velocity
+	static int gpsVelLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && gpsVelLogCount++ % 100 == 0) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [GPS_VEL] vn=%d, ve=%d, vd=%d, vel=%u (raw: vx=%.2f vy=%.2f vz=%.2f)\n",
+			hil_gps.vn, hil_gps.ve, hil_gps.vd, hil_gps.vel,
+			ogl_vx / 100.0f, ogl_vy / 100.0f, ogl_vz / 100.0f);
+		XPLMDebugString(buf);
+	}
 }
 
 
@@ -953,11 +1081,22 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
+	// COG (Course Over Ground): Use the cockpit gauge which gives magnetic heading directly
+	// This is the reliable dataref that was working in the stable version
 	uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
-	//uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/hpath") * 100.0f);
-	hil_gps.cog = (cog == 36000) ? static_cast <uint16_t>(0001) : cog;
-	uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100.0f);
-	hil_gps.yaw = (yaw == 0) ? static_cast <uint16_t>(35999) : yaw;
-	//uint16_t yaw = static_cast<uint16_t>(0);
+	hil_gps.cog = (cog == 36000) ? static_cast<uint16_t>(1) : cog;
 
+	// YAW: Direction the vehicle is pointing (magnetic heading)
+	// Use mag_psi which gives magnetic heading directly
+	uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100.0f);
+	hil_gps.yaw = (yaw == 0) ? static_cast<uint16_t>(35999) : yaw;
+
+	// Debug logging for heading data
+	static int headingLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && headingLogCount++ % 20 == 0) {
+		char buf[256];
+		snprintf(buf, sizeof(buf), "px4xplane: [GPS_HEADING] COG=%.2f°, Yaw=%.2f°\n",
+			cog / 100.0f, yaw / 100.0f);
+		XPLMDebugString(buf);
+	}
 }

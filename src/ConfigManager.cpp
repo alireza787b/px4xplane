@@ -116,6 +116,11 @@ bool ConfigManager::USE_XPLANE_TIME = true;
 bool ConfigManager::vibration_noise_enabled = true;
 bool ConfigManager::rotary_vibration_enabled = false;
 
+// Debug logging flags
+bool ConfigManager::debug_verbose_logging = false;
+bool ConfigManager::debug_log_sensor_timing = false;
+bool ConfigManager::debug_log_sensor_values = false;
+
 
 /**
  * @brief Loads and parses the configuration from the 'config.ini' file.
@@ -152,9 +157,20 @@ void ConfigManager::loadConfiguration() {
     // These are global settings not within any specific section
     configName = ini.GetValue("", "config_name", "");
 
+    // Load debug logging configuration
+    debug_verbose_logging = ini.GetBoolValue("", "debug_verbose_logging", false);
+    debug_log_sensor_timing = ini.GetBoolValue("", "debug_log_sensor_timing", false);
+    debug_log_sensor_values = ini.GetBoolValue("", "debug_log_sensor_values", false);
+
+    if (debug_verbose_logging) {
+        XPLMDebugString("px4xplane: [DEBUG] Verbose logging ENABLED\n");
+        if (debug_log_sensor_timing) XPLMDebugString("px4xplane: [DEBUG] Sensor timing logging ENABLED\n");
+        if (debug_log_sensor_values) XPLMDebugString("px4xplane: [DEBUG] Sensor values logging ENABLED\n");
+    }
+
     // Configure motor brakes based on the loaded configuration
     configureMotorBrakes(ini);
-    
+
     parseConfig(ini);
 
 
