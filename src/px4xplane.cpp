@@ -496,9 +496,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	lastFlightTime = currentFlightTime;
 
-	// Always return a negative value to continue calling this function every frame
-	return 0.005f; // Continue calling at the next cycle
-	//return -1.0f;
+	// Return -1.0f to be called every flight loop frame (most robust for varying FPS)
+	// This ensures messages are sent at correct rates regardless of frame rate
+	return -1.0f;
 }
 
 

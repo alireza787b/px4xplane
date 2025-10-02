@@ -834,7 +834,8 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	// Rotate the precalculated Earth's magnetic field from NED to the aircraft's body frame
 	Eigen::Vector3f bodyMagneticField = DataRefManager::convertNEDToBody(DataRefManager::earthMagneticFieldNED, roll_rad, pitch_rad, yaw_rad);
 
-	bodyMagneticField = DataRefManager::earthMagneticFieldNED;
+	// CRITICAL: Do NOT override with NED frame - PX4 needs body frame magnetometer!
+	// bodyMagneticField = DataRefManager::earthMagneticFieldNED;  // WRONG - This breaks heading!
 
 	// Generate random noise values to simulate real-world magnetometer inaccuracies
 	float xmagNoise = noiseDistribution_mag(gen);
