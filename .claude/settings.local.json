@@ -20,7 +20,18 @@
       "Bash(git rm:*)",
       "Bash(git push:*)",
       "Bash(git fetch:*)",
-      "Read(//c/**)"
+      "Read(//c/**)",
+      "WebFetch(domain:developer.x-plane.com)",
+      "Bash(wsl find:*)",
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" -p:Configuration=Release -p:Platform=x64 -v:m)",
+      "Read(//e/X-Plane 12/**)",
+      "Bash(wsl grep -E \"HIL_SENSOR|ACC\\[|GYRO\\[|BARO:\" \"//e/X-Plane 12/Log.txt\")",
+      "Bash(wsl grep \"HIL_SENSOR\" \"//e/X-Plane 12/Log.txt\")",
+      "Bash(wsl grep \"px4xplane: \\[HIL_SENSOR\" \"/mnt/e/X-Plane 12/Log.txt\")",
+      "Bash(cmd:*)",
+      "Bash(awk:*)",
+      "Bash(python:*)",
+      "Bash(wsl wc:*)"
     ],
     "deny": [],
     "ask": []

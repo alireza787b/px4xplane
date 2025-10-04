@@ -193,7 +193,7 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	static int sensorCount = 0;
 
 	mavlink_message_t msg;
-	mavlink_hil_sensor_t hil_sensor;
+	mavlink_hil_sensor_t hil_sensor = {};  // Zero-initialize to prevent garbage values
 
 	if (ConfigManager::USE_XPLANE_TIME) {
 		hil_sensor.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
@@ -201,16 +201,6 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	else {
 		hil_sensor.time_usec = TimeManager::getCurrentTimeUsec();
 	}
-
-	// Debug logging for sensor timing
-	if (ConfigManager::debug_log_sensor_timing && sensorCount++ % 100 == 0) {
-		uint64_t timeDelta = (lastSensorTime > 0) ? (hil_sensor.time_usec - lastSensorTime) : 0;
-		char buf[256];
-		snprintf(buf, sizeof(buf), "px4xplane: [SENSOR_TIMING] HIL_SENSOR #%d, dt=%.3f ms, rate=%.1f Hz\n",
-			sensorCount, timeDelta / 1000.0, (timeDelta > 0) ? (1000000.0 / timeDelta) : 0.0);
-		XPLMDebugString(buf);
-	}
-	lastSensorTime = hil_sensor.time_usec;
 
 	hil_sensor.id = uint8_t(sensor_id);
 
@@ -238,10 +228,51 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 
 	hil_sensor.fields_updated = fields_updated;
 
+	// Debug logging for sensor timing and content (AFTER data population)
+	if (ConfigManager::debug_log_sensor_timing && sensorCount++ % 100 == 0) {
+		uint64_t timeDelta = (lastSensorTime > 0) ? (hil_sensor.time_usec - lastSensorTime) : 0;
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [HIL_SENSOR #%d] time=%llu us, dt=%.3f ms, rate=%.1f Hz\n"
+			"  ACC[%.3f, %.3f, %.3f] m/s², GYRO[%.3f, %.3f, %.3f] rad/s\n"
+			"  BARO: press=%.2f hPa, alt=%.3f m, diff_press=%.3f hPa\n"
+			"  MAG[%.3f, %.3f, %.3f] G, temp=%.1f°C, fields_updated=0x%X\n",
+			sensorCount, (unsigned long long)hil_sensor.time_usec, timeDelta / 1000.0,
+			(timeDelta > 0) ? (1000000.0 / timeDelta) : 0.0,
+			hil_sensor.xacc, hil_sensor.yacc, hil_sensor.zacc,
+			hil_sensor.xgyro, hil_sensor.ygyro, hil_sensor.zgyro,
+			hil_sensor.abs_pressure, hil_sensor.pressure_alt, hil_sensor.diff_pressure,
+			hil_sensor.xmag, hil_sensor.ymag, hil_sensor.zmag,
+			hil_sensor.temperature, hil_sensor.fields_updated);
+		XPLMDebugString(buf);
+	}
+	lastSensorTime = hil_sensor.time_usec;
+
+	// Debug first message send to verify connection
+	if (sensorCount == 1 && ConfigManager::debug_log_sensor_timing) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [MAVLINK_SEND] First HIL_SENSOR message prepared\n"
+			"  Connection status: %s, System ID: 1, Component ID: 1\n"
+			"  Message will be encoded and sent to PX4...\n",
+			ConnectionManager::isConnected() ? "CONNECTED" : "NOT CONNECTED");
+		XPLMDebugString(buf);
+	}
+
 	mavlink_msg_hil_sensor_encode(1, 1, &msg, &hil_sensor);
 	uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
 	int len = mavlink_msg_to_send_buffer(buffer, &msg);
 	ConnectionManager::sendData(buffer, len);
+
+	// Debug first message sent confirmation
+	if (sensorCount == 1 && ConfigManager::debug_log_sensor_timing) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [MAVLINK_SENT] First HIL_SENSOR message sent successfully\n"
+			"  Packet size: %d bytes, MAVLink message ID: %d (HIL_SENSOR)\n",
+			len, MAVLINK_MSG_ID_HIL_SENSOR);
+		XPLMDebugString(buf);
+	}
 }
 
 
@@ -296,14 +327,6 @@ void MAVLinkManager::sendHILGPS() {
 		hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
 	}
 
-	// Debug logging for GPS timing
-	if (ConfigManager::debug_log_sensor_timing && gpsCount++ % 20 == 0) {
-		uint64_t timeDelta = (lastGPSTime > 0) ? (hil_gps.time_usec - lastGPSTime) : 0;
-		char buf[256];
-		snprintf(buf, sizeof(buf), "px4xplane: [GPS_TIMING] HIL_GPS #%d, dt=%.3f ms, rate=%.1f Hz\n",
-			gpsCount, timeDelta / 1000.0, (timeDelta > 0) ? (1000000.0 / timeDelta) : 0.0);
-		XPLMDebugString(buf);
-	}
 	lastGPSTime = hil_gps.time_usec;
 
 	// Set various GPS data components
@@ -317,17 +340,22 @@ void MAVLinkManager::sendHILGPS() {
 	// Check if the magnetic field needs to be updated
 	updateMagneticFieldIfExceededTreshold(hil_gps);
 
-	// Debug logging for complete GPS message
-	static int gpsFullLogCount = 0;
-	if (ConfigManager::debug_log_sensor_values && gpsFullLogCount++ % 100 == 0) {
+	// Debug logging for GPS timing and complete message content
+	if (ConfigManager::debug_log_sensor_timing && gpsCount++ % 20 == 0) {
+		uint64_t timeDelta = (lastGPSTime > 0) ? (hil_gps.time_usec - lastGPSTime) : 0;
 		char buf[512];
 		snprintf(buf, sizeof(buf),
-			"px4xplane: [GPS_FULL] fix=%u, lat=%d, lon=%d, alt=%dmm, eph=%ucm, epv=%ucm, "
-			"vn=%dcm/s, ve=%dcm/s, vd=%dcm/s, vel=%ucm/s, cog=%u, yaw=%u, sats=%u\n",
-			hil_gps.fix_type, hil_gps.lat, hil_gps.lon, hil_gps.alt,
-			hil_gps.eph, hil_gps.epv,
+			"px4xplane: [HIL_GPS #%d] time=%llu us, dt=%.3f ms, rate=%.1f Hz\n"
+			"  POS: lat=%d (%.7f°), lon=%d (%.7f°), alt=%dmm\n"
+			"  ACC: eph=%ucm, epv=%ucm, sats=%u, fix=%u\n"
+			"  VEL: vn=%dcm/s, ve=%dcm/s, vd=%dcm/s, vel=%ucm/s\n"
+			"  HDG: cog=%u (%.2f°), yaw=%u (%.2f°), id=%u\n",
+			gpsCount, (unsigned long long)hil_gps.time_usec, timeDelta / 1000.0,
+			(timeDelta > 0) ? (1000000.0 / timeDelta) : 0.0,
+			hil_gps.lat, hil_gps.lat / 1e7, hil_gps.lon, hil_gps.lon / 1e7, hil_gps.alt,
+			hil_gps.eph, hil_gps.epv, hil_gps.satellites_visible, hil_gps.fix_type,
 			hil_gps.vn, hil_gps.ve, hil_gps.vd, hil_gps.vel,
-			hil_gps.cog, hil_gps.yaw, hil_gps.satellites_visible);
+			hil_gps.cog, hil_gps.cog / 100.0, hil_gps.yaw, hil_gps.yaw / 100.0, hil_gps.id);
 		XPLMDebugString(buf);
 	}
 
@@ -392,10 +420,30 @@ void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps
 void MAVLinkManager::sendHILStateQuaternion() {
 	if (!ConnectionManager::isConnected()) return;
 
+	static int stateQuatCount = 0;
+
 	mavlink_message_t msg;
 	mavlink_hil_state_quaternion_t hil_state;
 
 	populateHILStateQuaternion(hil_state);
+
+	// Debug logging for state quaternion (every 100 messages)
+	if (ConfigManager::debug_log_sensor_timing && stateQuatCount++ % 100 == 0) {
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [HIL_STATE_QUAT #%d] time=%llu us\n"
+			"  QUAT: [%.3f, %.3f, %.3f, %.3f]\n"
+			"  VEL: [%.2f, %.2f, %.2f] m/s, ACC: [%.2f, %.2f, %.2f] m/s²\n"
+			"  RATES: [%.3f, %.3f, %.3f] rad/s, true_airspeed=%.2f m/s\n",
+			stateQuatCount, (unsigned long long)hil_state.time_usec,
+			hil_state.attitude_quaternion[0], hil_state.attitude_quaternion[1],
+			hil_state.attitude_quaternion[2], hil_state.attitude_quaternion[3],
+			hil_state.vx / 100.0f, hil_state.vy / 100.0f, hil_state.vz / 100.0f,
+			hil_state.xacc / 1000.0f, hil_state.yacc / 1000.0f, hil_state.zacc / 1000.0f,
+			hil_state.rollspeed, hil_state.pitchspeed, hil_state.yawspeed,
+			hil_state.true_airspeed / 100.0f);
+		XPLMDebugString(buf);
+	}
 
 	mavlink_msg_hil_state_quaternion_encode(1, 1, &msg, &hil_state);
 	sendData(msg);
@@ -738,50 +786,80 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
-	// 1. Define conversion factor from feet to meters
-	constexpr float FeetToMeters = 0.3048f; // 1 foot = 0.3048 meters
+	// 1. Retrieve MSL elevation from X-Plane (same dataref as GPS altitude)
+	// Using "sim/flightmodel/position/elevation" instead of "sim/flightmodel2/position/pressure_altitude"
+	// because the flightmodel2 dataref was found to return frozen/constant values causing
+	// EKF2 vertical velocity instability (altitude = constant + noise → unstable v_z estimation)
+	// DataRef: "sim/flightmodel/position/elevation" (meters, MSL)
+	// This matches GPS altitude source, ensuring GPS-BARO coherence for EKF2 fusion
+	float basePressureAltitude_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
 
-	// 2. Retrieve base pressure altitude from X-Plane in feet
-	// DataRef: "sim/flightmodel2/position/pressure_altitude"
-	float basePressureAltitude_ft = DataRefManager::getFloat("sim/flightmodel2/position/pressure_altitude");
-
-	// 3. Convert pressure altitude from feet to meters
-	float basePressureAltitude_m = basePressureAltitude_ft * FeetToMeters;
-
-	// 4. Quantize barometer altitude to 5mm resolution (SAME as GPS altitude)
+	// 2. Quantize barometer altitude to 5mm resolution (SAME as GPS altitude)
 	//    This synchronization prevents GPS-Baro innovation conflicts in EKF2.
 	//    Using same 5mm resolution ensures both height sources remain consistent.
 	float basePressureAltitude_5mm = std::round(basePressureAltitude_m * 200.0f);  // Round to 5mm
 	float quantizedPressureAltitude_m = basePressureAltitude_5mm / 200.0f;  // Convert back to meters
 
-	// 5. Add realistic Gaussian noise to simulate barometer sensor characteristics
+	// 3. Add realistic Gaussian noise to simulate barometer sensor characteristics
 	//    - Mean (mu) = 0 meters (no bias)
-	//    - Standard Deviation (sigma) = 0.03 meters (3cm)
-	//    3cm noise provides good balance: prevents STALE errors while matching realistic sensor characteristics
+	//    - Standard Deviation (sigma) = 0.003 meters (3mm) during startup, 0.005m (5mm) normal ops
+	//    Startup transient: First 15 seconds use reduced noise for EKF2 convergence
+	//    After 15 seconds: Conservative 5mm noise for stable vertical velocity estimation
 	//    Note: Tuned with EKF2_BARO_NOISE parameter for optimal fusion
+	//    Previous 1cm sigma produced 15% >3-sigma spike rate (too high), reduced to 5mm
 	static std::default_random_engine generator(std::random_device{}());
-	static std::normal_distribution<float> distribution(0.0f, 0.03f);
+	static std::normal_distribution<float> distributionLow(0.0f, 0.003f);   // 3mm for startup (was 5mm)
+	static std::normal_distribution<float> distributionFull(0.0f, 0.005f);  // 5mm for normal ops (was 1cm)
+	static float startupTime = -1.0f;
 
-	// 6. Generate noise and add it to the quantized altitude
-	float altitudeNoise_m = distribution(generator);
+	// Track startup time
+	float currentTime = DataRefManager::getFloat("sim/time/total_flight_time_sec");
+	if (startupTime < 0.0f) {
+		startupTime = currentTime;
+	}
+
+	// 4. Generate noise based on time since startup
+	float altitudeNoise_m;
+	float timeSinceStartup = currentTime - startupTime;
+	bool usingLowNoise = (timeSinceStartup < 15.0f);  // Extended from 10s to 15s
+	if (usingLowNoise) {
+		// First 15 seconds: use reduced noise for EKF2 convergence
+		altitudeNoise_m = distributionLow(generator);
+	} else {
+		// After 15 seconds: use conservative noise for stable vertical velocity
+		altitudeNoise_m = distributionFull(generator);
+	}
+
 	float noisyPressureAltitude_m = quantizedPressureAltitude_m + altitudeNoise_m;
 
 	// Debug logging for barometer values
 	static int baroLogCount = 0;
 	if (ConfigManager::debug_log_sensor_values && baroLogCount++ % 50 == 0) {
-		char buf[256];
-		snprintf(buf, sizeof(buf), "px4xplane: [BARO] Alt: %.3fm (base: %.3fm, quantized: %.3fm, noise: %.4fm)\n",
-			noisyPressureAltitude_m, basePressureAltitude_m, quantizedPressureAltitude_m, altitudeNoise_m);
+		char buf[300];
+		snprintf(buf, sizeof(buf), "px4xplane: [BARO] Alt: %.3fm (base: %.3fm, quantized: %.3fm, noise: %.4fm)\n"
+			"  Startup filter: %s (t=%.1fs, threshold=15.0s, sigma=%s)\n",
+			noisyPressureAltitude_m, basePressureAltitude_m, quantizedPressureAltitude_m, altitudeNoise_m,
+			usingLowNoise ? "ACTIVE" : "inactive", timeSinceStartup, usingLowNoise ? "3mm" : "5mm");
 		XPLMDebugString(buf);
 	}
 
-	// 7. Calculate barometric pressure from the noisy pressure altitude using ISA
+	// Warn about large noise spikes (3-sigma events: 3mm*3=9mm during startup, 5mm*3=15mm normal)
+	float spikeThreshold = usingLowNoise ? 0.009f : 0.015f;  // 3-sigma for current mode
+	if (ConfigManager::debug_log_sensor_values && std::abs(altitudeNoise_m) > spikeThreshold) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [BARO_WARN] Large noise spike detected: %.4fm (>3-sigma for %s mode, may affect EKF2)\n",
+			altitudeNoise_m, usingLowNoise ? "startup" : "normal");
+		XPLMDebugString(buf);
+	}
+
+	// 5. Calculate barometric pressure from the noisy pressure altitude using ISA
 	float noisyPressure_hPa = DataRefManager::calculatePressureFromAltitude(noisyPressureAltitude_m);
 
-	// 8. Assign the noisy barometric pressure to the HIL_SENSOR message
+	// 6. Assign the noisy barometric pressure to the HIL_SENSOR message
 	hil_sensor.abs_pressure = noisyPressure_hPa;
 
-	// 9. Assign the noisy pressure altitude to the HIL_SENSOR message
+	// 7. Assign the noisy pressure altitude to the HIL_SENSOR message
 	hil_sensor.pressure_alt = noisyPressureAltitude_m;
 
 	// 10. Retrieve Indicated Airspeed (IAS) from the simulation in knots

@@ -426,19 +426,20 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 
 
-// Constants for update frequencies (in seconds)
-// 250Hz for HIL_SENSOR improves EKF2 timing and prevents BARO STALE errors
-// IMPORTANT: Flight loop must be called at >= 250Hz (0.004s) to support this rate
-const float BASE_SENSOR_UPDATE_PERIOD = 0.004f; // 250 Hz
-const float BASE_GPS_UPDATE_PERIOD = 0.05f;     // 20 Hz
-const float BASE_STATE_QUAT_UPDATE_PERIOD = 0.1f; // 10 Hz
-const float BASE_RC_UPDATE_PERIOD = 0.1f;     // 10 Hz
+// TARGET update periods (in seconds) - frame-rate independent
+// These are target rates; actual rates will vary with X-Plane FPS
+// Using simulation time ensures consistent timing regardless of rendering FPS
+const float TARGET_SENSOR_PERIOD = 0.01f;        // 100 Hz target
+const float TARGET_GPS_PERIOD = 0.05f;           // 20 Hz
+const float TARGET_STATE_QUAT_PERIOD = 0.1f;     // 10 Hz
+const float TARGET_RC_PERIOD = 0.1f;             // 10 Hz
 
-// Global timing variables
-float timeSinceLastSensorUpdate = 0.0f;
-float timeSinceLastGpsUpdate = 0.0f;
-float timeSinceLastStateQuaternionUpdate = 0.0f; // Optional
-float timeSinceLastRcUpdate = 0.0f; // Optional
+// Track LAST SEND TIME (not accumulated time!)
+// This approach is frame-rate independent and works at any FPS (30-150+)
+static float lastSensorSendTime = 0.0f;
+static float lastGpsSendTime = 0.0f;
+static float lastStateQuatSendTime = 0.0f;
+static float lastRcSendTime = 0.0f;
 
 float lastFlightTime = 0.0f;
 
@@ -446,43 +447,58 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Ensure we're connected before proceeding
 	if (!ConnectionManager::isConnected()) return -1.0f;
 
-	float currentFlightTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
+	// Get current simulation time (frame-rate independent!)
+	float currentSimTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 
-	// Check for new flight start
-	if (currentFlightTime < lastFlightTime) {
+	// Check for simulation restart
+	if (currentSimTime < lastFlightTime) {
 		if (ConnectionManager::isConnected()) {
 			toggleEnable();
 		}
+		// Reset all timing trackers on simulation restart
+		lastSensorSendTime = 0.0f;
+		lastGpsSendTime = 0.0f;
+		lastStateQuatSendTime = 0.0f;
+		lastRcSendTime = 0.0f;
 	}
 
-	// Update timing variables
-	timeSinceLastSensorUpdate += inElapsedSinceLastCall;
-	timeSinceLastGpsUpdate += inElapsedSinceLastCall;
-	timeSinceLastStateQuaternionUpdate += inElapsedSinceLastCall;
-	timeSinceLastRcUpdate += inElapsedSinceLastCall;
+	// Send messages based on ELAPSED SIMULATION TIME (frame-rate independent)
+	// This ensures consistent message rates regardless of X-Plane rendering FPS
 
-	// Send sensor data at high frequency
-	if (timeSinceLastSensorUpdate >= BASE_SENSOR_UPDATE_PERIOD) {
+	// Send sensor data at target rate (100 Hz)
+	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD) {
 		MAVLinkManager::sendHILSensor(uint8_t(0));
-		timeSinceLastSensorUpdate = 0.0f;
+
+		// Debug logging for timing diagnostics
+		if (ConfigManager::debug_log_sensor_timing) {
+			float actualDt_ms = (currentSimTime - lastSensorSendTime) * 1000.0f;
+			float actualRate_hz = 1.0f / (currentSimTime - lastSensorSendTime);
+			char buf[256];
+			snprintf(buf, sizeof(buf),
+				"px4xplane: [TIMING] HIL_SENSOR sent: simTime=%.3fs, dt=%.2fms, rate=%.1fHz (target=%.0fHz)\n",
+				currentSimTime, actualDt_ms, actualRate_hz, 1.0f / TARGET_SENSOR_PERIOD);
+			XPLMDebugString(buf);
+		}
+
+		lastSensorSendTime = currentSimTime;
 	}
 
-	// Send GPS data at a lower frequency
-	if (timeSinceLastGpsUpdate >= BASE_GPS_UPDATE_PERIOD) {
+	// Send GPS data at target rate (20 Hz)
+	if ((currentSimTime - lastGpsSendTime) >= TARGET_GPS_PERIOD) {
 		MAVLinkManager::sendHILGPS();
-		timeSinceLastGpsUpdate = 0.0f;
+		lastGpsSendTime = currentSimTime;
 	}
 
-	// Optional: Send state quaternion data
-	if (timeSinceLastStateQuaternionUpdate >= BASE_STATE_QUAT_UPDATE_PERIOD) {
+	// Optional: Send state quaternion data (10 Hz)
+	if ((currentSimTime - lastStateQuatSendTime) >= TARGET_STATE_QUAT_PERIOD) {
 		MAVLinkManager::sendHILStateQuaternion();
-		timeSinceLastStateQuaternionUpdate = 0.0f;
+		lastStateQuatSendTime = currentSimTime;
 	}
 
-	// Optional: Send RC data
-	if (timeSinceLastRcUpdate >= BASE_RC_UPDATE_PERIOD) {
+	// Optional: Send RC data (10 Hz)
+	if ((currentSimTime - lastRcSendTime) >= TARGET_RC_PERIOD) {
 		MAVLinkManager::sendHILRCInputs();
-		timeSinceLastRcUpdate = 0.0f;
+		lastRcSendTime = currentSimTime;
 	}
 
 
@@ -495,12 +511,12 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Update the SITL timestep with the loop callback rate
 	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
 
-	lastFlightTime = currentFlightTime;
+	lastFlightTime = currentSimTime;
 
-	// Return 0.004f to be called at 250Hz (every 4ms)
-	// This ensures consistent timing for HIL_SENSOR messages at 250Hz
-	// Flight loop callback rate MUST match or exceed the highest message rate
-	return 0.004f;
+	// Return -1.0f to be called EVERY FRAME (most robust for frame-rate independence)
+	// This ensures the plugin works correctly at any X-Plane FPS (30-150+)
+	// Message rates are controlled by simulation time, not callback frequency
+	return -1.0f;
 }
 
 

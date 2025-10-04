@@ -193,8 +193,16 @@ param set-default MIS_YAW_TMT 5.0000
 param set-default NAV_MC_ALT_RAD 2.0000
 
 
+# ---- CRITICAL HIL/SIMULATION PARAMETERS ----
+# Enable sensor simulation for Hardware-In-Loop (HIL)
+# These MUST be set for EKF2 to accept HIL_SENSOR and HIL_GPS messages
+param set-default SENS_EN_GPSSIM 1
+param set-default SENS_EN_BAROSIM 1
+param set-default SYS_HAS_BARO 1
+param set-default SYS_HAS_GPS 1
+
 # ---- CRITICAL EKF2 PARAMETERS ----
-# Tuned for X-Plane SITL with 250Hz HIL_SENSOR and quantized GPS/Baro altitude
+# Tuned for X-Plane SITL with 100Hz HIL_SENSOR and quantized GPS/Baro altitude
 # These parameters ensure stable EKF2 fusion without breaking heading estimation
 
 param set-default EKF2_ABIAS_INIT 0.0000
@@ -205,8 +213,10 @@ param set-default EKF2_AGP_CTRL 3
 param set-default EKF2_ASP_DELAY 0.0000
 param set-default EKF2_AVEL_DELAY 0.0000
 
-# Barometer noise tuned for 3cm Gaussian noise + 5mm quantization
-param set-default EKF2_BARO_NOISE 0.1000
+# Barometer noise tuned for 5mm Gaussian noise + 5mm quantization
+# Conservative value to prevent vertical velocity instability from baro noise spikes
+# Previous 1cm sigma produced 15% >3-sigma spike rate, reduced to 5mm for stability
+param set-default EKF2_BARO_NOISE 0.0300
 
 # GPS parameters
 param set-default EKF2_GPS_DELAY 0.0000
