@@ -15,7 +15,7 @@ public:
     static void sendHILStateQuaternion();
     static void sendHILRCInputs();
     static void setGyroData(mavlink_hil_sensor_t& hil_sensor);
-    static void setPressureData(mavlink_hil_sensor_t& hil_sensor);
+    static void setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t sensor_id = 0);
     static void setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor);
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
     static Eigen::Vector3f computeAcceleration();

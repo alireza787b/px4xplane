@@ -206,7 +206,7 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 
 	setAccelerationData(hil_sensor);
 	setGyroData(hil_sensor);
-	setPressureData(hil_sensor);
+	setPressureData(hil_sensor, sensor_id);  // Pass sensor_id for independent barometer noise
 	setMagneticFieldData(hil_sensor);
 
 	hil_sensor.temperature = DataRefManager::getFloat("sim/cockpit2/temperature/outside_air_temp_degc");
@@ -858,12 +858,26 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
  * - Our implementation: ~0.01 mbar = 0.001m (1mm) - better than hardware!
  * - This is intentional for SITL - perfect simulation with realistic characteristics
  *
+ * DUAL BAROMETER CAPABILITY (October 2025):
+ * -------------------------------------------
+ * Added sensor_id parameter to support multiple independent barometer sensors if needed.
+ * Currently configured to use single barometer (sensor_id=0) as this is sufficient
+ * when combined with increased EKF2 innovation gates for timing robustness.
+ *
+ * - sensor_id parameter: Identifies which barometer (0=primary, 1=backup if needed)
+ * - Independent RNG per sensor: Each barometer has unique noise characteristics
+ * - Future-proof: Can enable dual barometers by sending both IDs if required
+ *
+ * NOTE: Sending multiple sensor IDs with same timestamp causes IMU timestamp errors
+ * in PX4. Only use if barometers are sent with different timestamps or field masks.
+ *
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
+ * @param sensor_id Sensor identifier (0=primary barometer, 1=backup barometer)
  *
  * @see config/px4_params/5010_xplane_ehang184 - EKF2_BARO_NOISE parameter tuning
  * @see DataRefManager::calculatePressureFromAltitude() - ISA pressure calculation
  */
-void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
+void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t sensor_id) {
 	// ==================================================================================
 	// STEP 1: Retrieve Base Altitude from X-Plane
 	// ==================================================================================
@@ -877,30 +891,37 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	float basePressureAltitude_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
 
 	// ==================================================================================
-	// STEP 2: Generate Realistic Barometer Noise
+	// STEP 2: Generate Realistic Barometer Noise (DUAL SENSOR SYSTEM)
 	// ==================================================================================
 	// Simulates MS5611/BMP388 high-quality MEMS barometer characteristics:
 	// - Gaussian distribution: mean=0, sigma=0.001m (1mm RMS noise)
 	// - NO altitude quantization (real barometers measure continuous pressure!)
 	// - NO time-based filtering (let PX4 EKF2 handle sensor fusion)
+	// - INDEPENDENT NOISE per sensor: Each barometer has unique RNG for proper voting
 	//
 	// Why 1mm noise?
 	// - Matches real sensor datasheets (MS5611: ~10cm, BMP388: ~2.5cm at 1Hz)
 	// - Our 1mm is intentionally better for high-rate SITL (100Hz sampling)
 	// - Provides natural variation for EKF2 without introducing instability
 	//
-	// CRITICAL: This RNG is static and persistent across calls
-	// - Maintains proper statistical properties over time
-	// - Thread-safe for single-threaded X-Plane plugin architecture
-	static std::default_random_engine generator(std::random_device{}());
+	// DUAL BAROMETER IMPLEMENTATION:
+	// - Each sensor (0, 1) has independent random number generator
+	// - Different seeds ensure uncorrelated noise between sensors
+	// - This allows PX4's EKF2 to properly fuse/vote between sensors
+	// - Prevents false correlation that would defeat redundancy purpose
+	static std::mt19937 generator0(12345);  // Primary barometer RNG (fixed seed)
+	static std::mt19937 generator1(54321);  // Backup barometer RNG (different seed)
 	static std::normal_distribution<float> distribution(0.0f, 0.001f);  // 1mm sigma
 
-	// Generate noise sample and add to base altitude
+	// Select appropriate generator based on sensor ID
+	std::mt19937& generator = (sensor_id == 0) ? generator0 : generator1;
+
+	// Generate independent noise sample for this sensor
 	float altitudeNoise_m = distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
 	// ==================================================================================
-	// STEP 3: Track Noise Statistics for Validation (DEBUG MODE)
+	// STEP 3: Track Noise Statistics for Validation (DEBUG MODE - PER SENSOR)
 	// ==================================================================================
 	// These statistics validate that our noise generator produces proper Gaussian
 	// distribution. Deviations indicate implementation bugs or X-Plane issues.
@@ -910,37 +931,41 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor) {
 	// - Sigma: 0.95-1.05mm (within 5% of 1mm target)
 	// - 3-sigma rate: <0.3% (true Gaussian: 0.27% theoretical)
 	//
-	// Static variables accumulate over entire session for statistical significance
-	static int baroLogCount = 0;           // Log every 50th sample
-	static float noiseSum = 0.0f;          // Σ(x) for mean calculation
-	static float noiseSquaredSum = 0.0f;   // Σ(x²) for variance calculation
-	static int noiseSampleCount = 0;       // Total samples (for statistics)
-	static int spike3SigmaCount = 0;       // Count of |noise| > 3σ events
+	// Static arrays track statistics per sensor independently
+	static int baroLogCount[2] = {0, 0};              // Log every 50th sample per sensor
+	static float noiseSum[2] = {0.0f, 0.0f};          // Σ(x) for mean calculation
+	static float noiseSquaredSum[2] = {0.0f, 0.0f};   // Σ(x²) for variance calculation
+	static int noiseSampleCount[2] = {0, 0};          // Total samples per sensor
+	static int spike3SigmaCount[2] = {0, 0};          // Count of |noise| > 3σ events
 
-	// Accumulate statistics (runs every call)
-	noiseSum += altitudeNoise_m;
-	noiseSquaredSum += altitudeNoise_m * altitudeNoise_m;
-	noiseSampleCount++;
+	// Ensure sensor_id is within valid range (0 or 1)
+	uint8_t sensor_idx = (sensor_id <= 1) ? sensor_id : 0;
+
+	// Accumulate statistics for this sensor (runs every call)
+	noiseSum[sensor_idx] += altitudeNoise_m;
+	noiseSquaredSum[sensor_idx] += altitudeNoise_m * altitudeNoise_m;
+	noiseSampleCount[sensor_idx]++;
 
 	// Track 3-sigma events (should be <0.3% for true Gaussian)
 	// For σ=1mm: 3σ = 3mm threshold
 	if (std::abs(altitudeNoise_m) > 0.003f) {
-		spike3SigmaCount++;
+		spike3SigmaCount[sensor_idx]++;
 	}
 
 	// Log statistics every 50 samples (when debug enabled)
-	if (ConfigManager::debug_log_sensor_values && baroLogCount++ % 50 == 0) {
+	if (ConfigManager::debug_log_sensor_values && baroLogCount[sensor_idx]++ % 50 == 0) {
 		// Calculate sample statistics using Welford's method for numerical stability
-		float noiseMean = noiseSum / noiseSampleCount;
-		float noiseVariance = (noiseSquaredSum / noiseSampleCount) - (noiseMean * noiseMean);
+		float noiseMean = noiseSum[sensor_idx] / noiseSampleCount[sensor_idx];
+		float noiseVariance = (noiseSquaredSum[sensor_idx] / noiseSampleCount[sensor_idx])
+		                      - (noiseMean * noiseMean);
 		float noiseStdDev = std::sqrt(noiseVariance);
-		float spike3SigmaRate = (100.0f * spike3SigmaCount) / noiseSampleCount;
+		float spike3SigmaRate = (100.0f * spike3SigmaCount[sensor_idx]) / noiseSampleCount[sensor_idx];
 
 		char buf[400];
 		snprintf(buf, sizeof(buf),
-			"px4xplane: [BARO] Alt=%.4fm (base=%.4fm, noise=%.4fmm)\n"
+			"px4xplane: [BARO#%d] Alt=%.4fm (base=%.4fm, noise=%.4fmm)\n"
 			"  Noise stats: mean=%.4fmm, sigma=%.4fmm, 3-sigma rate=%.2f%% (target<0.3%%)\n",
-			noisyPressureAltitude_m, basePressureAltitude_m, altitudeNoise_m * 1000.0f,
+			sensor_id, noisyPressureAltitude_m, basePressureAltitude_m, altitudeNoise_m * 1000.0f,
 			noiseMean * 1000.0f, noiseStdDev * 1000.0f, spike3SigmaRate);
 		XPLMDebugString(buf);
 	}

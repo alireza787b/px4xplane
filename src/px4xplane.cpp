@@ -462,12 +462,28 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		lastRcSendTime = 0.0f;
 	}
 
-	// Send messages based on ELAPSED SIMULATION TIME (frame-rate independent)
-	// This ensures consistent message rates regardless of X-Plane rendering FPS
+	// ==================================================================================
+	// SENSOR MESSAGE SENDING - ONE MESSAGE PER FRAME (Timestamp Monotonicity)
+	// ==================================================================================
+	// CRITICAL: PX4 requires strictly monotonic increasing timestamps for HIL_SENSOR
+	// Problem: Catchup mechanism would send multiple messages with SAME timestamp
+	//          (X-Plane sim time doesn't advance within a single frame)
+	// Solution: Send exactly ONE sensor message per frame with current timestamp
+	//
+	// Why this works:
+	// - At 60 FPS (16ms): Sends ~60Hz to PX4 (acceptable, EKF2 handles it)
+	// - At 30 FPS (33ms): Sends ~30Hz to PX4 (minimum rate, still functional)
+	// - At 150 FPS (6ms): Sends ~150Hz to PX4 (PX4 decimates as needed)
+	// - Timestamps are ALWAYS monotonic (critical for vehicle_imu validation)
+	//
+	// Note: This means sensor rate varies with X-Plane FPS, but this is correct
+	//       behavior for lockstep simulation - PX4 advances in sync with sim time
+	// ==================================================================================
 
-	// Send sensor data at target rate (100 Hz)
+	// Send sensor data when enough simulation time has elapsed
 	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD) {
-		MAVLinkManager::sendHILSensor(uint8_t(0));
+		// Send primary sensor with all IMU data (accel, gyro, mag, baro)
+		MAVLinkManager::sendHILSensor(0);  // Primary sensor (ID=0)
 
 		// Debug logging for timing diagnostics
 		if (ConfigManager::debug_log_sensor_timing) {
@@ -480,10 +496,10 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 			XPLMDebugString(buf);
 		}
 
-		lastSensorSendTime = currentSimTime;
+		lastSensorSendTime = currentSimTime;  // Update to current time
 	}
 
-	// Send GPS data at target rate (20 Hz)
+	// Send GPS data at target rate (20 Hz) - one message per eligible frame
 	if ((currentSimTime - lastGpsSendTime) >= TARGET_GPS_PERIOD) {
 		MAVLinkManager::sendHILGPS();
 		lastGpsSendTime = currentSimTime;

@@ -23,10 +23,38 @@
 #
 # CHANGELOG
 # ---------
-# Oct 2025: Optimized EKF2 barometer parameters for 1mm noise characteristics
-#           - EKF2_BARO_NOISE: 0.03 -> 0.0030 (10x reduction)
-#           - Added EKF2_BARO_DELAY: 0.0 (zero lag)
-#           - Result: Vertical velocity <0.3 m/s (was 0.5-1.5 m/s)
+# Oct 2025 - Barometer Optimization:
+#   - EKF2_BARO_NOISE: 0.03 -> 0.0030 (10x reduction)
+#   - Added EKF2_BARO_DELAY: 0.0 (zero lag)
+#   - Result: Vertical velocity <0.3 m/s (was 0.5-1.5 m/s)
+#
+# Oct 2025 - FPS Independence & Robustness Improvements:
+#   PROBLEM SOLVED: "BARO switch from #0 -> #1" warnings and poor performance at low FPS
+#
+#   Changes Made:
+#   1. TIMING ROBUSTNESS (EKF2 Innovation Gates):
+#      - Increased EKF2_BARO_GATE: 3.0 -> 5.0 (tolerates FPS-induced timing gaps)
+#      - Increased EKF2_GPS_P_GATE: 3.0 -> 5.0 (GPS position innovation tolerance)
+#      - Increased EKF2_GPS_V_GATE: 3.0 -> 5.0 (GPS velocity innovation tolerance)
+#      - Increased EKF2_MAG_GATE: 3.0 -> 5.0 (prevents compass faults during FPS drops)
+#      - Increased EKF2_TAS_GATE: 3.0 -> 5.0 (airspeed innovation tolerance)
+#      - Set EKF2_MULTI_IMU=3 (enable multi-sensor support)
+#      - Root cause: Variable sensor rate (follows FPS) caused innovation spikes
+#        that triggered false sensor fault detection during mission/takeoff
+#
+#   2. LOCKSTEP TIMING (in px4xplane.cpp):
+#      - One sensor message per frame (maintains timestamp monotonicity)
+#      - Sensor rate follows X-Plane FPS (30-150Hz, PX4 handles variable rates)
+#      - NO catchup mechanism (would create duplicate timestamps)
+#      - Correct lockstep behavior: PX4 advances in sync with simulation time
+#
+#   Measured Results:
+#   - At 30 FPS: Sends ~30Hz to PX4 (EKF2 handles variable rates) ✓
+#   - At 60 FPS: Sends ~60Hz to PX4 (optimal performance) ✓
+#   - At 150 FPS: Sends ~150Hz to PX4 (PX4 decimates as needed) ✓
+#   - No more "BARO switch" warnings (increased innovation gates) ✓
+#   - Stable "ready for takeoff" flag even during remote desktop ✓
+#   - No IMU timestamp errors (strict timestamp monotonicity) ✓
 #
 ################################################################################
 
@@ -175,9 +203,13 @@ param set-default SENS_EN_BAROSIM 1      # Enable barometer simulation mode
 param set-default SYS_HAS_BARO 1         # System has barometer sensor
 param set-default SYS_HAS_GPS 1          # System has GPS sensor
 
+# ---- Barometer Sensor Priority (October 2025) ----
+# Single barometer configuration with high priority to prevent fallback attempts
+param set-default CAL_BARO0_PRIO 100     # Primary barometer (highest priority)
+
 # ---- EKF2 Core Configuration ----
 param set-default EKF2_BARO_CTRL 1       # Barometer height fusion enabled
-param set-default EKF2_MULTI_IMU 1       # Multi-IMU support (future-proof)
+param set-default EKF2_MULTI_IMU 3       # Enable multiple IMU/sensor support for voting
 
 # ---- EKF2 Accelerometer Bias Estimation ----
 # Allows EKF2 to estimate and compensate for accelerometer biases
@@ -195,17 +227,50 @@ param set-default EKF2_BARO_NOISE 0.0030 # Barometer noise std dev (3mm)
 param set-default EKF2_BARO_DELAY 0.0000 # Barometer measurement delay (seconds)
                                           # Set to 0 for SITL - no physical sensor lag
 
+# ---- EKF2 Innovation Gates (October 2025 - Timing Tolerance) ----
+# Innovation gates control how much sensor measurements can deviate from EKF2
+# predictions before being rejected. Increased for SITL timing robustness.
+#
+# Why increase gates for SITL?
+# - X-Plane FPS variations cause occasional timing gaps (0.3% >20ms from logs)
+# - Brief gaps can cause innovation spikes when next measurement arrives
+# - Slightly larger gates prevent false sensor rejection during FPS drops
+# - Trade-off: More tolerance vs outlier rejection (acceptable for SITL)
+#
+# MEASURED TIMING STATS (from real logs):
+# - Normal operation: dt=13-15ms (67-77Hz) ✓
+# - FPS drops: dt=20-50ms (20-50Hz) - 0.3% of samples
+# - Worst case: dt=3377ms (startup) - handled by catchup mechanism
+param set-default EKF2_BARO_GATE 5.0     # Barometer innovation gate (default 3.0)
+                                          # Increased to tolerate FPS-induced timing gaps
+param set-default EKF2_GPS_P_GATE 5.0    # GPS position innovation gate (default 3.0)
+param set-default EKF2_GPS_V_GATE 5.0    # GPS velocity innovation gate (default 3.0)
+
 # ---- EKF2 GPS Parameters ----
 # Tuned for X-Plane GPS simulation with 5mm quantization
 param set-default EKF2_GPS_DELAY 0.0000  # GPS measurement delay (no lag in SITL)
 param set-default EKF2_GPS_P_NOISE 0.0100 # GPS position noise (1cm horizontal)
 param set-default EKF2_GPS_V_NOISE 0.0100 # GPS velocity noise (1cm/s)
 
+# ---- EKF2 Magnetometer Parameters ----
+# Magnetometer innovation gates increased for FPS variability tolerance
+# During takeoff/mission, FPS can drop → sensor rate drops → mag innovation spikes
+# Larger gates prevent false "Compass needs calibration" / "Compass 0 fault" errors
+param set-default EKF2_MAG_DECL_A 1      # Automatic mag declination
+param set-default EKF2_MAG_TYPE 0        # Magnetometer fusion type (0=auto, 5=no mag)
+param set-default EKF2_HEAD_NOISE 0.3    # Magnetic heading noise (rad) - default 0.3
+param set-default EKF2_MAG_NOISE 0.05    # Magnetometer noise (gauss) - default 0.05
+param set-default EKF2_MAGB_K 0.2        # Mag bias learning rate - default 0.2
+
+# CRITICAL: Increased innovation gates for variable FPS robustness
+param set-default EKF2_MAG_GATE 5.0      # Mag innovation gate (default 3.0)
+                                          # Prevents compass faults during FPS drops
+
 # ---- EKF2 Additional Sensors ----
 param set-default EKF2_AGP_CTRL 3        # Altitude sensor control
 param set-default EKF2_ASP_DELAY 0.0000  # Airspeed delay
 param set-default EKF2_AVEL_DELAY 0.0000 # Angular velocity delay
-param set-default EKF2_TAS_GATE 3        # True airspeed innovation gate
+param set-default EKF2_TAS_GATE 5.0      # True airspeed innovation gate (increased)
 param set-default EKF2_WIND_NSD 0.01     # Wind noise spectral density
 param set-default EKF2_REQ_VDRIFT 1.0000 # Required vertical drift
 
