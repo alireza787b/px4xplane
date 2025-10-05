@@ -858,23 +858,41 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
  * - Our implementation: ~0.01 mbar = 0.001m (1mm) - better than hardware!
  * - This is intentional for SITL - perfect simulation with realistic characteristics
  *
- * DUAL BAROMETER CAPABILITY (October 2025):
- * -------------------------------------------
- * Added sensor_id parameter to support multiple independent barometer sensors if needed.
- * Currently configured to use single barometer (sensor_id=0) as this is sufficient
- * when combined with increased EKF2 innovation gates for timing robustness.
+ * DUAL BAROMETER CAPABILITY vs SITL SINGLE SENSOR STRATEGY (October 2025):
+ * --------------------------------------------------------------------------
+ * This function implements independent noise generators for sensor IDs 0 and 1,
+ * but PX4-XPlane SITL uses SINGLE BAROMETER strategy for these reasons:
  *
- * - sensor_id parameter: Identifies which barometer (0=primary, 1=backup if needed)
- * - Independent RNG per sensor: Each barometer has unique noise characteristics
- * - Future-proof: Can enable dual barometers by sending both IDs if required
+ * WHY SINGLE SENSOR FOR SITL:
+ * - X-Plane provides ONE altitude source (sim/flightmodel/position/elevation)
+ * - Dual sensors would add correlated noise without real redundancy benefit
+ * - Lockstep simulation requires one HIL_SENSOR per frame (timestamp monotonicity)
+ * - Prevents "BARO switch from #0 -> #1" mid-mission RTL emergencies (critical!)
  *
- * NOTE: Sending multiple sensor IDs with same timestamp causes IMU timestamp errors
- * in PX4. Only use if barometers are sent with different timestamps or field masks.
+ * CURRENT SITL CONFIGURATION:
+ * - Only sendHILSensor(0) called in px4xplane.cpp:486 → single sensor per frame
+ * - Parameter CAL_BARO1_PRIO=0 → PX4 knows sensor #1 doesn't exist
+ * - Parameter EKF2_BARO_GATE=6.0 → tolerates innovation spikes during maneuvers
+ * - Result: No switching attempts, robust mission flight
+ *
+ * DUAL BAROMETER ALTERNATIVE (NOT RECOMMENDED FOR SITL):
+ * - Would require TWO HIL_SENSOR messages per frame (different sensor_id)
+ * - Breaks one-message-per-frame lockstep rule → timestamp monotonicity issues
+ * - Adds complexity without clear simulation benefit
+ * - The dual-sensor RNG infrastructure exists for future HIL use cases
+ *
+ * TROUBLESHOOTING "BARO switch" ERRORS:
+ * 1. Verify CAL_BARO1_PRIO=0 in parameter file (disables sensor #1)
+ * 2. Check only ONE sendHILSensor() call per frame in flight loop
+ * 3. Increase EKF2_BARO_GATE if innovation spikes during climbs
+ * 4. Enable debug_log_sensor_values to check noise statistics
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
- * @param sensor_id Sensor identifier (0=primary barometer, 1=backup barometer)
+ * @param sensor_id Sensor identifier (0=primary, 1=backup). SITL: Always use 0.
  *
- * @see config/px4_params/5010_xplane_ehang184 - EKF2_BARO_NOISE parameter tuning
+ * @see config/px4_params/5010_xplane_ehang184 - CAL_BARO1_PRIO=0 (disables sensor #1)
+ * @see config/px4_params/5010_xplane_ehang184 - EKF2_BARO_NOISE=0.003, GATE=6.0 tuning
+ * @see src/px4xplane.cpp:486 - sendHILSensor(0) single sensor call
  * @see DataRefManager::calculatePressureFromAltitude() - ISA pressure calculation
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t sensor_id) {
