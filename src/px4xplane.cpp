@@ -291,7 +291,9 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			debugLog(("Airframe selected: " + selectedAirframe).c_str());
 
 			ConfigManager::setActiveAirframeName(selectedAirframe);
+			ConfigManager::loadConfiguration();
 			refreshAirframesMenu();
+			XPLMDebugString(("px4xplane: Configuration reloaded for: " + selectedAirframe + "\n").c_str());
 		}
 	}
 

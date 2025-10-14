@@ -35,7 +35,8 @@
       "Bash(wsl awk:*)",
       "Bash(wsl head:*)",
       "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" -p:Configuration=Release -p:Platform=x64 -t:Clean,Build -v:m)",
-      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" -p:Configuration=Release -p:Platform=x64 -t:Build -v:m)"
+      "Bash(\"C:\\Program Files\\Microsoft Visual Studio\\2022\\Enterprise\\MSBuild\\Current\\Bin\\amd64\\MSBuild.exe\" \"C:\\Users\\p30pl\\source\\repos\\px4xplane\\px4-xplane.vcxproj\" -p:Configuration=Release -p:Platform=x64 -t:Build -v:m)",
+      "Bash(wsl grep \"^param set-default\" \"//c/Users/p30pl/source/repos/px4xplane/config/px4_params/5020_xplane_alia250\")"
     ],
     "deny": [],
     "ask": []
