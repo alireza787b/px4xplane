@@ -929,7 +929,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// - Prevents false correlation that would defeat redundancy purpose
 	static std::mt19937 generator0(12345);  // Primary barometer RNG (fixed seed)
 	static std::mt19937 generator1(54321);  // Backup barometer RNG (different seed)
-	static std::normal_distribution<float> distribution(0.0f, 0.001f);  // 1mm sigma
+	static std::normal_distribution<float> distribution(0.0f, 0.01f);  // 1cm sigma
 
 	// Select appropriate generator based on sensor ID
 	std::mt19937& generator = (sensor_id == 0) ? generator0 : generator1;
