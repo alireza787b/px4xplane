@@ -37,6 +37,10 @@ private:
     static std::mt19937 gen;
     static std::normal_distribution<float> noiseDistribution;
     static std::normal_distribution<float> noiseDistribution_mag;
+    static std::normal_distribution<float> noiseDistribution_gyro;              // Phase 1: Gyro noise
+    static std::normal_distribution<float> noiseDistribution_gps_alt;           // Phase 1: GPS altitude noise
+    static std::normal_distribution<float> noiseDistribution_accel_bias;        // Phase 2: Accel bias drift
+    static std::normal_distribution<float> noiseDistribution_timestamp_jitter;  // Phase 2: Timestamp jitter
     static std::normal_distribution<float> highFreqNoise;
     static std::normal_distribution<float> lowFreqNoise;
     static void setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps);

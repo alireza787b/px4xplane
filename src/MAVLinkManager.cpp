@@ -29,6 +29,26 @@ std::normal_distribution<float> vibrationNoise(0.0f, 0.01f); // Adjust the stand
 
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.000001f);
 
+// Phase 1 Fix: Gyroscope noise model (BMI088/ICM-20689 MEMS gyro characteristics)
+// Gaussian noise: σ = 0.01 rad/s (0.57°/s) - matches real IMU datasheets
+// Without this, EKF2 over-trusts gyro data leading to poor sensor fusion
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_gyro(0.0f, 0.01f);
+
+// Phase 1 Fix: GPS altitude noise model (RTK-GPS vertical accuracy)
+// Gaussian noise: σ = 0.5m - matches real RTK-GPS vertical accuracy (worse than horizontal)
+// Previous 5mm quantization was unrealistic and caused sensor fusion conflicts with barometer
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_gps_alt(0.0f, 0.5f);
+
+// Phase 2 Fix: Accelerometer bias drift model (MEMS accelerometer characteristics)
+// Random walk bias drift: σ = 0.0001 m/s² - simulates slowly-varying bias (60s correlation time)
+// Critical for EKF2's IMU bias estimator to have realistic signal to converge on
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_accel_bias(0.0f, 0.0001f);
+
+// Phase 2 Fix: Timestamp jitter model (IMU sample clock variation)
+// Gaussian jitter: σ = 200μs - simulates real IMU sample timing variance
+// Breaks perfect frame-synchronous timing to create realistic sensor asynchrony
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_timestamp_jitter(0.0f, 200.0f);
+
 //------------------------------------------------------------------------------
 // setAccelerationData()
 // Uses computeAcceleration() to update the HIL_SENSOR acceleration data.
@@ -59,8 +79,34 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	static uint64_t lastAccelUpdateTime = 0;
 	static Eigen::Vector3f cachedAccel(0.0f, 0.0f, 0.0f);
 
+	// Phase 2 Fix: Accelerometer bias drift state (slowly-varying random walk)
+	// Simulates temperature drift and MEMS bias instability over ~60 second correlation time
+	// Initialized at startup, updated periodically to create realistic bias drift
+	static Eigen::Vector3f accel_bias_drift(0.0f, 0.0f, 0.0f);
+	static uint64_t lastBiasUpdateTime = 0;
+	static const uint64_t BIAS_UPDATE_INTERVAL_US = 100000;  // Update every 100ms (10 Hz)
+
 	// Get the current time in microseconds.
 	uint64_t currentTime = TimeManager::getCurrentTimeUsec();
+
+	// Update bias drift periodically (creates slowly-varying random walk)
+	if ((currentTime - lastBiasUpdateTime) >= BIAS_UPDATE_INTERVAL_US) {
+		// Add small random walk increment to bias (creates correlation over ~60 seconds)
+		accel_bias_drift.x() += noiseDistribution_accel_bias(gen);
+		accel_bias_drift.y() += noiseDistribution_accel_bias(gen);
+		accel_bias_drift.z() += noiseDistribution_accel_bias(gen);
+
+		// Limit maximum bias drift to ±0.05 m/s² (realistic MEMS characteristic)
+		if (accel_bias_drift.x() > 0.05f) accel_bias_drift.x() = 0.05f;
+		if (accel_bias_drift.x() < -0.05f) accel_bias_drift.x() = -0.05f;
+		if (accel_bias_drift.y() > 0.05f) accel_bias_drift.y() = 0.05f;
+		if (accel_bias_drift.y() < -0.05f) accel_bias_drift.y() = -0.05f;
+		if (accel_bias_drift.z() > 0.05f) accel_bias_drift.z() = 0.05f;
+		if (accel_bias_drift.z() < -0.05f) accel_bias_drift.z() = -0.05f;
+
+		lastBiasUpdateTime = currentTime;
+	}
+
 	if (currentTime == lastAccelUpdateTime) {
 		return cachedAccel;  // Return cached value if computed in this cycle.
 	}
@@ -111,9 +157,18 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 
 	//----------------------------------------------------------------------
 	// 3. Assemble the acceleration vector, already in the Body frame
-	// 
+	//
 	//----------------------------------------------------------------------
 	Eigen::Vector3f body_accel(raw_xacc, raw_yacc, raw_zacc);
+
+	//----------------------------------------------------------------------
+	// 3.5. Phase 2 Fix: Add slowly-varying bias drift
+	// This simulates realistic MEMS accelerometer bias instability
+	// Critical for EKF2's IMU bias estimator to converge properly
+	//----------------------------------------------------------------------
+	body_accel.x() += accel_bias_drift.x();
+	body_accel.y() += accel_bias_drift.y();
+	body_accel.z() += accel_bias_drift.z();
 
 	//----------------------------------------------------------------------
 	// 4. Map the Body frame directly to PX4's FRD frame (assuming alignment).
@@ -144,6 +199,20 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// 6. Update cache and timestamp.
 	cachedAccel = filtered_accel;
 	lastAccelUpdateTime = currentTime;
+
+	// Phase 2: Debug logging to validate sign conventions
+	// When stationary (low velocities), Z-axis should read ~+9.81 m/s² (gravity in FRD Down direction)
+	static int accelSignLogCount = 0;
+	if (ConfigManager::debug_log_sensor_values && accelSignLogCount++ % 100 == 0) {
+		float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
+		char buf[512];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [ACCEL_SIGN_CHECK] ACC[%.3f, %.3f, %.3f] m/s², GS=%.1f m/s, bias[%.4f, %.4f, %.4f]\n"
+			"  Expected stationary: zacc ≈ +9.81 (gravity in FRD Down). Check if sign is correct!\n",
+			filtered_accel.x(), filtered_accel.y(), filtered_accel.z(), groundspeed,
+			accel_bias_drift.x(), accel_bias_drift.y(), accel_bias_drift.z());
+		XPLMDebugString(buf);
+	}
 
 	return filtered_accel;
 }
@@ -192,14 +261,39 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	static uint64_t lastSensorTime = 0;
 	static int sensorCount = 0;
 
+	// Phase 2 Fix: Per-sensor timestamp offset (persistent across calls)
+	// Each sensor instance gets unique jitter to simulate real IMU clock drift
+	static int64_t sensor_timestamp_offset[2] = {0, 0};  // Support up to 2 sensors
+	static bool offset_initialized = false;
+
+	// Initialize persistent timestamp offsets once at startup
+	if (!offset_initialized) {
+		sensor_timestamp_offset[0] = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
+		sensor_timestamp_offset[1] = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
+		offset_initialized = true;
+	}
+
 	mavlink_message_t msg;
 	mavlink_hil_sensor_t hil_sensor = {};  // Zero-initialize to prevent garbage values
 
+	// Get base timestamp
+	uint64_t base_time_usec;
 	if (ConfigManager::USE_XPLANE_TIME) {
-		hil_sensor.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+		base_time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
 	}
 	else {
-		hil_sensor.time_usec = TimeManager::getCurrentTimeUsec();
+		base_time_usec = TimeManager::getCurrentTimeUsec();
+	}
+
+	// Phase 2 Fix: Add small jitter to timestamp (±200μs) per sensor
+	// Simulates real IMU sample clock variation - breaks perfect frame synchronization
+	uint8_t sensor_idx = (sensor_id <= 1) ? sensor_id : 0;
+	int64_t jitter_usec = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
+	hil_sensor.time_usec = base_time_usec + sensor_timestamp_offset[sensor_idx] + jitter_usec;
+
+	// Ensure timestamp is still monotonically increasing (safety check)
+	if (hil_sensor.time_usec <= lastSensorTime) {
+		hil_sensor.time_usec = lastSensorTime + 1;
 	}
 
 	hil_sensor.id = uint8_t(sensor_id);
@@ -761,15 +855,26 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 /**
  * @brief Sets the gyroscope data in the HIL_SENSOR message.
  *
- * This function retrieves the aircraft's current rotational rates (in radians) from the simulation
- * and sets them in the provided HIL_SENSOR message.
+ * This function retrieves the aircraft's current rotational rates (in radians) from the simulation,
+ * adds realistic MEMS gyroscope noise, and sets them in the provided HIL_SENSOR message.
+ *
+ * PHASE 1 FIX: Added gyroscope noise model
+ * - Noise: σ = 0.01 rad/s (0.57°/s) Gaussian per axis
+ * - Matches BMI088/ICM-20689 specifications
+ * - Critical for proper EKF2 sensor fusion (prevents over-trust of gyro)
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where the gyroscope data will be set.
  */
 void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
-	hil_sensor.xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");
-	hil_sensor.ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
-	hil_sensor.zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad");
+	// Retrieve raw gyro rates from X-Plane (already in rad/s, body frame)
+	float raw_xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");  // Roll rate
+	float raw_ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");  // Pitch rate
+	float raw_zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad");  // Yaw rate
+
+	// Add realistic MEMS gyroscope noise (independent per axis)
+	hil_sensor.xgyro = raw_xgyro + noiseDistribution_gyro(gen);
+	hil_sensor.ygyro = raw_ygyro + noiseDistribution_gyro(gen);
+	hil_sensor.zgyro = raw_zgyro + noiseDistribution_gyro(gen);
 }
 /**
  * @brief Sets the pressure data in the HIL_SENSOR message.
@@ -1006,9 +1111,15 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// Absolute pressure (static pressure port measurement)
 	hil_sensor.abs_pressure = noisyPressure_hPa;  // Barometric pressure in hPa
 
-	// Pressure altitude (convenience field, calculated from pressure)
-	// PX4 can use either pressure or altitude - we provide both for compatibility
-	hil_sensor.pressure_alt = noisyPressureAltitude_m;  // Altitude in meters MSL
+	// CRITICAL FIX (Phase 1): Do NOT send pressure_alt alongside abs_pressure!
+	// Problem: Sending both creates double-transformation artifacts:
+	//   1. We calculate abs_pressure FROM altitude (ISA model)
+	//   2. PX4 then calculates altitude FROM abs_pressure (inverse ISA)
+	//   3. Non-linearities cause 0.5-1m oscillations in height estimate
+	//
+	// Gazebo best practice: Only send abs_pressure, let PX4 calculate altitude
+	// This ensures single transformation path and proper EKF2 pressure fusion
+	hil_sensor.pressure_alt = 0.0f;  // Let PX4 calculate from abs_pressure
 
 	// ==================================================================================
 	// STEP 6: Calculate Differential Pressure (Pitot-Static System)
@@ -1139,26 +1250,34 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
 /**
  * @brief Sets the position data for the HIL_GPS message.
  *
+ * PHASE 1 FIX: Changed GPS altitude from unrealistic 5mm quantization to realistic 0.5m noise
+ * - Previous: 5mm quantization (unrealistic - better than barometer!)
+ * - Current: 0.5m Gaussian noise (matches RTK-GPS vertical accuracy)
+ * - Reason: GPS vertical accuracy is typically 2-3× worse than horizontal
+ * - Impact: Prevents EKF2 confusion when fusing barometer (1cm noise) vs GPS (was 5mm)
+ *
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	hil_gps.lat = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/latitude") * 1e7);
 	hil_gps.lon = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/longitude") * 1e7);
 
-	// Quantize GPS altitude to 5mm resolution to simulate realistic GPS characteristics.
-	// This prevents floating-point precision artifacts from creating micro-oscillations
-	// while using finer resolution than 1cm to avoid discrete jumps.
-	// Real high-quality GPS has 5-10mm vertical accuracy in good conditions.
+	// PHASE 1 FIX: Realistic GPS altitude noise
+	// GPS vertical accuracy is typically worse than horizontal (RTK: 0.5-1m vertical vs 0.01m horizontal)
+	// This aligns with barometer being the primary altitude sensor (1cm noise << 0.5m GPS noise)
 	float elevation_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
-	float elevation_5mm = std::round(elevation_m * 200.0f);  // Round to 0.5cm (5mm)
-	hil_gps.alt = static_cast<int32_t>(elevation_5mm * 5.0f);  // Convert 5mm units to mm
+	float altitude_noise_m = noiseDistribution_gps_alt(gen);  // σ = 0.5m Gaussian
+	float noisy_elevation_m = elevation_m + altitude_noise_m;
+
+	// Convert to millimeters (MAVLink GPS altitude unit)
+	hil_gps.alt = static_cast<int32_t>(noisy_elevation_m * 1000.0f);
 
 	// Debug logging for GPS altitude
 	static int gpsAltLogCount = 0;
 	if (ConfigManager::debug_log_sensor_values && gpsAltLogCount++ % 20 == 0) {
 		char buf[256];
-		snprintf(buf, sizeof(buf), "px4xplane: [GPS] Alt: %dmm (%.3fm raw, %.3fm quantized)\n",
-			hil_gps.alt, elevation_m, elevation_5mm / 200.0f);
+		snprintf(buf, sizeof(buf), "px4xplane: [GPS] Alt: %dmm (raw=%.3fm, noise=%.3fm, noisy=%.3fm)\n",
+			hil_gps.alt, elevation_m, altitude_noise_m, noisy_elevation_m);
 		XPLMDebugString(buf);
 	}
 }
