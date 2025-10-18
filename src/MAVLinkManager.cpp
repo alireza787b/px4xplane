@@ -912,14 +912,14 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// STEP 2: Generate Realistic Barometer Noise (DUAL SENSOR SYSTEM)
 	// ==================================================================================
 	// Simulates MS5611/BMP388 high-quality MEMS barometer characteristics:
-	// - Gaussian distribution: mean=0, sigma=0.001m (1mm RMS noise)
+	// - Gaussian distribution: mean=0, sigma=0.01m (1cm RMS noise)
 	// - NO altitude quantization (real barometers measure continuous pressure!)
 	// - NO time-based filtering (let PX4 EKF2 handle sensor fusion)
 	// - INDEPENDENT NOISE per sensor: Each barometer has unique RNG for proper voting
 	//
 	// Why 1mm noise?
 	// - Matches real sensor datasheets (MS5611: ~10cm, BMP388: ~2.5cm at 1Hz)
-	// - Our 1mm is intentionally better for high-rate SITL (100Hz sampling)
+	// - Our 1cm is intentionally better for high-rate SITL (100Hz sampling)
 	// - Provides natural variation for EKF2 without introducing instability
 	//
 	// DUAL BAROMETER IMPLEMENTATION:
