@@ -120,6 +120,10 @@ bool ConfigManager::rotary_vibration_enabled = false;
 bool ConfigManager::debug_verbose_logging = false;
 bool ConfigManager::debug_log_sensor_timing = false;
 bool ConfigManager::debug_log_sensor_values = false;
+bool ConfigManager::debug_log_ekf_innovations = false;
+
+// UX configuration flags
+bool ConfigManager::show_connection_status_hud = true;  // Default: enabled
 
 
 /**
@@ -161,11 +165,20 @@ void ConfigManager::loadConfiguration() {
     debug_verbose_logging = ini.GetBoolValue("", "debug_verbose_logging", false);
     debug_log_sensor_timing = ini.GetBoolValue("", "debug_log_sensor_timing", false);
     debug_log_sensor_values = ini.GetBoolValue("", "debug_log_sensor_values", false);
+    debug_log_ekf_innovations = ini.GetBoolValue("", "debug_log_ekf_innovations", false);
+
+    // Load UX configuration
+    show_connection_status_hud = ini.GetBoolValue("", "show_connection_status_hud", true);  // Default: enabled
 
     if (debug_verbose_logging) {
         XPLMDebugString("px4xplane: [DEBUG] Verbose logging ENABLED\n");
         if (debug_log_sensor_timing) XPLMDebugString("px4xplane: [DEBUG] Sensor timing logging ENABLED\n");
         if (debug_log_sensor_values) XPLMDebugString("px4xplane: [DEBUG] Sensor values logging ENABLED\n");
+        if (debug_log_ekf_innovations) XPLMDebugString("px4xplane: [DEBUG] EKF innovation logging ENABLED\n");
+    }
+
+    if (show_connection_status_hud) {
+        XPLMDebugString("px4xplane: Connection status HUD enabled\n");
     }
 
     // Configure motor brakes based on the loaded configuration

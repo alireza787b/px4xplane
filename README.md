@@ -2,7 +2,7 @@
 
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Latest Release - Version 2.5.0 (January 2025)
+## Latest Release - Version 2.5.1 (January 2025)
 
 ### 🎥 Video Tutorials
 
@@ -14,7 +14,25 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 **🆕 NEW VIDEO COMING SOON:** A comprehensive PX4-XPlane 2.5 tutorial showcasing the latest improvements, enhanced UI, and cross-platform support will be available soon! Stay tuned for the updated demonstration.
 
-### What's New in Version 2.5.0
+### What's New in Version 2.5.1
+
+- **🎯 Height Estimate Stability Fix**: Resolved altitude drift and EKF2 reset issues:
+  - Reduced GPS altitude noise from 0.5m to 0.15m (matches high-quality GPS vertical accuracy)
+  - Updated EKF2_GPS_P_NOISE parameter from 0.01 to 0.15 across all aircraft configurations
+  - Eliminated ±1m GPS altitude jumps that caused EKF2 to incorrectly detect climbing/descending
+  - Height estimate now stable with barometer (±3mm) properly prioritized over GPS (±30cm)
+- **🖥️ Connection Status HUD**: Professional HUD-style overlay for connection feedback:
+  - Real-time connection progress indicator with elapsed time display
+  - 30-second timeout with clear warning messages
+  - Auto-fade success notification after 3 seconds
+  - Clean, minimal design following X-Plane standards (top-center positioning)
+  - Configurable via `show_connection_status_hud` in config.ini
+- **🔧 Parameter Cleanup**: Removed non-existent PX4 parameters causing errors:
+  - Cleaned up VT_F_TRANS_RAMP, VT_DWN_PITCH_MAX, FW_T_SPD_OMEGA, FW_T_I_GAIN_THR from Alia250 config
+  - Added explanatory comments for all removed parameters
+- **⚡ Performance Optimization**: Debug logging disabled by default for production use
+
+### Previous Release - Version 2.5.0 (January 2025)
 
 - **🎯 Critical Sensor Stability Fix**: Resolved BARO STALE errors and vertical velocity oscillation issues:
   - Increased HIL_SENSOR update rate from 100Hz to 250Hz (matches PX4 Gazebo SITL standard)

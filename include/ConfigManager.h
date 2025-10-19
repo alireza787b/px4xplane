@@ -106,6 +106,10 @@ public:
     static bool debug_verbose_logging;
     static bool debug_log_sensor_timing;
     static bool debug_log_sensor_values;
+    static bool debug_log_ekf_innovations;  // NEW: Log EKF innovation data for diagnostics
+
+    // UX configuration
+    static bool show_connection_status_hud;  // NEW: Show HUD connection status overlay
 
 
 private:

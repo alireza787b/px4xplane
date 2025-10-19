@@ -338,17 +338,20 @@ param set-default EKF2_BARO_DELAY 0.0000 # Barometer measurement delay (seconds)
 # - Gentle missions (slow climbs): GATE=5.0 sufficient
 # - Aggressive missions (fast climbs): GATE=6.0-7.0 recommended ✓ (current)
 # - Emergency descents: GATE=8.0 may be needed
-param set-default EKF2_BARO_GATE 6.0     # Barometer innovation gate (default 3.0)
-                                          # INCREASED from 5.0 → 6.0 to prevent
-                                          # mid-mission "BARO switch" during climbs
+param set-default EKF2_BARO_GATE 8.0     # Barometer innovation gate (default 3.0)
+                                          # INCREASED from 6.0 → 8.0 for X-Plane FPS tolerance
+                                          # With 3mm noise + timing jitter, needs larger gate
 param set-default EKF2_GPS_P_GATE 5.0    # GPS position innovation gate (default 3.0)
 param set-default EKF2_GPS_V_GATE 5.0    # GPS velocity innovation gate (default 3.0)
 
-# ---- EKF2 GPS Parameters ----
-# Tuned for X-Plane GPS simulation with 5mm quantization
-param set-default EKF2_GPS_DELAY 0.0000  # GPS measurement delay (no lag in SITL)
-param set-default EKF2_GPS_P_NOISE 0.0100 # GPS position noise (1cm horizontal)
-param set-default EKF2_GPS_V_NOISE 0.0100 # GPS velocity noise (1cm/s)
+# ---- EKF2 GPS Parameters (OPTIMIZED - January 2025) ----
+# CRITICAL FIX: GPS altitude noise increased to match sensor model (prevent height drift)
+param set-default EKF2_GPS_DELAY 0.0      # GPS measurement delay (no lag in SITL)
+param set-default EKF2_GPS_P_NOISE 0.15   # GPS position noise (15cm - matches vertical accuracy)
+                                           # INCREASED from 0.01 to match GPS alt noise (σ=0.15m)
+                                           # This tells EKF2: "GPS altitude has ±30cm uncertainty"
+                                           # Prevents height drift by favoring barometer (±3mm) over GPS
+param set-default EKF2_GPS_V_NOISE 0.01   # GPS velocity noise (1cm/s - horizontal is accurate)
 
 # ---- EKF2 Magnetometer Parameters ----
 # Magnetometer innovation gates increased for FPS variability tolerance

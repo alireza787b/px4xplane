@@ -159,18 +159,23 @@ param set-default PWM_MAIN_FUNC4 104    # Motor 4
 # --- Barometer Configuration (MOST CRITICAL FOR ALTITUDE STABILITY) ---
 param set-default EKF2_BARO_CTRL 1          # Enable barometer fusion
 param set-default EKF2_BARO_NOISE 0.003     # 3mm noise (was 0.1 = 100mm) - 33x better!
-param set-default EKF2_BARO_GATE 5.0        # Innovation gate (was 3.0)
-param set-default EKF2_HGT_REF 1            # Barometer as primary height reference
+param set-default EKF2_BARO_GATE 8.0     # Barometer innovation gate (default 3.0)
+                                          # INCREASED from 6.0 → 8.0 for X-Plane FPS tolerance
+                                          # With 3mm noise + timing jitter, needs larger gateparam set-default EKF2_HGT_REF 1            # Barometer as primary height reference
 
 # Barometer Priority (prevents sensor switching in flight)
 param set-default CAL_BARO0_PRIO 100        # Primary barometer (highest priority)
 param set-default CAL_BARO1_PRIO 0          # Disable secondary barometer
 
-# --- GPS Configuration ---
+# --- GPS Configuration (OPTIMIZED - January 2025) ---
+# CRITICAL FIX: GPS altitude noise increased to match sensor model (prevent height drift)
 param set-default EKF2_GPS_CTRL 7           # Enable GPS fusion (horizontal + vertical + yaw)
 param set-default EKF2_GPS_DELAY 0.0        # Zero delay for SITL
-param set-default EKF2_GPS_P_NOISE 0.01     # 1cm position noise
-param set-default EKF2_GPS_V_NOISE 0.01     # 1cm/s velocity noise
+param set-default EKF2_GPS_P_NOISE 0.15     # GPS position noise (15cm - matches vertical accuracy)
+                                             # INCREASED from 0.01 to match GPS alt noise (σ=0.15m)
+                                             # This tells EKF2: "GPS altitude has ±30cm uncertainty"
+                                             # Prevents height drift by favoring barometer (±3mm) over GPS
+param set-default EKF2_GPS_V_NOISE 0.01     # GPS velocity noise (1cm/s - horizontal is accurate)
 param set-default EKF2_GPS_P_GATE 5.0       # Position innovation gate (FPS-independent)
 param set-default EKF2_GPS_V_GATE 5.0       # Velocity innovation gate (FPS-independent)
 

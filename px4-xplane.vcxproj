@@ -311,6 +311,7 @@ echo ===============================================
     <ClCompile Include="src\ConfigManager.cpp" />
     <ClCompile Include="src\configReader.cpp" />
     <ClCompile Include="src\ConnectionManager.cpp" />
+    <ClCompile Include="src\ConnectionStatusHUD.cpp" />
     <ClCompile Include="src\DataRefManager.cpp" />
     <ClCompile Include="src\MAVLinkManager.cpp" />
     <ClCompile Include="src\px4xplane.cpp" />
@@ -323,6 +324,7 @@ echo ===============================================
     <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\configReader.h" />
     <ClInclude Include="include\ConnectionManager.h" />
+    <ClInclude Include="include\ConnectionStatusHUD.h" />
     <ClInclude Include="include\DataRefManager.h" />
     <ClInclude Include="include\MAVLinkManager.h" />
     <ClInclude Include="include\TimeManager.h" />
