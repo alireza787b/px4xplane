@@ -159,9 +159,11 @@ param set-default PWM_MAIN_FUNC4 104    # Motor 4
 # --- Barometer Configuration (MOST CRITICAL FOR ALTITUDE STABILITY) ---
 param set-default EKF2_BARO_CTRL 1          # Enable barometer fusion
 param set-default EKF2_BARO_NOISE 0.003     # 3mm noise (was 0.1 = 100mm) - 33x better!
-param set-default EKF2_BARO_GATE 8.0     # Barometer innovation gate (default 3.0)
+param set-default EKF2_BARO_GATE 10.0    # Barometer innovation gate (default 3.0)
+                                          # INCREASED from 8.0 → 10.0 for rare transient tolerance
                                           # INCREASED from 6.0 → 8.0 for X-Plane FPS tolerance
-                                          # With 3mm noise + timing jitter, needs larger gateparam set-default EKF2_HGT_REF 1            # Barometer as primary height reference
+                                          # With 3mm noise + timing jitter, needs larger gate
+param set-default EKF2_HGT_REF 1            # Barometer as primary height reference
 
 # Barometer Priority (prevents sensor switching in flight)
 param set-default CAL_BARO0_PRIO 100        # Primary barometer (highest priority)

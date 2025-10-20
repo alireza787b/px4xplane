@@ -62,6 +62,7 @@ public:
     static void overrideActuators();
     static void enableOverride();
     static void disableOverride();
+    static void resetActuatorValues();  // CRITICAL: Zero all actuators before disconnect
     static int drawActualThrottle(XPLMWindowID in_window_id, int l, int t, float col_white[], int lineOffset);
     static Eigen::Vector3f updateEarthMagneticFieldNED(const GeodeticPosition& position);
     static float calculateDistance(const GeodeticPosition& pos1, const GeodeticPosition& pos2);

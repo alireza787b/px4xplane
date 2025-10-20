@@ -20,6 +20,7 @@ public:
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
     static Eigen::Vector3f computeAcceleration();
     static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
+    static void reset();  // CRITICAL: Reset all static state on disconnect
 
     struct HILActuatorControlsData {
         uint64_t timestamp;
@@ -38,7 +39,7 @@ private:
     static std::normal_distribution<float> noiseDistribution;
     static std::normal_distribution<float> noiseDistribution_mag;
     static std::normal_distribution<float> noiseDistribution_gyro;              // Phase 1: Gyro noise
-    static std::normal_distribution<float> noiseDistribution_gps_alt;           // Phase 1: GPS altitude noise
+    // REMOVED: noiseDistribution_gps_alt - now created fresh in sendHILGPS() for true Gaussian behavior
     static std::normal_distribution<float> noiseDistribution_accel_bias;        // Phase 2: Accel bias drift
     static std::normal_distribution<float> noiseDistribution_timestamp_jitter;  // Phase 2: Timestamp jitter
     static std::normal_distribution<float> highFreqNoise;

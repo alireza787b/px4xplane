@@ -125,6 +125,12 @@ bool ConfigManager::debug_log_ekf_innovations = false;
 // UX configuration flags
 bool ConfigManager::show_connection_status_hud = true;  // Default: enabled
 
+// MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
+int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
+int ConfigManager::mavlink_gps_rate_hz = 10;        // HIL_GPS
+int ConfigManager::mavlink_state_rate_hz = 50;      // HIL_STATE_QUATERNION
+int ConfigManager::mavlink_rc_rate_hz = 50;         // HIL_RC_INPUTS
+
 
 /**
  * @brief Loads and parses the configuration from the 'config.ini' file.
@@ -170,6 +176,30 @@ void ConfigManager::loadConfiguration() {
     // Load UX configuration
     show_connection_status_hud = ini.GetBoolValue("", "show_connection_status_hud", true);  // Default: enabled
 
+    // Load MAVLink message rates
+    mavlink_sensor_rate_hz = (int)ini.GetLongValue("", "mavlink_sensor_rate_hz", 200);
+    mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 10);
+    mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 50);
+    mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 50);
+
+    // Validate rates (minimum 1 Hz, maximum 500 Hz)
+    if (mavlink_sensor_rate_hz < 1 || mavlink_sensor_rate_hz > 500) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid sensor rate, using default 200 Hz\n");
+        mavlink_sensor_rate_hz = 200;
+    }
+    if (mavlink_gps_rate_hz < 1 || mavlink_gps_rate_hz > 100) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid GPS rate, using default 10 Hz\n");
+        mavlink_gps_rate_hz = 10;
+    }
+    if (mavlink_state_rate_hz < 1 || mavlink_state_rate_hz > 200) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid state rate, using default 50 Hz\n");
+        mavlink_state_rate_hz = 50;
+    }
+    if (mavlink_rc_rate_hz < 1 || mavlink_rc_rate_hz > 200) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid RC rate, using default 50 Hz\n");
+        mavlink_rc_rate_hz = 50;
+    }
+
     if (debug_verbose_logging) {
         XPLMDebugString("px4xplane: [DEBUG] Verbose logging ENABLED\n");
         if (debug_log_sensor_timing) XPLMDebugString("px4xplane: [DEBUG] Sensor timing logging ENABLED\n");
@@ -180,6 +210,14 @@ void ConfigManager::loadConfiguration() {
     if (show_connection_status_hud) {
         XPLMDebugString("px4xplane: Connection status HUD enabled\n");
     }
+
+    // Log MAVLink rates
+    char rateBuf[256];
+    snprintf(rateBuf, sizeof(rateBuf),
+        "px4xplane: MAVLink rates - SENSOR:%dHz GPS:%dHz STATE:%dHz RC:%dHz\n",
+        mavlink_sensor_rate_hz, mavlink_gps_rate_hz,
+        mavlink_state_rate_hz, mavlink_rc_rate_hz);
+    XPLMDebugString(rateBuf);
 
     // Configure motor brakes based on the loaded configuration
     configureMotorBrakes(ini);

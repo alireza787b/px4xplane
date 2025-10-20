@@ -57,6 +57,7 @@ int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void
 void create_menu();
 void toggleEnable();
 void updateMenuItems();
+void initializeMessagePeriods();  // Initialize MAVLink message periods from config
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
 
 
@@ -205,6 +206,9 @@ PLUGIN_API int XPluginStart(
 	ConnectionStatusHUD::initialize();
 	ConnectionStatusHUD::setEnabled(ConfigManager::show_connection_status_hud);
 
+	// Initialize MAVLink message periods from config
+	initializeMessagePeriods();
+
 	debugLog("Plugin started successfully");
 
 
@@ -344,6 +348,10 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 
 			ConfigManager::setActiveAirframeName(selectedAirframe);
 			ConfigManager::loadConfiguration();
+
+			// Reinitialize message periods after config reload
+			initializeMessagePeriods();
+
 			refreshAirframesMenu();
 			XPLMDebugString(("px4xplane: Configuration reloaded for: " + selectedAirframe + "\n").c_str());
 		}
@@ -502,20 +510,43 @@ void handleAirframeSelection(const std::string& airframeName) {
 
 
 
-// TARGET update periods (in seconds) - frame-rate independent
-// These are target rates; actual rates will vary with X-Plane FPS
+// TARGET update periods (in seconds) - CONFIGURABLE via config.ini
+// These are loaded from ConfigManager and converted to periods
 // Using simulation time ensures consistent timing regardless of rendering FPS
 //
-// CRITICAL FIX (January 2025): Reduced sensor rate from 100 Hz → 75 Hz
-//   REASON: Log analysis showed actual rates 53-67 Hz (X-Plane FPS ~60)
-//   → Targeting 100 Hz was unrealistic, caused constant warnings
-//   → 75 Hz target is achievable with 60 FPS X-Plane
-//   → Fewer warnings = more consistent timing = better EKF2 stability
-//   → Formula: 60 FPS × 1.25 samples/frame = 75 Hz achievable
-const float TARGET_SENSOR_PERIOD = 0.0133f;      // 75 Hz target (was 100 Hz)
-const float TARGET_GPS_PERIOD = 0.05f;           // 20 Hz
-const float TARGET_STATE_QUAT_PERIOD = 0.1f;     // 10 Hz
-const float TARGET_RC_PERIOD = 0.1f;             // 10 Hz
+// IMPORTANT: Higher rates require higher X-Plane FPS
+// - 200 Hz sensor rate needs ~150+ FPS for stability
+// - 75 Hz sensor rate works well with 60 FPS
+// - Formula: Recommended FPS = target_hz × 1.5 (for margin)
+//
+// PX4 SITL BEST PRACTICES (Gazebo/jMAVSim standards):
+// - HIL_SENSOR: 200-250 Hz (IMU/barometer - highest priority)
+// - HIL_GPS: 5-10 Hz (GPS updates - realistic rate)
+// - HIL_STATE_QUATERNION: 50 Hz (ground truth logging)
+// - HIL_RC_INPUTS: 50 Hz (RC receiver standard rate)
+//
+// NOTE: Periods are calculated from Hz rates in initializeMessagePeriods()
+static float TARGET_SENSOR_PERIOD = 0.005f;      // Default 200 Hz (updated from config)
+static float TARGET_GPS_PERIOD = 0.1f;           // Default 10 Hz (updated from config)
+static float TARGET_STATE_QUAT_PERIOD = 0.02f;   // Default 50 Hz (updated from config)
+static float TARGET_RC_PERIOD = 0.02f;           // Default 50 Hz (updated from config)
+
+// Initialize periods from config (called once during plugin startup)
+void initializeMessagePeriods() {
+    TARGET_SENSOR_PERIOD = 1.0f / (float)ConfigManager::mavlink_sensor_rate_hz;
+    TARGET_GPS_PERIOD = 1.0f / (float)ConfigManager::mavlink_gps_rate_hz;
+    TARGET_STATE_QUAT_PERIOD = 1.0f / (float)ConfigManager::mavlink_state_rate_hz;
+    TARGET_RC_PERIOD = 1.0f / (float)ConfigManager::mavlink_rc_rate_hz;
+
+    char buf[300];
+    snprintf(buf, sizeof(buf),
+        "px4xplane: Message periods initialized - SENSOR:%.4fs (%dHz) GPS:%.4fs (%dHz) STATE:%.4fs (%dHz) RC:%.4fs (%dHz)\n",
+        TARGET_SENSOR_PERIOD, ConfigManager::mavlink_sensor_rate_hz,
+        TARGET_GPS_PERIOD, ConfigManager::mavlink_gps_rate_hz,
+        TARGET_STATE_QUAT_PERIOD, ConfigManager::mavlink_state_rate_hz,
+        TARGET_RC_PERIOD, ConfigManager::mavlink_rc_rate_hz);
+    XPLMDebugString(buf);
+}
 
 // Track LAST SEND TIME (not accumulated time!)
 // This approach is frame-rate independent and works at any FPS (30-150+)

@@ -227,8 +227,8 @@ float DataRefManager::calculatePressureAltitude(float pressure_hPa) {
 	constexpr float P0 = 1013.25f;  // Standard sea level pressure in hPa
 	constexpr float T0 = 288.15f;   // Standard temperature at sea level in Kelvin
 	constexpr float L = 0.0065f;    // Temperature lapse rate in K/m
-	constexpr float R = 8.3144598f; // Universal gas constant in J/(mol·K)
-	constexpr float g = 9.80665f;   // Gravitational acceleration in m/s²
+	constexpr float R = 8.3144598f; // Universal gas constant in J/(molï¿½K)
+	constexpr float g = 9.80665f;   // Gravitational acceleration in m/sï¿½
 	constexpr float M = 0.0289644f; // Molar mass of Earth's air in kg/mol
 
 	// Simplified constant for the altitude formula
@@ -255,8 +255,8 @@ float DataRefManager::calculatePressureFromAltitude(float altitude_m) {
 	constexpr float P0 = 1013.25f;  // Standard sea level pressure in hPa
 	constexpr float T0 = 288.15f;   // Standard temperature at sea level in Kelvin
 	constexpr float L = 0.0065f;    // Temperature lapse rate in K/m
-	constexpr float R = 8.3144598f; // Universal gas constant in J/(mol·K)
-	constexpr float g = 9.80665f;   // Gravitational acceleration in m/s²
+	constexpr float R = 8.3144598f; // Universal gas constant in J/(molï¿½K)
+	constexpr float g = 9.80665f;   // Gravitational acceleration in m/sï¿½
 	constexpr float M = 0.0289644f; // Molar mass of Earth's air in kg/mol
 
 	// Calculate temperature at the given altitude
@@ -555,10 +555,81 @@ void DataRefManager::enableOverride() {
 	}
 
 /**
+ * @brief Resets all actuator values to zero before disabling override.
+ *
+ * CRITICAL BUG FIX (January 2025): Prevents "ghost commands" causing aircraft to fly on reconnect
+ *
+ * PROBLEM: disableOverride() only disabled override flags but left actuator VALUES in datarefs
+ * â†’ When reconnecting, re-enabling override would apply old throttle/control values
+ * â†’ Aircraft would immediately fly with last commands
+ *
+ * SOLUTION: Zero ALL actuator datarefs BEFORE disabling override
+ * â†’ Common throttle/control surface datarefs set to 0.0
+ * â†’ All configured aircraft actuator datarefs set to 0.0
+ * â†’ Safe to disconnect and reconnect without ghost commands
+ */
+void DataRefManager::resetActuatorValues() {
+	// Zero common throttle datarefs (covers most aircraft)
+	XPLMDataRef throttleRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
+	if (throttleRef) {
+		float zeros[8] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+		XPLMSetDatavf(throttleRef, zeros, 0, 8);
+	}
+
+	XPLMDataRef throttleRatioRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use");
+	if (throttleRatioRef) {
+		float zeros[8] = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+		XPLMSetDatavf(throttleRatioRef, zeros, 0, 8);
+	}
+
+	// Zero common control surface datarefs
+	XPLMDataRef pitchRef = XPLMFindDataRef("sim/joystick/yoke_pitch_ratio");
+	if (pitchRef) XPLMSetDataf(pitchRef, 0.0f);
+
+	XPLMDataRef rollRef = XPLMFindDataRef("sim/joystick/yoke_roll_ratio");
+	if (rollRef) XPLMSetDataf(rollRef, 0.0f);
+
+	XPLMDataRef headingRef = XPLMFindDataRef("sim/joystick/yoke_heading_ratio");
+	if (headingRef) XPLMSetDataf(headingRef, 0.0f);
+
+	// Zero all datarefs used by current aircraft configuration
+	// This ensures ANY custom datarefs are also zeroed
+	for (const auto& [channel, actuatorConfig] : ConfigManager::actuatorConfigs) {
+		for (const auto& datarefConfig : actuatorConfig.getDatarefConfigs()) {
+			XPLMDataRef dataref = XPLMFindDataRef(datarefConfig.datarefName.c_str());
+			if (!dataref) continue;
+
+			switch (datarefConfig.dataType) {
+				case FLOAT_SINGLE: {
+					XPLMSetDataf(dataref, 0.0f);
+					break;
+				}
+				case FLOAT_ARRAY: {
+					// Zero each index in the array
+					if (!datarefConfig.arrayIndices.empty()) {
+						float zero = 0.0f;
+						for (int index : datarefConfig.arrayIndices) {
+							XPLMSetDatavf(dataref, &zero, index, 1);
+						}
+					}
+					break;
+				}
+				default:
+					break;
+			}
+		}
+	}
+
+	XPLMDebugString("px4xplane: All actuator values reset to zero\n");
+}
+
+/**
  * Disables override for various control aspects in the simulation environment.
  * This function deactivates the override for throttle, control surfaces, and wheel steering
  * in the X-Plane simulation, returning control to the default X-Plane mechanisms.
  * This is used when external control inputs are no longer needed or when returning to manual control.
+ *
+ * NOTE: Call resetActuatorValues() BEFORE this function to zero actuators first
  */
 void DataRefManager::disableOverride() {
 		XPLMSetDatai(XPLMFindDataRef("sim/operation/override/override_throttles"), 0);

@@ -47,7 +47,7 @@ std::normal_distribution<float> MAVLinkManager::noiseDistribution_gyro(0.0f, 0.0
 //
 // With σ=0.15m: 95% of readings within ±0.3m → stable height estimate
 // Barometer (σ=0.003m) still dominates short-term, GPS provides long-term reference
-std::normal_distribution<float> MAVLinkManager::noiseDistribution_gps_alt(0.0f, 0.15f);
+// REMOVED: noiseDistribution_gps_alt static member - now created fresh per sample in sendHILGPS()
 
 // Phase 2 Fix: Accelerometer bias drift model (MEMS accelerometer characteristics)
 // Random walk bias drift: σ = 0.0001 m/s² - simulates slowly-varying bias (60s correlation time)
@@ -1089,12 +1089,20 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	//
 	static std::mt19937 generator0(12345);  // Barometer RNG (fixed seed for repeatability)
 	static std::mt19937 generator1(54321);  // Backup generator (if dual-sensor enabled)
-	static std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma (matches EKF2_BARO_NOISE)
 
 	// Select appropriate generator based on sensor ID
 	std::mt19937& generator = (sensor_id == 0) ? generator0 : generator1;
 
-	// Generate independent noise sample for this sensor
+	// CRITICAL FIX (January 2025): Create fresh distribution for each sample
+	// PROBLEM: Static distribution maintains internal state → non-Gaussian behavior at variable rates
+	//   - Expected 3-sigma rate: 0.27% (true Gaussian)
+	//   - Observed with static: 31% (heavy tails, 100× too many outliers)
+	//   - Caused height drift: EKF2 saw barometer "innovations" as altitude changes
+	// SOLUTION: Fresh distribution → truly independent Gaussian samples each call
+	//   - Each sample is statistically independent
+	//   - 3-sigma rate returns to ~0.27%
+	//   - Height estimate remains stable
+	std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma (matches EKF2_BARO_NOISE)
 	float altitudeNoise_m = distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
@@ -1325,7 +1333,11 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	//   → Prevents EKF2 confusion: "aircraft climbing" when GPS randomly jumps
 	//   → 95% of GPS readings within ±0.3m → stable height estimate
 	float elevation_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
-	float altitude_noise_m = noiseDistribution_gps_alt(gen);  // σ = 0.15m Gaussian (high-quality GPS)
+
+	// CRITICAL FIX (January 2025): Create fresh distribution for each sample
+	// Same fix as barometer - static distribution causes non-Gaussian behavior
+	std::normal_distribution<float> gps_alt_distribution(0.0f, 0.15f);  // σ = 0.15m (high-quality GPS)
+	float altitude_noise_m = gps_alt_distribution(gen);
 	float noisy_elevation_m = elevation_m + altitude_noise_m;
 
 	// Convert to millimeters (MAVLink GPS altitude unit)

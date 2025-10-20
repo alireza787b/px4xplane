@@ -111,6 +111,11 @@ public:
     // UX configuration
     static bool show_connection_status_hud;  // NEW: Show HUD connection status overlay
 
+    // MAVLink message rates (Hz)
+    static int mavlink_sensor_rate_hz;       // HIL_SENSOR rate (IMU + barometer)
+    static int mavlink_gps_rate_hz;          // HIL_GPS rate
+    static int mavlink_state_rate_hz;        // HIL_STATE_QUATERNION rate
+    static int mavlink_rc_rate_hz;           // HIL_RC_INPUTS rate
 
 private:
     static std::vector<int> parseMotorIndices(const std::string& indicesStr);

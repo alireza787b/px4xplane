@@ -273,7 +273,8 @@ param set-default EKF2_BARO_DELAY 0.0    # Barometer measurement delay (0 for SI
 # - FPS variations (30-150 Hz range in X-Plane)
 #
 # Gates increased to prevent false faults during extended operations
-param set-default EKF2_BARO_GATE 8.0     # Barometer innovation gate (default 3.0)
+param set-default EKF2_BARO_GATE 10.0    # Barometer innovation gate (default 3.0)
+                                          # INCREASED from 8.0 → 10.0 for rare transient tolerance
                                           # INCREASED from 6.0 → 8.0 for X-Plane FPS tolerance
                                           # With 3mm noise + timing jitter, needs larger gate
 param set-default EKF2_GPS_P_GATE 5.0    # GPS position innovation gate

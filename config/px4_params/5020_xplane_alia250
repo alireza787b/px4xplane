@@ -284,9 +284,12 @@ param set-default EKF2_BARO_DELAY 0.0    # Barometer measurement delay (0 for SI
 # - Log analysis: X-Plane FPS fluctuates 53-96 Hz (target 75 Hz)
 # - Variable timing causes innovation spikes even with proper noise levels
 # - Gate must tolerate timing jitter without rejecting good measurements
-param set-default EKF2_BARO_GATE 8.0     # Barometer innovation gate (default 3.0)
-                                          # INCREASED from 6.0 → 8.0 for X-Plane FPS tolerance
-                                          # With 3mm noise + timing jitter, needs larger gate
+param set-default EKF2_BARO_GATE 10.0    # Barometer innovation gate (default 3.0)
+                                          # INCREASED from 8.0 → 10.0 for rare transient tolerance
+                                          # Prevents rejection of good baro data during:
+                                          # - Rapid altitude changes (climb/descent)
+                                          # - X-Plane FPS drops (timing jitter)
+                                          # - Turbulence or wind gusts
 param set-default EKF2_GPS_P_GATE 5.0    # GPS position innovation gate
 param set-default EKF2_GPS_V_GATE 5.0    # GPS velocity innovation gate
                                           # Critical for high-speed FW flight (75 m/s)

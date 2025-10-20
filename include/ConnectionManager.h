@@ -5,7 +5,8 @@
 class ConnectionManager {
 public:
     static void setupServerSocket();
-    static void acceptConnection();
+    static void tryAcceptConnection();  // RENAMED from acceptConnection() - now non-blocking
+    static bool isWaitingForConnection();  // NEW: Check if socket ready but not connected
     static void disconnect();
     static void closeSocket(int& sock);
     static void sendData(const uint8_t* buffer, int len);

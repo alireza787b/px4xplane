@@ -60,8 +60,28 @@ void ConnectionManager::setupServerSocket() {
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         XPLMDebugString("px4xplane: Error opening socket.\n");
+        status = "Socket Error";
+        setLastMessage("Failed to create socket. System error.");
+        XPLMSpeakString("Socket creation failed");
         return;
     }
+
+    // CRITICAL FIX (January 2025): Allow immediate port reuse after disconnect
+    // Without this, port 4560 enters TIME_WAIT state and remains unavailable for 30-60s
+    // This caused "nothing happens" bug when user tried to reconnect quickly
+    int reuse = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR,
+                   (const char*)&reuse, sizeof(reuse)) < 0) {
+        XPLMDebugString("px4xplane: Warning - could not set SO_REUSEADDR\n");
+        // Continue anyway - not critical enough to abort
+    }
+
+#ifdef SO_REUSEPORT  // Linux/Mac have this, Windows doesn't
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT,
+                   (const char*)&reuse, sizeof(reuse)) < 0) {
+        // Ignore - not available on all platforms
+    }
+#endif
 
     sockaddr_in serv_addr{};
     serv_addr.sin_family = AF_INET;
@@ -69,8 +89,15 @@ void ConnectionManager::setupServerSocket() {
     serv_addr.sin_port = htons(sitlPort);
 
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
-        XPLMDebugString("px4xplane: Error on binding.\n");
+        XPLMDebugString("px4xplane: Error on binding port 4560.\n");
+
+        // UX FIX: Notify user of error instead of silent failure
+        status = "Bind Error";
+        setLastMessage("Failed to bind port 4560. Port may be in use by another program.");
+        XPLMSpeakString("Port bind failed");
+
         closeSocket(sockfd);
+        sockfd = -1;
         return;
     }
 
@@ -79,33 +106,97 @@ void ConnectionManager::setupServerSocket() {
         closeSocket(sockfd);
         return;
     }
-    XPLMDebugString("px4xplane: Server socket set up, waiting for connection...\n");
-    acceptConnection();
+
+    // CRITICAL FIX (January 2025): Make socket non-blocking
+    // BEFORE: accept() was blocking → X-Plane froze until PX4 connected
+    // AFTER: Non-blocking socket → poll in flight loop → no freezing
+#if IBM
+    u_long mode = 1;  // 1 = non-blocking, 0 = blocking
+    if (ioctlsocket(sockfd, FIONBIO, &mode) != 0) {
+        XPLMDebugString("px4xplane: Error setting socket to non-blocking mode.\n");
+        closeSocket(sockfd);
+        return;
+    }
+#elif LIN || APL
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags < 0 || fcntl(sockfd, F_SETFL, flags | O_NONBLOCK) < 0) {
+        XPLMDebugString("px4xplane: Error setting socket to non-blocking mode.\n");
+        closeSocket(sockfd);
+        return;
+    }
+#endif
+
+    // UX FIX (January 2025): Update status for user visibility
+    status = "Waiting for PX4 SITL...";
+    setLastMessage("Server socket ready on port 4560. Start PX4 SITL to connect.");
+
+    XPLMDebugString("px4xplane: Server socket ready on port 4560, waiting for PX4 SITL to connect...\n");
+    XPLMSpeakString("Waiting for PX4 connection");  // Audio feedback
+
+    // NOTE: Don't call acceptConnection() here anymore - poll in flight loop instead
 
 }
 
 
-void ConnectionManager::acceptConnection() {
+/**
+ * @brief Non-blocking poll for incoming PX4 connection.
+ *
+ * CRITICAL FIX (January 2025): Non-blocking connection accept
+ *
+ * BEFORE: acceptConnection() used blocking accept() → X-Plane froze
+ * AFTER: tryAcceptConnection() polls non-blocking socket → no freeze
+ *
+ * This function is called every flight loop frame when waiting for connection.
+ * Returns immediately if no connection available (EWOULDBLOCK/EAGAIN).
+ * Only accepts and initializes when PX4 actually connects.
+ */
+void ConnectionManager::tryAcceptConnection() {
 
-    if (connected) {
-        XPLMDebugString("px4xplane: Already connected, aborting new accept attempt.\n");
-        return;
+    if (connected || sockfd == -1) {
+        return;  // Already connected or no socket
     }
-
-    XPLMDebugString("px4xplane: Waiting for SITL connection...\n");
 
     sockaddr_in cli_addr{};
     socklen_t clilen = sizeof(cli_addr);
 
-     newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
-     if (newsockfd < 0) {
-         XPLMDebugString("px4xplane: Error on accept.\n");
-         return;
-     }
+    newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
 
-     XPLMDebugString("px4xplane: Connected to SITL successfully.\n");
-     connected = true;
-     DataRefManager::enableOverride();
+    if (newsockfd < 0) {
+        // Check if it's "no connection yet" (not an error) or real error
+#if IBM
+        int err = WSAGetLastError();
+        if (err == WSAEWOULDBLOCK) {
+            // No connection pending, not an error - just return and try next frame
+            return;
+        }
+        XPLMDebugString("px4xplane: Error on accept (Windows error code: ");
+        char errBuf[32];
+        snprintf(errBuf, sizeof(errBuf), "%d)\n", err);
+        XPLMDebugString(errBuf);
+#elif LIN || APL
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+            // No connection pending, not an error - just return and try next frame
+            return;
+        }
+        XPLMDebugString("px4xplane: Error on accept.\n");
+#endif
+        return;
+    }
+
+    // Successfully connected!
+    XPLMDebugString("px4xplane: PX4 SITL connected successfully!\n");
+    connected = true;
+
+    // UX FIX (January 2025): Update status and notify user
+    status = "Connected";
+    setLastMessage("PX4 SITL connected successfully!");
+    XPLMSpeakString("PX4 connected");  // Audio feedback
+
+    // CRITICAL: Update menu to show "Disconnect from SITL"
+    extern void updateMenuItems();  // Defined in px4xplane.cpp
+    updateMenuItems();
+
+    DataRefManager::enableOverride();
 
      DataRefManager::initializeMagneticField();
      XPLMDebugString("px4xplane: Init Magnetic Done.\n");
@@ -186,16 +277,33 @@ std::map<int, int> ConnectionManager::loadMotorMappings(const std::string& filen
 
 void ConnectionManager::disconnect() {
     if (!connected) return;
+
+    // CRITICAL FIX (January 2025): Reset state BEFORE closing sockets
+    // Order matters:
+    //   1. Zero actuator values (prevents ghost commands)
+    //   2. Clear MAVLink command history
+    //   3. Disable override flags
+    //   4. Close sockets
+
+    DataRefManager::resetActuatorValues();  // Zero all throttle/control surface datarefs
+    MAVLinkManager::reset();                 // Clear actuator command history
+    DataRefManager::disableOverride();       // Disable override flags
+
     closeSocket(sockfd);
     sockfd = -1;
     closeSocket(newsockfd); // Close the newsockfd
     newsockfd = -1;
-    DataRefManager::disableOverride();
+
     connected = false;
     status = "Disconnected";
-    setLastMessage("Disconnected from SITL.");
+    setLastMessage("Disconnected from PX4 SITL.");
     XPLMDebugString("px4xplane: Disconnected from SITL\n");
     XPLMDebugString("px4xplane: Socket closed\n");
+
+    // UX FIX (January 2025): Update menu and notify user
+    XPLMSpeakString("Disconnected");  // Audio feedback
+    extern void updateMenuItems();  // Defined in px4xplane.cpp
+    updateMenuItems();  // Change menu back to "Connect to SITL"
 }
 
 void ConnectionManager::closeSocket(int& sockfd) {
@@ -293,6 +401,18 @@ void ConnectionManager::receiveData() {
 
 bool ConnectionManager::isConnected() {
     return connected;
+}
+
+/**
+ * @brief Check if socket is listening but not yet connected.
+ *
+ * Returns true when server socket is set up and waiting for PX4 to connect.
+ * Used by flight loop to know when to poll for incoming connections.
+ *
+ * @return true if waiting for connection, false otherwise
+ */
+bool ConnectionManager::isWaitingForConnection() {
+    return (sockfd != -1 && !connected);
 }
 
 const std::string& ConnectionManager::getStatus() {
