@@ -467,13 +467,18 @@ CMakeLists.txt.user*
 *.x86_64
 *.hex
 
-# CMake
+# CMake (build artifacts - NOT CMakeLists.txt which is tracked)
 CMakeCache.txt
 CMakeFiles/
 cmake_install.cmake
 install_manifest.txt
 CTestTestfile.cmake
-_deps
+_deps/
+cmake_uninstall.cmake
+CMakeDoxyfile.in
+CMakeDoxygenDefaults.cmake
+compile_commands.json
+# Note: CMakeLists.txt is tracked (not ignored)
 
 # Autotools
 Makefile.in
@@ -554,8 +559,11 @@ deployment/
 !config/config.ini           # Default configuration (template)
 !docs/                       # Documentation
 !*.md                        # Markdown documentation
-!Makefile                    # Build system
+!Makefile                    # Build system (if exists)
 !Makefile.windows            # Windows build system
+!Makefile.linux              # Linux build system
+!Makefile.macos              # macOS build system
+!CMakeLists.txt              # CMake build system
 !*.sln                       # Visual Studio solution
 !*.vcxproj                   # Visual Studio project (portable)
 !*.vcxproj.filters           # Visual Studio filters

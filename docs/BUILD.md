@@ -1,6 +1,6 @@
-# px4xplane (PixEagle) Build Guide
+# px4xplane Build Guide
 
-A comprehensive guide for building the px4xplane X-Plane plugin on Windows, macOS, and Linux systems.
+A comprehensive guide for building the **px4xplane** X-Plane plugin on Windows, macOS, and Linux systems.
 
 **Repository**: [alireza787b/px4xplane](https://github.com/alireza787b/px4xplane)
 
@@ -9,14 +9,33 @@ A comprehensive guide for building the px4xplane X-Plane plugin on Windows, macO
 - [Quick Start](#quick-start)
 - [Prerequisites](#prerequisites)
 - [Project Structure](#project-structure)
-- [Windows Build (Visual Studio)](#windows-build-visual-studio)
-- [macOS/Linux Build (Makefile)](#macoslinux-build-makefile)
+- [Build Methods](#build-methods)
+  - [CMake (Recommended - Cross-Platform)](#cmake-recommended---cross-platform)
+  - [Visual Studio (Windows)](#windows-build-visual-studio)
+  - [Native Makefiles (macOS/Linux)](#macoslinux-build-makefile)
 - [Configuration Options](#configuration-options)
 - [Installation](#installation)
 - [Troubleshooting](#troubleshooting)
 - [Development](#development)
 
 ## Quick Start
+
+### CMake (Recommended - All Platforms)
+```bash
+# 1. Clone and prepare
+git clone --recursive https://github.com/alireza787b/px4xplane.git
+cd px4xplane
+
+# 2. Build
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build .
+
+# 3. Your plugin is ready at:
+# Windows: build/win/release/px4xplane/64/win.xpl
+# macOS: build/mac/release/px4xplane/64/mac.xpl
+# Linux: build/lin/release/px4xplane/64/lin.xpl
+```
 
 ### Windows (Visual Studio)
 ```cmd
@@ -32,22 +51,26 @@ git submodule update --init --recursive
 # Press Ctrl+Shift+B or Build > Build Solution
 
 # 4. Your plugin is ready at:
-# build/windows/release/win.xpl
+# build/windows/release/plugins/px4xplane/64/win.xpl
 ```
 
-### macOS/Linux (Makefile)
+### macOS/Linux (Native Makefiles)
 ```bash
 # 1. Clone and prepare
 git clone https://github.com/alireza787b/px4xplane.git
 cd px4xplane
 git submodule update --init --recursive
 
-# 2. Build (automatically detects your OS)
-make
+# 2. Build
+# Linux:
+make -f Makefile.linux
+
+# macOS:
+make -f Makefile.macos
 
 # 3. Your plugin is ready at:
-# macOS: build/macos/release/mac.xpl
-# Linux: build/linux/release/linux.xpl
+# Linux: build/linux/release/px4xplane/64/lin.xpl
+# macOS: build/macos/release/px4xplane/64/mac.xpl
 ```
 
 ## Prerequisites
@@ -138,6 +161,105 @@ px4xplane/
 │   └── linux/            # Linux builds
 └── Makefile              # Build system
 ```
+
+## Build Methods
+
+### CMake (Recommended - Cross-Platform)
+
+CMake is the **modern, unified build system** that works seamlessly on Windows, Linux, and macOS. This is the recommended method for all platforms.
+
+#### Why CMake?
+
+- ✅ **Single build system** for all platforms
+- ✅ **Industry standard** for C++ cross-platform projects
+- ✅ **Auto-detects** platform and configures correctly
+- ✅ **IDE integration**: Works with VS Code, CLion, Xcode, Visual Studio
+- ✅ **Easy for contributors**: Just `cmake . && make`
+
+#### Step 1: Clone Repository
+
+```bash
+git clone --recursive https://github.com/alireza787b/px4xplane.git
+cd px4xplane
+```
+
+If you already cloned without `--recursive`:
+```bash
+git submodule update --init --recursive
+```
+
+#### Step 2: Configure Build
+
+**Linux/macOS:**
+```bash
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+```
+
+**Windows (Visual Studio):**
+```powershell
+mkdir build
+cd build
+cmake .. -G "Visual Studio 17 2022" -A x64
+```
+
+**Windows (MinGW):**
+```powershell
+mkdir build
+cd build
+cmake .. -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release
+```
+
+#### Step 3: Build
+
+**All platforms:**
+```bash
+cmake --build . --config Release
+```
+
+Or use native build tools:
+- **Linux/macOS:** `make`
+- **Windows (VS):** Open `px4xplane.sln` in build directory
+- **Windows (MinGW):** `mingw32-make`
+
+#### Step 4: Locate Output
+
+```
+build/
+├── win/release/px4xplane/    # Windows
+├── lin/release/px4xplane/    # Linux
+└── mac/release/px4xplane/    # macOS
+    ├── 64/
+    │   └── {platform}.xpl    # Plugin binary (win.xpl/lin.xpl/mac.xpl)
+    ├── config.ini            # Configuration file
+    └── README.md             # Documentation
+```
+
+#### CMake Build Options
+
+**Custom compiler:**
+```bash
+cmake .. -DCMAKE_CXX_COMPILER=clang++
+```
+
+**Verbose build:**
+```bash
+cmake --build . --verbose
+```
+
+**Parallel build (faster):**
+```bash
+cmake --build . -j$(nproc)  # Linux/macOS
+cmake --build . -j%NUMBER_OF_PROCESSORS%  # Windows
+```
+
+**Debug build:**
+```bash
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake --build .
+```
+
+---
 
 ## Windows Build (Visual Studio)
 
@@ -706,17 +828,18 @@ For automated builds across platforms, the project includes:
 
 ## Version Information
 
-- **Build System Version**: 2.0 (Professional Cross-Platform)
-- **Supported Platforms**: 
-  - Windows 10+ (Visual Studio 2019/2022)
-  - macOS 10.14+ (Xcode Command Line Tools)
-  - Linux (Ubuntu 18.04+, CentOS 7+)
+- **Build System Version**: 2.5.1 (Unified Cross-Platform with CMake)
+- **Supported Platforms**:
+  - Windows 10+ (Visual Studio 2019/2022, MinGW)
+  - macOS 10.14+ (Xcode Command Line Tools, Universal Binary support)
+  - Linux (Ubuntu 18.04+, CentOS 7+, Fedora, Arch)
 - **Build Methods**:
-  - Windows: Visual Studio IDE/MSBuild + Optional MSYS2/MinGW
-  - macOS/Linux: Professional Makefiles
+  - **CMake**: Unified cross-platform (Recommended)
+  - **Visual Studio**: Windows IDE/MSBuild
+  - **Native Makefiles**: Makefile.linux, Makefile.macos
 - **C++ Standard**: C++17
 - **X-Plane SDK**: Latest version included (4.0.0+)
-- **Plugin Version**: 2.5.0 (PixEagle)
+- **Plugin Version**: 2.5.2
 - **Repository**: [alireza787b/px4xplane](https://github.com/alireza787b/px4xplane)
 
 ## Additional Resources

@@ -2,7 +2,7 @@
 
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Latest Release - Version 2.5.1 (January 2025)
+## Latest Release - Version 2.5.2 (January 2025)
 
 ### 🎥 Video Tutorials
 
@@ -14,7 +14,22 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 **🆕 NEW VIDEO COMING SOON:** A comprehensive PX4-XPlane 2.5 tutorial showcasing the latest improvements, enhanced UI, and cross-platform support will be available soon! Stay tuned for the updated demonstration.
 
-### What's New in Version 2.5.1
+### What's New in Version 2.5.2
+
+- **🔨 Unified Cross-Platform Build System**: Complete build system overhaul with CMake support:
+  - **CMakeLists.txt**: Modern cross-platform build configuration (Windows, Linux, macOS)
+  - **Makefile.linux**: Native Linux builds with GCC/Clang
+  - **Makefile.macos**: Native macOS builds with Universal Binary support (Intel + Apple Silicon)
+  - Single unified build process across all platforms
+  - Easy for contributors and developers
+- **📖 Comprehensive Build Documentation**: New detailed [Build Guide](docs/BUILD.md) with:
+  - Step-by-step build instructions for all platforms
+  - Prerequisites and troubleshooting
+  - IDE integration guides (VS Code, CLion, Xcode)
+  - Advanced build options
+- **🧹 Project Organization**: Clean separation of build artifacts with proper .gitignore patterns
+
+### Previous Release - Version 2.5.1 (January 2025)
 
 - **🎯 Height Estimate Stability Fix**: Resolved altitude drift and EKF2 reset issues:
   - Reduced GPS altitude noise from 0.5m to 0.15m (matches high-quality GPS vertical accuracy)
@@ -80,6 +95,40 @@ The following table illustrates the message flow:
 | [HIL_OPTICAL_FLOW](https://mavlink.io/en/messages/common.html#HIL_OPTICAL_FLOW) | Sim to PX4 | Simulated optical flow from a flow sensor (e.g., PX4FLOW or optical mouse sensor). |
 | [HIL_STATE_QUATERNION](https://mavlink.io/en/messages/common.html#HIL_STATE_QUATERNION) | Sim to PX4 | Contains the actual "simulated" vehicle position, attitude, speed, etc. This can be logged and compared to PX4's estimates for analysis and debugging. |
 | [HIL_RC_INPUTS_RAW](https://mavlink.io/en/messages/common.html#HIL_RC_INPUTS_RAW) | Sim to PX4 | The RAW values of the RC channels received. |
+
+## Building from Source
+
+The px4xplane plugin supports **true cross-platform development** on Windows, Linux, and macOS.
+
+### Quick Build Guide
+
+**CMake (Recommended - All Platforms):**
+```bash
+git clone --recursive https://github.com/alireza787b/px4xplane.git
+cd px4xplane
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build .
+```
+
+**Windows (Visual Studio):**
+1. Open `px4-xplane.sln` in Visual Studio 2019/2022
+2. Select **Release | x64**
+3. Build → Build Solution
+
+**Linux:**
+```bash
+make -f Makefile.linux
+```
+
+**macOS:**
+```bash
+make -f Makefile.macos
+```
+
+📖 **For detailed build instructions, prerequisites, and troubleshooting**, see the comprehensive **[Build Documentation](docs/BUILD.md)**.
+
+---
 
 ## Known Issues
 

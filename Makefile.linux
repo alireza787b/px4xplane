@@ -1,0 +1,239 @@
+#==============================================================================
+# px4xplane - Linux Native Makefile
+# X-Plane Plugin for PX4 SITL Integration
+# Repository: alireza787b/px4xplane
+#
+# Requirements: GCC 7+ or Clang 6+, GNU Make
+# Build: make -f Makefile.linux
+# Clean: make -f Makefile.linux clean
+#==============================================================================
+
+#==============================================================================
+# Configuration
+#==============================================================================
+
+# Project name
+PROJECT := px4xplane
+VERSION := 2.5.2
+
+# Compiler
+CXX := g++
+AR := ar
+
+# Build type (Release or Debug)
+BUILD_TYPE ?= Release
+
+# Directories
+SRC_DIR := src
+INCLUDE_DIR := include
+LIB_DIR := lib
+BUILD_DIR := build/linux/$(shell echo $(BUILD_TYPE) | tr A-Z a-z)
+OBJ_DIR := $(BUILD_DIR)/obj
+OUTPUT_DIR := $(BUILD_DIR)/px4xplane/64
+
+# Output
+TARGET := $(OUTPUT_DIR)/lin.xpl
+
+#==============================================================================
+# Source Files
+#==============================================================================
+
+SOURCES := \
+	$(SRC_DIR)/ConfigManager.cpp \
+	$(SRC_DIR)/configReader.cpp \
+	$(SRC_DIR)/ConnectionManager.cpp \
+	$(SRC_DIR)/ConnectionStatusHUD.cpp \
+	$(SRC_DIR)/DataRefManager.cpp \
+	$(SRC_DIR)/MAVLinkManager.cpp \
+	$(SRC_DIR)/px4xplane.cpp \
+	$(SRC_DIR)/TimeManager.cpp \
+	$(SRC_DIR)/UIConstants.cpp \
+	$(SRC_DIR)/UIHandler.cpp
+
+OBJECTS := $(SOURCES:$(SRC_DIR)/%.cpp=$(OBJ_DIR)/%.o)
+
+#==============================================================================
+# Include Paths
+#==============================================================================
+
+INCLUDES := \
+	-I$(INCLUDE_DIR) \
+	-I$(LIB_DIR)/SDK/CHeaders/XPLM \
+	-I$(LIB_DIR)/SDK/CHeaders/Widgets \
+	-I$(LIB_DIR)/mavlink/c_library_v2 \
+	-I$(LIB_DIR)/mavlink/c_library_v2/common \
+	-I$(LIB_DIR)/mavlink/c_library_v2/all \
+	-I$(LIB_DIR)/simpleini \
+	-I$(LIB_DIR)/Eigen \
+	-I$(LIB_DIR)/XYZgeomag/src \
+	-Iconfig
+
+#==============================================================================
+# Compiler Flags
+#==============================================================================
+
+# Platform definitions
+DEFINES := \
+	-DLIN=1 \
+	-DXPLM200=1 \
+	-DXPLM210=1 \
+	-DXPLM300=1 \
+	-DXPLM301=1 \
+	-DXPLM302=1 \
+	-DXPLM303=1 \
+	-DXPLM400=1
+
+# Base flags
+CXXFLAGS := -std=c++17 -fPIC -fvisibility=hidden -Wall -Wextra
+
+# Build type specific flags
+ifeq ($(BUILD_TYPE),Release)
+	CXXFLAGS += -O3 -DNDEBUG
+else ifeq ($(BUILD_TYPE),Debug)
+	CXXFLAGS += -g -O0 -D_DEBUG
+else
+	$(error Invalid BUILD_TYPE: $(BUILD_TYPE). Use Release or Debug)
+endif
+
+# Combine all flags
+CXXFLAGS += $(DEFINES) $(INCLUDES)
+
+#==============================================================================
+# Linker Flags
+#==============================================================================
+
+# X-Plane SDK libraries
+SDK_LIBS := \
+	-L$(LIB_DIR)/SDK/Libraries/Lin \
+	$(LIB_DIR)/SDK/Libraries/Lin/XPLM_64.so \
+	$(LIB_DIR)/SDK/Libraries/Lin/XPWidgets_64.so
+
+# System libraries
+SYS_LIBS := -lGL -lm -lpthread
+
+# Linker flags
+LDFLAGS := -shared -rdynamic -nodefaultlibs -undefined_warning
+
+# Combine all libraries
+LIBS := $(SDK_LIBS) $(SYS_LIBS)
+
+#==============================================================================
+# Build Targets
+#==============================================================================
+
+.PHONY: all clean install info
+
+# Default target
+all: info $(TARGET) post_build
+
+# Build info
+info:
+	@echo "=================================================="
+	@echo "  px4xplane v$(VERSION) - Linux Build"
+	@echo "=================================================="
+	@echo "Platform:     Linux (x86_64)"
+	@echo "Compiler:     $(CXX) $(shell $(CXX) -dumpversion 2>/dev/null || echo 'unknown')"
+	@echo "Build Type:   $(BUILD_TYPE)"
+	@echo "Output:       $(TARGET)"
+	@echo "=================================================="
+	@echo ""
+
+# Link target
+$(TARGET): $(OBJECTS) | $(OUTPUT_DIR)
+	@echo "Linking $@..."
+	$(CXX) $(LDFLAGS) -o $@ $(OBJECTS) $(LIBS)
+	@echo "✓ Build successful: $@"
+
+# Compile source files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	@echo "Compiling $<..."
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
+# Create directories
+$(OUTPUT_DIR):
+	@mkdir -p $(OUTPUT_DIR)
+
+$(OBJ_DIR):
+	@mkdir -p $(OBJ_DIR)
+
+#==============================================================================
+# Post-Build: Copy Resources
+#==============================================================================
+
+post_build: $(TARGET)
+	@echo ""
+	@echo "Copying resources..."
+	@mkdir -p $(BUILD_DIR)/px4xplane
+	@if [ -f config/config.ini ]; then \
+		cp config/config.ini $(BUILD_DIR)/px4xplane/; \
+		echo "✓ Copied config.ini"; \
+	fi
+	@if [ -f README.md ]; then \
+		cp README.md $(BUILD_DIR)/px4xplane/; \
+		echo "✓ Copied README.md"; \
+	fi
+	@if [ -d config/px4_params ]; then \
+		cp -r config/px4_params $(BUILD_DIR)/px4xplane/; \
+		echo "✓ Copied PX4 parameter files"; \
+	fi
+	@echo ""
+	@echo "=================================================="
+	@echo "  Build Complete!"
+	@echo "=================================================="
+	@echo "Plugin location: $(BUILD_DIR)/px4xplane/"
+	@echo ""
+	@echo "To install to X-Plane:"
+	@echo "  cp -r $(BUILD_DIR)/px4xplane /path/to/X-Plane/Resources/plugins/"
+	@echo "=================================================="
+
+#==============================================================================
+# Clean
+#==============================================================================
+
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -rf $(BUILD_DIR)
+	@echo "✓ Clean complete"
+
+#==============================================================================
+# Install (Optional - modify XPLANE_DIR as needed)
+#==============================================================================
+
+XPLANE_DIR ?= $(HOME)/X-Plane\ 12
+
+install: $(TARGET)
+	@echo "Installing to X-Plane..."
+	@if [ ! -d "$(XPLANE_DIR)/Resources/plugins" ]; then \
+		echo "Error: X-Plane directory not found at $(XPLANE_DIR)"; \
+		echo "Set XPLANE_DIR=/path/to/xplane and try again"; \
+		exit 1; \
+	fi
+	mkdir -p "$(XPLANE_DIR)/Resources/plugins/px4xplane/64"
+	cp $(TARGET) "$(XPLANE_DIR)/Resources/plugins/px4xplane/64/"
+	cp config/config.ini "$(XPLANE_DIR)/Resources/plugins/px4xplane/"
+	@echo "✓ Installation complete"
+
+#==============================================================================
+# Debug Information
+#==============================================================================
+
+# Print all variables (for debugging makefile)
+print-%:
+	@echo '$*=$($*)'
+
+# Show detailed build info
+verbose: info
+	@echo "Sources:"
+	@for src in $(SOURCES); do echo "  $$src"; done
+	@echo ""
+	@echo "Objects:"
+	@for obj in $(OBJECTS); do echo "  $$obj"; done
+	@echo ""
+	@echo "CXXFLAGS:"
+	@echo "  $(CXXFLAGS)" | tr ' ' '\n' | sed 's/^/  /'
+	@echo ""
+	@echo "LDFLAGS:"
+	@echo "  $(LDFLAGS)"
+	@echo ""
+	@echo "LIBS:"
+	@echo "  $(LIBS)" | tr ' ' '\n' | sed 's/^/  /'
