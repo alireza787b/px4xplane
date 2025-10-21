@@ -593,3 +593,4 @@ appsettings.Production.json
 *.db
 *.sqlite
 *.sqlite3
+/NUL
