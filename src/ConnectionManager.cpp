@@ -7,6 +7,7 @@
 #endif
 #if LIN || APL
 #include <unistd.h>
+#include <fcntl.h>      // For fcntl(), F_GETFL, F_SETFL, O_NONBLOCK
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
