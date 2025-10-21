@@ -142,70 +142,121 @@ For full step-by-step instructions, follow the [Version 2 Documentation](https:/
 
 ### Automated Setup Script
 
-This automated script is optimized for using with **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows, and PX4 SITL runs on Linux (WSL). It also works natively on Ubuntu, Linux, and macOS distributions.
+  This automated script is optimized for **WSL** (Windows Subsystem for Linux), where X-Plane runs on Windows and PX4 SITL runs on Linux (WSL). It also works natively on Ubuntu,
+  Linux, and macOS distributions.
 
-To quickly set up PX4 with X-Plane using WSL (Ubuntu 22.04), follow this simple step:
+  To quickly set up PX4 with X-Plane using WSL (Ubuntu 22.04 or newer), follow this simple step:
 
-1. **Run the setup script directly from your terminal:**
+  1. **Run the setup script directly from your terminal:**
 
-   First, make sure you are in your WSL Ubuntu terminal (launch it from PowerShell), then enter the following command in your WSL terminal:
+     First, make sure you are in your WSL Ubuntu terminal (launch it from PowerShell), then enter the following command:
 
-   ```bash
-   cd ~ && curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash setup_px4_sitl.sh
-   ```
+     ```bash
+     cd ~ && curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash setup_px4_sitl.sh
 
-### Important Notes:
+  Script Features
 
-- **Time Required**: The installation process may take some time, depending on your system and configuration, especially the first time.
-- **Prompts**: During installation, you will encounter several prompts asking you to customize the setup. You can either read and decide on each prompt or just let the defaults take effect (the script will automatically proceed with default settings if you don't respond).
-- **Cross-Platform**: Now supports Linux and macOS natively with dedicated makefiles.
+  - Auto-Update Detection: Automatically checks for updates on subsequent runs
+  - Self-Updating: Script updates itself when new versions are available
+  - Quick Skip: Press 's' during update check for instant start (perfect for quick iterations)
+  - Smart Defaults: Auto-proceeds with sensible defaults if no input provided
+  - Robust Error Handling: Graceful fallbacks if network is unavailable
+  - Repair Mode: Use --repair flag to force full re-setup if needed
 
-2. Once setup is complete, use the `px4xplane` command to run the simulation from anywhere in your terminal.
+  Important Notes
 
-### Uninstall
+  - First-Time Setup: The installation may take 10-20 minutes, depending on your system, especially the first time
+  - Subsequent Runs: Script automatically detects existing installation and offers to check for updates
+  - Interactive Prompts: You can customize the setup or use defaults (auto-proceeds after timeout)
+  - Cross-Platform: Supports WSL, native Linux, and macOS
+  - Update Check: Press 's' to skip update check for quick start, or wait 5 seconds to check for updates
 
-To remove the global paths and the `px4xplane` command:
+  Typical Usage
 
-```bash
-px4xplane --uninstall
-```
+  First time:
+  bash setup_px4_sitl.sh
+  # Follow prompts, select your airframe
+
+  Subsequent runs (with update check):
+  px4xplane
+  # Wait 5 seconds or press any key to check for updates
+  # Select airframe and run
+
+  Quick start (skip updates):
+  px4xplane
+  # Press 's' immediately to skip update check
+  # Instant start
+
+  Force update/repair:
+  px4xplane --repair
+  # Forces full setup and update
+
+  Available Airframes
+
+  The script supports 5 pre-configured X-Plane airframes:
+
+  - xplane_cessna172 - Cessna 172 (fixed-wing trainer)
+  - xplane_tb2 - TB2 UAV (fixed-wing)
+  - xplane_ehang184 - Ehang 184 (quadcopter airtaxi)
+  - xplane_alia250 - Alia-250 (eVTOL quadplane)
+  - xplane_qtailsitter - Quantix (quad tailsitter VTOL)
+
+  Uninstall
+
+  To remove the global paths and the px4xplane command:
+
+  px4xplane --uninstall
+
+  This will remove:
+  - The global px4xplane command
+  - The PX4-Autopilot-Me repository
+  - Configuration files
+
+  Troubleshooting
+
+  Update check fails:
+  # Script continues with local version
+  # Or use repair mode: px4xplane --repair
+
+  Build errors:
+  # Try clean build
+  px4xplane
+  # When prompted, type 'c' for clean or 'd' for distclean
+
+  Script outdated:
+  # Script auto-updates itself
+  # Or manually download latest:
+  cd ~ && curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash setup_px4_sitl.sh
 
 ### Manual Advanced Setup
 
-For advanced users, manually clone and set up the environment using the forked PX4 repository:
+  For advanced users who prefer manual control, you can clone and set up the environment using the forked PX4 repository:
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/alireza787b/PX4-Autopilot-Me.git --recursive
-   cd PX4-Autopilot-Me
-   ```
+  1. Clone the repository:
+  git clone https://github.com/alireza787b/PX4-Autopilot-Me.git --recursive
+  cd PX4-Autopilot-Me
+  git checkout px4xplane-sitl
+  2. Set up the environment:
+  bash ./Tools/setup/ubuntu.sh
+  3. Configure PX4 SITL (WSL users only):
+    - In Windows Terminal, check your IP address (e.g., 172.21.144.1):
+    ipconfig
+    - In the WSL Terminal, inside the PX4-Autopilot-Me directory, set the PX4 simulation hostname with your IP:
+    export PX4_SIM_HOSTNAME=172.21.144.1
+  4. Build the desired airframe:
+  make px4_sitl_default xplane_ehang184
 
-2. Set up the environment:
-   ```bash
-   bash ./Tools/setup/ubuntu.sh
-   ```
+  4. Replace xplane_ehang184 with your desired airframe from the list above.
 
-3. Configure PX4 SITL:
-   - In Windows Terminal, check your IP address (e.g., `172.21.144.1`):
-     ```bash
-     ipconfig
-     ```
-   - In the WSL Terminal, inside the PX4-Autopilot directory, set the PX4 simulation hostname with your IP:
-     ```bash
-     export PX4_SIM_HOSTNAME=172.21.144.1
-     ```
+  Note for Native Linux Users: If both X-Plane and PX4 run on the same Linux machine, the IP configuration step (step 3) may not be needed. You can use localhost or 127.0.0.1.
 
-4. Build the desired airframes:
-   ```bash
-   make px4_sitl xplane_ehang184
-   ```
+  Refer to the https://docs.px4.io/main/en/simulation/ for more details, but use the forked repository (PX4-Autopilot-Me branch px4xplane-sitl) instead of the official PX4 repo.
 
-   Other airframes include:
-   - `xplane_alia250`
-   - `xplane_cessna172`
-   - `xplane_tb2`
+  Temporary Notice
 
-Refer to the [official PX4 WSL setup documentation](https://docs.px4.io/main/en/simulation/) for more details, but use the forked repository instead of the official PX4 repo until the changes are merged.
+  ⚠️ Testing Phase: This setup currently uses a forked PX4 repository while X-Plane SITL support is being prepared for submission to the official PX4 repository. Once the pull
+  request is merged into https://github.com/PX4/PX4-Autopilot, you will be able to use the official PX4 repository directly, and this fork will no longer be needed. The setup
+  script will be updated accordingly.
 
 ## Defining Custom Airframes
 
