@@ -255,19 +255,33 @@ if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; 
 
     # === Auto-Sync Detection ===
     cd "$CLONE_PATH" || exit
-    progress "Checking for updates from remote repository..."
 
-    # Fetch latest changes silently (with error handling)
-    if git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null; then
-        success "Remote repository checked."
+    # Prompt user if they want to check for updates
+    highlight "Check for updates from remote repository?"
+    echo "Press 's' to skip (fast start) or any other key to check (default: check in 5 seconds)"
+    read -t 5 -n 1 -r SKIP_UPDATE_CHECK
+    echo ""
+
+    if [[ "$SKIP_UPDATE_CHECK" =~ ^[Ss]$ ]]; then
+        warning "Skipped update check. Using current local version."
+        info "To check for updates later, run: $0 --repair"
+        LOCAL_HASH=""
+        REMOTE_HASH=""
     else
-        warning "Could not fetch updates from remote. Continuing with local version..."
-        warning "Check your internet connection or try again later."
-    fi
+        progress "Checking for updates from remote repository..."
 
-    # Check if local branch is behind remote (with error handling)
-    LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
-    REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME" 2>/dev/null)
+        # Fetch latest changes silently (with error handling)
+        if git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null; then
+            success "Remote repository checked."
+        else
+            warning "Could not fetch updates from remote. Continuing with local version..."
+            warning "Check your internet connection or try again later."
+        fi
+
+        # Check if local branch is behind remote (with error handling)
+        LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
+        REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME" 2>/dev/null)
+    fi
 
     if [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ] && [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
         warning "Updates available from remote repository!"
