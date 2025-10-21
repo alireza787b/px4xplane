@@ -257,14 +257,19 @@ if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; 
     cd "$CLONE_PATH" || exit
     progress "Checking for updates from remote repository..."
 
-    # Fetch latest changes silently
-    git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null
+    # Fetch latest changes silently (with error handling)
+    if git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null; then
+        success "Remote repository checked."
+    else
+        warning "Could not fetch updates from remote. Continuing with local version..."
+        warning "Check your internet connection or try again later."
+    fi
 
-    # Check if local branch is behind remote
-    LOCAL_HASH=$(git rev-parse HEAD)
-    REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME")
+    # Check if local branch is behind remote (with error handling)
+    LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
+    REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME" 2>/dev/null)
 
-    if [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
+    if [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ] && [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
         warning "Updates available from remote repository!"
         echo ""
         echo "Local commit:  $LOCAL_HASH"
@@ -278,25 +283,61 @@ if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; 
             progress "Pulling latest updates..."
 
             # Stash any local changes (shouldn't be any, but be safe)
-            if ! git diff-index --quiet HEAD --; then
+            if ! git diff-index --quiet HEAD -- 2>/dev/null; then
                 info "Stashing local changes..."
-                git stash push -m "Auto-stash before pulling updates"
+                git stash push -m "Auto-stash before pulling updates" 2>/dev/null || true
             fi
 
-            # Reset to remote branch (force sync)
-            git reset --hard origin/"$BRANCH_NAME"
+            # Reset to remote branch (force sync) with error handling
+            if git reset --hard origin/"$BRANCH_NAME" 2>/dev/null; then
+                success "Repository updated to latest version!"
 
-            # Update submodules
-            progress "Updating submodules..."
-            git submodule update --init --recursive
+                # Update submodules
+                progress "Updating submodules..."
+                if git submodule update --init --recursive --quiet 2>/dev/null; then
+                    success "Submodules updated."
+                else
+                    warning "Submodule update had issues. Continuing anyway..."
+                fi
 
-            success "Successfully updated to latest version!"
-            highlight "Changes pulled. You may want to rebuild your airframe."
+                # Check if setup script itself was updated
+                if [ -f "$CLONE_PATH/setup_px4_sitl.sh" ]; then
+                    info "Checking if setup script was updated..."
+
+                    # Compare script with current running script
+                    CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
+
+                    if ! cmp -s "$CLONE_PATH/setup_px4_sitl.sh" "$CURRENT_SCRIPT_PATH" 2>/dev/null; then
+                        warning "The setup script has been updated!"
+                        info "Copying new version to: $SCRIPT_PATH"
+
+                        if cp "$CLONE_PATH/setup_px4_sitl.sh" "$SCRIPT_PATH" 2>/dev/null; then
+                            chmod +x "$SCRIPT_PATH"
+                            success "Setup script updated successfully!"
+                            echo ""
+                            highlight "⚠️  The script has been updated. Please re-run the command."
+                            info "Run: $0"
+                            exit 0
+                        else
+                            warning "Could not update setup script. Continuing with current version..."
+                        fi
+                    fi
+                fi
+
+                success "Successfully updated to latest version!"
+                highlight "Changes pulled. You may want to rebuild your airframe."
+            else
+                warning "Could not reset to remote branch. Continuing with local version..."
+                info "You may need to run with --repair flag: $0 --repair"
+            fi
         else
             info "Skipping updates. Using current local version."
         fi
-    else
+    elif [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ]; then
         success "Your installation is up-to-date!"
+    else
+        warning "Could not check for updates (local or remote hash missing)."
+        info "Continuing with current installation..."
     fi
 
     highlight "Skipping initial setup. Proceeding to build selection..."
