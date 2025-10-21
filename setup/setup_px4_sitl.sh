@@ -454,8 +454,10 @@ else
     info "Skipping clean. Using existing build cache."
 fi
 
-# === Network Setup for X-Plane (WSL Users) ===
+# === Network Setup for X-Plane ===
+# Detect environment and configure IP address for X-Plane connection
 if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
+    # WSL Environment: X-Plane runs on Windows, PX4 on WSL
     highlight "WSL Environment Detected"
     echo "For X-Plane integration, PX4 needs to know your Windows IP address."
     echo ""
@@ -488,67 +490,99 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
         info "Using auto-detected IP: $PX4_SIM_HOSTNAME"
     fi
 
-    # If no IP is set, default to the predefined fallback IP (localhost or any other)
+    # If no IP is set, default to localhost
     if [ -z "$PX4_SIM_HOSTNAME" ]; then
         warning "No IP detected. Falling back to: $DEFAULT_FALLBACK_IP"
-        info "Note: This only works if X-Plane runs on the same machine (Linux)."
         PX4_SIM_HOSTNAME="$DEFAULT_FALLBACK_IP"
     fi
+else
+    # Native Linux: Both X-Plane and PX4 run on the same machine
+    highlight "Native Linux Environment Detected"
+    echo "Running both X-Plane and PX4 SITL on the same Linux machine."
+    echo ""
 
-    # Ensure config directory exists and save the configuration
-    CONFIG_DIR=$(dirname "$CONFIG_FILE")
-    if [ ! -d "$CONFIG_DIR" ]; then
-        mkdir -p "$CONFIG_DIR"
+    # Check if user had previous configuration
+    if [ -f "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+        info "Previous configuration found: $PX4_SIM_HOSTNAME"
+        AUTO_DETECTED_IP="${PX4_SIM_HOSTNAME:-127.0.0.1}"
+    else
+        AUTO_DETECTED_IP="127.0.0.1"
+        PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
     fi
 
-    # Save both the IP and the last selected platform in the config file
-    echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
-    export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
-    success "IP address configured: $PX4_SIM_HOSTNAME"
+    info "Auto-detected IP: $AUTO_DETECTED_IP (localhost)"
+    echo ""
+    echo "💡 Note: For native Linux, use 127.0.0.1 (localhost) since both"
+    echo "   X-Plane and PX4 SITL run on the same machine."
+    echo ""
+    echo "   If X-Plane runs on a different machine, enter that machine's IP address."
+    echo ""
+    highlight "Press Enter to use $AUTO_DETECTED_IP or enter different IP:"
 
-    # === MAVLink Router Setup ===
-    if [ "$USE_MAVLINK_ROUTER" = true ]; then
-        highlight "MAVLink Router Setup"
-        echo "MAVLink Router enables communication between PX4 and X-Plane/GCS."
-        echo ""
-
-        MAVLINK_ROUTER_INSTALL_SCRIPT="$INSTALL_PATH/install_mavlink_router.sh"
-
-        # Download the MAVLink Router installation script
-        if [ ! -f "$MAVLINK_ROUTER_INSTALL_SCRIPT" ]; then
-            progress "Downloading MAVLink Router installation script..."
-            curl -sS -o "$MAVLINK_ROUTER_INSTALL_SCRIPT" "$MAVLINK_ROUTER_INSTALL_SCRIPT_URL"
-            chmod +x "$MAVLINK_ROUTER_INSTALL_SCRIPT"
-        fi
-
-        # Run the MAVLink Router installation script
-        progress "Installing MAVLink Router..."
-        if bash "$MAVLINK_ROUTER_INSTALL_SCRIPT"; then
-            success "MAVLink Router installed."
-        else
-            warning "MAVLink Router installation had issues. Continuing anyway..."
-        fi
-
-        # Replace specific IP placeholders in the MAVLink Router command
-        MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g" | sed "s/MAVLINK2REST_IP_PLACEHOLDE/$MAVLINK2REST_IP/g")
-
-        progress "Starting MAVLink Router..."
-        info "Command: $MAVLINK_ROUTER_CMD"
-        $MAVLINK_ROUTER_CMD &
-        MAVLINK_ROUTER_PID=$!
-
-        # Provide additional instructions
-        success "MAVLink Router is running (PID: $MAVLINK_ROUTER_PID)"
-        echo ""
-        highlight "MAVLink Endpoints Available:"
-        echo "  • $PX4_SIM_HOSTNAME:14540 (X-Plane connection)"
-        echo "  • $PX4_SIM_HOSTNAME:14550 (Ground Control Station)"
-        echo "  • $PX4_SIM_HOSTNAME:14569 (Additional endpoint)"
-        echo "  • $MAVLINK2REST_IP:14569 (MAVLink2REST interface)"
-        echo ""
-        info "Configure these endpoints in QGroundControl or your GCS."
-        sleep 3
+    read -t 15 -r NEW_IP
+    if [ -n "$NEW_IP" ]; then
+        PX4_SIM_HOSTNAME="$NEW_IP"
+        info "Using custom IP: $PX4_SIM_HOSTNAME"
+    else
+        PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
+        info "Using localhost: $PX4_SIM_HOSTNAME"
     fi
+fi
+
+# Ensure config directory exists and save the configuration
+CONFIG_DIR=$(dirname "$CONFIG_FILE")
+if [ ! -d "$CONFIG_DIR" ]; then
+    mkdir -p "$CONFIG_DIR"
+fi
+
+# Save both the IP and the last selected platform in the config file
+echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
+export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
+success "IP address configured: $PX4_SIM_HOSTNAME"
+
+# === MAVLink Router Setup ===
+if [ "$USE_MAVLINK_ROUTER" = true ]; then
+    highlight "MAVLink Router Setup"
+    echo "MAVLink Router enables communication between PX4 and X-Plane/GCS."
+    echo ""
+
+    MAVLINK_ROUTER_INSTALL_SCRIPT="$INSTALL_PATH/install_mavlink_router.sh"
+
+    # Download the MAVLink Router installation script
+    if [ ! -f "$MAVLINK_ROUTER_INSTALL_SCRIPT" ]; then
+        progress "Downloading MAVLink Router installation script..."
+        curl -sS -o "$MAVLINK_ROUTER_INSTALL_SCRIPT" "$MAVLINK_ROUTER_INSTALL_SCRIPT_URL"
+        chmod +x "$MAVLINK_ROUTER_INSTALL_SCRIPT"
+    fi
+
+    # Run the MAVLink Router installation script
+    progress "Installing MAVLink Router..."
+    if bash "$MAVLINK_ROUTER_INSTALL_SCRIPT"; then
+        success "MAVLink Router installed."
+    else
+        warning "MAVLink Router installation had issues. Continuing anyway..."
+    fi
+
+    # Replace specific IP placeholders in the MAVLink Router command
+    MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g" | sed "s/MAVLINK2REST_IP_PLACEHOLDE/$MAVLINK2REST_IP/g")
+
+    progress "Starting MAVLink Router..."
+    info "Command: $MAVLINK_ROUTER_CMD"
+    $MAVLINK_ROUTER_CMD &
+    MAVLINK_ROUTER_PID=$!
+
+    # Provide additional instructions
+    success "MAVLink Router is running (PID: $MAVLINK_ROUTER_PID)"
+    echo ""
+    highlight "MAVLink Endpoints Available:"
+    echo "  • $PX4_SIM_HOSTNAME:14540 (X-Plane connection)"
+    echo "  • $PX4_SIM_HOSTNAME:14550 (Ground Control Station)"
+    echo "  • $PX4_SIM_HOSTNAME:14569 (Additional endpoint)"
+    echo "  • $MAVLINK2REST_IP:14569 (MAVLink2REST interface)"
+    echo ""
+    info "Configure these endpoints in QGroundControl or your GCS."
+    sleep 3
 fi
 
 # === Global Access Setup (Optional) ===
