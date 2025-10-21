@@ -494,88 +494,50 @@ make -j$(sysctl -n hw.ncpu)  # macOS
 
 ## Installation
 
-### Manual Installation
+After building, simply **copy the entire `px4xplane` folder** to X-Plane's plugins directory. The build system automatically creates the complete plugin structure with config.ini included.
 
-#### Windows
+### Quick Installation
 
-1. **Build the plugin:**
-   - Open `px4-xplane.sln` in Visual Studio
-   - Build → Build Solution (Release configuration recommended)
-
-2. **Locate X-Plane plugins directory:**
-   ```
-   X-Plane 12/Resources/plugins/
-   # Example: C:\X-Plane 12\Resources\plugins\
-   ```
-
-3. **Create plugin directory:**
-   ```cmd
-   mkdir "C:\X-Plane 12\Resources\plugins\px4xplane\64"
-   ```
-
-4. **Copy plugin files:**
-   ```cmd
-   # Copy the plugin
-   copy "build\windows\release\win.xpl" "C:\X-Plane 12\Resources\plugins\px4xplane\64\"
-   
-   # Copy configuration (optional)
-   copy "config\config.ini" "C:\X-Plane 12\Resources\plugins\px4xplane\"
-   ```
-
-#### macOS
-
-1. **Build the plugin:**
-   ```bash
-   make
-   ```
-
-2. **Create plugin directory:**
-   ```bash
-   mkdir -p "/Applications/X-Plane 12/Resources/plugins/px4xplane/64"
-   ```
-
-3. **Copy plugin files:**
-   ```bash
-   # Copy the plugin
-   cp build/macos/release/mac.xpl "/Applications/X-Plane 12/Resources/plugins/px4xplane/64/"
-   
-   # Copy configuration (optional)
-   cp config/config.ini "/Applications/X-Plane 12/Resources/plugins/px4xplane/"
-   ```
-
-#### Linux
-
-1. **Build the plugin:**
-   ```bash
-   make
-   ```
-
-2. **Create plugin directory:**
-   ```bash
-   mkdir -p "/path/to/xplane/Resources/plugins/px4xplane/64"
-   ```
-
-3. **Copy plugin files:**
-   ```bash
-   # Copy the plugin
-   cp build/linux/release/linux.xpl "/path/to/xplane/Resources/plugins/px4xplane/64/"
-   
-   # Copy configuration (optional)
-   cp config/config.ini "/path/to/xplane/Resources/plugins/px4xplane/"
-   ```
-
-### Automatic Installation
-
-Use the built-in install target:
-
-**macOS:**
-```bash
-make install XPLANE_DIR="/Applications/X-Plane 12"
+**Windows (CMake build):**
+```cmd
+xcopy /E /I "build\win\release\px4xplane" "C:\X-Plane 12\Resources\plugins\px4xplane"
 ```
+
+**Windows (Visual Studio build):**
+```cmd
+xcopy /E /I "build\windows\release\plugins\px4xplane" "C:\X-Plane 12\Resources\plugins\px4xplane"
+```
+
+**Linux (CMake or Makefile):**
+```bash
+cp -r build/lin/release/px4xplane "/path/to/X-Plane 12/Resources/plugins/"
+```
+
+**macOS (CMake or Makefile):**
+```bash
+cp -r build/mac/release/px4xplane "/Applications/X-Plane 12/Resources/plugins/"
+```
+
+**Result - Your X-Plane will have:**
+```
+X-Plane 12/Resources/plugins/px4xplane/
+├── 64/
+│   └── {platform}.xpl    # win.xpl, lin.xpl, or mac.xpl
+├── config.ini            # Auto-included during build
+├── px4_params/           # PX4 parameter files (if copied by build)
+└── README.md             # Documentation
+```
+
+### Automatic Installation (Linux/macOS Makefiles)
 
 **Linux:**
 ```bash
-make install XPLANE_DIR="/home/user/X-Plane-12"
+make -f Makefile.linux install XPLANE_DIR="/path/to/X-Plane 12"
+```
+
+**macOS:**
+```bash
+make -f Makefile.macos install XPLANE_DIR="/Applications/X-Plane 12"
 ```
 
 ## Troubleshooting
