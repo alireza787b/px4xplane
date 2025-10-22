@@ -492,43 +492,182 @@ make -j$(nproc)    # Linux
 make -j$(sysctl -n hw.ncpu)  # macOS
 ```
 
+---
+
+### Cross-Platform Building from Windows
+
+**Q: Can I build all versions (Windows, Linux, macOS) from my Windows machine?**
+
+#### Answer Summary:
+
+| Target Platform | From Windows | Method | Difficulty |
+|----------------|--------------|--------|------------|
+| **Windows** | ✅ **Yes** | Native (Visual Studio/CMake) | Easy |
+| **Linux** | ✅ **Yes** | WSL2 (essentially Linux) | Easy |
+| **macOS** | ❌ **No** | Impossible without Mac | Impossible |
+
+---
+
+#### Building Windows Version (Native)
+✅ **Works perfectly** - Use Visual Studio or CMake as documented above.
+
+---
+
+#### Building Linux Version from Windows
+
+✅ **Yes - Use WSL2 (Windows Subsystem for Linux)**
+
+WSL2 is essentially running Linux on your Windows machine. This is the **recommended approach**.
+
+**Setup (one-time):**
+```powershell
+# In PowerShell (Administrator):
+wsl --install -d Ubuntu-22.04
+```
+
+**Build Linux version:**
+```bash
+# In WSL2 Ubuntu terminal:
+cd /mnt/c/Users/YourName/source/repos/px4xplane
+
+# Install prerequisites (first time only):
+sudo apt update
+sudo apt install build-essential
+
+# Build:
+make -f Makefile.linux
+
+# Output will be: build/linux/release/px4xplane/64/lin.xpl
+```
+
+**Accessing Windows files from WSL2:**
+- Your C: drive is at `/mnt/c/`
+- Example: `C:\Users\John\source\repos\px4xplane` → `/mnt/c/Users/John/source/repos/px4xplane`
+
+---
+
+#### Building macOS Version from Windows
+
+❌ **No - Not Possible**
+
+**Why it's impossible:**
+1. **Apple-only frameworks:** macOS requires `XPLM.framework` and `XPWidgets.framework` that only exist on macOS
+2. **Apple toolchain:** Clang with Apple modifications, macOS SDK, code signing tools
+3. **Legal restrictions:** Apple does not permit macOS to run in VMs on non-Apple hardware
+4. **No cross-compiler:** There is no Windows → macOS cross-compiler that works with frameworks
+
+**Your options for macOS builds:**
+1. **Use actual Mac hardware** (MacBook, iMac, Mac Mini, etc.)
+2. **Rent cloud Mac:** [MacStadium](https://www.macstadium.com/), [MacinCloud](https://www.macincloud.com/)
+3. **GitHub Actions:** Free macOS runners for open-source projects
+4. **Ask a contributor with Mac** to build and send you the binary
+
+---
+
+#### Recommended: Use GitHub Actions (CI/CD)
+
+**Best practice for multi-platform builds:**
+
+Add `.github/workflows/build.yml` to automatically build all platforms:
+- ✅ Windows build on Windows runner
+- ✅ Linux build on Ubuntu runner
+- ✅ macOS build on macOS runner
+
+This is how professional open-source projects do it - **automated builds on every commit!**
+
+---
+
 ## Installation
 
-After building, simply **copy the entire `px4xplane` folder** to X-Plane's plugins directory. The build system automatically creates the complete plugin structure with config.ini included.
+### Step 1: After Successful Build
 
-### Quick Installation
+After building successfully, you'll find a **complete `px4xplane` folder** ready to use:
 
-**Windows (CMake build):**
-```cmd
-xcopy /E /I "build\win\release\px4xplane" "C:\X-Plane 12\Resources\plugins\px4xplane"
+**Build output locations:**
+- **Windows (CMake):** `build/win/release/px4xplane/`
+- **Windows (Visual Studio):** `build/windows/release/plugins/px4xplane/`
+- **Linux:** `build/lin/release/px4xplane/`
+- **macOS:** `build/mac/release/px4xplane/`
+
+**This folder contains everything you need:**
 ```
-
-**Windows (Visual Studio build):**
-```cmd
-xcopy /E /I "build\windows\release\plugins\px4xplane" "C:\X-Plane 12\Resources\plugins\px4xplane"
-```
-
-**Linux (CMake or Makefile):**
-```bash
-cp -r build/lin/release/px4xplane "/path/to/X-Plane 12/Resources/plugins/"
-```
-
-**macOS (CMake or Makefile):**
-```bash
-cp -r build/mac/release/px4xplane "/Applications/X-Plane 12/Resources/plugins/"
-```
-
-**Result - Your X-Plane will have:**
-```
-X-Plane 12/Resources/plugins/px4xplane/
+px4xplane/
 ├── 64/
 │   └── {platform}.xpl    # win.xpl, lin.xpl, or mac.xpl
-├── config.ini            # Auto-included during build
-├── px4_params/           # PX4 parameter files (if copied by build)
+├── config.ini            # ✓ Already included!
+├── px4_params/           # PX4 parameter files (if built by CMake)
 └── README.md             # Documentation
 ```
 
-### Automatic Installation (Linux/macOS Makefiles)
+### Step 2: Copy to X-Plane
+
+Simply **copy the entire `px4xplane` folder** into your X-Plane's `Resources/plugins/` directory.
+
+**Typical X-Plane plugin paths:**
+- **Windows:** `C:\X-Plane 12\Resources\plugins\`
+- **Linux:** `~/X-Plane 12/Resources/plugins/` or `/path/to/X-Plane 12/Resources/plugins/`
+- **macOS:** `/Applications/X-Plane 12/Resources/plugins/`
+
+**You can do this by:**
+1. Opening Windows Explorer / Finder / File Manager
+2. Navigate to your build output folder
+3. Copy the `px4xplane` folder
+4. Paste it into `X-Plane 12/Resources/plugins/`
+
+**Final result should be:**
+```
+X-Plane 12/Resources/plugins/px4xplane/
+├── 64/
+│   └── win.xpl (or lin.xpl or mac.xpl)
+├── config.ini
+└── README.md
+```
+
+### Step 3: Verify Installation
+
+1. **Launch X-Plane**
+2. **Check Plugin Admin:**
+   - Go to: Plugins → Plugin Admin
+   - Look for **px4xplane** in the list (should show as enabled)
+3. **Check Menu Bar:**
+   - You should see a **"PX4-SITL"** menu in the menu bar
+
+**If the plugin doesn't appear, check X-Plane's Log.txt:**
+- Windows: `Documents/X-Plane 12/Log.txt`
+- macOS: `~/Desktop/X-Plane 12/Log.txt`
+- Linux: `~/X-Plane 12/Log.txt`
+
+Look for lines containing "px4xplane" for error messages.
+
+---
+
+### Optional: Command-Line Installation
+
+**For advanced users who prefer command line:**
+
+**Windows (PowerShell/CMD):**
+```cmd
+# From project root directory
+xcopy /E /I "build\win\release\px4xplane" "C:\X-Plane 12\Resources\plugins\px4xplane"
+```
+
+**Linux:**
+```bash
+# From project root directory
+cp -r build/lin/release/px4xplane "/path/to/X-Plane 12/Resources/plugins/"
+```
+
+**macOS:**
+```bash
+# From project root directory
+cp -r build/mac/release/px4xplane "/Applications/X-Plane 12/Resources/plugins/"
+```
+
+---
+
+### Optional: Automatic Installation (Makefiles Only)
+
+**If you built with Makefile.linux or Makefile.macos**, you can use the built-in install target:
 
 **Linux:**
 ```bash
@@ -539,6 +678,8 @@ make -f Makefile.linux install XPLANE_DIR="/path/to/X-Plane 12"
 ```bash
 make -f Makefile.macos install XPLANE_DIR="/Applications/X-Plane 12"
 ```
+
+**Note:** This is optional - manual copy (above) works just fine!
 
 ## Troubleshooting
 
@@ -597,12 +738,13 @@ chmod +w .
    - macOS: `~/Desktop/X-Plane 12/Log.txt`  
    - Linux: `~/X-Plane 12/Log.txt`
 
-2. **Verify plugin location:**
+2. **Verify plugin location and files:**
    ```
-   X-Plane/Resources/plugins/px4xplane/64/
-   ├── win.xpl     (Windows)
-   ├── mac.xpl     (macOS)
-   └── linux.xpl   (Linux)
+   X-Plane/Resources/plugins/px4xplane/
+   ├── 64/
+   │   └── win.xpl (or lin.xpl or mac.xpl)
+   ├── config.ini      # ✓ Must be present
+   └── README.md
    ```
 
 3. **Check file permissions (macOS/Linux):**
