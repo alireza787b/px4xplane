@@ -22,7 +22,7 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "2.5.2";
+    constexpr const char* VERSION = "2.7.0";
 
     /** Version phase description */
     constexpr const char* PHASE = "Stable";
@@ -31,7 +31,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* YEAR = "2025";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "031";
+    constexpr const char* BUILD = "032";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  
