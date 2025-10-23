@@ -1,0 +1,140 @@
+name: Build px4xplane
+
+# Triggers: Push to master ONLY, Pull Requests to master, Manual dispatch
+# NOTE: develop branch does NOT trigger builds (saves GitHub minutes)
+on:
+  push:
+    branches: [master]  # Build ONLY when pushed to master
+  pull_request:
+    branches: [master]  # Build ONLY for PRs targeting master
+  workflow_dispatch:  # Allow manual triggering from Actions tab
+
+# Cancel previous runs if new commit pushed
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false  # Continue building other platforms even if one fails
+      matrix:
+        include:
+          # Windows build (Visual Studio 2022, CMake)
+          - os: windows-2022
+            platform: windows
+            cmake_platform: win
+            artifact_name: px4xplane-windows
+            build_command: |
+              cmake --build . --config Release
+
+          # Linux build (Ubuntu 22.04, GCC 11, CMake)
+          - os: ubuntu-22.04
+            platform: linux
+            cmake_platform: lin
+            artifact_name: px4xplane-linux
+            build_command: |
+              cmake --build . --config Release -j$(nproc)
+
+          # macOS build (Universal Binary: Intel + Apple Silicon, CMake)
+          - os: macos-14
+            platform: macos
+            cmake_platform: mac
+            artifact_name: px4xplane-macos
+            build_command: |
+              cmake --build . --config Release -j$(sysctl -n hw.ncpu)
+
+    steps:
+      # Step 1: Checkout code with submodules
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0  # Full history for proper versioning
+
+      # Step 2: Setup build environment (platform-specific)
+      - name: Setup MSVC (Windows only)
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install dependencies (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgl1-mesa-dev
+
+      - name: Install dependencies (macOS only)
+        if: runner.os == 'macOS'
+        run: |
+          # macOS comes with necessary tools, just verify
+          xcode-select --version
+
+      # Step 3: Configure CMake
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      # Step 4: Build project
+      - name: Build project
+        run: |
+          cd build
+          ${{ matrix.build_command }}
+
+      # Step 5: Verify build output
+      - name: Verify build artifacts
+        shell: bash
+        run: |
+          echo "Checking build output..."
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            ls -la build/win/Release/px4xplane/64/
+            test -f build/win/Release/px4xplane/64/win.xpl
+          elif [ "${{ runner.os }}" == "Linux" ]; then
+            ls -la build/lin/Release/px4xplane/64/
+            test -f build/lin/Release/px4xplane/64/lin.xpl
+          elif [ "${{ runner.os }}" == "macOS" ]; then
+            ls -la build/mac/Release/px4xplane/64/
+            test -f build/mac/Release/px4xplane/64/mac.xpl
+            # Verify Universal Binary
+            file build/mac/Release/px4xplane/64/mac.xpl
+            lipo -info build/mac/Release/px4xplane/64/mac.xpl || true
+          fi
+          echo "✓ Build artifacts verified successfully"
+
+      # Step 6: Upload build artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: |
+            build/${{ matrix.cmake_platform }}/Release/px4xplane/
+          retention-days: 90
+          if-no-files-found: error
+
+  # Summary job - Shows overall build status
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: build
+    if: always()
+
+    steps:
+      - name: Check build results
+        run: |
+          echo "==================================================="
+          echo "  px4xplane Multi-Platform Build Summary"
+          echo "==================================================="
+          echo ""
+          echo "Build Status: ${{ needs.build.result }}"
+          echo ""
+          if [ "${{ needs.build.result }}" == "success" ]; then
+            echo "✓ All platforms built successfully!"
+            echo ""
+            echo "Download artifacts from:"
+            echo "  https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          else
+            echo "✗ Some builds failed. Check logs above."
+            exit 1
+          fi

@@ -1,0 +1,183 @@
+name: Release px4xplane
+
+# Triggers: Push version tags (v*.*.*)
+# This workflow automatically creates a GitHub Release with binaries
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Matches v1.0.0, v2.5.2, v2.5.3, etc.
+  workflow_dispatch:  # Allow manual release creation for testing
+
+permissions:
+  contents: write  # Required to create releases and upload assets
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      release_version: ${{ steps.get_version.outputs.VERSION }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION="dev-$(date +'%Y%m%d-%H%M%S')"
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Release version: $VERSION"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "# px4xplane ${{ steps.get_version.outputs.VERSION }}" > CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## Downloads" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "- **Windows**: px4xplane-windows-${{ steps.get_version.outputs.VERSION }}.zip" >> CHANGELOG.md
+          echo "- **Linux**: px4xplane-linux-${{ steps.get_version.outputs.VERSION }}.zip" >> CHANGELOG.md
+          echo "- **macOS**: px4xplane-macos-${{ steps.get_version.outputs.VERSION }}.zip (Universal Binary)" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## Installation" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "1. Download the appropriate ZIP file for your platform" >> CHANGELOG.md
+          echo "2. Extract the archive" >> CHANGELOG.md
+          echo "3. Copy the **px4xplane** folder to: \`X-Plane 12/Resources/plugins/\`" >> CHANGELOG.md
+          echo "4. Launch X-Plane and verify the plugin loads (Plugins → Plugin Admin)" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## Build Information" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "- **Commit**: ${{ github.sha }}" >> CHANGELOG.md
+          echo "- **Built**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> CHANGELOG.md
+          echo "- **Platforms**: Windows (x64), Linux (x64), macOS (Universal: Intel + Apple Silicon)" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "## Changes" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> CHANGELOG.md || echo "- Initial release" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "---" >> CHANGELOG.md
+          echo "" >> CHANGELOG.md
+          echo "**Full Documentation**: https://github.com/alireza787b/px4xplane" >> CHANGELOG.md
+          cat CHANGELOG.md
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: px4xplane ${{ steps.get_version.outputs.VERSION }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'rc') }}
+          generate_release_notes: true
+
+  build-and-upload:
+    name: Build ${{ matrix.platform }} for Release
+    runs-on: ${{ matrix.os }}
+    needs: create-release
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            platform: windows
+            cmake_platform: win
+            xpl_name: win.xpl
+
+          - os: ubuntu-22.04
+            platform: linux
+            cmake_platform: lin
+            xpl_name: lin.xpl
+
+          - os: macos-14
+            platform: macos
+            cmake_platform: mac
+            xpl_name: mac.xpl
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libgl1-mesa-dev zip
+
+      - name: Install dependencies (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install zip || true
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build project
+        run: |
+          cd build
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            cmake --build . --config Release
+          else
+            cmake --build . --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu)
+          fi
+        shell: bash
+
+      - name: Package release
+        shell: bash
+        run: |
+          cd build/${{ matrix.cmake_platform }}/Release
+          if [ "${{ runner.os }}" == "Windows" ]; then
+            7z a -tzip ../../../px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip px4xplane/
+          else
+            zip -r ../../../px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip px4xplane/
+          fi
+
+      - name: Verify package
+        run: |
+          ls -lh px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip
+          echo "✓ Package created successfully"
+
+      - name: Upload release asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip
+          tag_name: ${{ needs.create-release.outputs.release_version }}
+
+  release-summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [create-release, build-and-upload]
+    if: always()
+
+    steps:
+      - name: Release summary
+        run: |
+          echo "==================================================="
+          echo "  px4xplane ${{ needs.create-release.outputs.release_version }} Release"
+          echo "==================================================="
+          echo ""
+          if [ "${{ needs.build-and-upload.result }}" == "success" ]; then
+            echo "✓ All platform binaries uploaded successfully!"
+            echo ""
+            echo "Release available at:"
+            echo "  https://github.com/${{ github.repository }}/releases/tag/${{ needs.create-release.outputs.release_version }}"
+          else
+            echo "✗ Some builds failed. Check logs above."
+            exit 1
+          fi

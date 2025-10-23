@@ -1,5 +1,10 @@
 # PX4-XPlane - PX4 X-Plane Integration Plugin
 
+[![Build Status](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml/badge.svg)](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml)
+[![Release](https://img.shields.io/github/v/release/alireza787b/px4xplane)](https://github.com/alireza787b/px4xplane/releases)
+[![License](https://img.shields.io/github/license/alireza787b/px4xplane)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/alireza787b/px4xplane)
+
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
 ## Latest Release - Version 2.5.2 (January 2025)
@@ -127,6 +132,25 @@ make -f Makefile.macos
 ```
 
 📖 **For detailed build instructions, prerequisites, and troubleshooting**, see the comprehensive **[Build Documentation](docs/BUILD.md)**.
+
+### Pre-Built Binaries (Recommended for Users)
+
+Don't want to build from source? **Download pre-built binaries** from the [Releases page](https://github.com/alireza787b/px4xplane/releases):
+
+- 🪟 **Windows** (x64)
+- 🐧 **Linux** (x64)
+- 🍎 **macOS** (Universal: Intel + Apple Silicon)
+
+All platforms are automatically built and tested via GitHub Actions CI/CD on every release.
+
+### Development Workflow
+
+**For Contributors:**
+- Work on `develop` branch (no builds triggered, saves CI minutes)
+- Merge to `master` when ready to test builds
+- Create version tag (`v2.5.3`) to trigger automatic release
+
+📖 **For complete GitHub Actions workflow details**, see **[GitHub Actions Guide](docs/GITHUB_ACTIONS.md)**.
 
 ---
 
