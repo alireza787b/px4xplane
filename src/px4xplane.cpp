@@ -11,7 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include "ConfigReader.h"
+#include "configReader.h"
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
 #include "ConfigManager.h"

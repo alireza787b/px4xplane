@@ -10,6 +10,3 @@
 [submodule "lib/Eigen"]
 	path = lib/Eigen
 	url = https://github.com/eigenteam/eigen-git-mirror.git
-[submodule "lib/GeographicLib"]
-	path = lib/GeographicLib
-	url = https://github.com/GeographicLib/geographiclib.git

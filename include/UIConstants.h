@@ -18,6 +18,7 @@
 
 #include "XPLMDataAccess.h"
 #include "XPLMGraphics.h"  // For font constants
+#include <cstring>         // For strlen()
 #include <stdio.h>
 #include <math.h>
 

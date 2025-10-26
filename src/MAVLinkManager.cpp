@@ -674,7 +674,7 @@ void MAVLinkManager::sendHILRCInputs() {
 
 	// Create a MAVLink message and the corresponding HIL RC inputs structure
 	mavlink_message_t msg;
-	mavlink_hil_rc_inputs_raw_t hil_rc_inputs;
+	mavlink_hil_rc_inputs_raw_t hil_rc_inputs = {};  // Zero-initialize all fields
 
 	if (ConfigManager::USE_XPLANE_TIME) {
 		hil_rc_inputs.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
