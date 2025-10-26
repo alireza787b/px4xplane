@@ -260,25 +260,33 @@ endif()
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config/config.ini
-        ${OUTPUT_DIR}/../config.ini
-    COMMENT "Copying config.ini to plugin directory"
+        ${OUTPUT_DIR}/config.ini
+    COMMENT "Copying config.ini to 64/ directory (with plugin binary)"
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/README.md
         ${OUTPUT_DIR}/../README.md
-    COMMENT "Copying README.md to plugin directory"
+    COMMENT "Copying README.md to plugin root directory"
 )
 
-# Copy PX4 parameter files
+# Create px4_airframes directory for organized PX4 parameter files
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${OUTPUT_DIR}/../px4_airframes
+    COMMENT "Creating px4_airframes directory"
+)
+
+# Copy PX4 parameter files to px4_airframes subdirectory
 file(GLOB PX4_PARAMS "${CMAKE_SOURCE_DIR}/config/px4_params/*")
 foreach(PARAM_FILE ${PX4_PARAMS})
+    get_filename_component(PARAM_NAME ${PARAM_FILE} NAME)
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${PARAM_FILE}
-            ${OUTPUT_DIR}/../
-        COMMENT "Copying PX4 parameter: ${PARAM_FILE}"
+            ${OUTPUT_DIR}/../px4_airframes/${PARAM_NAME}
+        COMMENT "Copying PX4 airframe parameter: ${PARAM_NAME}"
     )
 endforeach()
 

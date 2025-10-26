@@ -161,24 +161,36 @@ echo Creating X-Plane plugin structure...
 REM Create the main plugin directory if it doesn't exist
 if not exist "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\" mkdir "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\"
 
-REM Copy configuration file to plugin root
+REM Copy configuration file to 64/ directory (with binary)
 if exist "$(ProjectDir)config\config.ini" (
-    copy "$(ProjectDir)config\config.ini" "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\" /Y
+    copy "$(ProjectDir)config\config.ini" "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\64\" /Y
     echo ✓ Configuration file copied: config.ini
 ) else (
     echo ⚠ Warning: config.ini not found in $(ProjectDir)config\
 )
 
-REM Copy any additional resources
+REM Copy README to plugin root
 if exist "$(ProjectDir)README.md" (
     copy "$(ProjectDir)README.md" "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\" /Y
     echo ✓ Documentation copied: README.md
 )
 
+REM Create px4_airframes directory
+if not exist "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\px4_airframes\" (
+    mkdir "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\px4_airframes\"
+)
+
+REM Copy PX4 parameter files to px4_airframes/
+for %%f in ("$(ProjectDir)config\px4_params\*") do (
+    copy "%%f" "$(SolutionDir)build\windows\debug\plugins\$(ProjectName)\px4_airframes\" /Y
+)
+echo ✓ PX4 airframe parameters copied to px4_airframes/
+
 echo.
 echo ✓ Plugin built successfully:
 echo   📁 $(OutDir)$(TargetName)$(TargetExt)
-echo   📁 $(SolutionDir)build\windows\debug\plugins\$(ProjectName)\config.ini
+echo   📁 $(SolutionDir)build\windows\debug\plugins\$(ProjectName)\64\config.ini
+echo   📁 $(SolutionDir)build\windows\debug\plugins\$(ProjectName)\px4_airframes\
 echo.
 echo Ready for X-Plane installation!
 echo Copy the entire 'px4xplane' folder to:
@@ -279,7 +291,7 @@ echo Creating X-Plane plugin structure...
 REM Create the main plugin directory if it doesn't exist
 if not exist "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\" mkdir "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\"
 
-REM Copy configuration file to plugin root
+REM Copy configuration file to 64/ directory (with binary)
 if exist "$(ProjectDir)config\config.ini" (
     copy "$(ProjectDir)config\config.ini" "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\64\" /Y
     echo ✓ Configuration file copied: config.ini
@@ -287,16 +299,28 @@ if exist "$(ProjectDir)config\config.ini" (
     echo ⚠ Warning: config.ini not found in $(ProjectDir)config\
 )
 
-REM Copy any additional resources
+REM Copy README to plugin root
 if exist "$(ProjectDir)README.md" (
     copy "$(ProjectDir)README.md" "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\" /Y
     echo ✓ Documentation copied: README.md
 )
 
+REM Create px4_airframes directory
+if not exist "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\px4_airframes\" (
+    mkdir "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\px4_airframes\"
+)
+
+REM Copy PX4 parameter files to px4_airframes/
+for %%f in ("$(ProjectDir)config\px4_params\*") do (
+    copy "%%f" "$(SolutionDir)build\windows\release\plugins\$(ProjectName)\px4_airframes\" /Y
+)
+echo ✓ PX4 airframe parameters copied to px4_airframes/
+
 echo.
 echo ✓ Plugin built successfully:
 echo   📁 $(OutDir)$(TargetName)$(TargetExt)
-echo   📁 $(SolutionDir)build\windows\release\plugins\$(ProjectName)\config.ini
+echo   📁 $(SolutionDir)build\windows\release\plugins\$(ProjectName)\64\config.ini
+echo   📁 $(SolutionDir)build\windows\release\plugins\$(ProjectName)\px4_airframes\
 echo.
 echo Ready for X-Plane installation!
 echo Copy the entire 'px4xplane' folder to:
