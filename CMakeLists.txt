@@ -100,6 +100,18 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     SUFFIX "${PLUGIN_EXT}"
 )
 
+# Fix Windows MSVC multi-config generator (creates extra Release/Debug subdirectory)
+# Set per-configuration output directories to avoid nested config folders
+if(WIN32 AND MSVC)
+    foreach(CONFIG Release Debug MinSizeRel RelWithDebInfo)
+        string(TOUPPER ${CONFIG} CONFIG_UPPER)
+        set_target_properties(${PROJECT_NAME} PROPERTIES
+            RUNTIME_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${OUTPUT_DIR}
+            LIBRARY_OUTPUT_DIRECTORY_${CONFIG_UPPER} ${OUTPUT_DIR}
+        )
+    endforeach()
+endif()
+
 #==============================================================================
 # Include Directories
 #==============================================================================
@@ -178,8 +190,9 @@ elseif(APPLE)
     )
 
     # macOS-specific linker flags
+    # X-Plane plugins use flat namespace with dynamic lookup (symbols resolved at runtime by X-Plane)
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        LINK_FLAGS "-flat_namespace -undefined suppress"
+        LINK_FLAGS "-flat_namespace -undefined dynamic_lookup"
     )
 
 elseif(UNIX)
@@ -225,14 +238,11 @@ if(WIN32)
 
 elseif(APPLE)
     # macOS frameworks
+    # Note: XPLM and XPWidgets are NOT linked at compile time for X-Plane plugins
+    # They use flat namespace with undefined dynamic_lookup (resolved at runtime by X-Plane)
     target_link_libraries(${PROJECT_NAME} PRIVATE
-        "-framework XPLM"
-        "-framework XPWidgets"
         "-framework OpenGL"
     )
-
-    # Add framework search path
-    target_link_directories(${PROJECT_NAME} PRIVATE ${SDK_LIB_DIR})
 
 elseif(UNIX)
     # Linux shared libraries
