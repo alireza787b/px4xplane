@@ -7,7 +7,68 @@
 
 This project establishes a robust connection between X-Plane and PX4 SITL (Software In The Loop) to simulate drone flight in the X-Plane environment. Our goal is to deliver a realistic simulation experience where PX4 can control various drones within X-Plane, and with our continuous improvements, it's getting better all the time.
 
-## Latest Release - Version 2.5.2 (January 2025)
+## Latest Release - Version 3.0.0 (January 2025)
+
+### 🎉 Major Release - Breaking Changes
+
+**⚠️ BREAKING CHANGES**: Version 3.0.0 introduces significant structural changes for X-Plane SDK compliance and professional CI/CD workflows. **Migration required from v2.x.**
+
+### What's New in Version 3.0.0
+
+- **🤖 Automated CI/CD System**: GitHub Actions workflows for cross-platform builds:
+  - Automatic builds on every push to master (Windows, Linux, macOS in parallel)
+  - Automated releases with pre-built binaries via version tags
+  - 90-day artifact retention for testing builds
+  - Real-time build status badges on README
+- **📁 Plugin Structure Reorganization** (X-Plane SDK Standards):
+  - **config.ini moved to 64/ folder** (WITH the binary, not parent folder)
+  - **PX4 parameters organized in px4_airframes/ subdirectory**
+  - Consistent structure across all build methods (CMake, Visual Studio, Make)
+  - Standard X-Plane fat plugin format (SDK 2.0)
+- **🔧 Critical Build Fixes**:
+  - Fixed Linux case-sensitive include errors
+  - Fixed macOS missing headers and linker errors
+  - Fixed Windows MSVC output path issues
+  - Proper Eigen library submodule integration
+- **🍎 macOS Improvements**:
+  - Fixed framework linking (using flat namespace with dynamic lookup)
+  - Universal Binary support (Intel x86_64 + Apple Silicon ARM64)
+  - Proper X-Plane plugin runtime symbol resolution
+- **📦 Build System Consistency**:
+  - CMakeLists.txt updated to v3.0.0 with file organization
+  - Visual Studio Debug/Release now produce identical structures
+  - All platforms build successfully via GitHub Actions
+
+### ⚠️ Migration from v2.x to v3.0.0
+
+**Old Structure (v2.x)**:
+```
+px4xplane/
+├── config.ini                    ← Root folder
+├── 64/win.xpl
+└── 5001_xplane_cessna172         ← Scattered params
+```
+
+**New Structure (v3.0.0)**:
+```
+px4xplane/
+├── 64/
+│   ├── win.xpl
+│   └── config.ini                ← WITH binary
+├── px4_airframes/                ← Organized
+│   ├── 5001_xplane_cessna172
+│   ├── 5002_xplane_tb2
+│   ├── 5010_xplane_ehang184
+│   ├── 5020_xplane_alia250
+│   └── 5021_xplane_qtailsitter
+└── README.md
+```
+
+**To upgrade**: Remove old v2.x installation and download v3.0.0 from [Releases](https://github.com/alireza787b/px4xplane/releases/tag/v3.0.0). See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
+
+---
+
+## Previous Release - Version 2.5.2 (January 2025)
 
 ### 🎥 Video Tutorials
 

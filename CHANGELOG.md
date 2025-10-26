@@ -5,6 +5,153 @@ All notable changes to the PX4-XPlane plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+---
+
+## [3.0.0] - 2025-01-26
+
+### 🎉 Major Release - Breaking Changes
+
+This is a major version release with significant structural changes to comply with X-Plane SDK standards and implement professional CI/CD workflows.
+
+### ⚠️ BREAKING CHANGES
+
+#### Plugin Structure Reorganization
+- **config.ini moved to 64/ folder**: Now located WITH the binary instead of parent folder
+- **PX4 parameters organized**: Moved to dedicated `px4_airframes/` subdirectory
+- **Installation method changed**: Must copy entire `px4xplane/` folder (not individual files)
+
+**Migration Required**: Remove old v2.x installation and reinstall with new structure.
+
+**Old Structure (v2.x)**:
+```
+px4xplane/
+├── config.ini                    ← Root folder
+├── 64/win.xpl
+└── 5001_xplane_cessna172         ← Scattered params
+```
+
+**New Structure (v3.0.0)**:
+```
+px4xplane/
+├── 64/
+│   ├── win.xpl
+│   └── config.ini                ← WITH binary
+├── px4_airframes/                ← Organized
+│   ├── 5001_xplane_cessna172
+│   ├── 5002_xplane_tb2
+│   ├── 5010_xplane_ehang184
+│   ├── 5020_xplane_alia250
+│   └── 5021_xplane_qtailsitter
+└── README.md
+```
+
+### Added
+
+#### Automated CI/CD System
+- **GitHub Actions workflows**: Automatic builds on every push to master
+- **Multi-platform builds**: Windows, Linux, macOS built in parallel (5-15 minutes)
+- **Automated releases**: Push version tag to create release with pre-built binaries
+- **Artifact retention**: 90-day storage for testing builds
+- **Status badges**: Real-time build status on README
+- **develop branch strategy**: No builds on develop (saves CI minutes), only master
+
+#### Cross-Platform Build System
+- **Unified CMake**: Single build system for all platforms (Windows/Linux/macOS)
+- **Native Makefiles**: `Makefile.linux` and `Makefile.macos` for direct builds
+- **Build consistency**: All methods (CMake, Visual Studio, Make) produce identical structure
+- **Universal Binary (macOS)**: Single binary supports Intel x86_64 + Apple Silicon ARM64
+
+#### Documentation
+- **CHANGELOG.md**: Comprehensive version history (this file)
+- **docs/GITHUB_ACTIONS.md**: Complete CI/CD workflow guide for developers
+- **docs/BUILD_SYSTEM.md**: Technical build system documentation
+- **Enhanced README.md**: Status badges, simplified installation, release workflow
+
+### Fixed
+
+#### Critical Build Failures
+- **Linux case-sensitive includes**: Fixed `ConfigReader.h` → `configReader.h`
+- **macOS missing headers**: Added `#include <cstring>` for `strlen()` in UIConstants.h
+- **macOS linker errors**: Removed incorrect XPLM/XPWidgets framework linking
+- **macOS deprecated warnings**: Updated `-undefined suppress` → `-undefined dynamic_lookup`
+- **Windows output path**: Fixed MSVC multi-config directory nesting issue
+
+#### Code Quality
+- **Uninitialized variables**: Zero-initialized RC input struct (`hil_rc_inputs = {}`)
+- **Compiler warnings**: Fixed unused variable warnings across all platforms
+
+### Changed
+
+#### macOS Plugin Linking
+- **Standard X-Plane approach**: Using flat namespace with dynamic lookup
+- **Framework cleanup**: Removed non-existent XPLM/XPWidgets frameworks
+- **Runtime symbol resolution**: X-Plane provides XPLM symbols at load time
+- **OpenGL only**: Only link OpenGL framework (required for rendering)
+
+#### Visual Studio Project
+- **Debug build fixed**: config.ini now copies to 64/ folder (was parent folder)
+- **px4_airframes/ added**: Both Debug and Release now copy organized param files
+- **Consistency achieved**: Debug and Release produce identical structures
+- **Post-build messages**: Enhanced progress output with clear file locations
+
+#### CMakeLists.txt
+- **Version**: Updated project(px4xplane VERSION 3.0.0)
+- **File organization**: config.ini → 64/, params → px4_airframes/
+- **Post-build automation**: Directory creation and file copying
+- **Windows MSVC fix**: Per-configuration output directories
+
+### Removed
+
+#### Dependencies
+- **GeographicLib submodule**: Removed (not used in project code)
+
+### Technical Details
+
+#### Git Submodules
+- **Eigen**: Added as proper submodule (linear algebra library)
+- **Workflow configuration**: `actions/checkout@v4` with `submodules: recursive`
+
+#### Files Modified
+- `CMakeLists.txt`: Version 3.0.0, file organization, Windows MSVC fix
+- `px4-xplane.vcxproj`: Debug/Release consistency, px4_airframes/ support
+- `.github/workflows/build.yml`: Build only on master branch
+- `.github/workflows/release.yml`: Automated release creation
+- `include/VersionInfo.h`: VERSION 3.0.0, BUILD 001
+- `src/ConnectionStatusHUD.cpp`: Added `<cstring>` header
+- `src/px4xplane.cpp`: Fixed case-sensitive include
+- `src/MAVLinkManager.cpp`: Zero-initialized RC inputs
+
+### Migration Guide
+
+#### Upgrading from v2.x to v3.0.0
+
+1. **Remove old installation**:
+   ```bash
+   rm -rf "X-Plane 12/Resources/plugins/px4xplane"
+   ```
+
+2. **Download v3.0.0**:
+   - Visit: https://github.com/alireza787b/px4xplane/releases/tag/v3.0.0
+   - Download ZIP for your platform
+
+3. **Install new version**:
+   ```bash
+   unzip px4xplane-{platform}-v3.0.0.zip
+   cp -r px4xplane/ "X-Plane 12/Resources/plugins/"
+   ```
+
+4. **Verify**:
+   - Launch X-Plane
+   - Plugins → Plugin Admin → px4xplane should appear
+   - Check PX4-SITL menu is available
+
+5. **Config location changed**:
+   - Old: `px4xplane/config.ini`
+   - New: `px4xplane/64/config.ini`
+   - Edit new location if custom configuration needed
+
+---
+
 ## [2.5.1] - 2025-01-19
 
 ### Fixed
