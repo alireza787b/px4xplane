@@ -12,6 +12,7 @@
 #include <GL/gl.h>
 #endif
 #include <cstdio>
+#include <cstring>  // For strlen()
 
 // Initialize static members
 ConnectionStatusHUD::Status ConnectionStatusHUD::currentStatus = ConnectionStatusHUD::Status::DISCONNECTED;
