@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.0.1] - 2025-01-26
+
+### Added
+
+#### Documentation
+- **VERSIONING.md**: Comprehensive developer guide for versioning and releases
+  - Step-by-step release process with semantic versioning
+  - Branch strategy (develop/master/tags)
+  - Common scenarios (patch/minor/major releases)
+  - GitHub Actions CI/CD reference with workflow triggers
+  - Best practices and troubleshooting guide
+
+#### README Improvements
+- Added v3.0 video tutorial placeholder
+- Highlighted major v3.0 improvements:
+  - EKF2 stability fixes (altitude drift resolution)
+  - Multi-threaded communication architecture
+  - Improved state estimators (GPS/Baro/IMU fusion)
+- Added PX4 official integration status section
+- Reference to automated setup script for easy installation
+
+### Fixed
+
+#### Release Workflow
+- **Windows Release Upload**: Enhanced build output verification
+  - Added verification step to check build structure
+  - Explicit plugin binary existence validation
+  - Detailed error messages for debugging
+  - Better error handling for missing directories
+- Improved diagnostics for troubleshooting failed releases
+
+### Technical Details
+
+#### Files Modified
+- `VERSIONING.md`: New comprehensive versioning guide
+- `README.md`: Enhanced v3.0 feature highlights, PX4 integration status
+- `.github/workflows/release.yml`: Build verification and error handling
+- `include/VersionInfo.h`: VERSION 3.0.1, BUILD 002
+- `CMakeLists.txt`: VERSION 3.0.1
+
+---
+
 ## [3.0.0] - 2025-01-26
 
 ### 🎉 Major Release - Breaking Changes
