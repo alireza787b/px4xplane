@@ -138,10 +138,39 @@ jobs:
           fi
         shell: bash
 
+      - name: Verify build output
+        shell: bash
+        run: |
+          echo "=== Checking build output structure ==="
+          ls -R build/${{ matrix.cmake_platform }}/Release/ || true
+          echo ""
+          echo "=== Looking for px4xplane directory ==="
+          find build/${{ matrix.cmake_platform }}/Release -name "px4xplane" -type d || true
+
       - name: Package release
         shell: bash
         run: |
           cd build/${{ matrix.cmake_platform }}/Release
+
+          # Verify px4xplane directory exists
+          if [ ! -d "px4xplane" ]; then
+            echo "ERROR: px4xplane directory not found!"
+            echo "Contents of current directory:"
+            ls -la
+            exit 1
+          fi
+
+          # Verify plugin binary exists
+          if [ ! -f "px4xplane/64/${{ matrix.xpl_name }}" ]; then
+            echo "ERROR: Plugin binary not found at px4xplane/64/${{ matrix.xpl_name }}"
+            echo "Contents of px4xplane/64/:"
+            ls -la px4xplane/64/ || echo "Directory px4xplane/64/ does not exist"
+            exit 1
+          fi
+
+          echo "✓ Plugin structure verified"
+          echo "Creating ZIP archive..."
+
           if [ "${{ runner.os }}" == "Windows" ]; then
             7z a -tzip ../../../px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip px4xplane/
           else
@@ -149,7 +178,12 @@ jobs:
           fi
 
       - name: Verify package
+        shell: bash
         run: |
+          if [ ! -f "px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip" ]; then
+            echo "ERROR: ZIP file not created!"
+            exit 1
+          fi
           ls -lh px4xplane-${{ matrix.platform }}-${{ needs.create-release.outputs.release_version }}.zip
           echo "✓ Package created successfully"
 

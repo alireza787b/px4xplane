@@ -9,35 +9,79 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 
 ## Latest Release - Version 3.0.0 (January 2025)
 
+### 🎥 Video Tutorial
+
+**🆕 NEW VIDEO COMING SOON:** A comprehensive PX4-XPlane 3.0 tutorial showcasing the major improvements, enhanced EKF stability, multi-threaded communication architecture, and automated setup workflow will be available soon! Stay tuned for the updated demonstration.
+
+**Current Video:** Check out our [v2.0.0 demo video](https://youtu.be/oQTlBVXqR04) for installation guide and basic features.
+
 ### 🎉 Major Release - Breaking Changes
 
 **⚠️ BREAKING CHANGES**: Version 3.0.0 introduces significant structural changes for X-Plane SDK compliance and professional CI/CD workflows. **Migration required from v2.x.**
 
 ### What's New in Version 3.0.0
 
+#### 🚁 Core Simulation Improvements
+
+- **🎯 EKF2 Stability Fixes** (Critical):
+  - Resolved altitude drift and height estimate reset issues
+  - GPS altitude noise reduced from σ=0.5m to σ=0.15m (3.3× improvement)
+  - EKF2_GPS_P_NOISE properly tuned (0.01 → 0.15) across all aircraft
+  - Barometer (±3mm) now correctly prioritized over GPS (±30cm)
+  - Height estimate resets reduced from ~10/hour to rare occurrences
+  - Eliminated false climb/descent detections caused by GPS noise
+
+- **⚡ Multi-Threaded Communication Architecture**:
+  - Robust, stable PX4 ↔ X-Plane MAVLink communication
+  - Asynchronous sensor data processing with thread-safe queues
+  - HIL_SENSOR update rate increased to 250Hz (matches PX4 Gazebo standard)
+  - Enhanced barometer noise modeling (3cm std dev) for proper liveness detection
+  - Synchronized GPS-Barometer altitude quantization (5mm resolution)
+  - Prevents sensor timeout/STALE errors
+
+- **📡 Improved State Estimators**:
+  - EKF2 innovation gates relaxed for SITL environment (BARO_GATE: 8.0, GPS_V_GATE: 8.0)
+  - COM_ARM_EKF_VEL tuned (0.8) to prevent false preflight velocity errors
+  - Better sensor fusion between GPS, barometer, IMU
+  - Stable attitude, position, and velocity estimation
+
+#### 🤖 Development & CI/CD
+
 - **🤖 Automated CI/CD System**: GitHub Actions workflows for cross-platform builds:
   - Automatic builds on every push to master (Windows, Linux, macOS in parallel)
   - Automated releases with pre-built binaries via version tags
   - 90-day artifact retention for testing builds
   - Real-time build status badges on README
+
 - **📁 Plugin Structure Reorganization** (X-Plane SDK Standards):
   - **config.ini moved to 64/ folder** (WITH the binary, not parent folder)
   - **PX4 parameters organized in px4_airframes/ subdirectory**
   - Consistent structure across all build methods (CMake, Visual Studio, Make)
   - Standard X-Plane fat plugin format (SDK 2.0)
+
 - **🔧 Critical Build Fixes**:
   - Fixed Linux case-sensitive include errors
   - Fixed macOS missing headers and linker errors
   - Fixed Windows MSVC output path issues
   - Proper Eigen library submodule integration
+
 - **🍎 macOS Improvements**:
   - Fixed framework linking (using flat namespace with dynamic lookup)
   - Universal Binary support (Intel x86_64 + Apple Silicon ARM64)
   - Proper X-Plane plugin runtime symbol resolution
+
 - **📦 Build System Consistency**:
   - CMakeLists.txt updated to v3.0.0 with file organization
   - Visual Studio Debug/Release now produce identical structures
   - All platforms build successfully via GitHub Actions
+
+#### 🖥️ User Interface
+
+- **Connection Status HUD**: Professional on-screen feedback for SITL connection
+  - Real-time progress indicator with elapsed time (0-30 seconds)
+  - Visual states: WAITING (yellow), CONNECTED (green), TIMEOUT (red), ERROR (orange)
+  - Auto-fade success notification after 3 seconds
+  - Configurable via `show_connection_status_hud` in config.ini
 
 ### ⚠️ Migration from v2.x to v3.0.0
 
@@ -65,6 +109,19 @@ px4xplane/
 ```
 
 **To upgrade**: Remove old v2.x installation and download v3.0.0 from [Releases](https://github.com/alireza787b/px4xplane/releases/tag/v3.0.0). See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
+
+### 🚀 PX4 Official Integration Status
+
+**Coming Soon**: px4xplane is being prepared for official integration into the main PX4-Autopilot repository. Until the pull request is merged:
+
+- **Use the automated setup script** (recommended): Installs PX4 SITL with px4xplane support automatically
+  ```bash
+  cd ~ && curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash setup_px4_sitl.sh
+  ```
+- **Or use the forked PX4 repo**: [PX4-Autopilot-Me](https://github.com/alireza787b/PX4-Autopilot-Me) (branch: `px4xplane-sitl`)
+- **Full installation guides**: See [Usage Guide](#usage-guide) below for detailed instructions
+
+Once merged with official PX4, you'll be able to use the standard PX4-Autopilot repository directly.
 
 ---
 
