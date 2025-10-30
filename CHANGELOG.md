@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.1.0] - 2025-01-26
+
+### Added
+
+#### Professional 5-Tab UI System
+- **Complete UI overhaul**: Replaced old overflow-prone single window with professional tabbed interface
+- **5 organized tabs**:
+  - **CONNECTION**: Status, timestamps, frame rate, connection details
+  - **POSITION**: GPS coordinates, attitude (roll/pitch/yaw), angular velocities
+  - **SENSORS**: IMU data, airspeed, environmental sensors
+  - **CONTROLS**: Aircraft configuration, all 16 HIL actuator channels with live values
+  - **MIXING**: Airframe configuration with real-time HIL data visualization
+- **Per-tab scrolling**: Each tab scrolls independently - no more overflow
+- **High-DPI support**: Professional rendering on all displays
+- **Mouse wheel scrolling**: Smooth navigation through data
+
+#### Performance Improvements
+- **SITL rate increased to 400Hz**: HIL_SENSOR messages now sent at 400Hz
+  - Better sensor fusion and state estimation
+  - Reduced latency in control loop
+  - Matches high-performance SITL standards
+
+#### Documentation Overhaul
+- **docs/DEVELOPER.md**: New streamlined developer guide
+  - Quick reference workflow
+  - Concise versioning guide (MAJOR.MINOR.PATCH)
+  - CI/CD trigger reference
+  - Common tasks and best practices
+- **Consolidated documentation**: All docs moved to `docs/` folder
+- **Removed redundancy**: Eliminated duplicate documentation
+
+#### Configuration
+- **Cleaned parameter files**: All 5 airframe parameter files reorganized
+  - Removed obsolete parameters
+  - Added clear documentation comments
+  - Consistent formatting across all aircraft
+
+### Fixed
+
+#### Critical UI Bug
+- **"Show Data" menu button**: Fixed handler not responding to clicks
+  - Root cause: Incorrect `in_menu_ref` check
+  - Now correctly identifies main menu vs submenu items
+  - Added detailed debug logging
+
+#### UI Integration
+- **UIHandler not initialized**: Old drawing function was being used instead of new tabbed UI
+  - Integrated `UIHandler::initialize()` in plugin startup
+  - Changed to `UIHandler::drawMainWindow()`
+  - Added mouse handlers for tab interaction and scrolling
+  - Removed old drawing functions
+
+### Changed
+
+#### Menu Handler Improvements
+- Better error handling with detailed debug output
+- Clearer logic for menu item detection
+- Improved airframe selection validation
+
+### Technical Details
+
+#### Files Modified
+- `src/px4xplane.cpp`: Menu handler fix, UIHandler integration
+- `config/config.ini`: HIL_SENSOR rate 250Hz → 400Hz
+- `config/px4_params/*`: All 5 airframe files cleaned
+- `include/VersionInfo.h`: VERSION 3.1.0, BUILD 001
+- `CMakeLists.txt`: VERSION 3.1.0
+- `docs/DEVELOPER.md`: New streamlined guide
+- `README.md`: Updated workflow documentation link
+- Moved: `BUILD_SYSTEM.md` → `docs/BUILD_SYSTEM.md`
+- Removed: `VERSIONING.md`, `docs/GITHUB_ACTIONS.md`
+
+---
+
 ## [3.0.1] - 2025-01-26
 
 ### Added

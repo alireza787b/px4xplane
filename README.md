@@ -264,11 +264,11 @@ All platforms are automatically built and tested via GitHub Actions CI/CD on eve
 ### Development Workflow
 
 **For Contributors:**
-- Work on `develop` branch (no builds triggered, saves CI minutes)
-- Merge to `master` when ready to test builds
-- Create version tag (`v2.5.3`) to trigger automatic release
+- Work on `master` branch for regular development
+- Push to `master` triggers builds (artifacts kept 90 days)
+- Create version tag (`v3.1.0`) to trigger automatic release with binaries
 
-📖 **For complete GitHub Actions workflow details**, see **[GitHub Actions Guide](docs/GITHUB_ACTIONS.md)**.
+📖 **For complete developer workflow, versioning, and CI/CD**, see **[Developer Guide](docs/DEVELOPER.md)**.
 
 ---
 

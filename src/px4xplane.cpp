@@ -31,6 +31,7 @@
 #include "ConnectionStatusHUD.h"
 #include "VersionInfo.h"
 #include "UIConstants.h"
+#include "UIHandler.h"
 
 #ifndef XPLM300
 #error This is made to be compiled against the XPLM300 SDK
@@ -51,7 +52,9 @@ static int g_enabled = 0; // Used to toggle connection state
 
 
 
-void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon);
+// OLD UI FUNCTIONS - No longer used, replaced by UIHandler
+// void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon);
+
 void menu_handler(void* in_menu_ref, void* in_item_ref);
 int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void* inRefcon);
 void create_menu();
@@ -70,9 +73,14 @@ void debugLog(const char* message) {
 
 
 
+// ============================================================================
+// OLD UI DRAWING FUNCTIONS - DEPRECATED - Replaced by UIHandler system
+// Kept for reference only - these are no longer called
+// ============================================================================
+
+/*
 int drawHeader(int l, int t, float col_white[]) {
 	char header[512];
-	// Use centralized version info for consistent branding
 	snprintf(header, sizeof(header), "PX4-XPlane Interface %s", PX4XPlaneVersion::getFullVersionString());
 	XPLMDrawString(col_white, l + 10, t - 20, header, NULL, xplmFont_Proportional);
 	return l + 20;
@@ -80,29 +88,22 @@ int drawHeader(int l, int t, float col_white[]) {
 
 int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int columnWidth) {
 	char buf[512];
-	int droneConfigOffset = 20; // Adjust this offset as needed
+	int droneConfigOffset = 20;
 
-
-
-	// Get the formatted drone configuration string
 	std::string droneConfigStr = DataRefManager::GetFormattedDroneConfig();
-	// Split the string into two lines for display
 	std::istringstream iss(droneConfigStr);
 	std::string line;
 	while (std::getline(iss, line)) {
-		char lineBuffer[512]; // Ensure this buffer is large enough
+		char lineBuffer[512];
 		strncpy(lineBuffer, line.c_str(), sizeof(lineBuffer));
-		lineBuffer[sizeof(lineBuffer) - 1] = '\0'; // Ensure null termination
-
+		lineBuffer[sizeof(lineBuffer) - 1] = '\0';
 		XPLMDrawString(col_white, l + droneConfigOffset, t - lineOffset, lineBuffer, NULL, xplmFont_Proportional);
 		lineOffset += 20;
 	}
 
-	// Draw Connection Status with high-contrast color coding
 	const std::string& status = ConnectionManager::getStatus();
 	bool isConnected = ConnectionManager::isConnected();
 
-	// Use professional color indicators
 	float statusColor[3];
 	if (isConnected) {
 		memcpy(statusColor, UIConstants::Colors::CONNECTED, sizeof(statusColor));
@@ -114,12 +115,10 @@ int drawStatusAndConfig(int l, int t, float col_white[], int& lineOffset, int co
 	XPLMDrawString(statusColor, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
 	lineOffset += 20;
 
-	// Show detailed status message
 	snprintf(buf, sizeof(buf), "Details: %s", status.c_str());
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
 	lineOffset += 20;
 
-	// Draw SITL Frequency
 	snprintf(buf, sizeof(buf), "SITL Time Step: %.3f", DataRefManager::SIM_Timestep);
 	XPLMDrawString(col_white, l + 10, t - lineOffset, buf, NULL, xplmFont_Proportional);
 	lineOffset += 20;
@@ -132,6 +131,7 @@ void drawFooter(int l, int b, float col_white[]) {
 	snprintf(footer, sizeof(footer), "Copyright (c) Alireza Ghaderi - https://github.com/alireza787b/px4xplane");
 	XPLMDrawString(col_white, l + 10, b + 10, footer, NULL, xplmFont_Proportional);
 }
+*/
 
 
 PLUGIN_API void XPluginStop(void);
@@ -149,6 +149,7 @@ PLUGIN_API int XPluginStart(
 
 	// Initialize professional UI system
 	UIConstants::XPlaneColors::initialize();
+	UIHandler::initialize();
 
 	debugLog("Plugin starting with enhanced UI system...");
 	debugLog(("Version: " + std::string(PX4XPlaneVersion::getFullVersionString())).c_str());
@@ -158,13 +159,11 @@ PLUGIN_API int XPluginStart(
 	XPLMCreateWindow_t params;
 	params.structSize = sizeof(params);
 	params.visible = 0; // Window is initially invisible
-	params.drawWindowFunc = draw_px4xplane;
-	// Note on handlers:
-	// Note on handlers:
-	// Register real handlers here as needed
-	params.handleMouseClickFunc = NULL; // Example: mouse_handler;
+	params.drawWindowFunc = UIHandler::drawMainWindow;
+	// Register professional UI handlers
+	params.handleMouseClickFunc = UIHandler::handleMainWindowMouse;
 	params.handleRightClickFunc = NULL;
-	params.handleMouseWheelFunc = NULL;
+	params.handleMouseWheelFunc = UIHandler::handleMainWindowWheel;
 	params.handleKeyFunc = NULL;
 	params.handleCursorFunc = NULL;
 	params.refcon = NULL;
@@ -224,81 +223,13 @@ int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void
 	return 0;
 }
 
+/*
+// OLD DRAW FUNCTION - DEPRECATED - Replaced by UIHandler::drawMainWindow
 void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
-	int l, t, r, b;
-	XPLMGetWindowGeometry(in_window_id, &l, &t, &r, &b);
-	float col_white[] = { 1.0, 1.0, 1.0 };
-	int lineOffset = 20;
-	int columnWidth = 350; // Adjust as needed
-
-	// UX FIX (January 2025): Show connection progress prominently at top
-	static uint64_t waitStartTime_ms = 0;
-	static XPLMDataRef timeRef = XPLMFindDataRef("sim/time/total_running_time_sec");
-
-	if (ConnectionManager::isWaitingForConnection()) {
-		if (waitStartTime_ms == 0) {
-			waitStartTime_ms = (uint64_t)(XPLMGetDataf(timeRef) * 1000.0f);
-		}
-
-		float currentTime_ms = XPLMGetDataf(timeRef) * 1000.0f;
-		float elapsedSeconds = (currentTime_ms - waitStartTime_ms) / 1000.0f;
-
-		// Big yellow banner
-		float col_yellow[] = { 1.0f, 1.0f, 0.0f };
-		char banner[128];
-		snprintf(banner, sizeof(banner),
-		         "WAITING FOR PX4 CONNECTION... (%ds)",
-		         (int)elapsedSeconds);
-		XPLMDrawString(col_yellow, l + 10, t - 30, banner, NULL, xplmFont_Proportional);
-
-		// Simple text-based progress indicator (easier than OpenGL)
-		char progressBar[64];
-		int dots = ((int)elapsedSeconds) % 4;  // 0-3 dots animation
-		snprintf(progressBar, sizeof(progressBar),
-		         "Start PX4 SITL to connect%.*s", dots + 1, "...");
-		XPLMDrawString(col_white, l + 10, t - 50, progressBar, NULL, xplmFont_Proportional);
-
-		// Warning after 20s
-		if (elapsedSeconds > 20) {
-			float col_orange[] = { 1.0f, 0.5f, 0.0f };
-			XPLMDrawString(col_orange, l + 10, t - 70,
-			              "Taking longer than expected. Is PX4 running?",
-			              NULL, xplmFont_Proportional);
-		}
-
-		lineOffset += 80;  // Add space for status messages
-	} else if (ConnectionManager::isConnected()) {
-		// Green success banner
-		float col_green[] = { 0.0f, 1.0f, 0.0f };
-		XPLMDrawString(col_green, l + 10, t - 30,
-		              "CONNECTED TO PX4 SITL",
-		              NULL, xplmFont_Proportional);
-		waitStartTime_ms = 0;  // Reset
-		lineOffset += 40;
-	} else {
-		waitStartTime_ms = 0;  // Reset when disconnected
-	}
-
-	// Draw Header
-	lineOffset = drawHeader(l, t, col_white);
-
-	// Draw Status and Configuration
-	lineOffset = drawStatusAndConfig(l, t, col_white, lineOffset, columnWidth);
-
-	// Draw DataRefs
-	lineOffset = DataRefManager::drawDataRefs(in_window_id, l, t, col_white, lineOffset);
-
-	// Draw Actuator Controls
-	int rightColumnPosition = l + columnWidth;
-	lineOffset = 20;
-	lineOffset = DataRefManager::drawActuatorControls(in_window_id, rightColumnPosition, t, col_white, lineOffset);
-
-	// Draw Actual Throttle
-	lineOffset = DataRefManager::drawActualThrottle(in_window_id, rightColumnPosition, t, col_white, lineOffset + 20);
-
-	// Draw Footer
-	drawFooter(l, b, col_white);
+	// This function is no longer used - UIHandler provides professional tabbed interface
+	// Kept for reference only
 }
+*/
 
 // Function to refresh the airframes submenu to indicate the active airframe.
 void refreshAirframesMenu() {
@@ -315,29 +246,29 @@ void refreshAirframesMenu() {
 
 
 void menu_handler(void* in_menu_ref, void* in_item_ref) {
-	//TODO: Remember here there is a problem. handler cant find when we click on airframes. now I did a hack and put that in else when it is not part of main list menu. we should fix this later.
-	debugLog("Menu handler called");
+	char debugBuf[256];
+	snprintf(debugBuf, sizeof(debugBuf), "Menu handler called - menu_ref: %p, item_ref: %p", in_menu_ref, in_item_ref);
+	debugLog(debugBuf);
 
-	if (in_menu_ref == (void*)g_menu_id) {
-		if ((int)(intptr_t)in_item_ref == g_airframesMenuItemIndex) {
-			debugLog("Airframes submenu selected");
-			// The submenu itself was clicked; specific handling if needed
+	// Check if this is from the main menu or airframes submenu
+	// Note: in_menu_ref is NULL for main menu items, not NULL for submenu items
+	if (in_menu_ref == NULL) {
+		// Main menu item clicked
+		debugLog("Main menu item clicked");
+
+		// "Show Data" has item_ref (void*)0
+		if (in_item_ref == (void*)0) {
+			XPLMSetWindowIsVisible(g_window, 1);
+			debugLog("Show Data menu item selected - window should now be visible");
 		}
 		else {
-			// Handling other main menu items
-			if (in_item_ref == (void*)0) {
-				XPLMSetWindowIsVisible(g_window, 1);
-				debugLog("Show Data menu item selected");
-			}
-			else if (in_item_ref == (void*)1) {
-				toggleEnable();
-				debugLog("Toggle enable menu item selected");
-			}
+			snprintf(debugBuf, sizeof(debugBuf), "Unknown main menu item: %p", in_item_ref);
+			debugLog(debugBuf);
 		}
 	}
 	else {
-		// Handling airframes submenu interactions
-		debugLog("Entered airframe submenu handler");
+		// Submenu item clicked (airframes)
+		debugLog("Airframe submenu item clicked");
 
 		int index = (int)(intptr_t)in_item_ref;
 		std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
@@ -354,6 +285,10 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 
 			refreshAirframesMenu();
 			XPLMDebugString(("px4xplane: Configuration reloaded for: " + selectedAirframe + "\n").c_str());
+		}
+		else {
+			snprintf(debugBuf, sizeof(debugBuf), "Invalid airframe index: %d (total: %zu)", index, airframeNames.size());
+			debugLog(debugBuf);
 		}
 	}
 
@@ -772,7 +707,8 @@ PLUGIN_API void XPluginStop(void) {
 
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 
-	// Cleanup connection status HUD
+	// Cleanup UI systems
+	UIHandler::cleanup();
 	ConnectionStatusHUD::cleanup();
 
 #if IBM
