@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.1.1] - 2025-01-03
+
+### Fixed
+
+#### Critical Menu Handler Bug
+- **Airframe selection not working**: Fixed airframe menu not switching configurations
+  - Root cause: `refreshAirframesMenu()` was passing heap pointers instead of integer indices
+  - Memory leak: `new std::string()` allocations never freed
+  - Fixed: Changed to indexed for-loop passing `(void*)(intptr_t)i`
+  - Also clicking airframes was incorrectly triggering "Show Data" window
+
+#### Menu System Improvements
+- **Added defensive constants**: `MENU_REF_MAIN` and `MENU_REF_AIRFRAMES` for clarity
+- **Improved menu_handler()**: Explicit comparison instead of NULL check
+- **Better error handling**: Added bounds checking and debug logging
+
+#### PX4 SITL Reconnection Hang
+- **Lockstep scheduler stuck after aircraft change**: Fixed reconnection hanging at "setting initial absolute time"
+  - Root cause: Static timing variables (`lastSensorTime`, `lastGPSTime`, etc.) persisted across disconnect cycles
+  - Timestamp jumps: Old timestamps (e.g., 1655s) mixed with new session (e.g., 5ms) confused lockstep scheduler
+  - Solution: Added `g_needsTimingReset` flag to coordinate state cleanup
+  - Reset logic in: `sendHILSensor()`, `sendHILGPS()`, `sendHILStateQuaternion()`, `computeAcceleration()`
+  - Enhanced `MAVLinkManager::reset()` with comprehensive timing state cleanup
+
+### Technical Details
+
+#### Files Modified
+- `src/px4xplane.cpp`: Menu handler fixes, defensive constants
+- `src/MAVLinkManager.cpp`: Timing state reset logic, comprehensive documentation
+- `include/VersionInfo.h`: VERSION 3.1.1, BUILD 002
+
+---
+
 ## [3.1.0] - 2025-01-26
 
 ### Added

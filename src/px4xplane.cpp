@@ -42,6 +42,11 @@ static XPLMMenuID g_menu_id;
 static XPLMMenuID airframesMenu; // Global variable for the airframes submenu
 static int g_airframesMenuItemIndex; // Global variable to store the index of the airframes submenu
 
+// Menu reference constants for menu_handler callback
+// Using distinct non-zero values to avoid confusion with NULL
+#define MENU_REF_MAIN ((void*)100)
+#define MENU_REF_AIRFRAMES ((void*)200)
+
 
 // Global variable to hold our command reference
 static XPLMCommandRef toggleEnableCmd;
@@ -238,9 +243,16 @@ void refreshAirframesMenu() {
 
 	// Repopulate the submenu with updated airframe names and active status.
 	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
-	for (const std::string& name : airframeNames) {
-		// Append each airframe to the submenu and mark the active one.
-		XPLMAppendMenuItem(airframesMenu, (name + (name == ConfigManager::getActiveAirframeName() ? " *" : "")).c_str(), (void*)new std::string(name), 1);
+	std::string activeAirframe = ConfigManager::getActiveAirframeName();
+
+	for (size_t i = 0; i < airframeNames.size(); ++i) {
+		const std::string& name = airframeNames[i];
+		std::string menuItemName = name;
+		if (name == activeAirframe) {
+			menuItemName += " *";
+		}
+		// Pass integer index as item refcon (not a pointer!)
+		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
 	}
 }
 
@@ -250,9 +262,8 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 	snprintf(debugBuf, sizeof(debugBuf), "Menu handler called - menu_ref: %p, item_ref: %p", in_menu_ref, in_item_ref);
 	debugLog(debugBuf);
 
-	// Check if this is from the main menu or airframes submenu
-	// Note: in_menu_ref is NULL for main menu items, not NULL for submenu items
-	if (in_menu_ref == NULL) {
+	// Check which menu triggered this callback using explicit menu ref comparison
+	if (in_menu_ref == MENU_REF_MAIN) {
 		// Main menu item clicked
 		debugLog("Main menu item clicked");
 
@@ -266,14 +277,14 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			debugLog(debugBuf);
 		}
 	}
-	else {
-		// Submenu item clicked (airframes)
+	else if (in_menu_ref == MENU_REF_AIRFRAMES) {
+		// Airframe submenu item clicked
 		debugLog("Airframe submenu item clicked");
 
 		int index = (int)(intptr_t)in_item_ref;
 		std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
 
-		if (index >= 0 && index < airframeNames.size()) {
+		if (index >= 0 && index < (int)airframeNames.size()) {
 			const std::string& selectedAirframe = airframeNames[index];
 			debugLog(("Airframe selected: " + selectedAirframe).c_str());
 
@@ -287,9 +298,14 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			XPLMDebugString(("px4xplane: Configuration reloaded for: " + selectedAirframe + "\n").c_str());
 		}
 		else {
-			snprintf(debugBuf, sizeof(debugBuf), "Invalid airframe index: %d (total: %zu)", index, airframeNames.size());
+			snprintf(debugBuf, sizeof(debugBuf), "Invalid airframe index: %d (total: %d)", index, (int)airframeNames.size());
 			debugLog(debugBuf);
 		}
+	}
+	else {
+		// Unknown menu ref - should never happen
+		snprintf(debugBuf, sizeof(debugBuf), "Unknown menu ref: %p", in_menu_ref);
+		debugLog(debugBuf);
 	}
 
 }
@@ -371,11 +387,12 @@ void create_menu() {
 	debugLog("Creating plugin menu");
 
 	int menu_container_idx = XPLMAppendMenuItem(XPLMFindPluginsMenu(), "PX4 X-Plane", NULL, 1);
-	g_menu_id = XPLMCreateMenu("px4xplane", XPLMFindPluginsMenu(), menu_container_idx, menu_handler, NULL);
+	g_menu_id = XPLMCreateMenu("px4xplane", XPLMFindPluginsMenu(), menu_container_idx, menu_handler, MENU_REF_MAIN);
 
 	// Save the index of the airframes submenu in the main menu
 	g_airframesMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Airframes", NULL, 1);
-	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, NULL);
+	// Create airframes submenu with distinct menu ref constant
+	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, MENU_REF_AIRFRAMES);
 
 
 	debugLog("Airframes submenu created");
@@ -410,7 +427,8 @@ void updateMenuItems() {
 	// Recreate the main menu items
 	// Important: Update the airframesMenuItemIndex to reflect the new index after clearing
 	g_airframesMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Airframes", NULL, 1);
-	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, NULL);
+	// Recreate airframes submenu with distinct menu ref constant
+	airframesMenu = XPLMCreateMenu("Airframes", g_menu_id, g_airframesMenuItemIndex, menu_handler, MENU_REF_AIRFRAMES);
 
 	std::vector<std::string> airframeNames = ConfigManager::getAirframeLists();
 	std::string activeAirframe = ConfigManager::getActiveAirframeName();

@@ -14,6 +14,11 @@
 // Define and initialize the static member
 MAVLinkManager::HILActuatorControlsData MAVLinkManager::hilActuatorControlsData = {};
 
+// CRITICAL BUG FIX (January 2025): Timing state reset flag
+// Signals all sensor functions to reset their function-scope static timing variables
+// This prevents timestamp jumps and state corruption on disconnect/reconnect cycles
+static bool g_needsTimingReset = false;
+
 
 
 // Declare constants at the class or namespace level
@@ -23,8 +28,8 @@ constexpr float GRAVITY = 9.81;
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
-std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.00004f);
-std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.000004f); // Larger, slower noise
+std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.00003f);
+std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.000003f); // Larger, slower noise
 std::normal_distribution<float> vibrationNoise(0.0f, 0.01f); // Adjust the standard deviation as needed
 
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.000001f);
@@ -95,6 +100,14 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	static Eigen::Vector3f accel_bias_drift(0.0f, 0.0f, 0.0f);
 	static uint64_t lastBiasUpdateTime = 0;
 	static const uint64_t BIAS_UPDATE_INTERVAL_US = 100000;  // Update every 100ms (10 Hz)
+
+	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
+	if (g_needsTimingReset) {
+		lastAccelUpdateTime = 0;
+		cachedAccel = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
+		accel_bias_drift = Eigen::Vector3f(0.0f, 0.0f, 0.0f);
+		lastBiasUpdateTime = 0;
+	}
 
 	// Get the current time in microseconds.
 	uint64_t currentTime = TimeManager::getCurrentTimeUsec();
@@ -289,6 +302,18 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	static int64_t sensor_timestamp_offset[2] = {0, 0};  // Support up to 2 sensors
 	static bool offset_initialized = false;
 
+	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
+	// This prevents timestamp jumps that cause PX4 lockstep_scheduler to hang
+	if (g_needsTimingReset) {
+		lastSensorTime = 0;
+		sensorCount = 0;
+		sensor_timestamp_offset[0] = 0;
+		sensor_timestamp_offset[1] = 0;
+		offset_initialized = false;
+		// Clear flag after first sensor function resets (prevents re-initialization every frame)
+		g_needsTimingReset = false;
+	}
+
 	// Initialize persistent timestamp offsets once at startup
 	if (!offset_initialized) {
 		sensor_timestamp_offset[0] = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
@@ -428,6 +453,12 @@ void MAVLinkManager::sendHILGPS() {
 	static uint64_t lastGPSTime = 0;
 	static int gpsCount = 0;
 
+	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
+	if (g_needsTimingReset) {
+		lastGPSTime = 0;
+		gpsCount = 0;
+	}
+
 	mavlink_message_t msg;
 	mavlink_hil_gps_t hil_gps;
 
@@ -532,6 +563,11 @@ void MAVLinkManager::sendHILStateQuaternion() {
 	if (!ConnectionManager::isConnected()) return;
 
 	static int stateQuatCount = 0;
+
+	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
+	if (g_needsTimingReset) {
+		stateQuatCount = 0;
+	}
 
 	mavlink_message_t msg;
 	mavlink_hil_state_quaternion_t hil_state;
@@ -811,16 +847,29 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
  * → Combined with actuator dataref values not being zeroed
  * → Caused "ghost commands" making aircraft fly on reconnect
  *
- * SOLUTION: Zero all static state when disconnecting
- * → Clears actuator command history
- * → Next connection starts with clean slate
- * → No ghost commands from previous sessions
+ * CRITICAL BUG FIX #2 (January 2025): Reset timing state to prevent reconnection hangs
+ *
+ * PROBLEM: Function-scope static timing variables persisted across disconnect/reconnect
+ * → lastSensorTime, lastGPSTime, etc. retained old timestamps
+ * → On reconnect, timestamp monotonicity check failed
+ * → PX4 lockstep_scheduler received huge timestamp jumps (e.g., 5ms → 1655s)
+ * → SITL hung at "setting initial absolute time" message
+ *
+ * SOLUTION: Set g_needsTimingReset flag to signal all sensor functions
+ * → Each function resets its own static timing variables on next call
+ * → Timestamps start fresh from current X-Plane time
+ * → PX4 lockstep_scheduler receives clean, monotonic timestamps
+ * → Reconnection works reliably after aircraft changes
  */
 void MAVLinkManager::reset() {
-	// Zero actuator controls data (most critical)
+	// Zero actuator controls data (most critical for control commands)
 	hilActuatorControlsData = {};
 
-	XPLMDebugString("px4xplane: MAVLinkManager state reset\n");
+	// CRITICAL: Set flag to reset all function-scope timing state
+	// This prevents timestamp jumps that cause PX4 lockstep_scheduler to hang
+	g_needsTimingReset = true;
+
+	XPLMDebugString("px4xplane: MAVLinkManager state reset (actuators + timing state)\n");
 }
 
 
@@ -1102,7 +1151,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	//   - Each sample is statistically independent
 	//   - 3-sigma rate returns to ~0.27%
 	//   - Height estimate remains stable
-	std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma (matches EKF2_BARO_NOISE)
+	std::normal_distribution<float> distribution(0.0f, 0.002f);  // 2mm sigma (matches EKF2_BARO_NOISE)
 	float altitudeNoise_m = distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
