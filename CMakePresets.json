@@ -1,0 +1,47 @@
+{
+  "version": 3,
+  "configurePresets": [
+    {
+      "name": "x64-Release",
+      "displayName": "x64 Release (Ninja)",
+      "description": "Configure for x64 Release using Ninja (single-config).",
+      "generator": "Ninja",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${hostSystemName}-x64-Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    },
+    {
+      "name": "x64-Debug",
+      "displayName": "x64 Debug (Ninja)",
+      "description": "Configure for x64 Debug using Ninja (single-config).",
+      "generator": "Ninja",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${hostSystemName}-x64-Debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "build-x64-Release",
+      "displayName": "Build x64 Release",
+      "configurePreset": "x64-Release",
+      "configuration": "Release",
+      "jobs": 0
+    },
+    {
+      "name": "build-x64-Debug",
+      "displayName": "Build x64 Debug",
+      "configurePreset": "x64-Debug",
+      "configuration": "Debug",
+      "jobs": 0
+    }
+  ]
+}
