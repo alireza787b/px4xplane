@@ -60,6 +60,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 #==============================================================================
 
 set(SOURCES
+    src/AccelCalibration.cpp
     src/ConfigManager.cpp
     src/configReader.cpp
     src/ConnectionManager.cpp
@@ -73,6 +74,7 @@ set(SOURCES
 )
 
 set(HEADERS
+    include/AccelCalibration.h
     include/ConfigManager.h
     include/configReader.h
     include/ConnectionManager.h
@@ -218,8 +220,9 @@ elseif(UNIX)
     )
 
     # Linux-specific linker flags
+    # Note: -Wl,--allow-shlib-undefined allows undefined symbols (resolved by X-Plane at runtime)
     set_target_properties(${PROJECT_NAME} PROPERTIES
-        LINK_FLAGS "-rdynamic -nodefaultlibs -undefined_warning"
+        LINK_FLAGS "-rdynamic -nodefaultlibs -Wl,--allow-shlib-undefined"
     )
 endif()
 

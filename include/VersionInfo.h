@@ -22,7 +22,7 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.2.0";
+    constexpr const char* VERSION = "3.2.1";
 
     /** Version phase description */
     constexpr const char* PHASE = "Stable";
