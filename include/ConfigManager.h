@@ -98,7 +98,12 @@ public:
 
     static bool vibration_noise_enabled;
     static bool rotary_vibration_enabled;
-    
+
+    // Accelerometer calibration configuration
+    static bool accel_auto_calibrate;    // Enable runtime gravity calibration
+    static float accel_offset_x;         // Manual X-axis offset (m/s^2)
+    static float accel_offset_y;         // Manual Y-axis offset (m/s^2)
+    static float accel_offset_z;         // Manual Z-axis offset (m/s^2)
 
     static int MEDIAN_FILTER_WINDOW_SIZE;
 
@@ -106,7 +111,9 @@ public:
     static bool debug_verbose_logging;
     static bool debug_log_sensor_timing;
     static bool debug_log_sensor_values;
-    static bool debug_log_ekf_innovations;  // NEW: Log EKF innovation data for diagnostics
+    static bool debug_log_ekf_innovations;  // Log EKF innovation data for diagnostics
+    static bool debug_log_accel_pipeline;   // Log accelerometer values at each processing stage
+    static bool debug_accel_bypass_calibration;  // Bypass accelerometer calibration (for debugging)
 
     // UX configuration
     static bool show_connection_status_hud;  // NEW: Show HUD connection status overlay

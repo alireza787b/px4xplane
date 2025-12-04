@@ -14,6 +14,7 @@
 #include <ConfigManager.h>
 #define M_PI 3.14
 #include <chrono>
+#include <ctime>
 #include <FilterUtils.h>
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
@@ -335,8 +336,10 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(const GeodeticPositi
 	// Convert geodetic coordinates to ECEF (Earth-Centered, Earth-Fixed)
 	geomag::Vector ecefPosition = geomag::geodetic2ecef(position.latitude, position.longitude, position.altitude);
 
-	// Calculate the magnetic field using the World Magnetic Model
-	geomag::Vector magField = geomag::GeoMag(2025.8, ecefPosition, geomag::WMM2020);
+	// Calculate the magnetic field using the World Magnetic Model (WMM2025)
+	// Dynamic decimal year ensures correct magnetic declination for current date
+	float decimalYear = calculateDecimalYear();
+	geomag::Vector magField = geomag::GeoMag(decimalYear, ecefPosition, geomag::WMM2025);
 	geomag::Elements nedElements = geomag::magField2Elements(magField, position.latitude, position.longitude);
 
 	// Convert the magnetic field to NED (North-East-Down) coordinates and scale it
@@ -352,6 +355,29 @@ Eigen::Vector3f DataRefManager::updateEarthMagneticFieldNED(const GeodeticPositi
 
 
 	return earthMagneticFieldNED;
+}
+
+/**
+ * @brief Calculate decimal year from system time for WMM calculation.
+ *
+ * WMM (World Magnetic Model) uses decimal year to interpolate magnetic field
+ * between epoch and secular variation. Formula: year + (dayOfYear / daysInYear)
+ * Example: July 15, 2025 = 2025 + (196/365) = 2025.537
+ *
+ * @return Current decimal year (e.g., 2025.92 for December 2025)
+ */
+float DataRefManager::calculateDecimalYear() {
+	auto now = std::chrono::system_clock::now();
+	std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+	std::tm* now_tm = std::gmtime(&now_time);
+
+	int year = now_tm->tm_year + 1900;
+	int dayOfYear = now_tm->tm_yday + 1;  // tm_yday is 0-based
+
+	// Days in year (account for leap years)
+	int daysInYear = ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 366 : 365;
+
+	return static_cast<float>(year) + static_cast<float>(dayOfYear) / static_cast<float>(daysInYear);
 }
 
 /**

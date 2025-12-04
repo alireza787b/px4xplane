@@ -7,6 +7,7 @@
 #include <ConfigManager.h>
 #include "FilterUtils.h"
 #include "TimeManager.h"  // Include the TimeManager class
+#include "AccelCalibration.h"  // Runtime accelerometer gravity calibration
 #include <cmath>
 
 
@@ -30,9 +31,15 @@ std::random_device MAVLinkManager::rd;
 std::mt19937 MAVLinkManager::gen(MAVLinkManager::rd());
 std::normal_distribution<float> MAVLinkManager::highFreqNoise(0.0f, 0.00003f);
 std::normal_distribution<float> MAVLinkManager::lowFreqNoise(0.0f, 0.000003f); // Larger, slower noise
-std::normal_distribution<float> vibrationNoise(0.0f, 0.01f); // Adjust the standard deviation as needed
+// Accelerometer vibration noise: σ = 0.1 m/s² (matched to PX4's SIH reference simulator)
+// Previous value (0.01 m/s²) was too low - caused EKF2 to over-trust accelerometer
+// and interpret small X-Plane offsets as huge bias (~1.9 m/s²), blocking arming
+// SIH uses 0.1 m/s² (disarmed) and 0.5-1.7 m/s² (armed) - we use 0.1 for now
+std::normal_distribution<float> vibrationNoise(0.0f, 0.1f);
 
-std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.000001f);
+// Magnetometer noise: σ = 0.0002 Gauss (200 nanoTesla) - realistic for MEMS magnetometers
+// Previous value 0.000001 Gauss (1 nT) was unrealistically small, causing EKF2 to over-trust mag
+std::normal_distribution<float> MAVLinkManager::noiseDistribution_mag(0.0f, 0.0002f);
 
 // Phase 1 Fix: Gyroscope noise model (BMI088/ICM-20689 MEMS gyro characteristics)
 // Gaussian noise: σ = 0.01 rad/s (0.57°/s) - matches real IMU datasheets
@@ -147,21 +154,65 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
 	float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 
+	// Pipeline Stage 1 Logging: Raw extraction (after sign conversion)
+	static int pipelineLogCounter1 = 0;
+	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter1 % 500 == 0)) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [ACCEL_S1_RAW] X=%.4f Y=%.4f Z=%.4f m/s² (after -1 factor)\n",
+			raw_xacc, raw_yacc, raw_zacc);
+		XPLMDebugString(buf);
+	}
+
+	//----------------------------------------------------------------------
+	// 1.5. Apply Accelerometer Calibration
+	// Fixes "High Accelerometer Bias" error caused by X-Plane aircraft models
+	// reporting g_nrml != 1.0 when stationary (especially VTOLs like Alia250).
+	// Auto-calibrates on startup when stationary, then applies offset correction.
+	//----------------------------------------------------------------------
+	Eigen::Vector3f raw_accel(raw_xacc, raw_yacc, raw_zacc);
+	Eigen::Vector3f calibrated_accel = AccelCalibration::applyCalibration(raw_accel);
+	raw_xacc = calibrated_accel.x();
+	raw_yacc = calibrated_accel.y();
+	raw_zacc = calibrated_accel.z();
+
+	// Pipeline Stage 2 Logging: After calibration
+	static int pipelineLogCounter2 = 0;
+	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter2 % 500 == 0)) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [ACCEL_S2_CAL] X=%.4f Y=%.4f Z=%.4f m/s² | ScaleFactor=%.6f | Calibrated=%s\n",
+			raw_xacc, raw_yacc, raw_zacc,
+			AccelCalibration::getScaleFactor(),
+			AccelCalibration::isCalibrated() ? "YES" : "NO");
+		XPLMDebugString(buf);
+	}
+
 	//----------------------------------------------------------------------
 	// 2. Optionally Add Vibration Effects
 	// Check configuration flags for vibration noise and rotary vibration, and add
 	// the corresponding noise if enabled.
+	//
+	// IMPORTANT: Only apply vibration when aircraft is moving (groundspeed > 0.5 m/s)
+	// Stationary aircraft don't vibrate - adding noise on ground causes PX4's EKF2
+	// to incorrectly detect "High Accelerometer Bias" because it sees random
+	// fluctuations in what should be constant gravity measurement.
 	//----------------------------------------------------------------------
 	bool enableVibrationNoise = ConfigManager::vibration_noise_enabled;
 	bool enableRotaryVibration = ConfigManager::rotary_vibration_enabled;
 
-	if (enableVibrationNoise) {
+	// Ground-aware vibration: Only apply when aircraft is moving
+	// This fixes the intermittent "High Accelerometer Bias" preflight error
+	float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
+	bool isMoving = groundspeed > 0.5f;  // 0.5 m/s threshold for "stationary"
+
+	if (enableVibrationNoise && isMoving) {
 		raw_xacc += vibrationNoise(gen);
 		raw_yacc += vibrationNoise(gen);
 		raw_zacc += vibrationNoise(gen);
 	}
 
-	if (enableRotaryVibration) {
+	if (enableRotaryVibration && isMoving) {
 		constexpr float vib_frequency = 50.0f;   // Frequency in Hz
 		constexpr float vib_amplitude = 0.05f;     // Amplitude in m/s^2
 		constexpr float noise_amplitude = 0.01f;   // Additional noise amplitude in m/s^2
@@ -188,6 +239,16 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	//----------------------------------------------------------------------
 	Eigen::Vector3f body_accel(raw_xacc, raw_yacc, raw_zacc);
 
+	// Pipeline Stage 3 Logging: After vibration noise
+	static int pipelineLogCounter3 = 0;
+	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter3 % 500 == 0)) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [ACCEL_S3_VIB] X=%.4f Y=%.4f Z=%.4f m/s² (after vibration noise)\n",
+			body_accel.x(), body_accel.y(), body_accel.z());
+		XPLMDebugString(buf);
+	}
+
 	//----------------------------------------------------------------------
 	// 3.5. Phase 2 Fix: Add slowly-varying bias drift
 	// This simulates realistic MEMS accelerometer bias instability
@@ -196,6 +257,17 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	body_accel.x() += accel_bias_drift.x();
 	body_accel.y() += accel_bias_drift.y();
 	body_accel.z() += accel_bias_drift.z();
+
+	// Pipeline Stage 4 Logging: After bias drift
+	static int pipelineLogCounter4 = 0;
+	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter4 % 500 == 0)) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [ACCEL_S4_BIAS] X=%.4f Y=%.4f Z=%.4f m/s² | bias[%.5f,%.5f,%.5f]\n",
+			body_accel.x(), body_accel.y(), body_accel.z(),
+			accel_bias_drift.x(), accel_bias_drift.y(), accel_bias_drift.z());
+		XPLMDebugString(buf);
+	}
 
 	//----------------------------------------------------------------------
 	// 4. Map the Body frame directly to PX4's FRD frame (assuming alignment).
@@ -223,6 +295,16 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 		DataRefManager::median_filter_window_zacc);
 	Eigen::Vector3f filtered_accel(filtered_x, filtered_y, filtered_z);
 
+	// Pipeline Stage 5 Logging: Final filtered output (what gets sent to PX4)
+	static int pipelineLogCounter5 = 0;
+	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter5 % 500 == 0)) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [ACCEL_S5_FINAL] X=%.4f Y=%.4f Z=%.4f m/s² -> sent to PX4\n",
+			filtered_accel.x(), filtered_accel.y(), filtered_accel.z());
+		XPLMDebugString(buf);
+	}
+
 	// 6. Update cache and timestamp.
 	cachedAccel = filtered_accel;
 	lastAccelUpdateTime = currentTime;
@@ -236,7 +318,9 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 
 		// Only log if stationary (can validate gravity) OR every 10,000 samples
 		bool stationary = (groundspeed < 1.0f);
-		bool wrongSign = (filtered_accel.z() < 0.0f && stationary);  // Gravity should be positive!
+		// FIX: In PX4 FRD frame, Z should be NEGATIVE when stationary (gravity reaction points up = -Z)
+		// Positive Z when stationary would indicate wrong sign convention
+		bool wrongSign = (filtered_accel.z() > 0.0f && stationary);  // PX4 FRD: Z should be negative!
 
 		if (stationary || wrongSign || (accelSignLogCount % 10000 == 0)) {
 			char buf[512];
@@ -245,7 +329,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 				"px4xplane: [ACCEL_%s] ACC[%.2f, %.2f, %.2f] m/s², GS=%.1f m/s, bias[%.3f, %.3f, %.3f] %s\n",
 				status, filtered_accel.x(), filtered_accel.y(), filtered_accel.z(), groundspeed,
 				accel_bias_drift.x(), accel_bias_drift.y(), accel_bias_drift.z(),
-				wrongSign ? "WRONG SIGN!" : (stationary ? "(gravity OK)" : ""));
+				wrongSign ? "WRONG SIGN! (Z should be negative)" : (stationary ? "(gravity OK, Z negative)" : ""));
 			XPLMDebugString(buf);
 		}
 	}
@@ -869,7 +953,13 @@ void MAVLinkManager::reset() {
 	// This prevents timestamp jumps that cause PX4 lockstep_scheduler to hang
 	g_needsTimingReset = true;
 
-	XPLMDebugString("px4xplane: MAVLinkManager state reset (actuators + timing state)\n");
+	// NOTE: Do NOT reset AccelCalibration here!
+	// Calibration should persist across reconnections to avoid recalibrating
+	// with transient post-landing ground states (gear bouncing, aircraft settling).
+	// Resetting caused "High Accelerometer Bias" errors after landing.
+	// Calibration is only reset on true plugin startup (XPluginStart).
+
+	XPLMDebugString("px4xplane: MAVLinkManager state reset (calibration preserved)\n");
 }
 
 
@@ -1151,7 +1241,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	//   - Each sample is statistically independent
 	//   - 3-sigma rate returns to ~0.27%
 	//   - Height estimate remains stable
-	std::normal_distribution<float> distribution(0.0f, 0.002f);  // 2mm sigma (matches EKF2_BARO_NOISE)
+	std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma - matches EKF2_BARO_NOISE=0.003
 	float altitudeNoise_m = distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
@@ -1182,8 +1272,8 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	noiseSampleCount[sensor_idx]++;
 
 	// Track 3-sigma events (should be <0.3% for true Gaussian)
-	// For σ=1mm: 3σ = 3mm threshold
-	if (std::abs(altitudeNoise_m) > 0.003f) {
+	// For σ=3mm: 3σ = 9mm threshold
+	if (std::abs(altitudeNoise_m) > 0.009f) {
 		spike3SigmaCount[sensor_idx]++;
 	}
 
@@ -1198,7 +1288,8 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 		float spike3SigmaRate = (100.0f * spike3SigmaCount[sensor_idx]) / noiseSampleCount[sensor_idx];
 
 		// Only log if noise is abnormal OR every 10,000 samples (status check)
-		bool abnormal = (spike3SigmaRate > 1.0f) || (noiseStdDev > 0.0015f) || (noiseStdDev < 0.0005f);
+		// Expected: noiseStdDev ~= 0.003m (3mm), allow ±50% tolerance
+		bool abnormal = (spike3SigmaRate > 1.0f) || (noiseStdDev > 0.0045f) || (noiseStdDev < 0.0015f);
 		if (abnormal || (baroLogCount[sensor_idx] % 10000 == 0)) {
 			char buf[400];
 			const char* status = abnormal ? "WARNING" : "STATUS";
@@ -1303,10 +1394,10 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	Eigen::Quaternionf attitude(q[0], q[1], q[2], q[3]); // w, x, y, z
 
 	// Rotate magnetic field from NED to body frame using full attitude
-	// Method: R_body_ned = quaternion.toRotationMatrix().transpose()
-	// This properly handles roll, pitch, and yaw rotations
-	Eigen::Matrix3f R_body_ned = attitude.toRotationMatrix().transpose();
-	Eigen::Vector3f bodyMagneticField = R_body_ned * mag_NED;
+	// X-Plane quaternion represents body-to-local rotation (not NED-to-body as commonly assumed)
+	// toRotationMatrix().transpose() correctly inverts this to give NED-to-body transformation
+	Eigen::Matrix3f R_ned_to_body = attitude.toRotationMatrix().transpose();
+	Eigen::Vector3f bodyMagneticField = R_ned_to_body * mag_NED;
 
 	// CRITICAL: Do NOT override with NED frame - PX4 needs body frame magnetometer!
 	// bodyMagneticField = DataRefManager::earthMagneticFieldNED;  // WRONG - This breaks heading!
@@ -1578,9 +1669,11 @@ void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
 	uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
 	hil_gps.cog = (cog == 36000) ? static_cast<uint16_t>(1) : cog;
 
-	// YAW: Direction the vehicle is pointing (magnetic heading)
-	// Use mag_psi which gives magnetic heading directly
-	uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/mag_psi") * 100.0f);
+	// YAW: "Yaw of vehicle relative to Earth's North" (MAVLink HIL_GPS spec)
+	// Earth's North = TRUE NORTH (geographic), NOT magnetic north
+	// Use psi (true heading) - PX4 handles magnetic declination internally via WMM
+	// Previously used mag_psi which caused 3-4° heading error at locations with declination
+	uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/psi") * 100.0f);
 	hil_gps.yaw = (yaw == 0) ? static_cast<uint16_t>(35999) : yaw;
 
 	// Debug logging for heading data

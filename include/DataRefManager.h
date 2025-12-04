@@ -74,6 +74,7 @@ public:
         std::deque<float>& median_filter_window);
     static float calculatePressureAltitude(float pressure_hPa);
     static float calculatePressureFromAltitude(float altitude_m);
+    static float calculateDecimalYear();  // WMM2025 decimal year from system time
 
 
     static std::string GetFormattedDroneConfig();

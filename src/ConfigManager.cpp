@@ -116,11 +116,19 @@ bool ConfigManager::USE_XPLANE_TIME = true;
 bool ConfigManager::vibration_noise_enabled = true;
 bool ConfigManager::rotary_vibration_enabled = false;
 
+// Accelerometer calibration defaults
+bool ConfigManager::accel_auto_calibrate = true;
+float ConfigManager::accel_offset_x = 0.0f;
+float ConfigManager::accel_offset_y = 0.0f;
+float ConfigManager::accel_offset_z = 0.0f;
+
 // Debug logging flags
 bool ConfigManager::debug_verbose_logging = false;
 bool ConfigManager::debug_log_sensor_timing = false;
 bool ConfigManager::debug_log_sensor_values = false;
 bool ConfigManager::debug_log_ekf_innovations = false;
+bool ConfigManager::debug_log_accel_pipeline = false;
+bool ConfigManager::debug_accel_bypass_calibration = false;
 
 // UX configuration flags
 bool ConfigManager::show_connection_status_hud = true;  // Default: enabled
@@ -172,9 +180,27 @@ void ConfigManager::loadConfiguration() {
     debug_log_sensor_timing = ini.GetBoolValue("", "debug_log_sensor_timing", false);
     debug_log_sensor_values = ini.GetBoolValue("", "debug_log_sensor_values", false);
     debug_log_ekf_innovations = ini.GetBoolValue("", "debug_log_ekf_innovations", false);
+    debug_log_accel_pipeline = ini.GetBoolValue("", "debug_log_accel_pipeline", false);
+    debug_accel_bypass_calibration = ini.GetBoolValue("", "debug_accel_bypass_calibration", false);
 
     // Load UX configuration
     show_connection_status_hud = ini.GetBoolValue("", "show_connection_status_hud", true);  // Default: enabled
+
+    // Load accelerometer calibration configuration
+    accel_auto_calibrate = ini.GetBoolValue("", "accel_auto_calibrate", true);
+    accel_offset_x = static_cast<float>(ini.GetDoubleValue("", "accel_offset_x", 0.0));
+    accel_offset_y = static_cast<float>(ini.GetDoubleValue("", "accel_offset_y", 0.0));
+    accel_offset_z = static_cast<float>(ini.GetDoubleValue("", "accel_offset_z", 0.0));
+
+    if (accel_auto_calibrate) {
+        XPLMDebugString("px4xplane: Accelerometer auto-calibration ENABLED\n");
+    } else {
+        char buf[256];
+        snprintf(buf, sizeof(buf),
+            "px4xplane: Accelerometer manual offset: [%.3f, %.3f, %.3f] m/s^2\n",
+            accel_offset_x, accel_offset_y, accel_offset_z);
+        XPLMDebugString(buf);
+    }
 
     // Load MAVLink message rates
     mavlink_sensor_rate_hz = (int)ini.GetLongValue("", "mavlink_sensor_rate_hz", 200);
@@ -205,6 +231,8 @@ void ConfigManager::loadConfiguration() {
         if (debug_log_sensor_timing) XPLMDebugString("px4xplane: [DEBUG] Sensor timing logging ENABLED\n");
         if (debug_log_sensor_values) XPLMDebugString("px4xplane: [DEBUG] Sensor values logging ENABLED\n");
         if (debug_log_ekf_innovations) XPLMDebugString("px4xplane: [DEBUG] EKF innovation logging ENABLED\n");
+        if (debug_log_accel_pipeline) XPLMDebugString("px4xplane: [DEBUG] Accel pipeline logging ENABLED\n");
+        if (debug_accel_bypass_calibration) XPLMDebugString("px4xplane: [DEBUG] Accel calibration BYPASSED\n");
     }
 
     if (show_connection_status_hud) {
