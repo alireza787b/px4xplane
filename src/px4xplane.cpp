@@ -32,7 +32,6 @@
 #include "VersionInfo.h"
 #include "UIConstants.h"
 #include "UIHandler.h"
-// SensorPublisher.h removed - feature disabled in v3.3.1
 
 #ifndef XPLM300
 #error This is made to be compiled against the XPLM300 SDK
@@ -53,13 +52,6 @@ static int g_airframesMenuItemIndex; // Global variable to store the index of th
 static XPLMCommandRef toggleEnableCmd;
 
 static int g_enabled = 0; // Used to toggle connection state
-
-// Phase 3: FPS-independent sensor publisher (DISABLED in v3.3.1)
-// Was causing "High Accelerometer Bias" regression - reverted to direct sendHILSensor()
-// static std::unique_ptr<SensorPublisher> g_sensorPublisher;
-
-
-
 
 
 // OLD UI FUNCTIONS - No longer used, replaced by UIHandler
@@ -218,14 +210,6 @@ PLUGIN_API int XPluginStart(
 	// Initialize MAVLink message periods from config
 	initializeMessagePeriods();
 
-	// Phase 3: FPS-independent sensor publisher (DISABLED in v3.3.1)
-	// Was causing "High Accelerometer Bias" regression due to Kalman interpolation
-	// creating artificially smooth data that PX4 EKF2 doesn't expect.
-	// Reverted to direct sendHILSensor() in flight loop.
-	// g_sensorPublisher = std::make_unique<SensorPublisher>(ConfigManager::mavlink_sensor_rate_hz);
-	// debugLog("SensorPublisher created for FPS-independent sensor output");
-	debugLog("v3.3.1: Using direct sendHILSensor() (SensorPublisher disabled)");
-
 	debugLog("Plugin started successfully");
 
 
@@ -350,13 +334,6 @@ void toggleEnable() {
 	XPLMDebugString("px4xplane: toggleEnable() called.\n");
 	if (ConnectionManager::isConnected()) {
 		XPLMDebugString("px4xplane: Currently connected, attempting to disconnect.\n");
-
-		// Phase 3: SensorPublisher (DISABLED in v3.3.1)
-		// if (g_sensorPublisher && g_sensorPublisher->isRunning()) {
-		// 	g_sensorPublisher->stop();
-		// 	g_sensorPublisher->reset();
-		// 	XPLMDebugString("px4xplane: SensorPublisher stopped\n");
-		// }
 
 		resetFlightLoopTimers();  // Reset timing state BEFORE disconnect
 		ConnectionManager::disconnect();
@@ -597,13 +574,6 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 			"Ready to fly!"
 		);
 		waitStartTime = 0.0f;
-
-		// Phase 3: SensorPublisher (DISABLED in v3.3.1)
-		// if (g_sensorPublisher && !g_sensorPublisher->isRunning()) {
-		// 	g_sensorPublisher->start();
-		// 	XPLMDebugString("px4xplane: SensorPublisher started (200Hz fixed rate)\n");
-		// }
-		XPLMDebugString("px4xplane: v3.3.1 - Using direct sendHILSensor() in flight loop\n");
 	} else {
 		waitStartTime = 0.0f;  // Reset when not waiting
 
@@ -634,19 +604,8 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// ==================================================================================
 	// SENSOR DATA - Direct sendHILSensor() at target rate
 	// ==================================================================================
-	// v3.3.1 HOTFIX: Reverted from SensorPublisher thread approach
-	//
-	// The SensorPublisher with Kalman interpolation (v3.3.0) caused WORSE "High
-	// Accelerometer Bias" errors because:
-	// 1. Kalman interpolation creates artificially smooth data PX4 doesn't expect
-	// 2. Perfectly regular 200Hz timestamps are unrealistic
-	// 3. Bias drift was applied before interpolation, getting compounded
-	//
-	// Back to proven direct sendHILSensor() approach - simple and reliable.
-	// FPS-dependent but works correctly when X-Plane runs at reasonable FPS.
-	// ==================================================================================
 
-	// Send sensor data at target rate using direct sendHILSensor()
+	// Send sensor data at target rate
 	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD) {
 		MAVLinkManager::sendHILSensor(0);
 
@@ -666,7 +625,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 			float avgRate = sumRate / 1000.0f;
 			char buf[256];
 			snprintf(buf, sizeof(buf),
-				"px4xplane: [v3.3.1 @ %.1fs] HIL_SENSOR: %d msgs, avg %.1f Hz (target %d Hz)\n",
+				"px4xplane: [%.1fs] HIL_SENSOR: %d msgs, avg %.1f Hz (target %d Hz)\n",
 				currentSimTime, sensorMessageCount, avgRate, ConfigManager::mavlink_sensor_rate_hz);
 			XPLMDebugString(buf);
 			sumRate = 0.0f;
@@ -724,13 +683,6 @@ PLUGIN_API void XPluginStop(void) {
 	if (ConnectionManager::isConnected()) {
 		toggleEnable();
 	}
-
-	// Phase 3: SensorPublisher cleanup (DISABLED in v3.3.1)
-	// if (g_sensorPublisher) {
-	// 	g_sensorPublisher->stop();
-	// 	g_sensorPublisher.reset();
-	// 	XPLMDebugString("px4xplane: SensorPublisher destroyed\n");
-	// }
 
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 
