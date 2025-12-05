@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <memory>
 #include "configReader.h"
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
@@ -32,6 +33,7 @@
 #include "VersionInfo.h"
 #include "UIConstants.h"
 #include "UIHandler.h"
+#include "SensorPublisher.h"
 
 #ifndef XPLM300
 #error This is made to be compiled against the XPLM300 SDK
@@ -52,6 +54,10 @@ static int g_airframesMenuItemIndex; // Global variable to store the index of th
 static XPLMCommandRef toggleEnableCmd;
 
 static int g_enabled = 0; // Used to toggle connection state
+
+// Phase 3: FPS-independent sensor publisher (DISABLED in v3.3.1)
+// Was causing "High Accelerometer Bias" regression - reverted to direct sendHILSensor()
+// static std::unique_ptr<SensorPublisher> g_sensorPublisher;
 
 
 
@@ -213,6 +219,14 @@ PLUGIN_API int XPluginStart(
 	// Initialize MAVLink message periods from config
 	initializeMessagePeriods();
 
+	// Phase 3: FPS-independent sensor publisher (DISABLED in v3.3.1)
+	// Was causing "High Accelerometer Bias" regression due to Kalman interpolation
+	// creating artificially smooth data that PX4 EKF2 doesn't expect.
+	// Reverted to direct sendHILSensor() in flight loop.
+	// g_sensorPublisher = std::make_unique<SensorPublisher>(ConfigManager::mavlink_sensor_rate_hz);
+	// debugLog("SensorPublisher created for FPS-independent sensor output");
+	debugLog("v3.3.1: Using direct sendHILSensor() (SensorPublisher disabled)");
+
 	debugLog("Plugin started successfully");
 
 
@@ -337,6 +351,14 @@ void toggleEnable() {
 	XPLMDebugString("px4xplane: toggleEnable() called.\n");
 	if (ConnectionManager::isConnected()) {
 		XPLMDebugString("px4xplane: Currently connected, attempting to disconnect.\n");
+
+		// Phase 3: SensorPublisher (DISABLED in v3.3.1)
+		// if (g_sensorPublisher && g_sensorPublisher->isRunning()) {
+		// 	g_sensorPublisher->stop();
+		// 	g_sensorPublisher->reset();
+		// 	XPLMDebugString("px4xplane: SensorPublisher stopped\n");
+		// }
+
 		resetFlightLoopTimers();  // Reset timing state BEFORE disconnect
 		ConnectionManager::disconnect();
 	}
@@ -576,6 +598,13 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 			"Ready to fly!"
 		);
 		waitStartTime = 0.0f;
+
+		// Phase 3: SensorPublisher (DISABLED in v3.3.1)
+		// if (g_sensorPublisher && !g_sensorPublisher->isRunning()) {
+		// 	g_sensorPublisher->start();
+		// 	XPLMDebugString("px4xplane: SensorPublisher started (200Hz fixed rate)\n");
+		// }
+		XPLMDebugString("px4xplane: v3.3.1 - Using direct sendHILSensor() in flight loop\n");
 	} else {
 		waitStartTime = 0.0f;  // Reset when not waiting
 
@@ -604,73 +633,47 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	}
 
 	// ==================================================================================
-	// SENSOR MESSAGE SENDING - ONE MESSAGE PER FRAME (Timestamp Monotonicity)
+	// SENSOR DATA - Direct sendHILSensor() at target rate
 	// ==================================================================================
-	// CRITICAL: PX4 requires strictly monotonic increasing timestamps for HIL_SENSOR
-	// Problem: Catchup mechanism would send multiple messages with SAME timestamp
-	//          (X-Plane sim time doesn't advance within a single frame)
-	// Solution: Send exactly ONE sensor message per frame with current timestamp
+	// v3.3.1 HOTFIX: Reverted from SensorPublisher thread approach
 	//
-	// Why this works:
-	// - At 60 FPS (16ms): Sends ~60Hz to PX4 (acceptable, EKF2 handles it)
-	// - At 30 FPS (33ms): Sends ~30Hz to PX4 (minimum rate, still functional)
-	// - At 150 FPS (6ms): Sends ~150Hz to PX4 (PX4 decimates as needed)
-	// - Timestamps are ALWAYS monotonic (critical for vehicle_imu validation)
+	// The SensorPublisher with Kalman interpolation (v3.3.0) caused WORSE "High
+	// Accelerometer Bias" errors because:
+	// 1. Kalman interpolation creates artificially smooth data PX4 doesn't expect
+	// 2. Perfectly regular 200Hz timestamps are unrealistic
+	// 3. Bias drift was applied before interpolation, getting compounded
 	//
-	// Note: This means sensor rate varies with X-Plane FPS, but this is correct
-	//       behavior for lockstep simulation - PX4 advances in sync with sim time
+	// Back to proven direct sendHILSensor() approach - simple and reliable.
+	// FPS-dependent but works correctly when X-Plane runs at reasonable FPS.
 	// ==================================================================================
 
-	// Send sensor data when enough simulation time has elapsed
+	// Send sensor data at target rate using direct sendHILSensor()
 	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD) {
-		// Send single IMU/barometer sensor (sensor #0)
-		// Single sensor is sufficient for SITL and avoids PX4 sensor switching issues
-		MAVLinkManager::sendHILSensor(0);  // Primary sensor with realistic noise
+		MAVLinkManager::sendHILSensor(0);
 
-		// Smart logging: Only log rate issues or periodic summary
+		// Statistics tracking for debugging
 		static int sensorMessageCount = 0;
 		static float sumRate = 0.0f;
-		static float minRate = 1000.0f;
-		static float maxRate = 0.0f;
-
 		sensorMessageCount++;
+
 		float actualDt_sec = currentSimTime - lastSensorSendTime;
-		float actualRate_hz = 1.0f / actualDt_sec;
-		float targetRate_hz = 1.0f / TARGET_SENSOR_PERIOD;
+		if (actualDt_sec > 0.0f) {
+			float actualRate = 1.0f / actualDt_sec;
+			sumRate += actualRate;
+		}
 
-		sumRate += actualRate_hz;
-		if (actualRate_hz < minRate) minRate = actualRate_hz;
-		if (actualRate_hz > maxRate) maxRate = actualRate_hz;
-
-		// Only log summary every 10 seconds
+		// Log statistics every 1000 messages (~5 seconds at 200Hz)
 		if (ConfigManager::debug_log_sensor_timing && sensorMessageCount % 1000 == 0) {
 			float avgRate = sumRate / 1000.0f;
-			char buf[300];
-			snprintf(buf, sizeof(buf),
-				"px4xplane: [STATUS @ %.1fs] Sensor: %.1f Hz avg (%.1f-%.1f range) | Target: %.0f Hz | Single-IMU | Count: %d\n",
-				currentSimTime, avgRate, minRate, maxRate, targetRate_hz, sensorMessageCount);
-			XPLMDebugString(buf);
-
-			// Reset statistics
-			sumRate = 0.0f;
-			minRate = 1000.0f;
-			maxRate = 0.0f;
-		}
-
-		// Warn if rate is significantly off target (only once per issue)
-		static bool lowRateWarned = false;
-		if (actualRate_hz < targetRate_hz * 0.75f && !lowRateWarned) {
 			char buf[256];
 			snprintf(buf, sizeof(buf),
-				"px4xplane: [WARNING] Sensor rate %.1f Hz is below 75%% of target %.0f Hz - Consider reducing target or improving X-Plane FPS\n",
-				actualRate_hz, targetRate_hz);
+				"px4xplane: [v3.3.1 @ %.1fs] HIL_SENSOR: %d msgs, avg %.1f Hz (target %d Hz)\n",
+				currentSimTime, sensorMessageCount, avgRate, ConfigManager::mavlink_sensor_rate_hz);
 			XPLMDebugString(buf);
-			lowRateWarned = true;
-		} else if (actualRate_hz >= targetRate_hz * 0.9f) {
-			lowRateWarned = false;  // Reset warning when rate recovers
+			sumRate = 0.0f;
 		}
 
-		lastSensorSendTime = currentSimTime;  // Update to current time
+		lastSensorSendTime = currentSimTime;
 	}
 
 	// Send GPS data at target rate (20 Hz) - one message per eligible frame
@@ -722,6 +725,13 @@ PLUGIN_API void XPluginStop(void) {
 	if (ConnectionManager::isConnected()) {
 		toggleEnable();
 	}
+
+	// Phase 3: SensorPublisher cleanup (DISABLED in v3.3.1)
+	// if (g_sensorPublisher) {
+	// 	g_sensorPublisher->stop();
+	// 	g_sensorPublisher.reset();
+	// 	XPLMDebugString("px4xplane: SensorPublisher destroyed\n");
+	// }
 
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 

@@ -4,6 +4,13 @@
 * text=auto
 
 ###############################################################################
+# PX4 airframe parameter files - MUST use Unix LF line endings
+# These are shell scripts that run on Linux (PX4 SITL) and will fail with CRLF
+###############################################################################
+config/px4_params/* text eol=lf
+*.sh text eol=lf
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by

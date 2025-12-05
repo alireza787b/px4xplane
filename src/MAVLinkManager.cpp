@@ -71,6 +71,9 @@ std::normal_distribution<float> MAVLinkManager::noiseDistribution_accel_bias(0.0
 // Breaks perfect frame-synchronous timing to create realistic sensor asynchrony
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_timestamp_jitter(0.0f, 200.0f);
 
+// Phase 3: Thread-safety mutex for SensorPublisher
+std::mutex MAVLinkManager::send_mutex_;
+
 //------------------------------------------------------------------------------
 // setAccelerationData()
 // Uses computeAcceleration() to update the HIL_SENSOR acceleration data.
@@ -119,23 +122,19 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// Get the current time in microseconds.
 	uint64_t currentTime = TimeManager::getCurrentTimeUsec();
 
-	// Update bias drift periodically (creates slowly-varying random walk)
-	if ((currentTime - lastBiasUpdateTime) >= BIAS_UPDATE_INTERVAL_US) {
-		// Add small random walk increment to bias (creates correlation over ~60 seconds)
-		accel_bias_drift.x() += noiseDistribution_accel_bias(gen);
-		accel_bias_drift.y() += noiseDistribution_accel_bias(gen);
-		accel_bias_drift.z() += noiseDistribution_accel_bias(gen);
-
-		// Limit maximum bias drift to ±0.05 m/s² (realistic MEMS characteristic)
-		if (accel_bias_drift.x() > 0.05f) accel_bias_drift.x() = 0.05f;
-		if (accel_bias_drift.x() < -0.05f) accel_bias_drift.x() = -0.05f;
-		if (accel_bias_drift.y() > 0.05f) accel_bias_drift.y() = 0.05f;
-		if (accel_bias_drift.y() < -0.05f) accel_bias_drift.y() = -0.05f;
-		if (accel_bias_drift.z() > 0.05f) accel_bias_drift.z() = 0.05f;
-		if (accel_bias_drift.z() < -0.05f) accel_bias_drift.z() = -0.05f;
-
-		lastBiasUpdateTime = currentTime;
-	}
+	// v3.3.2: DISABLED - Bias drift causes "High Accelerometer Bias" errors
+	// PX4's EKF2 is extremely sensitive to slowly-varying accelerometer data.
+	// Even small drifts (±0.002 m/s²) get interpreted as sensor instability.
+	// Real SITL simulators (Gazebo, jMAVSim) do NOT add artificial bias drift.
+	//
+	// if ((currentTime - lastBiasUpdateTime) >= BIAS_UPDATE_INTERVAL_US) {
+	// 	accel_bias_drift.x() += noiseDistribution_accel_bias(gen);
+	// 	accel_bias_drift.y() += noiseDistribution_accel_bias(gen);
+	// 	accel_bias_drift.z() += noiseDistribution_accel_bias(gen);
+	// 	... clamping code ...
+	// 	lastBiasUpdateTime = currentTime;
+	// }
+	(void)lastBiasUpdateTime;  // Suppress unused variable warning
 
 	if (currentTime == lastAccelUpdateTime) {
 		return cachedAccel;  // Return cached value if computed in this cycle.
@@ -250,22 +249,23 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	}
 
 	//----------------------------------------------------------------------
-	// 3.5. Phase 2 Fix: Add slowly-varying bias drift
-	// This simulates realistic MEMS accelerometer bias instability
-	// Critical for EKF2's IMU bias estimator to converge properly
+	// 3.5. v3.3.2: Bias drift DISABLED
+	// Was: Add slowly-varying bias drift to simulate MEMS accelerometer instability
+	// REMOVED: PX4's EKF2 interprets any drift as sensor problems, triggering
+	// "High Accelerometer Bias" errors. Gazebo/jMAVSim don't add artificial drift.
 	//----------------------------------------------------------------------
-	body_accel.x() += accel_bias_drift.x();
-	body_accel.y() += accel_bias_drift.y();
-	body_accel.z() += accel_bias_drift.z();
+	// body_accel.x() += accel_bias_drift.x();  // DISABLED in v3.3.2
+	// body_accel.y() += accel_bias_drift.y();  // DISABLED in v3.3.2
+	// body_accel.z() += accel_bias_drift.z();  // DISABLED in v3.3.2
+	(void)accel_bias_drift;  // Suppress unused variable warning
 
-	// Pipeline Stage 4 Logging: After bias drift
+	// Pipeline Stage 4 Logging: After bias drift (now shows DISABLED)
 	static int pipelineLogCounter4 = 0;
 	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter4 % 500 == 0)) {
 		char buf[256];
 		snprintf(buf, sizeof(buf),
-			"px4xplane: [ACCEL_S4_BIAS] X=%.4f Y=%.4f Z=%.4f m/s² | bias[%.5f,%.5f,%.5f]\n",
-			body_accel.x(), body_accel.y(), body_accel.z(),
-			accel_bias_drift.x(), accel_bias_drift.y(), accel_bias_drift.z());
+			"px4xplane: [ACCEL_S4_BIAS] X=%.4f Y=%.4f Z=%.4f m/s² | bias=DISABLED(v3.3.2)\n",
+			body_accel.x(), body_accel.y(), body_accel.z());
 		XPLMDebugString(buf);
 	}
 
@@ -326,9 +326,8 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 			char buf[512];
 			const char* status = wrongSign ? "ERROR" : (stationary ? "OK" : "STATUS");
 			snprintf(buf, sizeof(buf),
-				"px4xplane: [ACCEL_%s] ACC[%.2f, %.2f, %.2f] m/s², GS=%.1f m/s, bias[%.3f, %.3f, %.3f] %s\n",
+				"px4xplane: [ACCEL_%s] ACC[%.2f, %.2f, %.2f] m/s², GS=%.1f m/s, bias=DISABLED %s\n",
 				status, filtered_accel.x(), filtered_accel.y(), filtered_accel.z(), groundspeed,
-				accel_bias_drift.x(), accel_bias_drift.y(), accel_bias_drift.z(),
 				wrongSign ? "WRONG SIGN! (Z should be negative)" : (stationary ? "(gravity OK, Z negative)" : ""));
 			XPLMDebugString(buf);
 		}
@@ -495,6 +494,166 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	}
 }
 
+
+/**
+ * @brief Thread-safe HIL_SENSOR send from pre-collected sample
+ *
+ * Phase 3: FPS-independent sensor publishing
+ *
+ * This function sends HIL_SENSOR from an IMUSample collected by the flight loop.
+ * It's called from the SensorPublisher thread at fixed 200Hz rate, independent
+ * of X-Plane's frame rate.
+ *
+ * Key differences from sendHILSensor():
+ * - Doesn't read datarefs (not safe from background thread)
+ * - Uses pre-collected sensor data from IMUSample
+ * - Thread-safe via mutex on socket send
+ *
+ * @param sample Pre-collected sensor data from collectCurrentSensorData()
+ */
+void MAVLinkManager::sendHILSensorFromSample(const SensorBuffer::IMUSample& sample) {
+	if (!ConnectionManager::isConnected()) return;
+
+	// Static state for timestamp monotonicity
+	static uint64_t lastSensorTime = 0;
+	static int sensorCount = 0;
+
+	// CRITICAL: Reset state on reconnection
+	if (g_needsTimingReset) {
+		lastSensorTime = 0;
+		sensorCount = 0;
+	}
+
+	mavlink_message_t msg;
+	mavlink_hil_sensor_t hil_sensor = {};
+
+	// Use timestamp from sample, ensure monotonicity
+	hil_sensor.time_usec = sample.timestamp_usec;
+	if (hil_sensor.time_usec <= lastSensorTime) {
+		hil_sensor.time_usec = lastSensorTime + 1;
+	}
+
+	hil_sensor.id = 0;  // Primary sensor
+
+	// Copy sensor data from sample
+	hil_sensor.xacc = sample.accel[0];
+	hil_sensor.yacc = sample.accel[1];
+	hil_sensor.zacc = sample.accel[2];
+
+	hil_sensor.xgyro = sample.gyro[0];
+	hil_sensor.ygyro = sample.gyro[1];
+	hil_sensor.zgyro = sample.gyro[2];
+
+	hil_sensor.xmag = sample.mag[0];
+	hil_sensor.ymag = sample.mag[1];
+	hil_sensor.zmag = sample.mag[2];
+
+	hil_sensor.abs_pressure = sample.pressure_hPa;
+	hil_sensor.diff_pressure = 0.0f;  // Not used in SITL
+	hil_sensor.pressure_alt = 0.0f;   // PX4 computes from abs_pressure
+	hil_sensor.temperature = sample.temperature_C;
+
+	// All fields updated
+	uint32_t fields_updated = 0;
+	fields_updated |= (1 << 0);   // HIL_SENSOR_UPDATED_XACC
+	fields_updated |= (1 << 1);   // HIL_SENSOR_UPDATED_YACC
+	fields_updated |= (1 << 2);   // HIL_SENSOR_UPDATED_ZACC
+	fields_updated |= (1 << 3);   // HIL_SENSOR_UPDATED_XGYRO
+	fields_updated |= (1 << 4);   // HIL_SENSOR_UPDATED_YGYRO
+	fields_updated |= (1 << 5);   // HIL_SENSOR_UPDATED_ZGYRO
+	fields_updated |= (1 << 6);   // HIL_SENSOR_UPDATED_XMAG
+	fields_updated |= (1 << 7);   // HIL_SENSOR_UPDATED_YMAG
+	fields_updated |= (1 << 8);   // HIL_SENSOR_UPDATED_ZMAG
+	fields_updated |= (1 << 9);   // HIL_SENSOR_UPDATED_ABS_PRESSURE
+	fields_updated |= (1 << 10);  // HIL_SENSOR_UPDATED_DIF_PRESSURE
+	fields_updated |= (1 << 11);  // HIL_SENSOR_UPDATED_PRESSURE_ALT
+	fields_updated |= (1 << 12);  // HIL_SENSOR_UPDATED_TEMPERATURE
+	hil_sensor.fields_updated = fields_updated;
+
+	lastSensorTime = hil_sensor.time_usec;
+	sensorCount++;
+
+	// Encode and send (thread-safe)
+	mavlink_msg_hil_sensor_encode(1, 1, &msg, &hil_sensor);
+	uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+	int len = mavlink_msg_to_send_buffer(buffer, &msg);
+
+	{
+		std::lock_guard<std::mutex> lock(send_mutex_);
+		ConnectionManager::sendData(buffer, len);
+	}
+
+	// Periodic logging
+	if (ConfigManager::debug_log_sensor_timing && (sensorCount % 10000 == 0)) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [SensorFromSample #%d] ACC[%.2f,%.2f,%.2f] t=%llu us\n",
+			sensorCount, hil_sensor.xacc, hil_sensor.yacc, hil_sensor.zacc,
+			static_cast<unsigned long long>(hil_sensor.time_usec));
+		XPLMDebugString(buf);
+	}
+}
+
+
+/**
+ * @brief Collect current sensor data into IMUSample for SensorPublisher
+ *
+ * Phase 3: FPS-independent sensor publishing
+ *
+ * This function reads all sensor datarefs and packages them into an IMUSample
+ * that can be pushed to the SensorBuffer for the SensorPublisher thread.
+ *
+ * MUST be called from X-Plane main thread (datarefs not thread-safe).
+ *
+ * @return IMUSample containing current sensor state
+ */
+SensorBuffer::IMUSample MAVLinkManager::collectCurrentSensorData() {
+	SensorBuffer::IMUSample sample;
+
+	// Timestamp
+	if (ConfigManager::USE_XPLANE_TIME) {
+		sample.timestamp_usec = static_cast<uint64_t>(
+			DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
+	} else {
+		sample.timestamp_usec = TimeManager::getCurrentTimeUsec();
+	}
+
+	// Accelerometer (uses existing processing pipeline with calibration, vibration, bias)
+	Eigen::Vector3f accel = computeAcceleration();
+	sample.accel[0] = accel.x();
+	sample.accel[1] = accel.y();
+	sample.accel[2] = accel.z();
+
+	// Gyroscope (reuse setGyroData logic)
+	mavlink_hil_sensor_t temp_sensor = {};
+	setGyroData(temp_sensor);
+	sample.gyro[0] = temp_sensor.xgyro;
+	sample.gyro[1] = temp_sensor.ygyro;
+	sample.gyro[2] = temp_sensor.zgyro;
+
+	// Magnetometer
+	setMagneticFieldData(temp_sensor);
+	sample.mag[0] = temp_sensor.xmag;
+	sample.mag[1] = temp_sensor.ymag;
+	sample.mag[2] = temp_sensor.zmag;
+
+	// Barometer
+	setPressureData(temp_sensor, 0);
+	sample.pressure_hPa = temp_sensor.abs_pressure;
+
+	// Temperature
+	sample.temperature_C = DataRefManager::getFloat("sim/cockpit2/temperature/outside_air_temp_degc");
+
+	// Attitude quaternion (for future use in interpolation)
+	float q[4];
+	XPLMGetDatavf(XPLMFindDataRef("sim/flightmodel/position/q"), q, 0, 4);
+	sample.attitude_q[0] = q[0];  // w
+	sample.attitude_q[1] = q[1];  // x
+	sample.attitude_q[2] = q[2];  // y
+	sample.attitude_q[3] = q[3];  // z
+
+	return sample;
+}
 
 
 /**
