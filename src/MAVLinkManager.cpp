@@ -106,7 +106,8 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// Initialized at startup, updated periodically to create realistic bias drift
 	static Eigen::Vector3f accel_bias_drift(0.0f, 0.0f, 0.0f);
 	static uint64_t lastBiasUpdateTime = 0;
-	static const uint64_t BIAS_UPDATE_INTERVAL_US = 100000;  // Update every 100ms (10 Hz)
+	// v3.3.2: DISABLED - Bias drift feature removed, constant retained for reference
+	// static const uint64_t BIAS_UPDATE_INTERVAL_US = 100000;  // Update every 100ms (10 Hz)
 
 	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
 	if (g_needsTimingReset) {

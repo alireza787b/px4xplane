@@ -11,7 +11,6 @@
 #include <fstream>
 #include <sstream>
 #include <map>
-#include <memory>
 #include "configReader.h"
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
@@ -33,7 +32,7 @@
 #include "VersionInfo.h"
 #include "UIConstants.h"
 #include "UIHandler.h"
-#include "SensorPublisher.h"
+// SensorPublisher.h removed - feature disabled in v3.3.1
 
 #ifndef XPLM300
 #error This is made to be compiled against the XPLM300 SDK
