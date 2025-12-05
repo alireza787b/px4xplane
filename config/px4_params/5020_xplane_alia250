@@ -238,8 +238,8 @@ param set-default MPC_XY_VEL_P_ACC 1.2
 param set-default MPC_XY_VEL_I_ACC 0.2
 param set-default MPC_XY_VEL_D_ACC 2.0   # User validated: better tracking
 param set-default MPC_Z_VEL_P_ACC 5.0    # User validated: more responsive
-param set-default MPC_Z_VEL_I_ACC 1.4
-param set-default MPC_Z_VEL_D_ACC 0.45   # User validated: better damping
+param set-default MPC_Z_VEL_I_ACC 1.25  # Reduced from 1.4 for less integral windup
+param set-default MPC_Z_VEL_D_ACC 0.55  # Increased from 0.45 for better damping
 
 # Velocity Limits (heavy aircraft performance)
 param set-default MPC_XY_VEL_MAX 15      # Increased for heavy aircraft
@@ -585,7 +585,8 @@ param set-default MC_BAT_SCALE_EN 0
 # USER-VALIDATED CHANGES:
 # - ASPD_DO_CHECKS = 7 (works correctly in SITL)
 # - MPC_Z_VEL_P_ACC = 5.0 (better altitude control)
-# - MPC_Z_VEL_D_ACC = 0.45 (better damping)
+# - MPC_Z_VEL_I_ACC = 1.25 (reduced from 1.4 for less integral windup)
+# - MPC_Z_VEL_D_ACC = 0.55 (increased from 0.45 for better damping)
 # - MPC_XY_VEL_D_ACC = 2.0 (smoother tracking)
 #
 ################################################################################
