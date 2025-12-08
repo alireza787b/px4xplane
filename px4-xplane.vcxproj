@@ -332,6 +332,7 @@ echo ===============================================
   </ItemDefinitionGroup>
   <!-- Source Files -->
   <ItemGroup>
+    <ClCompile Include="src\AccelCalibration.cpp" />
     <ClCompile Include="src\ConfigManager.cpp" />
     <ClCompile Include="src\configReader.cpp" />
     <ClCompile Include="src\ConnectionManager.cpp" />
@@ -345,6 +346,7 @@ echo ===============================================
   </ItemGroup>
   <!-- Header Files -->
   <ItemGroup>
+    <ClInclude Include="include\AccelCalibration.h" />
     <ClInclude Include="include\ConfigManager.h" />
     <ClInclude Include="include\configReader.h" />
     <ClInclude Include="include\ConnectionManager.h" />
