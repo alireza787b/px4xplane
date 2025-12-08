@@ -9,4 +9,4 @@
 	url = https://github.com/brofield/simpleini.git
 [submodule "lib/Eigen"]
 	path = lib/Eigen
-	url = https://gitlab.com/libeigen/eigen.git
+	url = https://github.com/eigenteam/eigen-git-mirror.git
