@@ -1,13 +1,12 @@
 name: Build px4xplane
 
-# Triggers: Push to master ONLY, Pull Requests to master, Manual dispatch
-# NOTE: develop branch does NOT trigger builds (saves GitHub minutes)
+# Triggers: Pull Requests to master, Manual dispatch
+# NOTE: Regular pushes to master do NOT trigger builds (saves GitHub Actions minutes)
+# For releases: Push a tag (v*.*.*) which triggers release.yml instead
 on:
-  push:
-    branches: [master]  # Build ONLY when pushed to master
   pull_request:
-    branches: [master]  # Build ONLY for PRs targeting master
-  workflow_dispatch:  # Allow manual triggering from Actions tab
+    branches: [master]  # Build for PRs targeting master (validation before merge)
+  workflow_dispatch:  # Allow manual triggering from Actions tab for testing
 
 # Cancel previous runs if new commit pushed
 concurrency:
