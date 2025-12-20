@@ -341,6 +341,7 @@ echo ===============================================
     <ClCompile Include="src\MAVLinkManager.cpp" />
     <ClCompile Include="src\px4xplane.cpp" />
     <ClCompile Include="src\TimeManager.cpp" />
+    <ClCompile Include="src\TimestampProvider.cpp" />
     <ClCompile Include="src\UIConstants.cpp" />
     <ClCompile Include="src\UIHandler.cpp" />
   </ItemGroup>
@@ -354,6 +355,7 @@ echo ===============================================
     <ClInclude Include="include\DataRefManager.h" />
     <ClInclude Include="include\MAVLinkManager.h" />
     <ClInclude Include="include\TimeManager.h" />
+    <ClInclude Include="include\TimestampProvider.h" />
     <ClInclude Include="config\ini.h" />
     <ClInclude Include="include\UIConstants.h" />
     <ClInclude Include="include\UIHandler.h" />

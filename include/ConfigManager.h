@@ -94,6 +94,10 @@ public:
     static bool filter_barometer_enabled;  // Flag for enabling/disabling barometric pressure filtering
     static float barometer_filter_alpha;   // Alpha value for barometric pressure filtering
 
+    // DEPRECATED (v3.4.0): This flag is no longer used for timestamp generation.
+    // Timestamps now use TimestampProvider which automatically tracks X-Plane
+    // time deltas with high precision, fixing EKF2 time_slip issues.
+    // Retained for backward compatibility - may be removed in future version.
     static bool USE_XPLANE_TIME;
 
     static bool vibration_noise_enabled;

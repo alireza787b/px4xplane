@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.1.0 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.0 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -69,6 +69,7 @@ set(SOURCES
     src/MAVLinkManager.cpp
     src/px4xplane.cpp
     src/TimeManager.cpp
+    src/TimestampProvider.cpp
     src/UIConstants.cpp
     src/UIHandler.cpp
 )
@@ -82,6 +83,7 @@ set(HEADERS
     include/DataRefManager.h
     include/MAVLinkManager.h
     include/TimeManager.h
+    include/TimestampProvider.h
     include/UIConstants.h
     include/UIHandler.h
     include/VersionInfo.h

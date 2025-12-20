@@ -8,6 +8,7 @@
 #include "FilterUtils.h"
 #include "TimeManager.h"  // Include the TimeManager class
 #include "AccelCalibration.h"  // Runtime accelerometer gravity calibration
+#include "TimestampProvider.h"  // High-precision timestamps (fixes EKF2 time_slip)
 #include <cmath>
 
 
@@ -405,17 +406,12 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	mavlink_message_t msg;
 	mavlink_hil_sensor_t hil_sensor = {};  // Zero-initialize to prevent garbage values
 
-	// Get base timestamp
-	uint64_t base_time_usec;
-	if (ConfigManager::USE_XPLANE_TIME) {
-		base_time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-	}
-	else {
-		base_time_usec = TimeManager::getCurrentTimeUsec();
-	}
+	// Get high-precision timestamp using delta-based accumulation
+	// This fixes the float precision loss that caused EKF2 time_slip errors
+	// (X-Plane's float total_flight_time_sec loses precision after ~16.7 seconds)
+	uint64_t base_time_usec = TimestampProvider::getTimestampUsec();
 
-	// Phase 2 Fix: Add small jitter to timestamp (±200μs) per sensor
-	// Simulates real IMU sample clock variation - breaks perfect frame synchronization
+	// Add small jitter to simulate real IMU sample clock variation (±200μs)
 	uint8_t sensor_idx = (sensor_id <= 1) ? sensor_id : 0;
 	int64_t jitter_usec = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
 	hil_sensor.time_usec = base_time_usec + sensor_timestamp_offset[sensor_idx] + jitter_usec;
@@ -542,12 +538,8 @@ void MAVLinkManager::sendHILGPS() {
 	mavlink_message_t msg;
 	mavlink_hil_gps_t hil_gps;
 
-	if (ConfigManager::USE_XPLANE_TIME) {
-		hil_gps.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-	}
-	else {
-		hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
-	}
+	// Use high-precision timestamp (fixes EKF2 time_slip from float precision loss)
+	hil_gps.time_usec = TimestampProvider::getTimestampUsec();
 
 	lastGPSTime = hil_gps.time_usec;
 
@@ -685,13 +677,8 @@ void MAVLinkManager::sendHILStateQuaternion() {
  * @param hil_state Reference to the MAVLink HIL state quaternion structure to be populated.
  */
 void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& hil_state) {
-	// Set time in microseconds.
-	if (ConfigManager::USE_XPLANE_TIME) {
-		hil_state.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-	}
-	else {
-		hil_state.time_usec = TimeManager::getCurrentTimeUsec();
-	}
+	// Use high-precision timestamp (fixes EKF2 time_slip from float precision loss)
+	hil_state.time_usec = TimestampProvider::getTimestampUsec();
 
 	// Retrieve quaternion data from X-Plane
 	// X-Plane quaternions are already in the correct frame for PX4 - send directly
@@ -792,13 +779,8 @@ void MAVLinkManager::sendHILRCInputs() {
 	mavlink_message_t msg;
 	mavlink_hil_rc_inputs_raw_t hil_rc_inputs = {};  // Zero-initialize all fields
 
-	if (ConfigManager::USE_XPLANE_TIME) {
-		hil_rc_inputs.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-	}
-	else {
-		hil_rc_inputs.time_usec = TimeManager::getCurrentTimeUsec();
-	}
-
+	// Use high-precision timestamp (fixes EKF2 time_slip from float precision loss)
+	hil_rc_inputs.time_usec = TimestampProvider::getTimestampUsec();
 
 	// Map RC channels using joystick data from X-Plane
 	hil_rc_inputs.chan1_raw = mapRCChannel(DataRefManager::getFloat("sim/joystick/yoke_roll_ratio"), -1, +1);
@@ -948,6 +930,9 @@ void MAVLinkManager::reset() {
 	// CRITICAL: Set flag to reset all function-scope timing state
 	// This prevents timestamp jumps that cause PX4 lockstep_scheduler to hang
 	g_needsTimingReset = true;
+
+	// Reset high-precision timestamp provider for clean start on reconnection
+	TimestampProvider::reset();
 
 	// NOTE: Do NOT reset AccelCalibration here!
 	// Calibration should persist across reconnections to avoid recalibrating
@@ -1432,13 +1417,10 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
+	// NOTE: time_usec is already set by sendHILGPS() using TimestampProvider
+	// We don't override it here to avoid double-getting timestamp
+	// (timestamp is already set with high precision before this function is called)
 
-	if (ConfigManager::USE_XPLANE_TIME) {
-		hil_gps.time_usec = static_cast<uint64_t>(DataRefManager::getFloat("sim/time/total_flight_time_sec") * 1e6);
-	}
-	else {
-		hil_gps.time_usec = TimeManager::getCurrentTimeUsec();
-	}
 	// Set the GPS fix type to 3D fix (value 3)
 	hil_gps.fix_type = static_cast<uint8_t>(3); // Assuming a 3D fix in the simulation environment
 }
