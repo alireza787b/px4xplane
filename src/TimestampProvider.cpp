@@ -36,8 +36,13 @@ uint64_t TimestampProvider::getTimestampUsec() {
     if (!s_initialized) {
         s_baseTimePoint = SteadyClock::now();
         s_lastXPlaneTimeSec = currentXPlaneTimeSec;
-        s_accumulatedDeltaUsec = 0;
-        s_lastOutputUsec = 0;
+
+        // CRITICAL: Start with non-zero timestamp (1 second = 1,000,000 usec)
+        // Returning 0 causes PX4 to see a massive backwards timestamp jump
+        // which triggers "timestamp error timestamp_sample: 0" and EKF2 failures.
+        // PX4 lockstep will sync to this starting point and increment from here.
+        s_accumulatedDeltaUsec = 1000000;  // 1 second base offset
+        s_lastOutputUsec = 1000000;
         s_driftUsec = 0;
         s_lastDeltaUsec = 0;
         s_initialized = true;
@@ -45,13 +50,13 @@ uint64_t TimestampProvider::getTimestampUsec() {
         if (ConfigManager::debug_log_sensor_timing) {
             char buf[256];
             snprintf(buf, sizeof(buf),
-                "px4xplane: [TIMESTAMP] TimestampProvider initialized at X-Plane time %.3f sec\n",
-                currentXPlaneTimeSec);
+                "px4xplane: [TIMESTAMP] TimestampProvider initialized at X-Plane time %.3f sec, base=%llu us\n",
+                currentXPlaneTimeSec, (unsigned long long)s_accumulatedDeltaUsec);
             XPLMDebugString(buf);
         }
 
-        // Return 0 for first timestamp - clean start for PX4 lockstep
-        return 0;
+        // Return non-zero initial timestamp
+        return s_accumulatedDeltaUsec;
     }
 
     // Calculate delta from last frame
@@ -152,7 +157,7 @@ void TimestampProvider::reset() {
     s_lastDeltaUsec = 0;
 
     if (ConfigManager::debug_log_sensor_timing) {
-        XPLMDebugString("px4xplane: [TIMESTAMP] TimestampProvider reset - next call starts from 0\n");
+        XPLMDebugString("px4xplane: [TIMESTAMP] TimestampProvider reset - next call reinitializes\n");
     }
 }
 
