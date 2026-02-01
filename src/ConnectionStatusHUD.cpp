@@ -1,4 +1,5 @@
 #include "ConnectionStatusHUD.h"
+#include "ConfigManager.h"
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include "XPLMUtilities.h"
@@ -14,13 +15,20 @@
 #include <cstdio>
 #include <cstring>  // For strlen()
 
-// Initialize static members
+// Initialize static members - Connection status
 ConnectionStatusHUD::Status ConnectionStatusHUD::currentStatus = ConnectionStatusHUD::Status::DISCONNECTED;
 std::string ConnectionStatusHUD::currentMessage;
-float ConnectionStatusHUD::elapsedTime;
-float ConnectionStatusHUD::fadeTimer;
-bool ConnectionStatusHUD::enabled;
-bool ConnectionStatusHUD::registered;
+float ConnectionStatusHUD::elapsedTime = 0.0f;
+float ConnectionStatusHUD::fadeTimer = 0.0f;
+bool ConnectionStatusHUD::enabled = false;
+bool ConnectionStatusHUD::registered = false;
+
+// Initialize static members - FPS monitoring
+bool ConnectionStatusHUD::isActivelyConnected = false;
+float ConnectionStatusHUD::fpsRollingAvg = 60.0f;  // Start with reasonable assumption
+float ConnectionStatusHUD::fpsWarningTimer = 0.0f;
+float ConnectionStatusHUD::lastFPSCheckTime = 0.0f;
+int ConnectionStatusHUD::frameCount = 0;
 
 void ConnectionStatusHUD::initialize() {
     if (!registered) {
@@ -71,18 +79,68 @@ void ConnectionStatusHUD::setEnabled(bool isEnabled) {
     enabled = isEnabled;
 }
 
+void ConnectionStatusHUD::notifyConnected() {
+    isActivelyConnected = true;
+}
+
 int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, void* inRefcon) {
-    // Skip if disabled or nothing to show
-    if (!enabled || currentStatus == ConnectionStatusHUD::Status::DISCONNECTED) {
+    // Skip if HUD is disabled entirely
+    if (!enabled) {
         return 1;
     }
 
-    // Handle fade timer for success message
+    // Get timing info (needed for both connection status and FPS monitoring)
     static float lastTime = 0.0f;
     float currentTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_running_time_sec"));
     float deltaTime = (lastTime > 0.0f) ? (currentTime - lastTime) : 0.0f;
     lastTime = currentTime;
 
+    // Get screen dimensions
+    int screenWidth, screenHeight;
+    XPLMGetScreenSize(&screenWidth, &screenHeight);
+
+    // =========================================================================
+    // FPS MONITORING (runs whenever connected, independent of connection HUD)
+    // =========================================================================
+    if (isActivelyConnected && ConfigManager::fps_warning_enabled) {
+        frameCount++;
+
+        // Calculate FPS periodically (not every frame - reduces overhead)
+        float timeSinceLastCheck = currentTime - lastFPSCheckTime;
+        if (timeSinceLastCheck >= FPS_CHECK_INTERVAL) {
+            float instantFPS = (float)frameCount / timeSinceLastCheck;
+            frameCount = 0;
+            lastFPSCheckTime = currentTime;
+
+            // Apply exponential moving average for smooth, stable reading
+            fpsRollingAvg = (FPS_SMOOTHING_FACTOR * instantFPS) + ((1.0f - FPS_SMOOTHING_FACTOR) * fpsRollingAvg);
+        }
+
+        // Check if we should show/extend warning
+        if (fpsRollingAvg < (float)ConfigManager::fps_warning_threshold) {
+            fpsWarningTimer = FPS_WARNING_PERSIST_TIME;  // Reset/extend timer
+        }
+
+        // Draw FPS warning if timer is active
+        if (fpsWarningTimer > 0.0f) {
+            drawFPSWarning(screenWidth, screenHeight);
+            fpsWarningTimer -= deltaTime;
+        }
+    } else {
+        // Not connected - reset FPS state
+        isActivelyConnected = false;
+        fpsWarningTimer = 0.0f;
+        frameCount = 0;
+    }
+
+    // =========================================================================
+    // CONNECTION STATUS HUD (original functionality)
+    // =========================================================================
+    if (currentStatus == ConnectionStatusHUD::Status::DISCONNECTED) {
+        return 1;  // Nothing more to draw
+    }
+
+    // Handle fade timer for success message
     if (fadeTimer > 0.0f) {
         fadeTimer -= deltaTime;
         if (fadeTimer <= 0.0f) {
@@ -91,10 +149,6 @@ int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, 
             return 1;
         }
     }
-
-    // Get screen dimensions
-    int screenWidth, screenHeight;
-    XPLMGetScreenSize(&screenWidth, &screenHeight);
 
     // HUD position: Top-center (X-Plane standard position)
     const int HUD_WIDTH = 400;
@@ -235,4 +289,76 @@ int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, 
     }
 
     return 1;  // Return 1 to continue calling
+}
+
+/**
+ * @brief Draw the FPS warning indicator
+ *
+ * Design principles (consistent with main HUD):
+ * - Minimal and non-intrusive
+ * - Positioned to avoid obscuring critical flight info
+ * - Color-coded severity (yellow for warning, orange for critical)
+ * - Auto-hides when FPS recovers
+ */
+void ConnectionStatusHUD::drawFPSWarning(int screenWidth, int screenHeight) {
+    // Position: Bottom-left corner (out of the way, but visible)
+    const int WARNING_WIDTH = 200;
+    const int WARNING_HEIGHT = 28;
+    const int LEFT_MARGIN = 15;
+    const int BOTTOM_MARGIN = 15;
+
+    int warnLeft = LEFT_MARGIN;
+    int warnRight = warnLeft + WARNING_WIDTH;
+    int warnBottom = BOTTOM_MARGIN;
+    int warnTop = warnBottom + WARNING_HEIGHT;
+
+    // Determine severity level
+    float threshold = (float)ConfigManager::fps_warning_threshold;
+    bool isCritical = (fpsRollingAvg < threshold * 0.6f);  // Below 60% of threshold = critical
+
+    // Background with transparency
+    XPLMSetGraphicsState(0, 0, 0, 0, 1, 0, 0);
+
+    float bgAlpha = 0.75f;
+    glColor4f(0.1f, 0.1f, 0.1f, bgAlpha);
+    glBegin(GL_QUADS);
+    glVertex2i(warnLeft, warnBottom);
+    glVertex2i(warnRight, warnBottom);
+    glVertex2i(warnRight, warnTop);
+    glVertex2i(warnLeft, warnTop);
+    glEnd();
+
+    // Border color based on severity
+    float borderColor[4];
+    if (isCritical) {
+        // Orange-red for critical
+        borderColor[0] = 1.0f; borderColor[1] = 0.4f; borderColor[2] = 0.1f; borderColor[3] = 0.9f;
+    } else {
+        // Yellow for warning
+        borderColor[0] = 1.0f; borderColor[1] = 0.9f; borderColor[2] = 0.2f; borderColor[3] = 0.9f;
+    }
+
+    glColor4fv(borderColor);
+    glLineWidth(1.5f);
+    glBegin(GL_LINE_LOOP);
+    glVertex2i(warnLeft, warnBottom);
+    glVertex2i(warnRight, warnBottom);
+    glVertex2i(warnRight, warnTop);
+    glVertex2i(warnLeft, warnTop);
+    glEnd();
+
+    // Warning text
+    char fpsText[64];
+    snprintf(fpsText, sizeof(fpsText), "LOW FPS: %.0f (min %d)", fpsRollingAvg, ConfigManager::fps_warning_threshold);
+
+    // Text color matches border
+    float textColor[3] = { borderColor[0], borderColor[1], borderColor[2] };
+
+    // Center text in the warning box
+    int textLen = strlen(fpsText);
+    int approxTextWidth = textLen * 6;
+    int textX = warnLeft + (WARNING_WIDTH - approxTextWidth) / 2;
+    int textY = warnBottom + 8;
+
+    XPLMDrawString(textColor, textX, textY, fpsText, nullptr, xplmFont_Basic);
 }

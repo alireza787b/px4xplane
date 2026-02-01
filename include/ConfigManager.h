@@ -120,7 +120,9 @@ public:
     static bool debug_accel_bypass_calibration;  // Bypass accelerometer calibration (for debugging)
 
     // UX configuration
-    static bool show_connection_status_hud;  // NEW: Show HUD connection status overlay
+    static bool show_connection_status_hud;  // Show HUD connection status overlay
+    static bool fps_warning_enabled;         // Show warning when X-Plane FPS is low
+    static int fps_warning_threshold;        // FPS below this triggers warning (default: 50)
 
     // MAVLink message rates (Hz)
     static int mavlink_sensor_rate_hz;       // HIL_SENSOR rate (IMU + barometer)

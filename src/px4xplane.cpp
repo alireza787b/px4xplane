@@ -586,6 +586,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Ensure we're connected before proceeding with sensor data
 	if (!ConnectionManager::isConnected()) return -1.0f;
 
+	// Notify HUD that we're actively connected (for FPS monitoring)
+	ConnectionStatusHUD::notifyConnected();
+
 	// Get current simulation time (frame-rate independent!)
 	float currentSimTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 

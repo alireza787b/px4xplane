@@ -132,6 +132,8 @@ bool ConfigManager::debug_accel_bypass_calibration = false;
 
 // UX configuration flags
 bool ConfigManager::show_connection_status_hud = true;  // Default: enabled
+bool ConfigManager::fps_warning_enabled = true;         // Default: enabled
+int ConfigManager::fps_warning_threshold = 50;          // Default: warn below 50 FPS
 
 // MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
 int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
@@ -184,7 +186,15 @@ void ConfigManager::loadConfiguration() {
     debug_accel_bypass_calibration = ini.GetBoolValue("", "debug_accel_bypass_calibration", false);
 
     // Load UX configuration
-    show_connection_status_hud = ini.GetBoolValue("", "show_connection_status_hud", true);  // Default: enabled
+    show_connection_status_hud = ini.GetBoolValue("", "show_connection_status_hud", true);
+    fps_warning_enabled = ini.GetBoolValue("", "fps_warning_enabled", true);
+    fps_warning_threshold = (int)ini.GetLongValue("", "fps_warning_threshold", 50);
+
+    // Validate FPS threshold (reasonable range: 20-120)
+    if (fps_warning_threshold < 20 || fps_warning_threshold > 120) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid fps_warning_threshold, using default 50\n");
+        fps_warning_threshold = 50;
+    }
 
     // Load accelerometer calibration configuration
     accel_auto_calibrate = ini.GetBoolValue("", "accel_auto_calibrate", true);
@@ -237,6 +247,11 @@ void ConfigManager::loadConfiguration() {
 
     if (show_connection_status_hud) {
         XPLMDebugString("px4xplane: Connection status HUD enabled\n");
+    }
+    if (fps_warning_enabled) {
+        char fpsBuf[128];
+        snprintf(fpsBuf, sizeof(fpsBuf), "px4xplane: FPS warning enabled (threshold: %d FPS)\n", fps_warning_threshold);
+        XPLMDebugString(fpsBuf);
     }
 
     // Log MAVLink rates

@@ -14,6 +14,11 @@
  * - Auto-shows/hides based on connection state
  * - Configurable via config.ini
  *
+ * FPS WARNING (February 2025):
+ * - Shows subtle warning when X-Plane FPS drops below threshold
+ * - Low FPS directly impacts sensor data rate sent to PX4
+ * - Non-intrusive indicator appears only when needed
+ *
  * Uses X-Plane SDK XPLMRegisterDrawCallback() for proper HUD rendering.
  */
 
@@ -54,6 +59,12 @@ public:
     static void updateStatus(Status status, const std::string& message = "", float elapsedSeconds = 0.0f);
 
     /**
+     * @brief Notify HUD that we're actively connected (for FPS monitoring)
+     * Called from flight loop when connected
+     */
+    static void notifyConnected();
+
+    /**
      * @brief Check if HUD is enabled via config
      * @return true if HUD should be shown
      */
@@ -73,7 +84,14 @@ private:
     static int drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, void* inRefcon);
 
     /**
-     * @brief Internal state
+     * @brief Draw the FPS warning indicator (if needed)
+     * @param screenWidth Screen width in pixels
+     * @param screenHeight Screen height in pixels
+     */
+    static void drawFPSWarning(int screenWidth, int screenHeight);
+
+    /**
+     * @brief Internal state - Connection status
      */
     static Status currentStatus;
     static std::string currentMessage;
@@ -81,4 +99,18 @@ private:
     static float fadeTimer;          // For auto-hide after success
     static bool enabled;             // Controlled by config.ini
     static bool registered;          // Track if callback is registered
+
+    /**
+     * @brief Internal state - FPS monitoring
+     */
+    static bool isActivelyConnected; // True when PX4 connection is active
+    static float fpsRollingAvg;      // Rolling average FPS (smoothed)
+    static float fpsWarningTimer;    // Timer for warning display persistence
+    static float lastFPSCheckTime;   // Last time we calculated FPS
+    static int frameCount;           // Frame counter for FPS calculation
+
+    // Constants for FPS warning behavior
+    static constexpr float FPS_SMOOTHING_FACTOR = 0.1f;    // Lower = smoother (less flickering)
+    static constexpr float FPS_WARNING_PERSIST_TIME = 5.0f; // Show warning for at least 5s
+    static constexpr float FPS_CHECK_INTERVAL = 0.5f;       // Calculate FPS every 0.5s
 };
