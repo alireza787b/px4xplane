@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.2] - 2025-02-01
+
+### Added
+
+#### FPS Warning HUD Indicator
+- **Low FPS detection**: Shows subtle warning when X-Plane FPS drops below threshold
+  - X-Plane frame rate directly affects sensor data quality sent to PX4
+  - Low FPS causes reduced sensor update rate (EKF2 expects ~200Hz, gets X-Plane FPS)
+  - Can lead to increased estimation noise and potential EKF2 warnings
+
+- **Non-intrusive design**:
+  - Small indicator in bottom-left corner (out of the way)
+  - Color-coded severity: yellow for warning, orange-red for critical
+  - Auto-hides when FPS recovers (5-second persistence prevents flickering)
+
+- **Configurable via config.ini**:
+  - `fps_warning_enabled`: Enable/disable the warning (default: true)
+  - `fps_warning_threshold`: FPS below this triggers warning (default: 50)
+
+- **Technical implementation**:
+  - Rolling average FPS calculation (exponential moving average, α=0.1)
+  - FPS sampled every 0.5 seconds for efficiency
+  - Critical threshold at 60% of warning threshold
+
+### Technical Details
+
+#### Files Modified
+- `include/ConnectionStatusHUD.h`: Added FPS monitoring state and methods
+- `src/ConnectionStatusHUD.cpp`: FPS calculation and warning drawing
+- `include/ConfigManager.h`: Added fps_warning_enabled, fps_warning_threshold
+- `src/ConfigManager.cpp`: Load and validate FPS warning config
+- `config/config.ini`: Added FPS warning configuration section
+- `src/px4xplane.cpp`: Notify HUD when actively connected
+- `include/VersionInfo.h`: VERSION 3.4.2, BUILD 009
+
+---
+
 ## [3.1.1] - 2025-01-03
 
 ### Fixed
