@@ -612,3 +612,18 @@ This log preserves project decisions, evidence, and next actions across the long
   - add structured bridge session logs
   - move from diagnostics-only low-FPS handling to a tested scheduler/resampler
   - restore/sync the PX4 fork and resume PR cleanup after the bridge evidence is stable.
+
+### px4xplane v3.4.4 CI Hotfix
+
+- The first public `v3.4.3` release tag built and uploaded Linux/macOS assets,
+  but the GitHub Actions Windows job failed under MSVC.
+- Root cause: the new diagnostics used `std::min`/`std::max` in
+  `src/px4xplane.cpp`; MSVC's Windows headers exposed `min`/`max` macros that
+  rewrote those calls.
+- Fix: protected the affected calls with `(std::min)` / `(std::max)`.
+- Local verification after the fix:
+  - Linux CMake build passed.
+  - MinGW Windows CMake build passed.
+  - Replay regression test passed.
+- This is a build portability hotfix only; no sensor-contract or Alia tuning
+  change was made relative to `v3.4.3`.

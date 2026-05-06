@@ -570,7 +570,7 @@ float percentileMs(const std::vector<float>& samples, float percentile)
 
 	std::vector<float> sorted = samples;
 	std::sort(sorted.begin(), sorted.end());
-	const float clamped = std::max(0.0f, std::min(1.0f, percentile));
+	const float clamped = (std::max)(0.0f, (std::min)(1.0f, percentile));
 	const std::size_t index = static_cast<std::size_t>(
 		std::floor(clamped * static_cast<float>(sorted.size() - 1)));
 	return sorted[index];
@@ -578,9 +578,9 @@ float percentileMs(const std::vector<float>& samples, float percentile)
 
 float maxTargetRateHz()
 {
-	return static_cast<float>(std::max(
-		std::max(ConfigManager::mavlink_sensor_rate_hz, ConfigManager::mavlink_gps_rate_hz),
-		std::max(ConfigManager::mavlink_state_rate_hz, ConfigManager::mavlink_rc_rate_hz)));
+	return static_cast<float>((std::max)(
+		(std::max)(ConfigManager::mavlink_sensor_rate_hz, ConfigManager::mavlink_gps_rate_hz),
+		(std::max)(ConfigManager::mavlink_state_rate_hz, ConfigManager::mavlink_rc_rate_hz)));
 }
 
 void appendLimitedRate(char* buffer, std::size_t bufferSize, const char* name, int targetHz, float frameHz)

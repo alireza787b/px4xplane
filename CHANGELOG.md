@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.4] - 2026-05-06
+
+### Fixed
+
+- Fixed MSVC Windows release builds by protecting new diagnostics
+  `std::min`/`std::max` calls from Windows `min`/`max` macros. This is a build
+  portability hotfix; the validated v3.4.3 Alia sensor contract and tuning
+  remain unchanged.
+
+---
+
 ## [3.4.3] - 2026-05-06
 
 ### Added
