@@ -7,6 +7,7 @@
 #include <random>
 #include <cmath>  // for trigonometric functions and M_PI
 
+class DataRefProvider;
 
 class MAVLinkManager {
 public:
@@ -21,6 +22,8 @@ public:
     static Eigen::Vector3f computeAcceleration();
     static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
     static void reset();  // CRITICAL: Reset all static state on disconnect
+    static void setDataRefProvider(const DataRefProvider* provider);
+    static const DataRefProvider& getDataRefProvider();
 
     struct HILActuatorControlsData {
         uint64_t timestamp;
@@ -41,7 +44,6 @@ private:
     static std::normal_distribution<float> noiseDistribution_gyro;              // Phase 1: Gyro noise
     // REMOVED: noiseDistribution_gps_alt - now created fresh in sendHILGPS() for true Gaussian behavior
     static std::normal_distribution<float> noiseDistribution_accel_bias;        // Phase 2: Accel bias drift
-    static std::normal_distribution<float> noiseDistribution_timestamp_jitter;  // Phase 2: Timestamp jitter
     static std::normal_distribution<float> highFreqNoise;
     static std::normal_distribution<float> lowFreqNoise;
     static void setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps);

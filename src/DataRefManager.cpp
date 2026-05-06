@@ -12,7 +12,9 @@
 #include "MAVLinkManager.h"
 #include "XPLMUtilities.h"
 #include <ConfigManager.h>
-#define M_PI 3.14
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
 #include <chrono>
 #include <ctime>
 #include <FilterUtils.h>

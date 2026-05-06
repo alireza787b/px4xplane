@@ -577,6 +577,30 @@ int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, 
     drawSmartText(left + 30, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::SECTION_SPACING);
 
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 20, scrolledY, "DIAGNOSTICS", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::HEADER_SPACING);
+
+    snprintf(buf, sizeof(buf), "  Bridge Log          : %s (menu toggle, %.2fs)",
+        ConfigManager::diagnostic_log_enabled ? "ON" : "OFF",
+        ConfigManager::diagnostic_log_interval_s);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    snprintf(buf, sizeof(buf), "  MAVLink Rates       : sensor %d Hz, gps %d Hz, state %d Hz, rc %d Hz",
+        ConfigManager::mavlink_sensor_rate_hz, ConfigManager::mavlink_gps_rate_hz,
+        ConfigManager::mavlink_state_rate_hz, ConfigManager::mavlink_rc_rate_hz);
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    snprintf(buf, sizeof(buf), "  Accel Calibration   : %s",
+        ConfigManager::accel_auto_calibrate ? "ON" : "OFF");
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::SECTION_SPACING);
+
     // Time Information Section with REAL DATA
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 20, scrolledY, "TIME INFORMATION", headerColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
@@ -926,7 +950,7 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
 
     // ALWAYS SHOW: Configuration file location
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 35, scrolledY, "Config File: X-Plane/Resources/plugins/px4xplane/config.ini", linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 35, scrolledY, "Config File: X-Plane/Resources/plugins/px4xplane/64/config.ini", linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     // ALWAYS SHOW: Connection status for HIL data

@@ -1,6 +1,7 @@
 #include "MAVLinkManager.h"
 #include "ConnectionManager.h"
 #include "DataRefManager.h"
+#include "DataRefProvider.h"
 #include <vector>
 #include "XPLMUtilities.h"
 #include <tuple>  // for std::tuple
@@ -10,6 +11,7 @@
 #include "AccelCalibration.h"  // Runtime accelerometer gravity calibration
 #include "TimestampProvider.h"  // High-precision timestamps (fixes EKF2 time_slip)
 #include <cmath>
+#include <cstdint>
 
 
 
@@ -25,7 +27,106 @@ static bool g_needsTimingReset = false;
 
 // Declare constants at the class or namespace level
 constexpr float DEG_TO_RAD = 3.14159265358979323846 / 180.0;
-constexpr float GRAVITY = 9.81;
+constexpr float GRAVITY = 9.80665f;
+
+namespace {
+
+constexpr float KNOT_TO_MPS = 0.514444f;
+
+class XPlaneDataRefProvider final : public DataRefProvider {
+public:
+	float getFloat(const char* dataRefName) const override
+	{
+		return DataRefManager::getFloat(dataRefName);
+	}
+
+	double getDouble(const char* dataRefName) const override
+	{
+		return DataRefManager::getDouble(dataRefName);
+	}
+
+	int getInt(const char* dataRefName) const override
+	{
+		return DataRefManager::getInt(dataRefName);
+	}
+
+	std::vector<float> getFloatArray(const char* dataRefName) const override
+	{
+		return DataRefManager::getFloatArray(dataRefName);
+	}
+};
+
+XPlaneDataRefProvider gXPlaneDataRefProvider;
+const DataRefProvider* gDataRefProvider = &gXPlaneDataRefProvider;
+
+float dataRefFloat(const char* dataRefName)
+{
+	return gDataRefProvider->getFloat(dataRefName);
+}
+
+std::vector<float> dataRefFloatArray(const char* dataRefName)
+{
+	return gDataRefProvider->getFloatArray(dataRefName);
+}
+
+int16_t clampToInt16(float value)
+{
+	if (value > 32767.0f) return 32767;
+	if (value < -32768.0f) return -32768;
+	return static_cast<int16_t>(std::lround(value));
+}
+
+uint16_t clampToUint16(float value)
+{
+	if (value <= 0.0f) return 0;
+	if (value > 65535.0f) return 65535;
+	return static_cast<uint16_t>(std::lround(value));
+}
+
+float wrapDegrees360(float degrees)
+{
+	while (degrees < 0.0f) degrees += 360.0f;
+	while (degrees >= 360.0f) degrees -= 360.0f;
+	return degrees;
+}
+
+uint16_t degreesToCentidegrees(float degrees)
+{
+	float wrapped = wrapDegrees360(degrees);
+	uint16_t value = clampToUint16(wrapped * 100.0f);
+	return value == 36000 ? 0 : value;
+}
+
+float localVnMps()
+{
+	return -dataRefFloat("sim/flightmodel/position/local_vz");
+}
+
+float localVeMps()
+{
+	return dataRefFloat("sim/flightmodel/position/local_vx");
+}
+
+float localVdMps()
+{
+	return -dataRefFloat("sim/flightmodel/position/local_vy");
+}
+
+float localHorizontalSpeedMps()
+{
+	const float vn = localVnMps();
+	const float ve = localVeMps();
+	return std::sqrt(vn * vn + ve * ve);
+}
+
+float trueCourseFromLocalVelocityDeg()
+{
+	const float vn = localVnMps();
+	const float ve = localVeMps();
+	return wrapDegrees360(std::atan2(ve, vn) * 180.0f / static_cast<float>(M_PI));
+}
+
+} // namespace
 
 // Define and initialize the random number generators and distributions
 std::random_device MAVLinkManager::rd;
@@ -67,10 +168,15 @@ std::normal_distribution<float> MAVLinkManager::noiseDistribution_gyro(0.0f, 0.0
 // Critical for EKF2's IMU bias estimator to have realistic signal to converge on
 std::normal_distribution<float> MAVLinkManager::noiseDistribution_accel_bias(0.0f, 0.0001f);
 
-// Phase 2 Fix: Timestamp jitter model (IMU sample clock variation)
-// Gaussian jitter: σ = 200μs - simulates real IMU sample timing variance
-// Breaks perfect frame-synchronous timing to create realistic sensor asynchrony
-std::normal_distribution<float> MAVLinkManager::noiseDistribution_timestamp_jitter(0.0f, 200.0f);
+void MAVLinkManager::setDataRefProvider(const DataRefProvider* provider)
+{
+	gDataRefProvider = provider ? provider : &gXPlaneDataRefProvider;
+}
+
+const DataRefProvider& MAVLinkManager::getDataRefProvider()
+{
+	return *gDataRefProvider;
+}
 
 //------------------------------------------------------------------------------
 // setAccelerationData()
@@ -140,24 +246,21 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	}
 
 	//----------------------------------------------------------------------
-	// 1. Retrieve Raw Accelerometer Data from X-Plane gload sensors.
-	// The gload sensor provides acceleration in G's; multiply by g_earth (m/s^2)
-	// to convert to m/s^2, and apply a -1 factor as required by the sensor convention.
-	//
-	// NOTE: The -1 factor has been validated as CORRECT through extensive testing.
-	// DO NOT REMOVE unless you have verified with actual flight tests that gravity
-	// reads incorrectly. The sign convention depends on X-Plane version and aircraft.
+	// 1. Retrieve raw accelerometer data from X-Plane g-load sensors.
+	// Truth-capture replay analysis across fixed-wing, helicopter, and Alia VTOL
+	// supports this FRD mapping for the dataref source:
+	//   x = -g_axil, y = +g_side, z = -g_nrml.
 	//----------------------------------------------------------------------
-	float raw_xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
-	float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
-	float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
+	float raw_xacc = dataRefFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
+	float raw_yacc = dataRefFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth;
+	float raw_zacc = dataRefFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 
 	// Pipeline Stage 1 Logging: Raw extraction (after sign conversion)
 	static int pipelineLogCounter1 = 0;
 	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter1 % 500 == 0)) {
 		char buf[256];
 		snprintf(buf, sizeof(buf),
-			"px4xplane: [ACCEL_S1_RAW] X=%.4f Y=%.4f Z=%.4f m/s² (after -1 factor)\n",
+				"px4xplane: [ACCEL_S1_RAW] X=%.4f Y=%.4f Z=%.4f m/s² (FRD map -,+,-)\n",
 			raw_xacc, raw_yacc, raw_zacc);
 		XPLMDebugString(buf);
 	}
@@ -201,7 +304,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 
 	// Ground-aware vibration: Only apply when aircraft is moving
 	// This fixes the intermittent "High Accelerometer Bias" preflight error
-	float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
+	float groundspeed = dataRefFloat("sim/flightmodel/position/groundspeed");
 	bool isMoving = groundspeed > 0.5f;  // 0.5 m/s threshold for "stationary"
 
 	if (enableVibrationNoise && isMoving) {
@@ -313,7 +416,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	accelSignLogCount++;
 
 	if (ConfigManager::debug_log_sensor_values && accelSignLogCount % 1000 == 0) {
-		float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
+		float groundspeed = dataRefFloat("sim/flightmodel/position/groundspeed");
 
 		// Only log if stationary (can validate gravity) OR every 10,000 samples
 		bool stationary = (groundspeed < 1.0f);
@@ -379,28 +482,13 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	static uint64_t lastSensorTime = 0;
 	static int sensorCount = 0;
 
-	// Phase 2 Fix: Per-sensor timestamp offset (persistent across calls)
-	// Each sensor instance gets unique jitter to simulate real IMU clock drift
-	static int64_t sensor_timestamp_offset[2] = {0, 0};  // Support up to 2 sensors
-	static bool offset_initialized = false;
-
 	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
 	// This prevents timestamp jumps that cause PX4 lockstep_scheduler to hang
 	if (g_needsTimingReset) {
 		lastSensorTime = 0;
 		sensorCount = 0;
-		sensor_timestamp_offset[0] = 0;
-		sensor_timestamp_offset[1] = 0;
-		offset_initialized = false;
 		// Clear flag after first sensor function resets (prevents re-initialization every frame)
 		g_needsTimingReset = false;
-	}
-
-	// Initialize persistent timestamp offsets once at startup
-	if (!offset_initialized) {
-		sensor_timestamp_offset[0] = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
-		sensor_timestamp_offset[1] = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
-		offset_initialized = true;
 	}
 
 	mavlink_message_t msg;
@@ -410,11 +498,7 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	// This fixes the float precision loss that caused EKF2 time_slip errors
 	// (X-Plane's float total_flight_time_sec loses precision after ~16.7 seconds)
 	uint64_t base_time_usec = TimestampProvider::getTimestampUsec();
-
-	// Add small jitter to simulate real IMU sample clock variation (±200μs)
-	uint8_t sensor_idx = (sensor_id <= 1) ? sensor_id : 0;
-	int64_t jitter_usec = static_cast<int64_t>(noiseDistribution_timestamp_jitter(gen));
-	hil_sensor.time_usec = base_time_usec + sensor_timestamp_offset[sensor_idx] + jitter_usec;
+	hil_sensor.time_usec = base_time_usec;
 
 	// Ensure timestamp is still monotonically increasing (safety check)
 	if (hil_sensor.time_usec <= lastSensorTime) {
@@ -428,7 +512,7 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	setPressureData(hil_sensor, sensor_id);  // Pass sensor_id for independent barometer noise
 	setMagneticFieldData(hil_sensor);
 
-	hil_sensor.temperature = DataRefManager::getFloat("sim/cockpit2/temperature/outside_air_temp_degc");
+	hil_sensor.temperature = dataRefFloat("sim/cockpit2/temperature/outside_air_temp_degc");
 
 	uint32_t fields_updated = 0;
 	fields_updated |= (1 << 0);  // HIL_SENSOR_UPDATED_XACC
@@ -535,13 +619,13 @@ void MAVLinkManager::sendHILGPS() {
 		gpsCount = 0;
 	}
 
-	mavlink_message_t msg;
-	mavlink_hil_gps_t hil_gps;
+	mavlink_message_t msg = {};
+	mavlink_hil_gps_t hil_gps = {};
 
 	// Use high-precision timestamp (fixes EKF2 time_slip from float precision loss)
 	hil_gps.time_usec = TimestampProvider::getTimestampUsec();
-
-	lastGPSTime = hil_gps.time_usec;
+	hil_gps.id = 0;
+	const uint64_t timeDelta = (lastGPSTime > 0) ? (hil_gps.time_usec - lastGPSTime) : 0;
 
 	// Set various GPS data components
 	setGPSTimeAndFix(hil_gps);
@@ -556,7 +640,6 @@ void MAVLinkManager::sendHILGPS() {
 
 	// Debug logging for GPS timing and complete message content
 	if (ConfigManager::debug_log_sensor_timing && gpsCount++ % 20 == 0) {
-		uint64_t timeDelta = (lastGPSTime > 0) ? (hil_gps.time_usec - lastGPSTime) : 0;
 		char buf[512];
 		snprintf(buf, sizeof(buf),
 			"px4xplane: [HIL_GPS #%d] time=%llu us, dt=%.3f ms, rate=%.1f Hz\n"
@@ -572,6 +655,7 @@ void MAVLinkManager::sendHILGPS() {
 			hil_gps.cog, hil_gps.cog / 100.0, hil_gps.yaw, hil_gps.yaw / 100.0, hil_gps.id);
 		XPLMDebugString(buf);
 	}
+	lastGPSTime = hil_gps.time_usec;
 
 	// Encode and send the MAVLink message
 	mavlink_msg_hil_gps_encode(1, 1, &msg, &hil_gps);
@@ -609,9 +693,9 @@ void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps
 	};*/
 
 	GeodeticPosition currentPosition = {
-		DataRefManager::getFloat("sim/flightmodel/position/latitude"),
-		DataRefManager::getFloat("sim/flightmodel/position/longitude"),
-		DataRefManager::getFloat("sim/flightmodel/position/elevation")
+		dataRefFloat("sim/flightmodel/position/latitude"),
+		dataRefFloat("sim/flightmodel/position/longitude"),
+		dataRefFloat("sim/flightmodel/position/elevation")
 	};
 
 	if (DataRefManager::calculateDistance(currentPosition, DataRefManager::lastPosition) > DataRefManager::UPDATE_THRESHOLD) {
@@ -641,8 +725,8 @@ void MAVLinkManager::sendHILStateQuaternion() {
 		stateQuatCount = 0;
 	}
 
-	mavlink_message_t msg;
-	mavlink_hil_state_quaternion_t hil_state;
+	mavlink_message_t msg = {};
+	mavlink_hil_state_quaternion_t hil_state = {};
 
 	populateHILStateQuaternion(hil_state);
 
@@ -682,7 +766,7 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 
 	// Retrieve quaternion data from X-Plane
 	// X-Plane quaternions are already in the correct frame for PX4 - send directly
-	std::vector<float> q = DataRefManager::getFloatArray("sim/flightmodel/position/q");
+	std::vector<float> q = dataRefFloatArray("sim/flightmodel/position/q");
 	for (int i = 0; i < 4; ++i) {
 		hil_state.attitude_quaternion[i] = q[i];
 	}
@@ -719,32 +803,31 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 	}
 
 	// Angular velocity data (roll, pitch, yaw rates)
-	hil_state.rollspeed = DataRefManager::getFloat("sim/flightmodel/position/Prad");
-	hil_state.pitchspeed = DataRefManager::getFloat("sim/flightmodel/position/Qrad");
-	hil_state.yawspeed = DataRefManager::getFloat("sim/flightmodel/position/Rrad");
+	hil_state.rollspeed = dataRefFloat("sim/flightmodel/position/Prad");
+	hil_state.pitchspeed = dataRefFloat("sim/flightmodel/position/Qrad");
+	hil_state.yawspeed = dataRefFloat("sim/flightmodel/position/Rrad");
 
 	// Position data (latitude, longitude, altitude)
-	hil_state.lat = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/latitude") * 1e7);
-	hil_state.lon = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/longitude") * 1e7);
-	hil_state.alt = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/elevation") * 1e3);
+	hil_state.lat = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/latitude") * 1e7);
+	hil_state.lon = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/longitude") * 1e7);
+	hil_state.alt = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/elevation") * 1e3);
 
-	// Convert local OGL velocities to NED frame:
-	float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100;
-	float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100;
-	float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100;
-	hil_state.vx = -ogl_vz;  // North (NED) from South (OGL)
-	hil_state.vy = ogl_vx;   // East (NED) from East (OGL)
-	hil_state.vz = -ogl_vy;  // Down (NED) from Up (OGL)
+	// Convert X-Plane local velocities to NED, in cm/s for MAVLink.
+	hil_state.vx = clampToInt16(localVnMps() * 100.0f);
+	hil_state.vy = clampToInt16(localVeMps() * 100.0f);
+	hil_state.vz = clampToInt16(localVdMps() * 100.0f);
 
 	// Airspeed data (indicated and true)
-	hil_state.ind_airspeed = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed") * 100);
-	hil_state.true_airspeed = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/true_airspeed") * 100);
+	const float iasKnots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
+	const float tasMps = dataRefFloat("sim/flightmodel/position/true_airspeed");
+	hil_state.ind_airspeed = clampToUint16(iasKnots * KNOT_TO_MPS * 100.0f);
+	hil_state.true_airspeed = clampToUint16(tasMps * 100.0f);
 
-	// Reuse the computed acceleration from computeAcceleration()
+	// HIL_STATE_QUATERNION acceleration fields are int16 milli-g.
 	Eigen::Vector3f accel = computeAcceleration();
-	hil_state.xacc = accel.x();
-	hil_state.yacc = accel.y();
-	hil_state.zacc = accel.z();
+	hil_state.xacc = clampToInt16((accel.x() / GRAVITY) * 1000.0f);
+	hil_state.yacc = clampToInt16((accel.y() / GRAVITY) * 1000.0f);
+	hil_state.zacc = clampToInt16((accel.z() / GRAVITY) * 1000.0f);
 }
 
 
@@ -783,10 +866,10 @@ void MAVLinkManager::sendHILRCInputs() {
 	hil_rc_inputs.time_usec = TimestampProvider::getTimestampUsec();
 
 	// Map RC channels using joystick data from X-Plane
-	hil_rc_inputs.chan1_raw = mapRCChannel(DataRefManager::getFloat("sim/joystick/yoke_roll_ratio"), -1, +1);
-	hil_rc_inputs.chan2_raw = mapRCChannel(DataRefManager::getFloat("sim/joystick/yoke_pitch_ratio"), -1, +1);
-	hil_rc_inputs.chan3_raw = mapRCChannel(DataRefManager::getFloat("sim/cockpit2/engine/actuators/throttle_ratio_all"), 0, +1);
-	hil_rc_inputs.chan4_raw = mapRCChannel(DataRefManager::getFloat("sim/joystick/yoke_heading_ratio"), -1, +1);
+	hil_rc_inputs.chan1_raw = mapRCChannel(dataRefFloat("sim/joystick/yoke_roll_ratio"), -1, +1);
+	hil_rc_inputs.chan2_raw = mapRCChannel(dataRefFloat("sim/joystick/yoke_pitch_ratio"), -1, +1);
+	hil_rc_inputs.chan3_raw = mapRCChannel(dataRefFloat("sim/cockpit2/engine/actuators/throttle_ratio_all"), 0, +1);
+	hil_rc_inputs.chan4_raw = mapRCChannel(dataRefFloat("sim/joystick/yoke_heading_ratio"), -1, +1);
 
 	// Additional channels, as needed (e.g., auxiliary channels, mode switch)
 	hil_rc_inputs.chan5_raw = mapRCChannel(0, -1, +1);  // Placeholder for an unused or fixed-value channel
@@ -967,9 +1050,9 @@ void MAVLinkManager::reset() {
 // */
 //void MAVLinkManager::setAccelerationData(mavlink_hil_sensor_t& hil_sensor) {
 //	// Retrieve raw accelerometer data from X-Plane
-//	float raw_xacc = DataRefManager::getFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
-//	float raw_yacc = DataRefManager::getFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
-//	float raw_zacc = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
+//	float raw_xacc = dataRefFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
+//	float raw_yacc = dataRefFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth * -1;
+//	float raw_zacc = dataRefFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
 //	/*
 //	// Add realistic ground vibration
 //	float vibration_frequency = 50.0f; // Frequency of vibration (Hz)
@@ -1022,9 +1105,9 @@ void MAVLinkManager::reset() {
  */
 void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
 	// Retrieve raw gyro rates from X-Plane (already in rad/s, body frame)
-	float raw_xgyro = DataRefManager::getFloat("sim/flightmodel/position/Prad");  // Roll rate
-	float raw_ygyro = DataRefManager::getFloat("sim/flightmodel/position/Qrad");  // Pitch rate
-	float raw_zgyro = DataRefManager::getFloat("sim/flightmodel/position/Rrad");  // Yaw rate
+	float raw_xgyro = dataRefFloat("sim/flightmodel/position/Prad");  // Roll rate
+	float raw_ygyro = dataRefFloat("sim/flightmodel/position/Qrad");  // Pitch rate
+	float raw_zgyro = dataRefFloat("sim/flightmodel/position/Rrad");  // Yaw rate
 
 	// Add realistic MEMS gyroscope noise (independent per axis)
 	hil_sensor.xgyro = raw_xgyro + noiseDistribution_gyro(gen);
@@ -1166,7 +1249,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// - "sim/flightmodel2/position/pressure_altitude" was found to return frozen
 	//   values in earlier testing, causing EKF2 vertical velocity instability
 	// - This dataref provides smooth, continuous altitude updates
-	float basePressureAltitude_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
+	float basePressureAltitude_m = dataRefFloat("sim/flightmodel/position/elevation");
 
 	// ==================================================================================
 	// STEP 2: Generate Realistic Barometer Noise (DUAL SENSOR SYSTEM)
@@ -1325,7 +1408,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 
 	// Retrieve Indicated Airspeed from X-Plane
 	// DataRef: "sim/flightmodel/position/indicated_airspeed" (knots)
-	float ias_knots = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed");
+	float ias_knots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
 
 	// Convert IAS from knots to m/s
 	// Conversion factor: 1 knot = 0.514444 m/s (exactly 1852m/3600s)
@@ -1371,7 +1454,7 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	// Get aircraft attitude quaternion from X-Plane
 	// X-Plane quaternion format: [w, x, y, z] (scalar first)
 	// This represents the rotation from NED to body frame
-	std::vector<float> q = DataRefManager::getFloatArray("sim/flightmodel/position/q");
+	std::vector<float> q = dataRefFloatArray("sim/flightmodel/position/q");
 	Eigen::Quaternionf attitude(q[0], q[1], q[2], q[3]); // w, x, y, z
 
 	// Rotate magnetic field from NED to body frame using full attitude
@@ -1397,7 +1480,7 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	static int magLogCount = 0;
 	magLogCount++;
 	if (ConfigManager::debug_log_sensor_values && (magLogCount % 1000 == 0)) {
-		float mag_psi = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
+		float mag_psi = dataRefFloat("sim/flightmodel/position/mag_psi");
 		char buf[256];
 		snprintf(buf, sizeof(buf),
 			"px4xplane: [MAG] Body[%.2f,%.2f,%.2f]G | MagHdg=%.1f°\n",
@@ -1438,8 +1521,8 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
-	hil_gps.lat = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/latitude") * 1e7);
-	hil_gps.lon = static_cast<int32_t>(DataRefManager::getFloat("sim/flightmodel/position/longitude") * 1e7);
+	hil_gps.lat = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/latitude") * 1e7);
+	hil_gps.lon = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/longitude") * 1e7);
 
 	// CRITICAL FIX (January 2025): Reduced GPS altitude noise for stability
 	// GPS vertical accuracy (high-quality): σ = 0.15m (was 0.5m)
@@ -1450,7 +1533,7 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	//   → GPS provides long-term reference without causing ±1m jumps
 	//   → Prevents EKF2 confusion: "aircraft climbing" when GPS randomly jumps
 	//   → 95% of GPS readings within ±0.3m → stable height estimate
-	float elevation_m = DataRefManager::getFloat("sim/flightmodel/position/elevation");
+	float elevation_m = dataRefFloat("sim/flightmodel/position/elevation");
 
 	// CRITICAL FIX (January 2025): Create fresh distribution for each sample
 	// Same fix as barometer - static distribution causes non-Gaussian behavior
@@ -1508,9 +1591,9 @@ void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
-	float ogl_vx = DataRefManager::getFloat("sim/flightmodel/position/local_vx") * 100;
-	float ogl_vy = DataRefManager::getFloat("sim/flightmodel/position/local_vy") * 100;
-	float ogl_vz = DataRefManager::getFloat("sim/flightmodel/position/local_vz") * 100;
+	const float vn = localVnMps();
+	const float ve = localVeMps();
+	const float vd = localVdMps();
 
 	// Coordinate Transformation:
 	// The local OGL (OpenGL) coordinate system in the simulation environment is defined as:
@@ -1528,11 +1611,10 @@ void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
 	// NED East  (Y) =  OGL East  (X)
 	// NED Down  (Z) = -OGL Up    (Y)
 
-	hil_gps.vn = static_cast<int16_t> (-1.0f * ogl_vz);
-	hil_gps.ve = static_cast<int16_t>(ogl_vx);
-	hil_gps.vd = static_cast<int16_t>(-1.0f * ogl_vy);
-	//hil_gps.vel = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/groundspeed") * 100.0);
-	hil_gps.vel = static_cast<uint16_t>(sqrt(ogl_vx * ogl_vx + ogl_vy * ogl_vy + ogl_vz * ogl_vz));
+	hil_gps.vn = clampToInt16(vn * 100.0f);
+	hil_gps.ve = clampToInt16(ve * 100.0f);
+	hil_gps.vd = clampToInt16(vd * 100.0f);
+	hil_gps.vel = clampToUint16(std::sqrt(vn * vn + ve * ve) * 100.0f);
 
 	// Debug logging for GPS velocity
 	static int gpsVelLogCount = 0;
@@ -1540,7 +1622,7 @@ void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
 		char buf[256];
 		snprintf(buf, sizeof(buf), "px4xplane: [GPS_VEL] vn=%d, ve=%d, vd=%d, vel=%u (raw: vx=%.2f vy=%.2f vz=%.2f)\n",
 			hil_gps.vn, hil_gps.ve, hil_gps.vd, hil_gps.vel,
-			ogl_vx / 100.0f, ogl_vy / 100.0f, ogl_vz / 100.0f);
+			ve, -vd, -vn);
 		XPLMDebugString(buf);
 	}
 }
@@ -1561,9 +1643,9 @@ void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps) {
-	float groundspeed = DataRefManager::getFloat("sim/flightmodel/position/groundspeed");
-	float hpath = DataRefManager::getFloat("sim/flightmodel/position/hpath") * (M_PI / 180.0f);
-	float vpath = DataRefManager::getFloat("sim/flightmodel/position/vpath") * (M_PI / 180.0f);
+	float groundspeed = dataRefFloat("sim/flightmodel/position/groundspeed");
+	float hpath = dataRefFloat("sim/flightmodel/position/hpath") * (M_PI / 180.0f);
+	float vpath = dataRefFloat("sim/flightmodel/position/vpath") * (M_PI / 180.0f);
 
 	// Calculate NED velocity components
 	float Vn = groundspeed * cos(vpath) * cos(hpath);
@@ -1600,9 +1682,9 @@ void MAVLinkManager::setGPSVelocityDataByPath(mavlink_hil_gps_t& hil_gps) {
  */
 void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
 	// Read TCAS velocities from X-Plane
-	std::vector<float> vxArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vx");
-	std::vector<float> vyArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vy");
-	std::vector<float> vzArray = DataRefManager::getFloatArray("sim/cockpit2/tcas/targets/position/vz");
+	std::vector<float> vxArray = dataRefFloatArray("sim/cockpit2/tcas/targets/position/vx");
+	std::vector<float> vyArray = dataRefFloatArray("sim/cockpit2/tcas/targets/position/vy");
+	std::vector<float> vzArray = dataRefFloatArray("sim/cockpit2/tcas/targets/position/vz");
 
 	// Assuming the first element in each array contains the required velocity
 	float vx = vxArray[0];
@@ -1642,16 +1724,18 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
-	// COG (Course Over Ground): Use the cockpit gauge which gives magnetic heading directly
-	// This is the reliable dataref that was working in the stable version
-	uint16_t cog = static_cast<uint16_t>(DataRefManager::getFloat("sim/cockpit2/gauges/indicators/ground_track_mag_copilot") * 100);
-	hil_gps.cog = (cog == 36000) ? static_cast<uint16_t>(1) : cog;
+	static uint16_t lastValidCog = 0;
+
+	if (localHorizontalSpeedMps() >= 0.5f) {
+		lastValidCog = degreesToCentidegrees(trueCourseFromLocalVelocityDeg());
+	}
+	hil_gps.cog = lastValidCog;
 
 	// YAW: "Yaw of vehicle relative to Earth's North" (MAVLink HIL_GPS spec)
 	// Earth's North = TRUE NORTH (geographic), NOT magnetic north
 	// Use psi (true heading) - PX4 handles magnetic declination internally via WMM
 	// Previously used mag_psi which caused 3-4° heading error at locations with declination
-	uint16_t yaw = static_cast<uint16_t>(DataRefManager::getFloat("sim/flightmodel/position/psi") * 100.0f);
+	uint16_t yaw = degreesToCentidegrees(dataRefFloat("sim/flightmodel/position/psi"));
 	hil_gps.yaw = (yaw == 0) ? static_cast<uint16_t>(35999) : yaw;
 
 	// Debug logging for heading data
@@ -1659,7 +1743,7 @@ void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
 	if (ConfigManager::debug_log_sensor_values && headingLogCount++ % 20 == 0) {
 		char buf[256];
 		snprintf(buf, sizeof(buf), "px4xplane: [GPS_HEADING] COG=%.2f°, Yaw=%.2f°\n",
-			cog / 100.0f, yaw / 100.0f);
+			hil_gps.cog / 100.0f, yaw / 100.0f);
 		XPLMDebugString(buf);
 	}
 }

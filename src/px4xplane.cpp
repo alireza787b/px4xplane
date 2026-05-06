@@ -2,6 +2,7 @@
 #include "XPLMGraphics.h"
 #include "XPLMDataAccess.h"
 #include "XPLMMenus.h"
+#include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
 #include <string>
 #include <stdio.h>
@@ -16,6 +17,10 @@
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include "TimestampProvider.h"
 
 
 
@@ -46,6 +51,9 @@ static int g_airframesMenuItemIndex; // Global variable to store the index of th
 // Using distinct non-zero values to avoid confusion with NULL
 #define MENU_REF_MAIN ((void*)100)
 #define MENU_REF_AIRFRAMES ((void*)200)
+#define MENU_ITEM_SHOW_DATA ((void*)101)
+#define MENU_ITEM_RELOAD_CONFIG ((void*)102)
+#define MENU_ITEM_TOGGLE_DIAGNOSTICS ((void*)103)
 
 
 // Global variable to hold our command reference
@@ -264,10 +272,21 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 		// Main menu item clicked
 		debugLog("Main menu item clicked");
 
-		// "Show Data" has item_ref (void*)0
-		if (in_item_ref == (void*)0) {
+		if (in_item_ref == MENU_ITEM_SHOW_DATA) {
 			XPLMSetWindowIsVisible(g_window, 1);
 			debugLog("Show Data menu item selected - window should now be visible");
+		}
+		else if (in_item_ref == MENU_ITEM_RELOAD_CONFIG) {
+			ConfigManager::loadConfiguration();
+			initializeMessagePeriods();
+			ConnectionStatusHUD::setEnabled(ConfigManager::show_connection_status_hud);
+			updateMenuItems();
+			debugLog("Configuration reloaded from menu");
+		}
+		else if (in_item_ref == MENU_ITEM_TOGGLE_DIAGNOSTICS) {
+			ConfigManager::diagnostic_log_enabled = !ConfigManager::diagnostic_log_enabled;
+			updateMenuItems();
+			debugLog(ConfigManager::diagnostic_log_enabled ? "Diagnostics enabled from menu" : "Diagnostics disabled from menu");
 		}
 		else {
 			snprintf(debugBuf, sizeof(debugBuf), "Unknown main menu item: %p", in_item_ref);
@@ -406,7 +425,11 @@ void create_menu() {
 		XPLMAppendMenuItem(airframesMenu, menuItemName.c_str(), (void*)(intptr_t)i, 1);
 	}
 
-	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	XPLMAppendMenuItem(g_menu_id, "Show Data", MENU_ITEM_SHOW_DATA, 1);
+	XPLMAppendMenuItem(g_menu_id, "Reload Config", MENU_ITEM_RELOAD_CONFIG, 1);
+	XPLMAppendMenuItem(g_menu_id,
+		ConfigManager::diagnostic_log_enabled ? "Diagnostics: On" : "Diagnostics: Off",
+		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
 	XPLMAppendMenuSeparator(g_menu_id);
@@ -440,7 +463,11 @@ void updateMenuItems() {
 	}
 
 	// Recreate the remaining main menu items
-	XPLMAppendMenuItem(g_menu_id, "Show Data", (void*)0, 1);
+	XPLMAppendMenuItem(g_menu_id, "Show Data", MENU_ITEM_SHOW_DATA, 1);
+	XPLMAppendMenuItem(g_menu_id, "Reload Config", MENU_ITEM_RELOAD_CONFIG, 1);
+	XPLMAppendMenuItem(g_menu_id,
+		ConfigManager::diagnostic_log_enabled ? "Diagnostics: On" : "Diagnostics: Off",
+		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
 	XPLMAppendMenuSeparator(g_menu_id);
 	if (ConnectionManager::isConnected()) {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
@@ -505,8 +532,170 @@ static float lastSensorSendTime = 0.0f;
 static float lastGpsSendTime = 0.0f;
 static float lastStateQuatSendTime = 0.0f;
 static float lastRcSendTime = 0.0f;
+static float lastDiagnosticLogTime = 0.0f;
+static int diagnosticSensorCount = 0;
+static int diagnosticGpsCount = 0;
+static int diagnosticStateCount = 0;
+static int diagnosticRcCount = 0;
 
 float lastFlightTime = 0.0f;
+
+namespace {
+
+struct SendTimingDiagnostics {
+	std::uint64_t intervalLate{0};
+	std::uint64_t intervalMissed{0};
+	std::uint64_t totalLate{0};
+	std::uint64_t totalMissed{0};
+};
+
+struct FrameTimingDiagnostics {
+	std::vector<float> intervalPeriodsMs;
+	std::uint64_t intervalNonMonotonicSimTime{0};
+	std::uint64_t totalNonMonotonicSimTime{0};
+	float lastWarnTime{-1000.0f};
+};
+
+SendTimingDiagnostics gSensorTimingDiagnostics;
+SendTimingDiagnostics gGpsTimingDiagnostics;
+SendTimingDiagnostics gStateTimingDiagnostics;
+SendTimingDiagnostics gRcTimingDiagnostics;
+FrameTimingDiagnostics gFrameTimingDiagnostics;
+
+float percentileMs(const std::vector<float>& samples, float percentile)
+{
+	if (samples.empty()) {
+		return 0.0f;
+	}
+
+	std::vector<float> sorted = samples;
+	std::sort(sorted.begin(), sorted.end());
+	const float clamped = std::max(0.0f, std::min(1.0f, percentile));
+	const std::size_t index = static_cast<std::size_t>(
+		std::floor(clamped * static_cast<float>(sorted.size() - 1)));
+	return sorted[index];
+}
+
+float maxTargetRateHz()
+{
+	return static_cast<float>(std::max(
+		std::max(ConfigManager::mavlink_sensor_rate_hz, ConfigManager::mavlink_gps_rate_hz),
+		std::max(ConfigManager::mavlink_state_rate_hz, ConfigManager::mavlink_rc_rate_hz)));
+}
+
+void appendLimitedRate(char* buffer, std::size_t bufferSize, const char* name, int targetHz, float frameHz)
+{
+	if (targetHz <= 0 || frameHz <= 0.0f || static_cast<float>(targetHz) <= frameHz * 1.05f) {
+		return;
+	}
+
+	const std::size_t used = strlen(buffer);
+	if (used >= bufferSize) {
+		return;
+	}
+
+	snprintf(buffer + used, bufferSize - used, "%s%s(%dHz)",
+		used > 0 ? "," : "", name, targetHz);
+}
+
+void maybeLogRateLimitWarning(float currentSimTime, float frameP50Ms)
+{
+	if (frameP50Ms <= 0.0f) {
+		return;
+	}
+
+	const float frameHz = 1000.0f / frameP50Ms;
+	if (maxTargetRateHz() <= frameHz * 1.05f) {
+		return;
+	}
+
+	if ((currentSimTime - gFrameTimingDiagnostics.lastWarnTime) < 10.0f) {
+		return;
+	}
+
+	char limited[128] = {};
+	appendLimitedRate(limited, sizeof(limited), "sensor", ConfigManager::mavlink_sensor_rate_hz, frameHz);
+	appendLimitedRate(limited, sizeof(limited), "gps", ConfigManager::mavlink_gps_rate_hz, frameHz);
+	appendLimitedRate(limited, sizeof(limited), "state", ConfigManager::mavlink_state_rate_hz, frameHz);
+	appendLimitedRate(limited, sizeof(limited), "rc", ConfigManager::mavlink_rc_rate_hz, frameHz);
+
+	char buf[320];
+	snprintf(buf, sizeof(buf),
+		"px4xplane: [BRIDGE_RATE_WARNING] target rate exceeds observed frame rate: frame_p50=%.1fHz limited=%s; bridge sends at most one sample per X-Plane frame\n",
+		frameHz, limited[0] ? limited : "none");
+	XPLMDebugString(buf);
+
+	gFrameTimingDiagnostics.lastWarnTime = currentSimTime;
+}
+
+void recordFrameTiming(float currentSimTime, float callbackDt)
+{
+	float framePeriod = DataRefManager::getFloat("sim/operation/misc/frame_rate_period");
+	if (!(framePeriod > 0.0f) && callbackDt > 0.0f) {
+		framePeriod = callbackDt;
+	}
+	if (framePeriod > 0.0f && std::isfinite(framePeriod)) {
+		gFrameTimingDiagnostics.intervalPeriodsMs.push_back(framePeriod * 1000.0f);
+	}
+
+	if (lastFlightTime > 0.0f && currentSimTime < lastFlightTime) {
+		++gFrameTimingDiagnostics.intervalNonMonotonicSimTime;
+		++gFrameTimingDiagnostics.totalNonMonotonicSimTime;
+	}
+}
+
+void recordSendTiming(float previousSendTime, float currentSimTime, float targetPeriod, SendTimingDiagnostics& diagnostics)
+{
+	if (previousSendTime <= 0.0f || targetPeriod <= 0.0f || currentSimTime <= previousSendTime) {
+		return;
+	}
+
+	const float actualDt = currentSimTime - previousSendTime;
+	if (actualDt > targetPeriod * 1.5f) {
+		++diagnostics.intervalLate;
+		++diagnostics.totalLate;
+	}
+
+	const auto expectedIntervals = static_cast<std::uint64_t>(std::floor((actualDt / targetPeriod) + 0.0001f));
+	if (expectedIntervals > 1) {
+		const std::uint64_t missed = expectedIntervals - 1;
+		diagnostics.intervalMissed += missed;
+		diagnostics.totalMissed += missed;
+	}
+}
+
+void resetDiagnosticCounters()
+{
+	diagnosticSensorCount = 0;
+	diagnosticGpsCount = 0;
+	diagnosticStateCount = 0;
+	diagnosticRcCount = 0;
+	gSensorTimingDiagnostics = {};
+	gGpsTimingDiagnostics = {};
+	gStateTimingDiagnostics = {};
+	gRcTimingDiagnostics = {};
+	gFrameTimingDiagnostics = {};
+}
+
+void clearIntervalDiagnosticCounters()
+{
+	diagnosticSensorCount = 0;
+	diagnosticGpsCount = 0;
+	diagnosticStateCount = 0;
+	diagnosticRcCount = 0;
+	gSensorTimingDiagnostics.intervalLate = 0;
+	gSensorTimingDiagnostics.intervalMissed = 0;
+	gGpsTimingDiagnostics.intervalLate = 0;
+	gGpsTimingDiagnostics.intervalMissed = 0;
+	gStateTimingDiagnostics.intervalLate = 0;
+	gStateTimingDiagnostics.intervalMissed = 0;
+	gRcTimingDiagnostics.intervalLate = 0;
+	gRcTimingDiagnostics.intervalMissed = 0;
+	gFrameTimingDiagnostics.intervalNonMonotonicSimTime = 0;
+	gFrameTimingDiagnostics.intervalPeriodsMs.clear();
+}
+
+} // namespace
 
 // Implementation of resetFlightLoopTimers (declared earlier, defined here after statics)
 void resetFlightLoopTimers() {
@@ -514,7 +703,85 @@ void resetFlightLoopTimers() {
 	lastGpsSendTime = 0.0f;
 	lastStateQuatSendTime = 0.0f;
 	lastRcSendTime = 0.0f;
+	lastDiagnosticLogTime = 0.0f;
+	resetDiagnosticCounters();
 	XPLMDebugString("px4xplane: Flight loop timers reset\n");
+}
+
+void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
+	if (!ConfigManager::diagnostic_log_enabled) {
+		return;
+	}
+	if (lastDiagnosticLogTime > 0.0f &&
+		(currentSimTime - lastDiagnosticLogTime) < ConfigManager::diagnostic_log_interval_s) {
+		return;
+	}
+
+	const float elapsed = (lastDiagnosticLogTime > 0.0f)
+		? (currentSimTime - lastDiagnosticLogTime)
+		: ConfigManager::diagnostic_log_interval_s;
+	if (elapsed <= 0.0f) {
+		return;
+	}
+
+	const float frameMinMs = percentileMs(gFrameTimingDiagnostics.intervalPeriodsMs, 0.0f);
+	const float frameP50Ms = percentileMs(gFrameTimingDiagnostics.intervalPeriodsMs, 0.50f);
+	const float frameP95Ms = percentileMs(gFrameTimingDiagnostics.intervalPeriodsMs, 0.95f);
+	const float frameMaxMs = percentileMs(gFrameTimingDiagnostics.intervalPeriodsMs, 1.0f);
+	const float fps = frameP50Ms > 0.0f ? 1000.0f / frameP50Ms : 0.0f;
+	maybeLogRateLimitWarning(currentSimTime, frameP50Ms);
+
+	const auto timestampDiagnostics = TimestampProvider::getDiagnostics();
+	const float localVx = DataRefManager::getFloat("sim/flightmodel/position/local_vx");
+	const float localVy = DataRefManager::getFloat("sim/flightmodel/position/local_vy");
+	const float localVz = DataRefManager::getFloat("sim/flightmodel/position/local_vz");
+	const float gAxil = DataRefManager::getFloat("sim/flightmodel/forces/g_axil");
+	const float gSide = DataRefManager::getFloat("sim/flightmodel/forces/g_side");
+	const float gNrml = DataRefManager::getFloat("sim/flightmodel/forces/g_nrml");
+	const float psi = DataRefManager::getFloat("sim/flightmodel/position/psi");
+	const float magPsi = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
+	const float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed");
+	const float tas = DataRefManager::getFloat("sim/flightmodel/position/true_airspeed");
+
+	char buf[1400];
+	snprintf(buf, sizeof(buf),
+		"px4xplane: [BRIDGE_DIAG] sim=%.3f cb_dt=%.4f fps_p50=%.1f counter=%d "
+		"sent_hz sensor=%.1f gps=%.1f state=%.1f rc=%.1f "
+		"frame_ms min/p50/p95/max=%.2f/%.2f/%.2f/%.2f "
+		"late sensor/gps/state/rc=%llu/%llu/%llu/%llu "
+		"missed sensor/gps/state/rc=%llu/%llu/%llu/%llu "
+		"ts last_delta_ms=%.2f monotonic_fix=%llu backwards=%llu capped=%llu subframe=%llu sim_backwards=%llu "
+		"ned_v_ms=[%.3f,%.3f,%.3f] acc_frd_ms2=[%.3f,%.3f,%.3f] "
+		"raw_g=[%.4f,%.4f,%.4f] psi=%.2f mag_psi=%.2f ias_kt=%.2f tas_ms=%.2f\n",
+		currentSimTime, callbackDt, fps, counter,
+		diagnosticSensorCount / elapsed,
+		diagnosticGpsCount / elapsed,
+		diagnosticStateCount / elapsed,
+		diagnosticRcCount / elapsed,
+		frameMinMs, frameP50Ms, frameP95Ms, frameMaxMs,
+		static_cast<unsigned long long>(gSensorTimingDiagnostics.intervalLate),
+		static_cast<unsigned long long>(gGpsTimingDiagnostics.intervalLate),
+		static_cast<unsigned long long>(gStateTimingDiagnostics.intervalLate),
+		static_cast<unsigned long long>(gRcTimingDiagnostics.intervalLate),
+		static_cast<unsigned long long>(gSensorTimingDiagnostics.intervalMissed),
+		static_cast<unsigned long long>(gGpsTimingDiagnostics.intervalMissed),
+		static_cast<unsigned long long>(gStateTimingDiagnostics.intervalMissed),
+		static_cast<unsigned long long>(gRcTimingDiagnostics.intervalMissed),
+		timestampDiagnostics.last_delta_usec / 1000.0,
+		static_cast<unsigned long long>(timestampDiagnostics.monotonic_corrections),
+		static_cast<unsigned long long>(timestampDiagnostics.backward_resets),
+		static_cast<unsigned long long>(timestampDiagnostics.capped_deltas),
+		static_cast<unsigned long long>(timestampDiagnostics.sub_frame_fallbacks),
+		static_cast<unsigned long long>(gFrameTimingDiagnostics.totalNonMonotonicSimTime),
+		-localVz, localVx, -localVy,
+		-gAxil * DataRefManager::g_earth,
+		gSide * DataRefManager::g_earth,
+		-gNrml * DataRefManager::g_earth,
+		gAxil, gSide, gNrml, psi, magPsi, ias, tas);
+	XPLMDebugString(buf);
+
+	lastDiagnosticLogTime = currentSimTime;
+	clearIntervalDiagnosticCounters();
 }
 
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
@@ -591,6 +858,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	// Get current simulation time (frame-rate independent!)
 	float currentSimTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
+	recordFrameTiming(currentSimTime, inElapsedSinceLastCall);
 
 	// Check for simulation restart
 	if (currentSimTime < lastFlightTime) {
@@ -602,6 +870,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		lastGpsSendTime = 0.0f;
 		lastStateQuatSendTime = 0.0f;
 		lastRcSendTime = 0.0f;
+		lastDiagnosticLogTime = 0.0f;
 	}
 
 	// ==================================================================================
@@ -610,7 +879,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	// Send sensor data at target rate
 	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD) {
+		recordSendTiming(lastSensorSendTime, currentSimTime, TARGET_SENSOR_PERIOD, gSensorTimingDiagnostics);
 		MAVLinkManager::sendHILSensor(0);
+		diagnosticSensorCount++;
 
 		// Statistics tracking for debugging
 		static int sensorMessageCount = 0;
@@ -639,19 +910,25 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	// Send GPS data at target rate (20 Hz) - one message per eligible frame
 	if ((currentSimTime - lastGpsSendTime) >= TARGET_GPS_PERIOD) {
+		recordSendTiming(lastGpsSendTime, currentSimTime, TARGET_GPS_PERIOD, gGpsTimingDiagnostics);
 		MAVLinkManager::sendHILGPS();
+		diagnosticGpsCount++;
 		lastGpsSendTime = currentSimTime;
 	}
 
 	// Optional: Send state quaternion data (10 Hz)
 	if ((currentSimTime - lastStateQuatSendTime) >= TARGET_STATE_QUAT_PERIOD) {
+		recordSendTiming(lastStateQuatSendTime, currentSimTime, TARGET_STATE_QUAT_PERIOD, gStateTimingDiagnostics);
 		MAVLinkManager::sendHILStateQuaternion();
+		diagnosticStateCount++;
 		lastStateQuatSendTime = currentSimTime;
 	}
 
 	// Optional: Send RC data (10 Hz)
 	if ((currentSimTime - lastRcSendTime) >= TARGET_RC_PERIOD) {
+		recordSendTiming(lastRcSendTime, currentSimTime, TARGET_RC_PERIOD, gRcTimingDiagnostics);
 		MAVLinkManager::sendHILRCInputs();
+		diagnosticRcCount++;
 		lastRcSendTime = currentSimTime;
 	}
 
@@ -664,6 +941,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	// Update the SITL timestep with the loop callback rate
 	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
+	logBridgeDiagnostics(currentSimTime, inElapsedSinceLastCall, inCounter);
 
 	lastFlightTime = currentSimTime;
 
@@ -699,4 +977,25 @@ PLUGIN_API void XPluginStop(void) {
 #endif
 	// ...
 	XPLMDebugString("px4xplane: Plugin stopped\n");
+}
+
+PLUGIN_API int XPluginEnable(void) {
+	XPLMDebugString("px4xplane: Plugin enabled\n");
+	return 1;
+}
+
+PLUGIN_API void XPluginDisable(void) {
+	if (ConnectionManager::isConnected() || ConnectionManager::isWaitingForConnection()) {
+		resetFlightLoopTimers();
+		ConnectionManager::disconnect();
+	}
+	ConnectionStatusHUD::updateStatus(ConnectionStatusHUD::Status::DISCONNECTED);
+	updateMenuItems();
+	XPLMDebugString("px4xplane: Plugin disabled\n");
+}
+
+PLUGIN_API void XPluginReceiveMessage(XPLMPluginID inFromWho, int inMessage, void* inParam) {
+	(void)inFromWho;
+	(void)inMessage;
+	(void)inParam;
 }

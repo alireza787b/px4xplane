@@ -277,7 +277,11 @@ std::map<int, int> ConnectionManager::loadMotorMappings(const std::string& filen
 
 
 void ConnectionManager::disconnect() {
-    if (!connected) return;
+    const bool wasConnected = connected;
+    const bool hadSocket = (sockfd != -1 || newsockfd != -1);
+    if (!wasConnected && !hadSocket) {
+        return;
+    }
 
     // CRITICAL FIX (January 2025): Reset state BEFORE closing sockets
     // Order matters:
@@ -286,9 +290,11 @@ void ConnectionManager::disconnect() {
     //   3. Disable override flags
     //   4. Close sockets
 
-    DataRefManager::resetActuatorValues();  // Zero all throttle/control surface datarefs
-    MAVLinkManager::reset();                 // Clear actuator command history
-    DataRefManager::disableOverride();       // Disable override flags
+    if (wasConnected) {
+        DataRefManager::resetActuatorValues();  // Zero all throttle/control surface datarefs
+        MAVLinkManager::reset();                 // Clear actuator command history
+        DataRefManager::disableOverride();       // Disable override flags
+    }
 
     closeSocket(sockfd);
     sockfd = -1;
@@ -297,12 +303,14 @@ void ConnectionManager::disconnect() {
 
     connected = false;
     status = "Disconnected";
-    setLastMessage("Disconnected from PX4 SITL.");
-    XPLMDebugString("px4xplane: Disconnected from SITL\n");
+    setLastMessage(wasConnected ? "Disconnected from PX4 SITL." : "PX4 connection wait cancelled.");
+    XPLMDebugString(wasConnected ? "px4xplane: Disconnected from SITL\n" : "px4xplane: PX4 connection wait cancelled\n");
     XPLMDebugString("px4xplane: Socket closed\n");
 
     // UX FIX (January 2025): Update menu and notify user
-    XPLMSpeakString("Disconnected");  // Audio feedback
+    if (wasConnected) {
+        XPLMSpeakString("Disconnected");  // Audio feedback
+    }
     extern void updateMenuItems();  // Defined in px4xplane.cpp
     updateMenuItems();  // Change menu back to "Connect to SITL"
 }

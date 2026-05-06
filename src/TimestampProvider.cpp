@@ -23,6 +23,10 @@ uint64_t TimestampProvider::s_accumulatedDeltaUsec = 0;
 uint64_t TimestampProvider::s_lastOutputUsec = 0;
 int64_t TimestampProvider::s_driftUsec = 0;
 uint64_t TimestampProvider::s_lastDeltaUsec = 0;
+uint64_t TimestampProvider::s_monotonicCorrections = 0;
+uint64_t TimestampProvider::s_backwardResets = 0;
+uint64_t TimestampProvider::s_cappedDeltas = 0;
+uint64_t TimestampProvider::s_subFrameFallbacks = 0;
 
 uint64_t TimestampProvider::getTimestampUsec() {
     // Get current X-Plane simulation time
@@ -66,6 +70,7 @@ uint64_t TimestampProvider::getTimestampUsec() {
 
     // Handle time going backwards (simulation restart, scenario change)
     if (deltaSec < 0) {
+        ++s_backwardResets;
         if (ConfigManager::debug_log_sensor_timing) {
             char buf[256];
             snprintf(buf, sizeof(buf),
@@ -81,6 +86,7 @@ uint64_t TimestampProvider::getTimestampUsec() {
     // Handle pause or large frame skip
     // Cap to MAX_DELTA_SEC to prevent timestamp jumps that confuse EKF2
     if (deltaSec > MAX_DELTA_SEC) {
+        ++s_cappedDeltas;
         if (ConfigManager::debug_log_sensor_timing) {
             char buf[256];
             snprintf(buf, sizeof(buf),
@@ -94,6 +100,7 @@ uint64_t TimestampProvider::getTimestampUsec() {
     // Handle very small deltas (multiple calls within same frame)
     // Use system clock for sub-frame microsecond precision
     if (deltaSec < MIN_DELTA_SEC) {
+        ++s_subFrameFallbacks;
         auto now = SteadyClock::now();
         auto systemElapsed = std::chrono::duration_cast<std::chrono::microseconds>(
             now - s_baseTimePoint
@@ -106,6 +113,7 @@ uint64_t TimestampProvider::getTimestampUsec() {
         // Ensure monotonicity - never return a value <= last output
         if (timestamp <= s_lastOutputUsec) {
             timestamp = s_lastOutputUsec + 1;
+            ++s_monotonicCorrections;
         }
         s_lastOutputUsec = timestamp;
 
@@ -121,6 +129,7 @@ uint64_t TimestampProvider::getTimestampUsec() {
     // Ensure strict monotonicity
     if (s_accumulatedDeltaUsec <= s_lastOutputUsec) {
         s_accumulatedDeltaUsec = s_lastOutputUsec + 1;
+        ++s_monotonicCorrections;
     }
     s_lastOutputUsec = s_accumulatedDeltaUsec;
 
@@ -155,6 +164,10 @@ void TimestampProvider::reset() {
     s_lastXPlaneTimeSec = 0.0;
     s_driftUsec = 0;
     s_lastDeltaUsec = 0;
+    s_monotonicCorrections = 0;
+    s_backwardResets = 0;
+    s_cappedDeltas = 0;
+    s_subFrameFallbacks = 0;
 
     if (ConfigManager::debug_log_sensor_timing) {
         XPLMDebugString("px4xplane: [TIMESTAMP] TimestampProvider reset - next call reinitializes\n");
@@ -164,4 +177,16 @@ void TimestampProvider::reset() {
 void TimestampProvider::getDiagnostics(int64_t& out_drift_usec, uint64_t& out_last_delta_usec) {
     out_drift_usec = s_driftUsec;
     out_last_delta_usec = s_lastDeltaUsec;
+}
+
+TimestampProvider::Diagnostics TimestampProvider::getDiagnostics() {
+    Diagnostics diagnostics;
+    diagnostics.drift_usec = s_driftUsec;
+    diagnostics.last_delta_usec = s_lastDeltaUsec;
+    diagnostics.last_output_usec = s_lastOutputUsec;
+    diagnostics.monotonic_corrections = s_monotonicCorrections;
+    diagnostics.backward_resets = s_backwardResets;
+    diagnostics.capped_deltas = s_cappedDeltas;
+    diagnostics.sub_frame_fallbacks = s_subFrameFallbacks;
+    return diagnostics;
 }

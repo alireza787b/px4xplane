@@ -118,6 +118,8 @@ public:
     static bool debug_log_ekf_innovations;  // Log EKF innovation data for diagnostics
     static bool debug_log_accel_pipeline;   // Log accelerometer values at each processing stage
     static bool debug_accel_bypass_calibration;  // Bypass accelerometer calibration (for debugging)
+    static bool diagnostic_log_enabled;      // Emit compact bridge diagnostic lines to X-Plane Log.txt
+    static float diagnostic_log_interval_s;  // Diagnostic log interval while connected
 
     // UX configuration
     static bool show_connection_status_hud;  // Show HUD connection status overlay

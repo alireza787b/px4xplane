@@ -29,6 +29,16 @@
  */
 class TimestampProvider {
 public:
+    struct Diagnostics {
+        int64_t drift_usec{0};
+        uint64_t last_delta_usec{0};
+        uint64_t last_output_usec{0};
+        uint64_t monotonic_corrections{0};
+        uint64_t backward_resets{0};
+        uint64_t capped_deltas{0};
+        uint64_t sub_frame_fallbacks{0};
+    };
+
     /**
      * @brief Get current timestamp in microseconds for HIL messages.
      *
@@ -56,6 +66,11 @@ public:
      */
     static void getDiagnostics(int64_t& out_drift_usec, uint64_t& out_last_delta_usec);
 
+    /**
+     * @brief Get extended timestamp diagnostics for bridge health logging.
+     */
+    static Diagnostics getDiagnostics();
+
 private:
     // High-resolution clock for sub-frame timing and drift detection
     using SteadyClock = std::chrono::steady_clock;
@@ -71,6 +86,10 @@ private:
     // Diagnostics
     static int64_t s_driftUsec;                 // Drift from system clock (diagnostic only)
     static uint64_t s_lastDeltaUsec;            // Last frame delta (diagnostic only)
+    static uint64_t s_monotonicCorrections;     // Count of enforced monotonic increments
+    static uint64_t s_backwardResets;           // Count of X-Plane time regressions
+    static uint64_t s_cappedDeltas;             // Count of large deltas capped to MAX_DELTA_SEC
+    static uint64_t s_subFrameFallbacks;        // Count of system-clock sub-frame timestamps
 
     // Timing constraints
     static constexpr double MAX_DELTA_SEC = 0.1;        // Max valid delta (100ms) - cap large gaps

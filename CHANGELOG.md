@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.3] - 2026-05-06
+
+### Added
+
+#### Alia X-Plane 12 Validation Follow-Up
+- Added bridge health diagnostics for effective sensor/GPS/state/RC rates,
+  frame-period min/p50/p95/max, late/missed sends, timestamp monotonicity, and
+  target-rate-vs-frame-rate warnings.
+- Added `tools/replay_truth_capture.py` for deterministic core-contract replay
+  from XPlaneTruthCapture folders or zip files.
+- Added `tools/analyze_ulog_estimator.py` for ULog estimator-topic summaries and
+  event-window analysis around RTL, barometer switches, landing, and disarm.
+- Added replay unit tests for the current v3.4.3 sensor contract.
+- Added `docs/ALIA_XPLANE12_TEST.md` as the next X-Plane 12 Alia run card.
+
+### Changed
+
+- Preserved the validated v3.4.3 sensor contract:
+  `xacc=-g_axil`, `yacc=+g_side`, `zacc=-g_nrml`, GPS velocity from local
+  velocity, true course-over-ground from local velocity, and HIL_STATE
+  acceleration in milli-g.
+- Removed outgoing HIL_SENSOR timestamp jitter so emitted MAVLink timestamps stay
+  globally monotonic across messages in a frame.
+- Reduced default debug log noise while keeping compact bridge diagnostics on.
+- Cleaned `5020_xplane_alia250` comments and separated bridge-contract settings
+  from aircraft-performance tuning settings.
+- Made a conservative first Alia path/altitude tuning pass for TECS, NPFG, roll
+  limit, loiter radius, and RTL loiter radius based on the successful May 6
+  X-Plane 12 run.
+
+### Fixed
+
+- Fixed disconnect cleanup while waiting for PX4 SITL so the listening socket is
+  closed when connection wait is cancelled or the plugin is disabled.
+
+---
+
 ## [3.4.2] - 2025-02-01
 
 ### Added

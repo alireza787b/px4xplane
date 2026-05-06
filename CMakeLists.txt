@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.0 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.3 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -81,6 +81,7 @@ set(HEADERS
     include/ConnectionManager.h
     include/ConnectionStatusHUD.h
     include/DataRefManager.h
+    include/DataRefProvider.h
     include/MAVLinkManager.h
     include/TimeManager.h
     include/TimestampProvider.h
@@ -151,6 +152,7 @@ if(WIN32)
         XPLM302=1
         XPLM303=1
         XPLM400=1
+        _USE_MATH_DEFINES
         _CRT_SECURE_NO_WARNINGS
         _CRT_NONSTDC_NO_DEPRECATE
         WINVER=0x0A00
@@ -168,6 +170,11 @@ if(WIN32)
         )
         target_link_options(${PROJECT_NAME} PRIVATE
             $<$<CONFIG:Release>:/LTCG>  # Link-time code generation
+        )
+    elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        target_link_options(${PROJECT_NAME} PRIVATE
+            -static-libgcc
+            -static-libstdc++
         )
     endif()
 

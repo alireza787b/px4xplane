@@ -113,11 +113,11 @@ std::bitset<ConfigManager::MAX_MOTORS> ConfigManager::motorsWithBrakes; // Defin
 //if use system_time, it seems better stability when xplane falls behind the plugin loop time (not sure yet)
 bool ConfigManager::USE_XPLANE_TIME = true;
 
-bool ConfigManager::vibration_noise_enabled = true;
+bool ConfigManager::vibration_noise_enabled = false;
 bool ConfigManager::rotary_vibration_enabled = false;
 
 // Accelerometer calibration defaults
-bool ConfigManager::accel_auto_calibrate = true;
+bool ConfigManager::accel_auto_calibrate = false;
 float ConfigManager::accel_offset_x = 0.0f;
 float ConfigManager::accel_offset_y = 0.0f;
 float ConfigManager::accel_offset_z = 0.0f;
@@ -129,6 +129,8 @@ bool ConfigManager::debug_log_sensor_values = false;
 bool ConfigManager::debug_log_ekf_innovations = false;
 bool ConfigManager::debug_log_accel_pipeline = false;
 bool ConfigManager::debug_accel_bypass_calibration = false;
+bool ConfigManager::diagnostic_log_enabled = true;
+float ConfigManager::diagnostic_log_interval_s = 1.0f;
 
 // UX configuration flags
 bool ConfigManager::show_connection_status_hud = true;  // Default: enabled
@@ -184,6 +186,12 @@ void ConfigManager::loadConfiguration() {
     debug_log_ekf_innovations = ini.GetBoolValue("", "debug_log_ekf_innovations", false);
     debug_log_accel_pipeline = ini.GetBoolValue("", "debug_log_accel_pipeline", false);
     debug_accel_bypass_calibration = ini.GetBoolValue("", "debug_accel_bypass_calibration", false);
+    diagnostic_log_enabled = ini.GetBoolValue("", "diagnostic_log_enabled", true);
+    diagnostic_log_interval_s = static_cast<float>(ini.GetDoubleValue("", "diagnostic_log_interval_s", 1.0));
+    if (diagnostic_log_interval_s < 0.25f || diagnostic_log_interval_s > 60.0f) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid diagnostic_log_interval_s, using default 1.0\n");
+        diagnostic_log_interval_s = 1.0f;
+    }
 
     // Load UX configuration
     show_connection_status_hud = ini.GetBoolValue("", "show_connection_status_hud", true);
@@ -197,7 +205,7 @@ void ConfigManager::loadConfiguration() {
     }
 
     // Load accelerometer calibration configuration
-    accel_auto_calibrate = ini.GetBoolValue("", "accel_auto_calibrate", true);
+    accel_auto_calibrate = ini.GetBoolValue("", "accel_auto_calibrate", false);
     accel_offset_x = static_cast<float>(ini.GetDoubleValue("", "accel_offset_x", 0.0));
     accel_offset_y = static_cast<float>(ini.GetDoubleValue("", "accel_offset_y", 0.0));
     accel_offset_z = static_cast<float>(ini.GetDoubleValue("", "accel_offset_z", 0.0));
@@ -243,6 +251,11 @@ void ConfigManager::loadConfiguration() {
         if (debug_log_ekf_innovations) XPLMDebugString("px4xplane: [DEBUG] EKF innovation logging ENABLED\n");
         if (debug_log_accel_pipeline) XPLMDebugString("px4xplane: [DEBUG] Accel pipeline logging ENABLED\n");
         if (debug_accel_bypass_calibration) XPLMDebugString("px4xplane: [DEBUG] Accel calibration BYPASSED\n");
+    }
+    if (diagnostic_log_enabled) {
+        char diagBuf[160];
+        snprintf(diagBuf, sizeof(diagBuf), "px4xplane: Diagnostic bridge log enabled (interval %.2fs)\n", diagnostic_log_interval_s);
+        XPLMDebugString(diagBuf);
     }
 
     if (show_connection_status_hud) {
@@ -759,4 +772,3 @@ std::string ConfigManager::getAirframeByIndex(int index) {
     }
     return ""; // Return an empty string if the index is out of range
 }
-
