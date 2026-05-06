@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.5] - 2026-05-06
+
+### Changed
+
+- Cleaned the Alia airframe troubleshooting comments so the guidance matches the
+  current TECS, NPFG, transition, and RTL/circle baseline values used for the
+  next X-Plane 12 retest.
+
+---
+
 ## [3.4.4] - 2026-05-06
 
 ### Fixed

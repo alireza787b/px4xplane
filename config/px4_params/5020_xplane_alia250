@@ -12,7 +12,7 @@
 # Type:              VTOL Quadplane / lift-plus-cruise style
 # Configuration:     4 Hover Motors + 1 Pusher Motor + Control Surfaces
 # Compatible Sim:    X-Plane 11/12
-# Date:              January 2025
+# Date:              May 2026
 #
 # AIRCRAFT REFERENCE VALUES USED FOR INITIAL TUNING:
 # - MTOW: 6,000 lb (2,721 kg) - Large passenger eVTOL
@@ -568,23 +568,24 @@ param set-default MC_BAT_SCALE_EN 0
 #       before stopping PX4 so the shutdown phase is captured clearly
 #
 # Altitude drop during front transition (MC -> FW):
-#   - Increase VT_F_TRANS_THR (0.95 → 1.0)
-#   - Reduce VT_F_TRANS_DUR (18 → 15s)
+#   - Current baseline uses VT_F_TRANS_THR = 1.0 and VT_F_TRANS_DUR = 60.0
+#   - Check airspeed build-up, pusher thrust, and altitude error in ULog before
+#     changing transition timing
 #
 # Aircraft overshoots landing point:
-#   - Increase VT_B_DEC_MSS (3.0 → 3.5 m/s²)
-#   - Increase VT_B_TRANS_DUR (35 → 40s)
-#   - Increase VT_B_DEC_I (0.4 → 0.5)
+#   - Current baseline uses VT_B_DEC_MSS = 3.0, VT_B_TRANS_DUR = 35.0,
+#     VT_B_DEC_I = 0.4
+#   - Tune deceleration and transition duration from position/velocity traces
 #
 # Tight loiter radius / oscillation in FW mode:
-#   - Increase NPFG_PERIOD (45 → 50)
-#   - Increase NAV_LOITER_RAD (2000 → 2500m)
-#   - Verify FW_R_LIM = 50° for tighter turns
+#   - Current baseline uses NPFG_PERIOD = 35.0, NPFG_DAMPING = 0.75,
+#     NAV_LOITER_RAD = 900.0, RTL_LOITER_RAD = 900.0, FW_R_LIM = 35.0
+#   - Tune NPFG period/damping, roll limit, and TECS together from ULog evidence
 #
 # Altitude oscillation during cruise:
-#   - Verify FW_T_THR_DAMPING = 0.08
-#   - Check FW_T_PTCH_DAMP = 0.1
-#   - Increase damping if needed
+#   - Current baseline uses FW_T_ALT_TC = 5.0, FW_T_STE_R_TC = 2.0,
+#     FW_T_THR_DAMPING = 0.25, FW_T_PTCH_DAMP = 0.25
+#   - Adjust one parameter at a time and compare against the same RTL/circle run
 #
 # Keep a short change log when tuning this file. Back each change with a
 # repeatable run, ULog estimator evidence, or an XPlaneTruthCapture replay diff.

@@ -627,3 +627,12 @@ This log preserves project decisions, evidence, and next actions across the long
   - Replay regression test passed.
 - This is a build portability hotfix only; no sensor-contract or Alia tuning
   change was made relative to `v3.4.3`.
+
+### px4xplane v3.4.5 Alia Comment Cleanup
+
+- Cleaned the tail troubleshooting notes in `5020_xplane_alia250` after spotting
+  stale numeric hints from older tuning iterations.
+- The comments now reference the current baseline values for front transition,
+  back transition, NPFG/loiter, and TECS damping.
+- No runtime tuning value changed in this cleanup; it keeps the public
+  `px4xplane` release, local test package, and PX4 fork airframe file aligned.
