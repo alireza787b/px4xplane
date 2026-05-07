@@ -60,6 +60,7 @@ static int g_advancedMenuItemIndex = -1; // Global variable to store the index o
 #define MENU_ITEM_VALIDATE_CONFIG ((void*)104)
 #define MENU_ITEM_RELOAD_VALIDATE_CONFIG ((void*)105)
 #define MENU_ITEM_SHOW_DOCS_REFERENCE ((void*)106)
+#define MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION ((void*)107)
 
 
 // Global variable to hold our command reference
@@ -100,6 +101,31 @@ void showDocsReference() {
 	const std::string docsUrl = std::string(PX4XPlaneVersion::REPOSITORY_URL) + "/tree/master/docs";
 	XPLMDebugString(("px4xplane: Documentation: " + docsUrl + "\n").c_str());
 	ConnectionManager::setLastMessage("Docs URL written to X-Plane Log.txt");
+}
+
+std::string dirnameOf(const std::string& path) {
+	const size_t slash = path.find_last_of("/\\");
+	if (slash == std::string::npos) {
+		return "";
+	}
+	return path.substr(0, slash);
+}
+
+std::string pathSeparatorFor(const std::string& path) {
+	return path.find('\\') != std::string::npos ? "\\" : "/";
+}
+
+void showConfigEditorLocation() {
+	char pluginPath[512];
+	XPLMGetPluginInfo(XPLMGetMyID(), nullptr, pluginPath, nullptr, nullptr);
+
+	const std::string binaryDir = dirnameOf(pluginPath);
+	const std::string pluginRoot = dirnameOf(binaryDir);
+	const std::string sep = pathSeparatorFor(pluginPath);
+	const std::string editorPath = pluginRoot + sep + "docs" + sep + "config-editor.html";
+
+	XPLMDebugString(("px4xplane: Config editor: " + editorPath + "\n").c_str());
+	ConnectionManager::setLastMessage("Config editor path written to X-Plane Log.txt");
 }
 
 void destroySubmenu(XPLMMenuID& menu) {
@@ -380,6 +406,9 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 		else if (in_item_ref == MENU_ITEM_SHOW_DOCS_REFERENCE) {
 			showDocsReference();
 		}
+		else if (in_item_ref == MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION) {
+			showConfigEditorLocation();
+		}
 		else {
 			snprintf(debugBuf, sizeof(debugBuf), "Unknown advanced menu item: %p", in_item_ref);
 			debugLog(debugBuf);
@@ -417,6 +446,7 @@ void createAdvancedMenuItems() {
 		ConfigManager::diagnostic_log_enabled ? "Bridge Diagnostics: On" : "Bridge Diagnostics: Off",
 		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
 	XPLMAppendMenuSeparator(advancedMenu);
+	XPLMAppendMenuItem(advancedMenu, "Show Config Editor Location", MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION, 1);
 	XPLMAppendMenuItem(advancedMenu, "Show Docs Location", MENU_ITEM_SHOW_DOCS_REFERENCE, 1);
 }
 

@@ -786,3 +786,20 @@ This log preserves project decisions, evidence, and next actions across the long
 - No Alia params, bridge runtime behavior, PX4 fork files, or
   XPlaneTruthCapture files changed in this slice.
 - New report: `docs/reports/report_v18.md`.
+
+### px4xplane Config Editor Menu Link Slice
+
+- Added `Advanced > Show Config Editor Location` to the X-Plane plugin menu.
+- The menu action writes the packaged editor path to X-Plane `Log.txt`:
+  `px4xplane/docs/config-editor.html`.
+- The plugin status line reports that the editor path was written.
+- Deliberately avoided automatic browser/file launching in this slice; that
+  needs platform-specific handling and tests.
+- Verification passed:
+  - CTest
+  - Linux plugin build
+  - MinGW Windows plugin build
+  - whitespace check
+- No Alia params, bridge runtime behavior, PX4 fork files, or
+  XPlaneTruthCapture files changed in this slice.
+- New report: `docs/reports/report_v19.md`.
