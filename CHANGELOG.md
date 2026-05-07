@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.6] - 2026-05-07
+
+### Changed
+
+- Restored the Alia fixed-wing/transition guidance defaults to the values
+  observed in the full successful `alia-sitl1` ULog: TECS damping/time constants,
+  NPFG period/damping, roll limit, and RTL/loiter radii.
+- Updated the Alia test workflow to require a parameter-reset/distclean step
+  when changing airframe defaults, because PX4 SITL can otherwise keep saved
+  parameters across runs.
+
+### Fixed
+
+- Corrected the previous release assumption that the plugin-repo Alia file was
+  the tested source of truth. The successful ULog and the PX4 fork state are now
+  treated as the Alia baseline until controlled tuning proves otherwise.
+
+---
+
 ## [3.4.5] - 2026-05-06
 
 ### Changed

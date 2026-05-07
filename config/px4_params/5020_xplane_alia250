@@ -408,7 +408,7 @@ param set-default FW_RR_D 0.1
 param set-default FW_RR_FF 0.5
 param set-default FW_R_RMAX 20.0
 param set-default FW_R_TC 0.6
-param set-default FW_R_LIM 35.0          # More roll authority for tighter RTL/circle tracking
+param set-default FW_R_LIM 30.0
 
 param set-default FW_PR_P 0.365
 param set-default FW_PR_I 0.045
@@ -437,19 +437,19 @@ param set-default ASPD_FALLBACK  1       # Fallback to G/S - W/S
 param set-default SYS_HAS_NUM_ASPD 1     # 1 virtual airspeed sensor
 
 # TECS
-param set-default FW_T_ALT_TC 5.0
+param set-default FW_T_ALT_TC 4.0
 param set-default FW_T_RLL2THR 8.0
-param set-default FW_T_STE_R_TC 2.0
+param set-default FW_T_STE_R_TC 1.5
 param set-default FW_T_SINK_MIN 2.0
 param set-default FW_T_SINK_MAX 4.0
 param set-default FW_T_CLMB_MAX 4.0
 param set-default FW_T_VERT_ACC 4.0
-param set-default FW_T_THR_DAMPING 0.25
-param set-default FW_T_PTCH_DAMP 0.25
-param set-default FW_T_I_GAIN_PIT 0.2
+param set-default FW_T_THR_DAMPING 0.12
+param set-default FW_T_PTCH_DAMP 0.14
+param set-default FW_T_I_GAIN_PIT 0.3
 
 # Throttle Management
-param set-default FW_THR_TRIM 0.75
+param set-default FW_THR_TRIM 0.80
 param set-default FW_THR_MAX 1.0
 param set-default FW_THR_MIN 0.10
 param set-default FW_THR_IDLE 0.00
@@ -471,18 +471,18 @@ param set-default FW_LND_FL_PMAX 35.0
 param set-default LNDFW_VEL_XY_MAX 15.0
 
 # Orbit
-param set-default MC_ORBIT_RAD_MAX 1000
+param set-default MC_ORBIT_RAD_MAX 2000
 
 
 ################################################################################
 # SECTION 12: NPFG GUIDANCE (Modern PX4 v1.14+)
 ################################################################################
 # Formula: L1_distance = (1/pi) * NPFG_DAMPING * NPFG_PERIOD * groundspeed.
-# Lower period and smaller loiter radii are the first path-deviation tuning pass
-# after the successful X-Plane 12 Alia validation run.
+# These are the ULog-proven values from the successful X-Plane 12 Alia run.
+# Keep them as the baseline until a controlled tuning run proves a change.
 
-param set-default NPFG_PERIOD 35.0
-param set-default NPFG_DAMPING 0.75
+param set-default NPFG_PERIOD 45.0
+param set-default NPFG_DAMPING 0.7
 param set-default NPFG_ROLL_TC 0.4
 param set-default NPFG_SW_DST_MLT 1.0
 
@@ -504,7 +504,7 @@ param set-default NAV_ACC_RAD 30         # Tighter landing (reduced from 50m)
 param set-default NAV_MC_ALT_RAD 5.0     # Heavier aircraft
 
 # FW Mode Acceptance
-param set-default NAV_LOITER_RAD 900.0
+param set-default NAV_LOITER_RAD 2000.0
 param set-default NAV_FW_ALT_RAD 50.0
 param set-default NAV_MIN_LTR_ALT -1.0
 
@@ -512,7 +512,7 @@ param set-default NAV_MIN_LTR_ALT -1.0
 param set-default RTL_RETURN_ALT 100
 param set-default RTL_DESCEND_ALT 300
 param set-default RTL_MIN_DIST 50.0
-param set-default RTL_LOITER_RAD 900.0
+param set-default RTL_LOITER_RAD 2000.0
 
 
 ################################################################################
@@ -578,13 +578,13 @@ param set-default MC_BAT_SCALE_EN 0
 #   - Tune deceleration and transition duration from position/velocity traces
 #
 # Tight loiter radius / oscillation in FW mode:
-#   - Current baseline uses NPFG_PERIOD = 35.0, NPFG_DAMPING = 0.75,
-#     NAV_LOITER_RAD = 900.0, RTL_LOITER_RAD = 900.0, FW_R_LIM = 35.0
+#   - Current baseline uses NPFG_PERIOD = 45.0, NPFG_DAMPING = 0.7,
+#     NAV_LOITER_RAD = 2000.0, RTL_LOITER_RAD = 2000.0, FW_R_LIM = 30.0
 #   - Tune NPFG period/damping, roll limit, and TECS together from ULog evidence
 #
 # Altitude oscillation during cruise:
-#   - Current baseline uses FW_T_ALT_TC = 5.0, FW_T_STE_R_TC = 2.0,
-#     FW_T_THR_DAMPING = 0.25, FW_T_PTCH_DAMP = 0.25
+#   - Current baseline uses FW_T_ALT_TC = 4.0, FW_T_STE_R_TC = 1.5,
+#     FW_T_THR_DAMPING = 0.12, FW_T_PTCH_DAMP = 0.14
 #   - Adjust one parameter at a time and compare against the same RTL/circle run
 #
 # Keep a short change log when tuning this file. Back each change with a

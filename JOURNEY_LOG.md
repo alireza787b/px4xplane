@@ -636,3 +636,38 @@ This log preserves project decisions, evidence, and next actions across the long
   back transition, NPFG/loiter, and TECS damping.
 - No runtime tuning value changed in this cleanup; it keeps the public
   `px4xplane` release, local test package, and PX4 fork airframe file aligned.
+
+## 2026-05-07
+
+### Alia Retest Regression Triage
+
+- New evidence folder: `/home/alireza/alia-sitl2`.
+- Available evidence in this environment: two ULogs only:
+  - `19_07_20.ulg`
+  - `19_10_42.ulg`
+- X-Plane `Log.txt` and XPlaneTruthCapture data were not available in the folder.
+- `19_07_20.ulg` is not an Alia log: `SYS_AUTOSTART=5010`.
+- `19_10_42.ulg` is Alia (`SYS_AUTOSTART=5020`) and matches the successful
+  `alia-sitl1/05_17_33.ulg` on key MC/VTOL/FW parameters that were logged.
+- The previous sync was still flawed:
+  - The PX4 fork had been the user's tested operating source.
+  - The plugin repo airframe file contained unproven later tuning values.
+  - Syncing the plugin repo file into the PX4 fork treated stale repo state as
+    the source of truth.
+- Corrected policy:
+  - Keep the successful ULog parameter values as the baseline.
+  - Revert unproven FW/TECS/NPFG/loiter changes until controlled retests prove
+    them.
+  - Do not infer an Alia tuning failure from a `SYS_AUTOSTART=5010` ULog.
+- User note: the GPU PC did not have git available, so the airframe file was
+  updated by manual copy. That is acceptable only if PX4 SITL parameters are
+  reset afterward; otherwise saved parameters can mask or override the edited
+  airframe defaults.
+- XPlaneTruthCapture v0.1.6 local Windows package failure found:
+  - The `/home/alireza` zip used a local MinGW build.
+  - `win.xpl` depended on `libgcc_s_seh-1.dll` and `libstdc++-6.dll`.
+  - Those DLLs were not packaged, so X-Plane could fail to load the plugin before
+    the menu appeared.
+- TruthCapture fix:
+  - v0.1.7 statically links the MinGW GCC runtime for local Windows builds.
+  - Official GitHub release assets remain preferred for Windows when available.

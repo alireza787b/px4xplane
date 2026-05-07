@@ -19,12 +19,16 @@ estimator topics.
    - `px4xplane/64/config.ini`
    - `px4xplane/px4_airframes/5020_xplane_alia250`
    - this test note or an equivalent run card
-2. Install XPlaneTruthCapture `v0.1.6` or newer. Confirm that starting capture
+2. Install XPlaneTruthCapture `v0.1.7` or newer. Confirm that starting capture
    changes the menu state to `Recording Active`; the optional overlay can be
    hidden with `overlay_enabled = false` in its `capture_config.ini`.
 3. Use X-Plane 12 Alia with model calculations per frame set to `6`.
 4. Start XPlaneTruthCapture before connecting PX4.
-5. Run PX4 SITL with the Alia airframe.
+5. Run PX4 SITL with the Alia airframe. After changing the airframe file, use
+   the setup script `distclean` option once, or otherwise reset SITL parameters,
+   so saved `parameters.bson` state cannot mask the airframe defaults. This is
+   required even if the file was updated by manually copying its contents into
+   the PX4 checkout instead of using `git pull`.
 6. Fly:
    - takeoff to about `100 m`
    - forward transition
@@ -91,3 +95,20 @@ The script requests these topics:
 - No barometer source switch during flight, or a clear ULog-backed explanation.
 - Post-landing vertical velocity warning is eliminated or shown to be shutdown-only.
 - Alia RTL/circle altitude and path deviation improve against the previous run.
+
+## Parameter Sanity Check
+
+Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=5020`.
+The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
+was not valid evidence for Alia tuning.
+
+For the current baseline, the successful `alia-sitl1` ULog used:
+
+- `NPFG_PERIOD=45.0`
+- `NPFG_DAMPING=0.7`
+- `NAV_LOITER_RAD=2000.0`
+- `RTL_LOITER_RAD=2000.0`
+- `FW_T_ALT_TC=4.0`
+- `FW_T_STE_R_TC=1.5`
+- `FW_T_THR_DAMPING=0.12`
+- `FW_T_PTCH_DAMP=0.14`
