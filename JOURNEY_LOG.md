@@ -699,3 +699,35 @@ This log preserves project decisions, evidence, and next actions across the long
   - MinGW Windows plugin build
   - Windows plugin import inspection
 - New report: `docs/reports/report_v15.md`.
+
+### px4xplane Runtime Config Validation UI Slice
+
+- Completed the second approved offline implementation slice without changing
+  Alia params, sensor signs/units, quaternion handling, or prop-brake policy.
+- Added runtime config validation state in `ConfigManager`.
+- Active X-Plane-side mapping validation now checks parsed actuator channels,
+  data types, ranges, array indices, and whether configured datarefs exist in
+  the currently loaded X-Plane aircraft.
+- Missing `config.ini` now surfaces as an explicit validation error after load
+  or reload.
+- Added `Advanced` menu with:
+  - validation status
+  - `Validate Config`
+  - `Reload and Validate Config`
+  - `Bridge Diagnostics: On/Off`
+  - `Show Docs Location`
+- Moved diagnostics out of the normal top-level menu to reduce normal-user
+  noise while keeping advanced access.
+- Connection and Mixing tabs now show config validation status, with the Mixing
+  tab showing the first three validation messages.
+- Added `docs/index.md` as the stable repo docs entry point.
+- Hardened plugin menu/window cleanup on menu rebuild and plugin stop.
+- Verification passed:
+  - Python validator/replay unit tests
+  - config validator CLI
+  - py_compile for offline tools
+  - CTest
+  - Linux plugin build
+  - MinGW Windows plugin build
+  - Windows plugin import inspection
+- New report: `docs/reports/report_v16.md`.

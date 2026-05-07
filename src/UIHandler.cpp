@@ -570,6 +570,23 @@ int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, 
     drawSmartText(left + 30, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
+    const auto& validation = ConfigManager::getValidationSummary();
+    float validationColor[3];
+    if (validation.errors > 0) {
+        memcpy(validationColor, Colors::WARNING, sizeof(validationColor));
+    }
+    else if (validation.warnings > 0) {
+        memcpy(validationColor, Colors::WARNING, sizeof(validationColor));
+    }
+    else {
+        memcpy(validationColor, Colors::CONNECTED, sizeof(validationColor));
+    }
+
+    snprintf(buf, sizeof(buf), "Config Validation: %s", validation.headline.c_str());
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 30, scrolledY, buf, validationColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
     // Enhanced system information
     snprintf(buf, sizeof(buf), "SITL Timestep: %.3f ms (%.1f Hz)",
         DataRefManager::SIM_Timestep * 1000.0f, 1.0f / DataRefManager::SIM_Timestep);
@@ -947,6 +964,26 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
         drawSmartText(left + 35, scrolledY, buf, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     }
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    const auto& validation = ConfigManager::getValidationSummary();
+    snprintf(buf, sizeof(buf), "Config Validation: %s", validation.headline.c_str());
+    scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+    drawSmartText(left + 35, scrolledY, buf,
+        validation.errors > 0 ? (float*)Colors::WARNING : (float*)Colors::CONNECTED,
+        g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    int validationLines = 0;
+    for (const auto& message : validation.messages) {
+        if (validationLines >= 3) {
+            break;
+        }
+        snprintf(buf, sizeof(buf), "  %s", message.c_str());
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 45, scrolledY, buf, (float*)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+        ++validationLines;
+    }
 
     // ALWAYS SHOW: Configuration file location
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];

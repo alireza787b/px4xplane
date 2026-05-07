@@ -2,11 +2,13 @@
 
 #include "ConfigManager.h"
 #include "XPLMUtilities.h"
+#include "XPLMDataAccess.h"
 #include "XPLMPlugin.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <regex>
+#include <cmath>
 
 
 // Maps PX4 motor numbers to X-Plane motor numbers. Used in multirotor configurations.
@@ -99,6 +101,7 @@ float ConfigManager::barometer_filter_alpha = 0.90f;
 
 // Stores configurations for actuators, indexed by their channel number.
 std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
+ConfigValidationSummary ConfigManager::validationSummary;
 
 /**
  * @brief Static member to track motor equipped with prop brakes.
@@ -174,6 +177,12 @@ void ConfigManager::loadConfiguration() {
     SI_Error rc = ini.LoadFile(configFilePath.c_str());
     if (rc < 0) {
         XPLMDebugString(("px4xplane: Unable to open config file: " + configFilePath + "\n").c_str());
+        configName.clear();
+        motorsWithBrakes.reset();
+        validationSummary = {};
+        validationSummary.errors = 1;
+        validationSummary.headline = "Config: 1 error(s)";
+        validationSummary.messages.push_back("ERROR: unable to open config file: " + configFilePath);
         return;
     }
 
@@ -282,6 +291,7 @@ void ConfigManager::loadConfiguration() {
 
     parseConfig(ini);
 
+    validateLoadedConfiguration();
 
     XPLMDebugString("px4xplane: Config file loaded successfully.\n");
 }
@@ -339,6 +349,100 @@ int ConfigManager::getXPlaneMotorFromPX4(int px4MotorNumber) {
 // These functions provide a clean interface for accessing configuration details.
 std::string ConfigManager::getConfigName() {
     return configName;
+}
+
+void ConfigManager::validateLoadedConfiguration() {
+    validationSummary = {};
+    validationSummary.loaded = !configName.empty();
+
+    auto addMessage = [](bool error, const std::string& message) {
+        if (error) {
+            ++ConfigManager::validationSummary.errors;
+            ConfigManager::validationSummary.messages.push_back("ERROR: " + message);
+        }
+        else {
+            ++ConfigManager::validationSummary.warnings;
+            ConfigManager::validationSummary.messages.push_back("WARN: " + message);
+        }
+    };
+
+    if (configName.empty()) {
+        addMessage(true, "config_name is empty");
+    }
+
+    if (actuatorConfigs.empty()) {
+        addMessage(false, "no actuator channels parsed for active config");
+    }
+
+    for (const auto& [channel, actuatorConfig] : actuatorConfigs) {
+        if (channel < 0 || channel > 15) {
+            addMessage(true, "channel" + std::to_string(channel) + " is outside supported range 0..15");
+        }
+
+        if (actuatorConfig.getDatarefConfigs().empty()) {
+            addMessage(true, "channel" + std::to_string(channel) + " has no dataref mappings");
+        }
+
+        for (const auto& datarefConfig : actuatorConfig.getDatarefConfigs()) {
+            const std::string channelPrefix = "channel" + std::to_string(channel) + ": ";
+
+            if (datarefConfig.datarefName.empty()) {
+                addMessage(true, channelPrefix + "empty dataref name");
+                continue;
+            }
+
+            if (datarefConfig.dataType == UNKNOWN) {
+                addMessage(true, channelPrefix + datarefConfig.datarefName + " has unsupported data type");
+            }
+
+            if (datarefConfig.dataType == FLOAT_ARRAY && datarefConfig.arrayIndices.empty()) {
+                addMessage(true, channelPrefix + datarefConfig.datarefName + " is floatArray without indices");
+            }
+
+            for (int index : datarefConfig.arrayIndices) {
+                if (index < 0) {
+                    addMessage(true, channelPrefix + datarefConfig.datarefName + " has negative array index");
+                }
+            }
+
+            if (!std::isfinite(datarefConfig.range.first) || !std::isfinite(datarefConfig.range.second)) {
+                addMessage(true, channelPrefix + datarefConfig.datarefName + " has non-finite output range");
+            }
+            else if (datarefConfig.range.first == datarefConfig.range.second) {
+                addMessage(true, channelPrefix + datarefConfig.datarefName + " has equal range endpoints");
+            }
+
+            if (!XPLMFindDataRef(datarefConfig.datarefName.c_str())) {
+                addMessage(true, channelPrefix + datarefConfig.datarefName + " dataref not found in the loaded X-Plane aircraft");
+            }
+        }
+    }
+
+    if (validationSummary.errors > 0) {
+        validationSummary.headline = "Config: " + std::to_string(validationSummary.errors) + " error(s)";
+        if (validationSummary.warnings > 0) {
+            validationSummary.headline += ", " + std::to_string(validationSummary.warnings) + " warning(s)";
+        }
+    }
+    else if (validationSummary.warnings > 0) {
+        validationSummary.headline = "Config: " + std::to_string(validationSummary.warnings) + " warning(s)";
+    }
+    else {
+        validationSummary.headline = "Config: OK";
+    }
+
+    XPLMDebugString(("px4xplane: " + validationSummary.headline + "\n").c_str());
+    for (const auto& message : validationSummary.messages) {
+        XPLMDebugString(("px4xplane: [CONFIG_VALIDATION] " + message + "\n").c_str());
+    }
+}
+
+const ConfigValidationSummary& ConfigManager::getValidationSummary() {
+    return validationSummary;
+}
+
+bool ConfigManager::hasValidationErrors() {
+    return validationSummary.errors > 0;
 }
 
 

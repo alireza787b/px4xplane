@@ -64,6 +64,14 @@ struct ActuatorConfig {
     }
 };
 
+struct ConfigValidationSummary {
+    bool loaded = false;
+    int errors = 0;
+    int warnings = 0;
+    std::string headline = "Config: not validated";
+    std::vector<std::string> messages;
+};
+
 
 
 class ConfigManager {
@@ -82,6 +90,9 @@ public:
     static std::string getActiveAirframeName();
     static void setActiveAirframeName(const std::string& airframeName);
     static std::string getAirframeByIndex(int index);
+    static void validateLoadedConfiguration();
+    static const ConfigValidationSummary& getValidationSummary();
+    static bool hasValidationErrors();
 
 
     static bool filter_velocity_enabled;  // Flag for enabling/disabling velocity filtering
@@ -146,6 +157,7 @@ private:
     static std::pair<float, float> parseRange(const std::string& token);
     static void parseChannelValue(const std::string& value, ActuatorConfig& config);
     static void trimWhitespace(std::string& str);
+    static ConfigValidationSummary validationSummary;
 
 
 

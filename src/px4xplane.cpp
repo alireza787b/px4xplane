@@ -42,18 +42,24 @@
 #error This is made to be compiled against the XPLM300 SDK
 #endif
 
-static XPLMWindowID g_window;
-static XPLMMenuID g_menu_id;
-static XPLMMenuID airframesMenu; // Global variable for the airframes submenu
-static int g_airframesMenuItemIndex; // Global variable to store the index of the airframes submenu
+static XPLMWindowID g_window = nullptr;
+static XPLMMenuID g_menu_id = nullptr;
+static XPLMMenuID airframesMenu = nullptr; // Global variable for the airframes submenu
+static XPLMMenuID advancedMenu = nullptr; // Global variable for advanced tools submenu
+static int g_airframesMenuItemIndex = -1; // Global variable to store the index of the airframes submenu
+static int g_advancedMenuItemIndex = -1; // Global variable to store the index of the advanced submenu
 
 // Menu reference constants for menu_handler callback
 // Using distinct non-zero values to avoid confusion with NULL
 #define MENU_REF_MAIN ((void*)100)
 #define MENU_REF_AIRFRAMES ((void*)200)
+#define MENU_REF_ADVANCED ((void*)300)
 #define MENU_ITEM_SHOW_DATA ((void*)101)
 #define MENU_ITEM_RELOAD_CONFIG ((void*)102)
 #define MENU_ITEM_TOGGLE_DIAGNOSTICS ((void*)103)
+#define MENU_ITEM_VALIDATE_CONFIG ((void*)104)
+#define MENU_ITEM_RELOAD_VALIDATE_CONFIG ((void*)105)
+#define MENU_ITEM_SHOW_DOCS_REFERENCE ((void*)106)
 
 
 // Global variable to hold our command reference
@@ -79,6 +85,33 @@ void debugLog(const char* message) {
 	XPLMDebugString("px4xplane: ");
 	XPLMDebugString(message);
 	XPLMDebugString("\n");
+}
+
+void logConfigValidationSummary() {
+	const auto& summary = ConfigManager::getValidationSummary();
+	XPLMDebugString(("px4xplane: " + summary.headline + "\n").c_str());
+	for (const auto& message : summary.messages) {
+		XPLMDebugString(("px4xplane: [CONFIG_VALIDATION] " + message + "\n").c_str());
+	}
+	ConnectionManager::setLastMessage(summary.headline);
+}
+
+void showDocsReference() {
+	const std::string docsUrl = std::string(PX4XPlaneVersion::REPOSITORY_URL) + "/tree/master/docs";
+	XPLMDebugString(("px4xplane: Documentation: " + docsUrl + "\n").c_str());
+	ConnectionManager::setLastMessage("Docs URL written to X-Plane Log.txt");
+}
+
+void destroySubmenu(XPLMMenuID& menu) {
+	if (menu) {
+		XPLMDestroyMenu(menu);
+		menu = nullptr;
+	}
+}
+
+void destroyChildMenus() {
+	destroySubmenu(advancedMenu);
+	destroySubmenu(airframesMenu);
 }
 
 
@@ -245,6 +278,10 @@ void draw_px4xplane(XPLMWindowID in_window_id, void* in_refcon) {
 
 // Function to refresh the airframes submenu to indicate the active airframe.
 void refreshAirframesMenu() {
+	if (!airframesMenu) {
+		return;
+	}
+
 	// Clear the current submenu items.
 	XPLMClearAllMenuItems(airframesMenu);
 
@@ -320,12 +357,67 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			debugLog(debugBuf);
 		}
 	}
+	else if (in_menu_ref == MENU_REF_ADVANCED) {
+		debugLog("Advanced submenu item clicked");
+
+		if (in_item_ref == MENU_ITEM_VALIDATE_CONFIG) {
+			ConfigManager::validateLoadedConfiguration();
+			logConfigValidationSummary();
+			updateMenuItems();
+		}
+		else if (in_item_ref == MENU_ITEM_RELOAD_VALIDATE_CONFIG) {
+			ConfigManager::loadConfiguration();
+			initializeMessagePeriods();
+			ConnectionStatusHUD::setEnabled(ConfigManager::show_connection_status_hud);
+			logConfigValidationSummary();
+			updateMenuItems();
+		}
+		else if (in_item_ref == MENU_ITEM_TOGGLE_DIAGNOSTICS) {
+			ConfigManager::diagnostic_log_enabled = !ConfigManager::diagnostic_log_enabled;
+			updateMenuItems();
+			debugLog(ConfigManager::diagnostic_log_enabled ? "Diagnostics enabled from advanced menu" : "Diagnostics disabled from advanced menu");
+		}
+		else if (in_item_ref == MENU_ITEM_SHOW_DOCS_REFERENCE) {
+			showDocsReference();
+		}
+		else {
+			snprintf(debugBuf, sizeof(debugBuf), "Unknown advanced menu item: %p", in_item_ref);
+			debugLog(debugBuf);
+		}
+	}
 	else {
 		// Unknown menu ref - should never happen
 		snprintf(debugBuf, sizeof(debugBuf), "Unknown menu ref: %p", in_menu_ref);
 		debugLog(debugBuf);
 	}
 
+}
+
+void createAdvancedMenuItems() {
+	if (!g_menu_id) {
+		return;
+	}
+
+	g_advancedMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Advanced", NULL, 1);
+	if (g_advancedMenuItemIndex < 0) {
+		return;
+	}
+
+	advancedMenu = XPLMCreateMenu("Advanced", g_menu_id, g_advancedMenuItemIndex, menu_handler, MENU_REF_ADVANCED);
+	if (!advancedMenu) {
+		return;
+	}
+
+	const std::string validationStatus = ConfigManager::getValidationSummary().headline;
+	XPLMAppendMenuItem(advancedMenu, validationStatus.c_str(), MENU_ITEM_VALIDATE_CONFIG, 1);
+	XPLMAppendMenuSeparator(advancedMenu);
+	XPLMAppendMenuItem(advancedMenu, "Validate Config", MENU_ITEM_VALIDATE_CONFIG, 1);
+	XPLMAppendMenuItem(advancedMenu, "Reload and Validate Config", MENU_ITEM_RELOAD_VALIDATE_CONFIG, 1);
+	XPLMAppendMenuItem(advancedMenu,
+		ConfigManager::diagnostic_log_enabled ? "Bridge Diagnostics: On" : "Bridge Diagnostics: Off",
+		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
+	XPLMAppendMenuSeparator(advancedMenu);
+	XPLMAppendMenuItem(advancedMenu, "Show Docs Location", MENU_ITEM_SHOW_DOCS_REFERENCE, 1);
 }
 
 
@@ -429,9 +521,7 @@ void create_menu() {
 
 	XPLMAppendMenuItem(g_menu_id, "Show Data", MENU_ITEM_SHOW_DATA, 1);
 	XPLMAppendMenuItem(g_menu_id, "Reload Config", MENU_ITEM_RELOAD_CONFIG, 1);
-	XPLMAppendMenuItem(g_menu_id,
-		ConfigManager::diagnostic_log_enabled ? "Diagnostics: On" : "Diagnostics: Off",
-		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
+	createAdvancedMenuItems();
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
 	XPLMAppendMenuSeparator(g_menu_id);
@@ -445,6 +535,11 @@ void create_menu() {
 
 
 void updateMenuItems() {
+	if (!g_menu_id) {
+		return;
+	}
+
+	destroyChildMenus();
 	XPLMClearAllMenuItems(g_menu_id);
 
 	// Recreate the main menu items
@@ -467,9 +562,7 @@ void updateMenuItems() {
 	// Recreate the remaining main menu items
 	XPLMAppendMenuItem(g_menu_id, "Show Data", MENU_ITEM_SHOW_DATA, 1);
 	XPLMAppendMenuItem(g_menu_id, "Reload Config", MENU_ITEM_RELOAD_CONFIG, 1);
-	XPLMAppendMenuItem(g_menu_id,
-		ConfigManager::diagnostic_log_enabled ? "Diagnostics: On" : "Diagnostics: Off",
-		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
+	createAdvancedMenuItems();
 	XPLMAppendMenuSeparator(g_menu_id);
 	if (ConnectionManager::isConnected()) {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
@@ -972,6 +1065,17 @@ PLUGIN_API void XPluginStop(void) {
 	// Cleanup UI systems
 	UIHandler::cleanup();
 	ConnectionStatusHUD::cleanup();
+
+	if (g_window) {
+		XPLMDestroyWindow(g_window);
+		g_window = nullptr;
+	}
+
+	destroyChildMenus();
+	if (g_menu_id) {
+		XPLMDestroyMenu(g_menu_id);
+		g_menu_id = nullptr;
+	}
 
 #if IBM
 	ConnectionManager::cleanupWinSock();
