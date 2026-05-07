@@ -105,8 +105,16 @@ px4xplane/
 │   ├── 5010_xplane_ehang184
 │   ├── 5020_xplane_alia250
 │   └── 5021_xplane_qtailsitter
+├── docs/
+│   └── config-editor.html        ← Local schema-backed config editor
 └── README.md
 ```
+
+Config tooling:
+- Runtime remains `64/config.ini`.
+- `64/config_schema.json` documents valid fields, ranges, and reload policy.
+- `docs/config-editor.html` can import/review/edit/export `config.ini` without
+  writing directly into X-Plane or PX4.
 
 **To upgrade**: Remove old v2.x installation and download v3.0.0 from [Releases](https://github.com/alireza787b/px4xplane/releases/tag/v3.0.0). See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
 

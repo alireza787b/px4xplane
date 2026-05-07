@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>px4xplane Config Editor</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #c8d0da;
+      --text: #17202a;
+      --muted: #5c6978;
+      --accent: #1463a5;
+      --ok: #157347;
+      --warn: #9a6700;
+      --bad: #b42318;
+      --soft: #eef3f8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel);
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 650;
+    }
+    main {
+      display: grid;
+      grid-template-columns: 260px minmax(520px, 1fr) 340px;
+      gap: 12px;
+      padding: 12px;
+      min-height: calc(100vh - 58px);
+    }
+    section, aside {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      min-width: 0;
+    }
+    .panelTitle {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      font-weight: 650;
+    }
+    .panelBody { padding: 12px; }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    button, input, select, textarea {
+      font: inherit;
+    }
+    button {
+      min-height: 30px;
+      border: 1px solid #91a4b8;
+      border-radius: 5px;
+      background: var(--soft);
+      color: var(--text);
+      cursor: pointer;
+      padding: 4px 10px;
+    }
+    button:hover { border-color: var(--accent); }
+    input, select, textarea {
+      width: 100%;
+      min-height: 30px;
+      border: 1px solid #aeb9c6;
+      border-radius: 5px;
+      background: #fff;
+      color: var(--text);
+      padding: 4px 7px;
+    }
+    input[type="file"] {
+      width: 220px;
+      border: 0;
+      padding: 0;
+      background: transparent;
+    }
+    label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    label.full { margin: 12px 0; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    th, td {
+      border-bottom: 1px solid #e2e7ed;
+      padding: 7px 6px;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    th {
+      width: 170px;
+      text-align: left;
+      color: var(--muted);
+      font-weight: 650;
+    }
+    thead th {
+      width: auto;
+      background: #f8fafc;
+    }
+    .airframe {
+      display: block;
+      width: 100%;
+      margin-bottom: 6px;
+      text-align: left;
+    }
+    .airframe.selected {
+      border-color: var(--accent);
+      background: #e7f1fb;
+    }
+    .airframe.active::after {
+      content: " active";
+      color: var(--ok);
+      font-weight: 700;
+      float: right;
+    }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 3px 9px;
+      border-radius: 5px;
+      font-weight: 650;
+      border: 1px solid var(--line);
+      background: var(--soft);
+    }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.bad { color: var(--bad); }
+    .sectionBar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto auto auto;
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .sectionBar + .sectionBar {
+      grid-template-columns: 170px auto;
+    }
+    .policy {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #eef3f8;
+      color: #34465a;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #issues {
+      margin: 0;
+      padding-left: 18px;
+    }
+    #issues li { margin: 0 0 7px; }
+    #issues .error { color: var(--bad); }
+    #issues .warning { color: var(--warn); }
+    #issues .ok { color: var(--ok); }
+    #preview {
+      min-height: 240px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      resize: vertical;
+    }
+    .muted { color: var(--muted); }
+    @media (max-width: 1120px) {
+      main { grid-template-columns: 1fr; }
+      input[type="file"] { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>px4xplane Config Editor</h1>
+    <div id="statusLine" class="status">Config not loaded</div>
+  </header>
+
+  <main>
+    <aside>
+      <div class="panelTitle">Airframes</div>
+      <div class="panelBody">
+        <div id="airframes"></div>
+        <label>New Airframe
+          <input id="newAirframeName" placeholder="ExampleAircraft">
+        </label>
+        <p><button id="addAirframe">Add Airframe</button></p>
+      </div>
+    </aside>
+
+    <section>
+      <div class="panelTitle">Config</div>
+      <div class="panelBody">
+        <div class="toolbar">
+          <label>config.ini <input id="configFile" type="file" accept=".ini,text/plain"></label>
+          <label>schema JSON <input id="schemaFile" type="file" accept=".json,application/json"></label>
+          <button id="exportConfig">Export config.ini</button>
+          <button id="copyPreview">Copy Preview</button>
+        </div>
+      </div>
+
+      <div class="panelTitle">Global Fields</div>
+      <div class="panelBody">
+        <table>
+          <tbody id="globalFields"></tbody>
+        </table>
+      </div>
+
+      <div class="panelTitle">Selected Airframe</div>
+      <div class="panelBody" id="airframeEditor"></div>
+    </section>
+
+    <aside>
+      <div class="panelTitle">Validation</div>
+      <div class="panelBody">
+        <ul id="issues"></ul>
+      </div>
+
+      <div class="panelTitle">Preview</div>
+      <div class="panelBody">
+        <textarea id="preview" spellcheck="false"></textarea>
+      </div>
+    </aside>
+  </main>
+
+  <script src="assets/config-editor.js"></script>
+</body>
+</html>

@@ -757,3 +757,32 @@ This log preserves project decisions, evidence, and next actions across the long
 - No Alia params, sensor contract, actuator behavior, prop-brake behavior, PX4
   fork files, or XPlaneTruthCapture files changed in this slice.
 - New report: `docs/reports/report_v17.md`.
+
+### px4xplane Static Config Editor Prototype
+
+- Added the first schema-backed static config editor:
+  - `docs/config-editor.html`
+  - `docs/assets/config-editor.js`
+- Runtime remains `config.ini`; JSON schema is metadata for validation/editor
+  UX, not a runtime replacement.
+- The editor can import `config.ini`, optionally import `config_schema.json`,
+  edit global fields, add/rename/remove airframes, edit `autoPropBrakes`, edit
+  channel mappings, validate, preview, and export a clean `config.ini`.
+- The editor does not write into X-Plane, PX4, or a running simulator.
+- CMake packages the editor under `px4xplane/docs/`.
+- Added `tests/test_config_editor.js` and wired it into optional CTest when
+  `node` is available.
+- README, docs index, and config-schema docs now reference the editor.
+- Verification passed:
+  - Node editor test and syntax check
+  - Python validator/replay unit tests
+  - config validator CLI
+  - py_compile for offline tools
+  - CMake reconfigure for offline tests
+  - CTest
+  - Linux plugin build
+  - MinGW Windows plugin build
+  - whitespace check
+- No Alia params, bridge runtime behavior, PX4 fork files, or
+  XPlaneTruthCapture files changed in this slice.
+- New report: `docs/reports/report_v18.md`.

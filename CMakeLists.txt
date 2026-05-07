@@ -294,6 +294,18 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying README.md to plugin root directory"
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${OUTPUT_DIR}/../docs/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/config-editor.html
+        ${OUTPUT_DIR}/../docs/config-editor.html
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
+        ${OUTPUT_DIR}/../docs/assets/config-editor.js
+    COMMENT "Copying config editor docs to plugin package"
+)
+
 # Create px4_airframes directory for organized PX4 parameter files
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -351,6 +363,15 @@ if(PX4XPLANE_BUILD_TESTS)
         add_test(
             NAME python_offline_tools
             COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+    endif()
+
+    find_program(Node_EXECUTABLE node)
+    if(Node_EXECUTABLE)
+        add_test(
+            NAME config_editor_js
+            COMMAND ${Node_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tests/test_config_editor.js
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
     endif()

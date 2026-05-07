@@ -8,6 +8,7 @@ This index is the stable entry point for user and developer documentation.
 - [Build System](BUILD_SYSTEM.md)
 - [Alia X-Plane 12 Test Card](ALIA_XPLANE12_TEST.md)
 - [Custom Airframe Config](custom-airframe-config.md)
+- [Config Editor](config-editor.html)
 
 ## Developer Notes
 
@@ -21,6 +22,7 @@ This index is the stable entry point for user and developer documentation.
 - [Report v15 - Config Safety Slice](reports/report_v15.md)
 - [Report v16 - Runtime Config Validation UI Slice](reports/report_v16.md)
 - [Report v17 - Config Schema Metadata Slice](reports/report_v17.md)
+- [Report v18 - Static Config Editor Prototype](reports/report_v18.md)
 
 ## Current Policy
 

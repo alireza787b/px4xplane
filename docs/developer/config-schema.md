@@ -63,6 +63,11 @@ INI editor as the primary UX. The normal path should show a small set of fields
 with validation, while advanced users can edit channel mappings, ranges, and
 datarefs with inline warnings.
 
+The first static editor lives at `docs/config-editor.html`. It imports
+`config.ini`, optionally imports `config_schema.json`, validates the editable
+model, and exports a clean `config.ini`. It does not write into X-Plane or PX4
+directly.
+
 The plugin does not read `config_schema.json` yet. CMake copies it into the
 plugin package next to `config.ini` so packaged builds carry the same metadata
 used by the validator and future editor.
