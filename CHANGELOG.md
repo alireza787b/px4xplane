@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.7] - 2026-05-07
+
+### Added
+
+- Added config safety validation foundation:
+  - stale actuator mappings are cleared on reload
+  - actuator outputs are finite-checked and clamped
+  - invalid output ranges are skipped and logged
+  - stale PX4 actuator input zeros configured actuator datarefs
+  - inbound MAVLink receive drains a bounded multi-packet budget per frame
+- Added `tools/validate_config.py` and tests for `config.ini` channel mappings,
+  global field types/ranges, and prop-brake motor indices.
+- Added runtime config validation status in the X-Plane UI.
+- Added `Advanced` menu items for config validation, reload+validate, bridge
+  diagnostics, docs location, and config editor location.
+- Added `config/config_schema.json` as schema metadata for config fields,
+  reload policy, supported channel types, and editor tooling.
+- Added a static schema-backed config editor:
+  - `docs/config-editor.html`
+  - `docs/assets/config-editor.js`
+  - packaged under `px4xplane/docs/`
+- Added docs and reports for the config safety, validation UI, schema, and
+  editor slices.
+
+### Changed
+
+- Moved bridge diagnostics from the normal menu into the Advanced menu.
+- Packaged `config_schema.json` next to `config.ini`.
+- Documented that `config.ini` remains the runtime format; JSON schema is
+  metadata for validation and editor UX.
+
+### Fixed
+
+- Fixed several config/mapping hazards that could masquerade as tuning problems:
+  stale channel mappings, non-finite actuator values, invalid ranges, stale PX4
+  actuator streams, and missing float-array datarefs.
+
+### Unchanged
+
+- Alia PX4 parameters remain frozen at the v3.4.6 successful baseline.
+- No bridge sensor sign/unit, GPS, HIL state, quaternion, or prop-brake policy
+  change is included in this release.
+
+---
+
 ## [3.4.6] - 2026-05-07
 
 ### Changed

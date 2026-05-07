@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.6";
+    constexpr const char* VERSION = "3.4.7";
 
     /** Version phase description */
-    constexpr const char* PHASE = "Alia Validation Follow-Up";
+    constexpr const char* PHASE = "Config Safety and Editor Prototype";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2025";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "014";
+    constexpr const char* BUILD = "015";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  
