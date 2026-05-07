@@ -5,18 +5,20 @@ from __future__ import annotations
 
 import argparse
 import configparser
+import json
 import math
 import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 
 RANGE_RE = re.compile(r"^\[\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*\]$")
 INDEX_RE = re.compile(r"^\[\s*(\d+(?:\s+\d+)*)\s*\]$")
 SUPPORTED_TYPES = {"float", "floatArray"}
 GLOBAL_SECTION = "__px4xplane_global__"
+DEFAULT_SCHEMA_PATH = Path(__file__).resolve().parents[1] / "config" / "config_schema.json"
 
 
 @dataclass
@@ -56,7 +58,85 @@ def parse_indices(token: str) -> list[int] | None:
     return [int(item) for item in match.group(1).split()]
 
 
-def validate_channel(section: str, key: str, value: str) -> Iterable[Issue]:
+def load_schema(path: Path = DEFAULT_SCHEMA_PATH) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def parse_bool(value: str) -> bool | None:
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes", "on"}:
+        return True
+    if normalized in {"false", "0", "no", "off"}:
+        return False
+    return None
+
+
+def validate_scalar_field(section: str, key: str, value: str, field_schema: dict[str, Any]) -> Iterable[Issue]:
+    value = value.strip()
+    field_type = field_schema.get("type")
+
+    if field_schema.get("required") and not value:
+        yield Issue("error", section, key, "required value is empty")
+        return
+
+    if field_type == "string":
+        return
+
+    if field_type == "bool":
+        if parse_bool(value) is None:
+            yield Issue("error", section, key, f"expected boolean, got '{value}'")
+        return
+
+    if field_type == "int":
+        try:
+            parsed = int(value)
+        except ValueError:
+            yield Issue("error", section, key, f"expected integer, got '{value}'")
+            return
+        yield from validate_numeric_range(section, key, float(parsed), field_schema)
+        return
+
+    if field_type == "float":
+        try:
+            parsed = float(value)
+        except ValueError:
+            yield Issue("error", section, key, f"expected float, got '{value}'")
+            return
+        if not math.isfinite(parsed):
+            yield Issue("error", section, key, f"expected finite float, got '{value}'")
+            return
+        yield from validate_numeric_range(section, key, parsed, field_schema)
+        return
+
+    yield Issue("warning", section, key, f"schema type '{field_type}' is not validated by this tool")
+
+
+def validate_numeric_range(section: str, key: str, value: float, field_schema: dict[str, Any]) -> Iterable[Issue]:
+    minimum = field_schema.get("min")
+    maximum = field_schema.get("max")
+    if minimum is not None and value < float(minimum):
+        yield Issue("error", section, key, f"value {value:g} is below minimum {minimum}")
+    if maximum is not None and value > float(maximum):
+        yield Issue("error", section, key, f"value {value:g} is above maximum {maximum}")
+
+
+def validate_global_fields(parser: configparser.ConfigParser, schema: dict[str, Any]) -> Iterable[Issue]:
+    field_schemas: dict[str, Any] = schema.get("global_fields", {})
+    global_items = dict(parser.items(GLOBAL_SECTION, raw=True))
+
+    for key, field_schema in field_schemas.items():
+        if field_schema.get("required") and key not in global_items:
+            yield Issue("error", "global", key, "missing required global field")
+
+    for key, value in global_items.items():
+        field_schema = field_schemas.get(key)
+        if field_schema is None:
+            yield Issue("warning", "global", key, "unknown global config key")
+            continue
+        yield from validate_scalar_field("global", key, value, field_schema)
+
+
+def validate_channel(section: str, key: str, value: str, supported_types: set[str]) -> Iterable[Issue]:
     mappings = [mapping.strip() for mapping in value.split("|") if mapping.strip()]
     if not mappings:
         yield Issue("error", section, key, "channel has no mappings")
@@ -72,7 +152,7 @@ def validate_channel(section: str, key: str, value: str) -> Iterable[Issue]:
         dataref, data_type, indices_token, range_token = parts
         if not dataref:
             yield Issue("error", section, label, "empty dataref name")
-        if data_type not in SUPPORTED_TYPES:
+        if data_type not in supported_types:
             yield Issue("error", section, label, f"unsupported type '{data_type}'")
 
         indices = parse_indices(indices_token)
@@ -89,13 +169,18 @@ def validate_channel(section: str, key: str, value: str) -> Iterable[Issue]:
             yield Issue("error", section, label, f"invalid range '{range_token}'")
 
 
-def validate_config(path: Path) -> list[Issue]:
+def validate_config(path: Path, schema_path: Path = DEFAULT_SCHEMA_PATH) -> list[Issue]:
+    schema = load_schema(schema_path)
+    supported_types = set(schema.get("runtime_supported_channel_types", sorted(SUPPORTED_TYPES)))
+
     parser = configparser.ConfigParser(interpolation=None, strict=False)
     parser.optionxform = str
     text = path.read_text(encoding="utf-8-sig")
     parser.read_string(f"[{GLOBAL_SECTION}]\n{text}", source=str(path))
 
     issues: list[Issue] = []
+    issues.extend(validate_global_fields(parser, schema))
+
     active = parser.get(GLOBAL_SECTION, "config_name", fallback="").strip()
     if not active:
         issues.append(Issue("error", "global", "config_name", "missing active config_name"))
@@ -118,7 +203,7 @@ def validate_config(path: Path) -> list[Issue]:
             if channel < 0 or channel > 15:
                 issues.append(Issue("error", section, key, "channel number must be in 0..15"))
                 continue
-            issues.extend(validate_channel(section, key, value))
+            issues.extend(validate_channel(section, key, value, supported_types))
 
         if section == active and not seen_channels:
             issues.append(Issue("error", section, "", "active airframe has no channel mappings"))
@@ -142,13 +227,25 @@ def validate_config(path: Path) -> list[Issue]:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", nargs="?", default="config/config.ini", help="Path to px4xplane config.ini")
+    parser.add_argument("--schema", default=str(DEFAULT_SCHEMA_PATH), help="Path to px4xplane config schema JSON")
     parser.add_argument("--warnings-as-errors", action="store_true", help="Return failure when warnings are present")
+    parser.add_argument("--list-fields", action="store_true", help="List schema-backed global fields and reload policies")
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
-    issues = validate_config(Path(args.config))
+    schema_path = Path(args.schema)
+
+    if args.list_fields:
+        schema = load_schema(schema_path)
+        for key, field in schema.get("global_fields", {}).items():
+            field_type = field.get("type", "unknown")
+            reload_policy = field.get("reload_policy", "unspecified")
+            print(f"{key}: {field_type}, {reload_policy}")
+        return 0
+
+    issues = validate_config(Path(args.config), schema_path)
     for issue in issues:
         print(issue)
 

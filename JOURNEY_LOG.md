@@ -731,3 +731,29 @@ This log preserves project decisions, evidence, and next actions across the long
   - MinGW Windows plugin build
   - Windows plugin import inspection
 - New report: `docs/reports/report_v16.md`.
+
+### px4xplane Config Schema Metadata Slice
+
+- Completed a behavior-preserving schema metadata slice for `config.ini`.
+- Added `config/config_schema.json` with current global config fields,
+  supported actuator mapping types, numeric bounds, groups, and reload policy.
+- `tools/validate_config.py` now loads the schema and validates global field
+  types/ranges in addition to airframe channel mappings.
+- Added `--schema` and `--list-fields` to the config validator.
+- CMake now copies `config_schema.json` beside `config.ini` in packaged plugin
+  folders.
+- Added `docs/developer/config-schema.md` and linked it from `docs/index.md`.
+- Updated custom-airframe docs with explicit live-reload vs
+  reconnect-before-flight guidance.
+- Verification passed:
+  - JSON schema parse with `jq`
+  - Python validator/replay unit tests
+  - config validator CLI and field listing
+  - py_compile for offline tools
+  - CTest
+  - Linux plugin build
+  - MinGW Windows plugin build
+  - whitespace check
+- No Alia params, sensor contract, actuator behavior, prop-brake behavior, PX4
+  fork files, or XPlaneTruthCapture files changed in this slice.
+- New report: `docs/reports/report_v17.md`.

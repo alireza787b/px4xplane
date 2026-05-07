@@ -282,6 +282,13 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/config/config_schema.json
+        ${OUTPUT_DIR}/config_schema.json
+    COMMENT "Copying config_schema.json to 64/ directory"
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/README.md
         ${OUTPUT_DIR}/../README.md
     COMMENT "Copying README.md to plugin root directory"

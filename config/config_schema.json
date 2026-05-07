@@ -1,0 +1,199 @@
+{
+  "schema_version": 1,
+  "format": "px4xplane config.ini",
+  "runtime_supported_channel_types": [
+    "float",
+    "floatArray"
+  ],
+  "reload_policies": {
+    "live_reload": "Safe to change with Reload Config while PX4 is disconnected or connected. Do not change during an armed flight unless diagnosing.",
+    "reconnect_before_flight": "Change before connecting PX4 SITL, or disconnect/reconnect before flying. Reload may parse it, but in-flight changes are not supported.",
+    "px4_sitl_restart": "Requires changing PX4 airframe parameters or restarting PX4 SITL; not a px4xplane config.ini live setting.",
+    "development_only": "For controlled debugging only. Keep disabled for normal releases and demo flights."
+  },
+  "global_fields": {
+    "config_name": {
+      "type": "string",
+      "required": true,
+      "group": "airframe",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Name of the active airframe section in this config file."
+    },
+    "debug_verbose_logging": {
+      "type": "bool",
+      "default": false,
+      "group": "diagnostics",
+      "reload_policy": "live_reload",
+      "description": "Enable verbose plugin status logging."
+    },
+    "debug_log_sensor_timing": {
+      "type": "bool",
+      "default": false,
+      "group": "diagnostics",
+      "reload_policy": "development_only",
+      "description": "Log high-volume HIL_SENSOR timing details."
+    },
+    "debug_log_sensor_values": {
+      "type": "bool",
+      "default": false,
+      "group": "diagnostics",
+      "reload_policy": "development_only",
+      "description": "Log high-volume sensor values and noise diagnostics."
+    },
+    "debug_log_ekf_innovations": {
+      "type": "bool",
+      "default": false,
+      "group": "diagnostics",
+      "reload_policy": "development_only",
+      "description": "Log estimator-oriented diagnostics when available."
+    },
+    "debug_log_accel_pipeline": {
+      "type": "bool",
+      "default": false,
+      "group": "diagnostics",
+      "reload_policy": "development_only",
+      "description": "Log accelerometer pipeline stages."
+    },
+    "debug_accel_bypass_calibration": {
+      "type": "bool",
+      "default": false,
+      "group": "sensor_contract",
+      "reload_policy": "development_only",
+      "description": "Bypass accelerometer calibration for controlled debugging."
+    },
+    "diagnostic_log_enabled": {
+      "type": "bool",
+      "default": true,
+      "group": "diagnostics",
+      "reload_policy": "live_reload",
+      "description": "Emit compact bridge health lines to X-Plane Log.txt."
+    },
+    "diagnostic_log_interval_s": {
+      "type": "float",
+      "default": 2.0,
+      "min": 0.25,
+      "max": 60.0,
+      "group": "diagnostics",
+      "reload_policy": "live_reload",
+      "description": "Seconds between compact bridge health log lines."
+    },
+    "show_connection_status_hud": {
+      "type": "bool",
+      "default": true,
+      "group": "ui",
+      "reload_policy": "live_reload",
+      "description": "Show the compact connection/status HUD overlay."
+    },
+    "fps_warning_enabled": {
+      "type": "bool",
+      "default": true,
+      "group": "ui",
+      "reload_policy": "live_reload",
+      "description": "Show a low-FPS warning when X-Plane frame rate drops below the configured threshold."
+    },
+    "fps_warning_threshold": {
+      "type": "int",
+      "default": 50,
+      "min": 20,
+      "max": 120,
+      "group": "ui",
+      "reload_policy": "live_reload",
+      "description": "FPS threshold below which the low-FPS warning is shown."
+    },
+    "accel_auto_calibrate": {
+      "type": "bool",
+      "default": false,
+      "group": "sensor_contract",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Enable startup accelerometer gravity calibration."
+    },
+    "accel_offset_x": {
+      "type": "float",
+      "default": 0.0,
+      "group": "sensor_contract",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Manual accelerometer X-axis offset in m/s^2."
+    },
+    "accel_offset_y": {
+      "type": "float",
+      "default": 0.0,
+      "group": "sensor_contract",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Manual accelerometer Y-axis offset in m/s^2."
+    },
+    "accel_offset_z": {
+      "type": "float",
+      "default": 0.0,
+      "group": "sensor_contract",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Manual accelerometer Z-axis offset in m/s^2."
+    },
+    "mavlink_sensor_rate_hz": {
+      "type": "int",
+      "default": 200,
+      "min": 1,
+      "max": 500,
+      "group": "mavlink_rates",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Target HIL_SENSOR rate. Actual rate is bounded by X-Plane callback rate."
+    },
+    "mavlink_gps_rate_hz": {
+      "type": "int",
+      "default": 10,
+      "min": 1,
+      "max": 100,
+      "group": "mavlink_rates",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Target HIL_GPS rate."
+    },
+    "mavlink_state_rate_hz": {
+      "type": "int",
+      "default": 50,
+      "min": 1,
+      "max": 200,
+      "group": "mavlink_rates",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Target HIL_STATE_QUATERNION rate."
+    },
+    "mavlink_rc_rate_hz": {
+      "type": "int",
+      "default": 50,
+      "min": 1,
+      "max": 200,
+      "group": "mavlink_rates",
+      "reload_policy": "reconnect_before_flight",
+      "description": "Target HIL_RC_INPUTS rate."
+    }
+  },
+  "airframe_fields": {
+    "autoPropBrakes": {
+      "type": "motor_index_list",
+      "min": 0,
+      "max": 7,
+      "reload_policy": "reconnect_before_flight",
+      "description": "X-Plane engine indices that use the current configurable prop-brake behavior."
+    },
+    "channelN": {
+      "type": "actuator_mapping",
+      "min_channel": 0,
+      "max_channel": 15,
+      "reload_policy": "reconnect_before_flight",
+      "description": "PX4 actuator channel mapping to one or more X-Plane datarefs."
+    }
+  },
+  "channel_mapping": {
+    "field_order": [
+      "dataref",
+      "type",
+      "indices",
+      "output_range"
+    ],
+    "separator": ",",
+    "multi_mapping_separator": "|",
+    "output_range_units": "X-Plane dataref native units",
+    "input_range": [
+      -1.0,
+      1.0
+    ]
+  }
+}

@@ -12,6 +12,7 @@ This index is the stable entry point for user and developer documentation.
 ## Developer Notes
 
 - [Developer Guide](DEVELOPER.md)
+- [Config Schema](developer/config-schema.md)
 - [Alia Demo Readiness Plan](plans/2026-05-07-alia-demo-readiness-plan.md)
 
 ## Reports
@@ -19,6 +20,7 @@ This index is the stable entry point for user and developer documentation.
 - [Report v14 - Offline Work Plan](reports/report_v14.md)
 - [Report v15 - Config Safety Slice](reports/report_v15.md)
 - [Report v16 - Runtime Config Validation UI Slice](reports/report_v16.md)
+- [Report v17 - Config Schema Metadata Slice](reports/report_v17.md)
 
 ## Current Policy
 

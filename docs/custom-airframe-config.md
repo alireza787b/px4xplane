@@ -118,6 +118,21 @@ Run this before packaging or sharing a custom airframe:
 python3 tools/validate_config.py config/config.ini
 ```
 
+The validator uses `config/config_schema.json` for global field types, ranges,
+and reload policy. To see which fields are safe to reload live and which require
+disconnect/reconnect before flight:
+
+```bash
+python3 tools/validate_config.py --list-fields
+```
+
+Treat actuator mappings, `config_name`, prop-brake motor lists, accelerometer
+calibration, and MAVLink target rates as setup-time fields. Change them before
+connecting PX4 SITL, or disconnect, reload, validate, and reconnect before
+flying. Compact diagnostic and UI fields can be reloaded during a debugging
+session, but do not change any config while armed unless you are deliberately
+diagnosing a controlled test.
+
 ## Step 5: Building and Testing the Configuration
 
 ### Testing
