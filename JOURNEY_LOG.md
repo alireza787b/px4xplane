@@ -671,3 +671,31 @@ This log preserves project decisions, evidence, and next actions across the long
 - TruthCapture fix:
   - v0.1.7 statically links the MinGW GCC runtime for local Windows builds.
   - Official GitHub release assets remain preferred for Windows when available.
+
+### px4xplane Config Safety Slice
+
+- Completed the first approved offline implementation slice without changing
+  Alia params, sensor signs/units, quaternion handling, or prop-brake policy.
+- Config now loads at plugin startup and clears stale actuator mappings on every
+  reload.
+- Added tested actuator safety helpers for finite/clamped scaling.
+- Added stale `HIL_ACTUATOR_CONTROLS` detection; configured actuator datarefs
+  are zeroed if PX4 actuator input stops arriving.
+- Inbound MAVLink receive now drains multiple bounded chunks per X-Plane frame
+  to reduce low-FPS backlog risk.
+- Added `tools/validate_config.py` plus Python tests for active section,
+  channel format, data type, range, array-index, and prop-brake validation.
+- Optional CTest now runs the C++ actuator-safety test, config validator CLI,
+  and Python offline-tool tests.
+- Updated custom-airframe docs and Mixing tab help to clarify reload vs
+  reconnect behavior and supported runtime data types.
+- Verification passed:
+  - Python validator/replay unit tests
+  - config validator CLI
+  - py_compile for offline tools
+  - CMake configure/build for offline tests
+  - CTest
+  - Linux plugin build
+  - MinGW Windows plugin build
+  - Windows plugin import inspection
+- New report: `docs/reports/report_v15.md`.

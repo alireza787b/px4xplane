@@ -369,32 +369,42 @@ void ConnectionManager::sendData(const uint8_t* buffer, int len) {
 void ConnectionManager::receiveData() {
     if (!connected) return;
 
-    uint8_t buffer[256];
-    memset(buffer, 0, sizeof(buffer));
+    constexpr int MAX_RECV_PASSES_PER_FRAME = 16;
+    constexpr int RECV_BUFFER_SIZE = 512;
+    uint8_t buffer[RECV_BUFFER_SIZE];
 
-    // Set up the read set and timeout for select
-    fd_set readSet;
-    FD_ZERO(&readSet);
-    FD_SET(newsockfd, &readSet);
-    struct timeval timeout;
-    timeout.tv_sec = 0; // Zero seconds
-    timeout.tv_usec = 0; // Zero microseconds
+    int passes = 0;
+    for (; passes < MAX_RECV_PASSES_PER_FRAME; ++passes) {
+        // Set up the read set and timeout for select
+        fd_set readSet;
+        FD_ZERO(&readSet);
+        FD_SET(newsockfd, &readSet);
+        struct timeval timeout;
+        timeout.tv_sec = 0; // Zero seconds
+        timeout.tv_usec = 0; // Zero microseconds
 
-    // Use select to check if there is data available to read
-    int result = select(newsockfd + 1, &readSet, NULL, NULL, &timeout);
-    if (result < 0) {
-        XPLMDebugString("px4xplane: Error in select\n");
-    }
-    else if (result > 0 && FD_ISSET(newsockfd, &readSet)) {
-        // There is data available to read
-        int bytesReceived = recv(newsockfd, reinterpret_cast<char*>(buffer), sizeof(buffer) - 1, 0);
+        // Use select to check if there is data available to read
+        int result = select(newsockfd + 1, &readSet, NULL, NULL, &timeout);
+        if (result < 0) {
+            XPLMDebugString("px4xplane: Error in select\n");
+            break;
+        }
+        if (result == 0 || !FD_ISSET(newsockfd, &readSet)) {
+            break;
+        }
+
+        int bytesReceived = recv(newsockfd, reinterpret_cast<char*>(buffer), sizeof(buffer), 0);
         if (bytesReceived < 0) {
             XPLMDebugString("px4xplane: Error receiving data\n");
             setLastMessage("Error receiving from PX4!"); // Store the received message
-
+            break;
+        }
+        else if (bytesReceived == 0) {
+            XPLMDebugString("px4xplane: PX4 closed the MAVLink socket\n");
+            disconnect();
+            return;
         }
         else if (bytesReceived > 0) {
-            buffer[bytesReceived] = '\0'; // Null-terminate the received data
             setLastMessage("Receiving from PX4!"); // Store the received message
             //XPLMDebugString("px4xplane: Data received: ");
             //XPLMDebugString(reinterpret_cast<char*>(buffer)); // Write the received message to the X-Plane log
@@ -402,6 +412,10 @@ void ConnectionManager::receiveData() {
             // Call MAVLinkManager::receiveHILActuatorControls() function here
             MAVLinkManager::receiveHILActuatorControls(buffer, bytesReceived);
         }
+    }
+
+    if (passes == MAX_RECV_PASSES_PER_FRAME && ConfigManager::debug_verbose_logging) {
+        XPLMDebugString("px4xplane: MAVLink receive budget exhausted; remaining data will be processed next frame\n");
     }
 }
 

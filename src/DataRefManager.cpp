@@ -7,6 +7,7 @@
 #include "XPLMDisplay.h"
 #include "XPLMGraphics.h"
 #include <vector>
+#include <cstdint>
 #include<cmath>
 #include <bitset>
 #include "MAVLinkManager.h"
@@ -18,6 +19,11 @@
 #include <chrono>
 #include <ctime>
 #include <FilterUtils.h>
+#include "ActuatorSafety.h"
+
+namespace {
+constexpr uint64_t ACTUATOR_STALE_TIMEOUT_USEC = 500000;
+}
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
 	// Position Information
@@ -528,6 +534,9 @@ int DataRefManager::getInt(const char* dataRef) {
 std::vector<float> DataRefManager::getFloatArray(const char* dataRefName) {
 	// This is just a placeholder; replace with the actual SDK call to get float array dataRef.
 	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (!dataRef) {
+		return {};
+	}
 	int arraySize = XPLMGetDatavf(dataRef, NULL, 0, 0); // To get the array size
 	std::vector<float> values(arraySize);
 	XPLMGetDatavf(dataRef, values.data(), 0, arraySize); // To get the array data
@@ -566,7 +575,7 @@ std::string DataRefManager::arrayToString(const std::vector<float>& array) {
  */
 float DataRefManager::mapChannelValue(float value, float minInput, float maxInput, float minOutput, float maxOutput) {
 	// Map the input value from the input range to the output range
-	return ((value - minInput) / (maxInput - minInput)) * (maxOutput - minOutput) + minOutput;
+	return ActuatorSafety::scaleActuatorCommand(value, minInput, maxInput, minOutput, maxOutput);
 }
 
 /**
@@ -692,14 +701,34 @@ void DataRefManager::disableOverride() {
  * If the data type of the actuator is not recognized, an error message is logged.
  */
 void DataRefManager::overrideActuators() {
+	if (!ConnectionManager::isConnected()) {
+		return;
+	}
+
+	static bool staleActuatorsZeroed = false;
+	if (!MAVLinkManager::hasFreshHILActuatorControls(ACTUATOR_STALE_TIMEOUT_USEC)) {
+		if (!staleActuatorsZeroed) {
+			resetActuatorValues();
+			XPLMDebugString("px4xplane: HIL_ACTUATOR_CONTROLS stale or unavailable; actuator datarefs zeroed\n");
+			staleActuatorsZeroed = true;
+		}
+		return;
+	}
+	staleActuatorsZeroed = false;
+
 	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
 
 	for (const auto& [channel, actuatorConfig] : ConfigManager::actuatorConfigs) {
-		float originalValue = hilControls.controls[channel];
+		float originalValue = ActuatorSafety::clampFinite(hilControls.controls[channel], -1.0f, 1.0f, 0.0f);
 
 		for (const auto& datarefConfig : actuatorConfig.getDatarefConfigs()) {
+			if (!ActuatorSafety::isFiniteRange(datarefConfig.range.first, datarefConfig.range.second)) {
+				XPLMDebugString(("px4xplane: Invalid actuator range for channel " + std::to_string(channel) + "\n").c_str());
+				continue;
+			}
+
 			// Scale the value to the datarefConfig's range
-			float scaledValue = scaleActuatorCommand(originalValue, -1.0, +1.0, datarefConfig.range.first, datarefConfig.range.second);
+			float scaledValue = ActuatorSafety::scaleActuatorCommand(originalValue, -1.0f, +1.0f, datarefConfig.range.first, datarefConfig.range.second);
 
 			// Set the dataref based on the data type
 			switch (datarefConfig.dataType) {
@@ -727,9 +756,11 @@ void DataRefManager::overrideActuators() {
 			}
 		}
 
-		// Check and apply brakes on motors as necessary
-		checkAndApplyPropBrakes();
 	}
+
+	// Check and apply brakes once per override pass. This preserves the existing
+	// configurable brake concept while avoiding one brake scan per channel.
+	checkAndApplyPropBrakes();
 
 }
 
@@ -749,8 +780,7 @@ void DataRefManager::overrideActuators() {
  * @return The scaled value.
  */
 float DataRefManager::scaleActuatorCommand(float input, float inputMin, float inputMax, float outputMin, float outputMax) {
-	float scale = (outputMax - outputMin) / (inputMax - inputMin);
-	return outputMin + scale * (input - inputMin);
+	return ActuatorSafety::scaleActuatorCommand(input, inputMin, inputMax, outputMin, outputMax);
 }
 
 

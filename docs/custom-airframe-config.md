@@ -83,8 +83,10 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
 
 - **`float`**: Single floating-point value, typically used for control surfaces like ailerons or rudders.
 - **`floatArray`**: An array of floating-point values, often used for multi-engine aircraft or multiple control surfaces.
-- **`int`**: Integer values, typically used for binary states such as landing gear.
-- **`intArray`**: An array of integers, similar to `floatArray` but used for integer data.
+
+Only `float` and `floatArray` are supported by the current runtime parser. Use
+external plugin/dataref logic for integer-only systems until the typed config
+schema adds explicit integer support.
 
 ### Selecting Datarefs
 
@@ -94,6 +96,27 @@ Choosing the correct dataref ensures accurate simulation behavior:
 - **Auto-Prop Brakes**: Define motor indices that should have auto-prop brakes to minimize drag during flight.
 
 Use the Dataref Tool plugin in X-Plane to find the correct dataref for your setup, or refer to the [X-Plane Dataref Documentation](https://developer.x-plane.com/datarefs/) for more details.
+
+### Runtime Reload and Safety
+
+Mappings, diagnostics, HUD settings, and MAVLink rates can be changed in
+`config.ini` and reloaded from the px4xplane menu. If you change the loaded
+X-Plane aircraft, aircraft-specific datarefs, or PX4 airframe, reconnect PX4 SITL
+and reload the configuration before flying.
+
+px4xplane validates the active `config.ini` with `tools/validate_config.py` and
+guards runtime actuator writes:
+
+- stale channel mappings are cleared on every reload
+- actuator commands are clamped to finite values before dataref writes
+- invalid finite ranges are skipped and logged
+- configured actuator datarefs are zeroed if PX4 actuator input becomes stale
+
+Run this before packaging or sharing a custom airframe:
+
+```bash
+python3 tools/validate_config.py config/config.ini
+```
 
 ## Step 5: Building and Testing the Configuration
 
@@ -109,4 +132,3 @@ Remember, the channel numbers should be defined in the SITL Actuator section of 
 - **Define in Source Code**: For more complex setups, define the airframe in the PX4 source code, build it, and then test.
 
 By following these steps, you’ll ensure your custom airframe behaves correctly in both PX4 and X-Plane, allowing for realistic and accurate simulations.
-

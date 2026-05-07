@@ -19,6 +19,8 @@ public:
     static void setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t sensor_id = 0);
     static void setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor);
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
+    static bool hasFreshHILActuatorControls(uint64_t timeout_usec);
+    static uint64_t getHILActuatorControlsAgeUsec();
     static Eigen::Vector3f computeAcceleration();
     static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
     static void reset();  // CRITICAL: Reset all static state on disconnect
@@ -27,6 +29,7 @@ public:
 
     struct HILActuatorControlsData {
         uint64_t timestamp;
+        uint64_t receive_time_usec;
         float controls[16];
         uint8_t mode;
         uint64_t flags;

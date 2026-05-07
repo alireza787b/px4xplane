@@ -161,6 +161,8 @@ int ConfigManager::mavlink_rc_rate_hz = 50;         // HIL_RC_INPUTS
  * 5. Parsing additional configuration details specific to the selected airframe or setup.
  */
 void ConfigManager::loadConfiguration() {
+    actuatorConfigs.clear();
+
     // Initialize the SimpleIni object and set it to handle Unicode
     CSimpleIniA ini;
     ini.SetUnicode();

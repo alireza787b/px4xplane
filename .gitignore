@@ -10,6 +10,7 @@
 
 # Build Output Directories (Our custom build system)
 build/
+build-*/
 dist/
 output/
 

@@ -12,6 +12,7 @@
 #include "TimestampProvider.h"  // High-precision timestamps (fixes EKF2 time_slip)
 #include <cmath>
 #include <cstdint>
+#include <limits>
 
 
 
@@ -970,6 +971,7 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 
 	// Store the timestamp and mode information
 	MAVLinkManager::hilActuatorControlsData.timestamp = hil_actuator_controls.time_usec;
+	MAVLinkManager::hilActuatorControlsData.receive_time_usec = TimeManager::getCurrentTimeUsec();
 	MAVLinkManager::hilActuatorControlsData.mode = hil_actuator_controls.mode;
 	MAVLinkManager::hilActuatorControlsData.flags = hil_actuator_controls.flags;
 
@@ -980,6 +982,34 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 		// XPLMDebugString(("px4xplane: Actuator channel " + std::to_string(i) +
 		//     " value: " + std::to_string(MAVLinkManager::hilActuatorControlsData.controls[i]) + "\n").c_str());
 	}
+}
+
+bool MAVLinkManager::hasFreshHILActuatorControls(uint64_t timeout_usec) {
+	const uint64_t receiveTime = MAVLinkManager::hilActuatorControlsData.receive_time_usec;
+	if (receiveTime == 0) {
+		return false;
+	}
+
+	const uint64_t now = TimeManager::getCurrentTimeUsec();
+	if (now < receiveTime) {
+		return true;
+	}
+
+	return (now - receiveTime) <= timeout_usec;
+}
+
+uint64_t MAVLinkManager::getHILActuatorControlsAgeUsec() {
+	const uint64_t receiveTime = MAVLinkManager::hilActuatorControlsData.receive_time_usec;
+	if (receiveTime == 0) {
+		return std::numeric_limits<uint64_t>::max();
+	}
+
+	const uint64_t now = TimeManager::getCurrentTimeUsec();
+	if (now < receiveTime) {
+		return 0;
+	}
+
+	return now - receiveTime;
 }
 
 /**

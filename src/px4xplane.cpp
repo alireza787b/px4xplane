@@ -164,6 +164,8 @@ PLUGIN_API int XPluginStart(
 	debugLog("Plugin starting with enhanced UI system...");
 	debugLog(("Version: " + std::string(PX4XPlaneVersion::getFullVersionString())).c_str());
 
+	ConfigManager::loadConfiguration();
+
 	create_menu();
 
 	XPLMCreateWindow_t params;

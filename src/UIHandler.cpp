@@ -1078,11 +1078,11 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
     lineOffset += getScaledLayout(Layout::HEADER_SPACING);
 
     const char* quickHelp[] = {
-        "• Edit config.ini to modify channel-to-dataref mappings",
-        "• Configuration is loaded at X-Plane startup",
-        "• Use 'Controls' tab to see raw HIL actuator values when connected",
-        "• Restart X-Plane after configuration changes",
-        "• Connect to PX4 SITL to see live HIL values in this tab"
+        "• Use Reload Config after changing mappings, diagnostics, HUD, or rates",
+        "• Restart or reconnect after changing X-Plane aircraft/model datarefs",
+        "• Use Controls to see raw HIL actuator values when connected",
+        "• Use Mapping to inspect active channel-to-dataref outputs",
+        "• Stop the test if PX4 airframe and plugin mapping do not match"
     };
 
     for (const auto& help : quickHelp) {

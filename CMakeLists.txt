@@ -61,6 +61,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 
 set(SOURCES
     src/AccelCalibration.cpp
+    src/ActuatorSafety.cpp
     src/ConfigManager.cpp
     src/configReader.cpp
     src/ConnectionManager.cpp
@@ -74,8 +75,11 @@ set(SOURCES
     src/UIHandler.cpp
 )
 
+option(PX4XPLANE_BUILD_TESTS "Build offline px4xplane unit tests" OFF)
+
 set(HEADERS
     include/AccelCalibration.h
+    include/ActuatorSafety.h
     include/ConfigManager.h
     include/configReader.h
     include/ConnectionManager.h
@@ -318,6 +322,32 @@ endforeach()
 #==============================================================================
 
 message(STATUS "==========================================================")
+
+if(PX4XPLANE_BUILD_TESTS)
+    enable_testing()
+
+    add_executable(actuator_safety_test
+        tests/actuator_safety_test.cpp
+        src/ActuatorSafety.cpp
+    )
+    target_include_directories(actuator_safety_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    add_test(NAME actuator_safety_test COMMAND actuator_safety_test)
+
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+    if(Python3_Interpreter_FOUND)
+        add_test(
+            NAME validate_config_cli
+            COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_config.py ${CMAKE_SOURCE_DIR}/config/config.ini
+        )
+        add_test(
+            NAME python_offline_tools
+            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+    endif()
+endif()
 message(STATUS "px4xplane v${PROJECT_VERSION} - Cross-Platform Build")
 message(STATUS "==========================================================")
 message(STATUS "Platform:        ${PLUGIN_PLATFORM}")
