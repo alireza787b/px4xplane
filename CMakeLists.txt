@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.7 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.8 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -159,6 +159,7 @@ if(WIN32)
         _USE_MATH_DEFINES
         _CRT_SECURE_NO_WARNINGS
         _CRT_NONSTDC_NO_DEPRECATE
+        NOMINMAX
         WINVER=0x0A00
         _WIN32_WINNT=0x0A00
         $<$<CONFIG:Debug>:_DEBUG>

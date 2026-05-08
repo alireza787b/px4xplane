@@ -803,3 +803,28 @@ This log preserves project decisions, evidence, and next actions across the long
 - No Alia params, bridge runtime behavior, PX4 fork files, or
   XPlaneTruthCapture files changed in this slice.
 - New report: `docs/reports/report_v19.md`.
+
+### px4xplane v3.4.8 Release Build Recovery And Test Kit
+
+- `v3.4.7` was tagged and GitHub created a release, but the Windows MSVC
+  release job failed while Linux/macOS assets uploaded successfully.
+- Root cause was a Windows `max` macro collision with
+  `std::numeric_limits<uint64_t>::max()` in `src/MAVLinkManager.cpp`.
+- Fixed the portability issue by:
+  - adding `NOMINMAX` to Windows compile definitions
+  - changing the vulnerable call to `(std::numeric_limits<uint64_t>::max)()`
+- Bumped to `v3.4.8` instead of rewriting the already-published `v3.4.7` tag.
+- Local Linux and MinGW Windows builds passed after the fix.
+- Created local next-test kit:
+  - `/home/alireza/px4xplane-v3.4.8-next-test-kit-20260507.zip`
+- Kit contents:
+  - `px4xplane-windows-v3.4.8-test016-20260507.zip`
+  - `XPlaneTruthCapture-Windows-v0.1.7.zip`
+  - `5020_xplane_alia250_v3.4.8_test016`
+  - `README_NEXT_TEST.md`
+- Confirmed `/home/alireza/PX4-Autopilot-Me` is clean on
+  `px4xplane-sitl` and its Alia airframe hash matches the packaged/source
+  baseline.
+- No Alia tuning, sensor-contract, actuator mapping, prop-brake policy, or
+  XPlaneTruthCapture code change was made in this recovery slice.
+- New report: `docs/reports/report_v20.md`.

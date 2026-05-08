@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.8] - 2026-05-07
+
+### Fixed
+
+- Fixed Windows MSVC release-build portability by defining `NOMINMAX` and
+  guarding a `std::numeric_limits<uint64_t>::max()` call from Windows `max`
+  macro expansion.
+
+### Unchanged
+
+- Same config safety/editor/runtime behavior as v3.4.7.
+- Alia PX4 parameters remain frozen at the v3.4.6 successful baseline.
+- No bridge sensor sign/unit, GPS, HIL state, quaternion, actuator mapping, or
+  prop-brake policy change is included in this release.
+
+---
+
 ## [3.4.7] - 2026-05-07
 
 ### Added

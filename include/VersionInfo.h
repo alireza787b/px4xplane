@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.7";
+    constexpr const char* VERSION = "3.4.8";
 
     /** Version phase description */
-    constexpr const char* PHASE = "Config Safety and Editor Prototype";
+    constexpr const char* PHASE = "MSVC Release Build Fix";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2025";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "015";
+    constexpr const char* BUILD = "016";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

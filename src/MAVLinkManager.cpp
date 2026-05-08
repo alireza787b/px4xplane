@@ -1001,7 +1001,7 @@ bool MAVLinkManager::hasFreshHILActuatorControls(uint64_t timeout_usec) {
 uint64_t MAVLinkManager::getHILActuatorControlsAgeUsec() {
 	const uint64_t receiveTime = MAVLinkManager::hilActuatorControlsData.receive_time_usec;
 	if (receiveTime == 0) {
-		return std::numeric_limits<uint64_t>::max();
+		return (std::numeric_limits<uint64_t>::max)();
 	}
 
 	const uint64_t now = TimeManager::getCurrentTimeUsec();
