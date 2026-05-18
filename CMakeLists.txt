@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.11 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.12 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -332,6 +332,50 @@ foreach(PARAM_FILE ${PX4_PARAMS})
         COMMENT "Copying PX4 airframe parameter: ${PARAM_NAME}"
     )
 endforeach()
+
+# Refresh package assets even when the plugin binary itself does not relink.
+# Without this target, config/docs/airframe-only edits can leave an existing
+# build package carrying stale files.
+set(PACKAGE_ASSET_COMMANDS
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/config/config.ini
+        ${OUTPUT_DIR}/config.ini
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/config/config_schema.json
+        ${OUTPUT_DIR}/config_schema.json
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/README.md
+        ${OUTPUT_DIR}/../README.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/ALIA_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../ALIA_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${OUTPUT_DIR}/../docs/assets
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/config-editor.html
+        ${OUTPUT_DIR}/../docs/config-editor.html
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
+        ${OUTPUT_DIR}/../docs/assets/config-editor.js
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${OUTPUT_DIR}/../px4_airframes
+)
+
+foreach(PARAM_FILE ${PX4_PARAMS})
+    get_filename_component(PARAM_NAME ${PARAM_FILE} NAME)
+    list(APPEND PACKAGE_ASSET_COMMANDS
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${PARAM_FILE}
+            ${OUTPUT_DIR}/../px4_airframes/${PARAM_NAME}
+    )
+endforeach()
+
+add_custom_target(package_assets ALL
+    ${PACKAGE_ASSET_COMMANDS}
+    COMMENT "Refreshing packaged config, docs, and PX4 airframe files"
+    VERBATIM
+)
+add_dependencies(package_assets ${PROJECT_NAME})
 
 #==============================================================================
 # Installation (Optional)

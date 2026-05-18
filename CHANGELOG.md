@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.12] - 2026-05-18
+
+### Fixed
+
+- Fixed the `No autoPropBrakes...` X-Plane log line so the disabled-brake and
+  motor-brake summary messages no longer run together.
+- Fixed stale package contents after config/docs/airframe-only edits by adding
+  an always-run packaged-assets refresh target.
+
+### Changed
+
+- Tuned Alia fixed-wing mass/energy/path behavior from `alia-test6` evidence:
+  matched `WEIGHT_BASE`/`WEIGHT_GROSS` to the X-Plane model mass, smoothed TECS
+  altitude response, increased NPFG smoothing, slowed FW roll response, and
+  changed back-transition deceleration to the measured value.
+- Kept Alia prop braking disabled by default; the generic safer prop-brake
+  policy remains available only for airframes that explicitly opt in.
+
+---
+
 ## [3.4.11] - 2026-05-18
 
 ### Fixed

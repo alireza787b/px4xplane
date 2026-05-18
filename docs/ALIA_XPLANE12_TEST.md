@@ -102,12 +102,14 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.11` Alia crash-recovery test, verify these key defaults are
+For the current `v3.4.12` Alia fixed-wing tuning test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
-- `NPFG_PERIOD=45.0`
-- `NPFG_DAMPING=0.7`
+- `NPFG_PERIOD=70.0`
+- `NPFG_DAMPING=0.85`
+- `NPFG_ROLL_TC=1.0`
+- `NPFG_SW_DST_MLT=0.7`
 - `NAV_LOITER_RAD=2000.0`
 - `RTL_LOITER_RAD=2000.0`
 - `CAL_BARO0_ID=6620172`
@@ -122,19 +124,23 @@ parameter store and rerun before judging the package.
 - `VT_ARSP_TRANS=46.0`
 - `VT_F_TRANS_DUR=45.0`
 - `VT_F_TR_OL_TM=55.0`
-- `FW_T_ALT_TC=4.0`
-- `FW_T_STE_R_TC=1.5`
-- `FW_T_THR_DAMPING=0.12`
-- `FW_T_PTCH_DAMP=0.14`
-- `FW_T_I_GAIN_PIT=0.30`
+- `FW_T_ALT_TC=6.0`
+- `FW_T_STE_R_TC=2.0`
+- `FW_T_THR_DAMPING=0.25`
+- `FW_T_PTCH_DAMP=0.25`
+- `FW_T_I_GAIN_PIT=0.20`
+- `FW_T_CLMB_R_SP=2.0`
+- `FW_T_SINK_R_SP=1.5`
 - `FW_THR_TRIM=0.80`
 - `FW_THR_SLEW_MAX=0.50`
+- `WEIGHT_BASE=3120.0`
+- `WEIGHT_GROSS=3120.0`
 - `VT_B_TRANS_DUR=35.0`
-- `VT_B_DEC_MSS=3.0`
-- `VT_B_DEC_I=0.40`
+- `VT_B_DEC_MSS=2.2`
+- `VT_B_DEC_I=0.25`
 - `RTL_DESCEND_ALT=300`
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.11`
+- `px4xplane: Version: v3.4.12`
 - `px4xplane: Motor brakes configured for motors: 00000000`

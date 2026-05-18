@@ -766,7 +766,7 @@ void ConfigManager::configureMotorBrakes(const CSimpleIniA& ini) {
         }
     }
     else {
-        XPLMDebugString(("px4xplane: No autoPropBrakes specified or parameter not found for configuration: " + configName).c_str());
+        XPLMDebugString(("px4xplane: No autoPropBrakes specified or parameter not found for configuration: " + configName + "\n").c_str());
     }
 
     // Log the final configuration for verification

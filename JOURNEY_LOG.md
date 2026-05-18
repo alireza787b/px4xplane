@@ -893,3 +893,27 @@ This log preserves project decisions, evidence, and next actions across the long
 - Narrowly reduced Alia front-transition gates to `VT_ARSP_TRANS=46`,
   `VT_F_TRANS_DUR=45`, and `VT_F_TR_OL_TM=55`.
 - New report: `docs/reports/report_v23.md`.
+
+### px4xplane v3.4.12 Alia Fixed-Wing Tuning
+
+- Analyzed `/home/alireza/alia-test6.zip`.
+- Confirmed the v3.4.11 crash recovery worked: Alia reached fixed-wing, RTL,
+  back-transition, landing, disarm, and log close without estimator warnings,
+  baro switching, or quad-chute.
+- Found the remaining fixed-wing issue is controller saturation, not a bridge
+  sensor or throttle mapping bug:
+  - TECS commanded pusher throttle above `0.99` for about `91%` of FW flight.
+  - TruthCapture confirmed the X-Plane pusher throttle was actually `1.0`.
+  - FW roll setpoint spent about `90%` of orbit above `25 deg` magnitude and
+    flipped sign every roughly `17-19 s`.
+  - X-Plane mass was about `3118 kg`, while PX4 was configured as `3500 kg`.
+- Prepared v3.4.12 tuning:
+  - match `WEIGHT_BASE`/`WEIGHT_GROSS` to `3120 kg`
+  - smooth TECS altitude/energy response
+  - lengthen/smooth NPFG and FW roll response
+  - set back-transition expected deceleration to the measured `2.2 m/s^2`
+- Fixed a local packaging gap found during zip validation: config/docs/airframe
+  assets now refresh even when the plugin binary does not relink.
+- Kept Alia prop braking disabled; generic opt-in prop-brake policy remains the
+  systematic reusable bridge solution.
+- New report: `docs/reports/report_v24.md`.
