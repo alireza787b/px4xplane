@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.9] - 2026-05-18
+
+### Changed
+
+- Added a ULog-guided Alia-250 tuning slice to reduce fixed-wing altitude
+  phugoid behavior and back-transition climb/overshoot.
+- Seeded PX4 simulated barometer device IDs in X-Plane airframe files so the
+  intended disabled backup barometer priority applies on a fresh SITL rootfs.
+- Relaxed X-Plane SITL barometer fusion noise from an overconfident 0.003 m to
+  0.05 m.
+
+### Fixed
+
+- Added hysteresis to optional prop-brake activation so X-Plane failure datarefs
+  do not chatter around exactly zero throttle.
+- Clamped negative indicated airspeed before calculating HIL differential
+  pressure.
+
+---
+
 ## [3.4.8] - 2026-05-07
 
 ### Fixed

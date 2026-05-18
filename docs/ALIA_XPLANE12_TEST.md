@@ -102,13 +102,27 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current baseline, the successful `alia-sitl1` ULog used:
+For the current `v3.4.9` Alia tuning test, verify these key defaults are active
+in the PX4 ULog. If they still show the previous values, reset the SITL
+parameter store and rerun before judging the tune.
 
 - `NPFG_PERIOD=45.0`
 - `NPFG_DAMPING=0.7`
 - `NAV_LOITER_RAD=2000.0`
 - `RTL_LOITER_RAD=2000.0`
-- `FW_T_ALT_TC=4.0`
+- `CAL_BARO0_ID=6620172`
+- `CAL_BARO0_PRIO=100`
+- `CAL_BARO1_ID=6620428`
+- `CAL_BARO1_PRIO=0`
+- `EKF2_BARO_NOISE=0.05`
+- `FW_T_ALT_TC=7.0`
 - `FW_T_STE_R_TC=1.5`
-- `FW_T_THR_DAMPING=0.12`
-- `FW_T_PTCH_DAMP=0.14`
+- `FW_T_THR_DAMPING=0.25`
+- `FW_T_PTCH_DAMP=0.30`
+- `FW_T_I_GAIN_PIT=0.15`
+- `FW_THR_TRIM=0.65`
+- `FW_THR_SLEW_MAX=0.30`
+- `VT_B_TRANS_DUR=20.0`
+- `VT_B_DEC_MSS=2.2`
+- `VT_B_DEC_I=0.25`
+- `RTL_DESCEND_ALT=120`

@@ -108,12 +108,14 @@ param set-default PWM_MAIN_FUNC4 104     # Motor 4
 
 # Barometer Configuration (v3.2.0 - CRITICAL)
 param set-default EKF2_BARO_CTRL 1
-param set-default EKF2_BARO_NOISE 0.003  # 3mm - matches plugin sensor noise
+param set-default EKF2_BARO_NOISE 0.05   # Avoid overconfident baro fusion from frame-limited SITL data
 param set-default EKF2_BARO_GATE 10.0    # Increased for FPS/transition tolerance
 param set-default EKF2_HGT_REF 1         # Barometer primary height
 
 # Barometer Priority (prevents sensor switching)
+param set-default CAL_BARO0_ID 6620172
 param set-default CAL_BARO0_PRIO 100     # Primary barometer
+param set-default CAL_BARO1_ID 6620428
 param set-default CAL_BARO1_PRIO 0       # Backup disabled
 
 # GPS Configuration
@@ -377,7 +379,7 @@ param set-default FD_FAIL_R 70           # Failsafe return altitude
 ################################################################################
 #
 # Altitude drops during FW flight:
-#   - Verify EKF2_BARO_NOISE = 0.0035
+#   - Verify EKF2_BARO_NOISE = 0.05
 #   - Increase FW_THR_TRIM by 5%
 #
 # Oscillations in roll/pitch during FW flight:

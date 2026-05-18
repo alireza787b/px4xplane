@@ -96,7 +96,7 @@ param set-default PWM_MAIN_REV 15
 # SECTION 2: EKF2 SENSOR FUSION - OPTIMIZED FOR LONG-ENDURANCE MISSIONS
 ################################################################################
 # Applied optimizations for 27+ hour missions:
-# - Barometer: 0.003 (3mm noise) - critical for no drift over 27+ hours
+# - Barometer: 0.05 m noise floor to avoid overconfident SITL height fusion
 # - Single sensor priority prevents BARO switch during long missions
 # - Innovation gates: 5.0 for day/night temperature variations
 
@@ -110,7 +110,9 @@ param set-default SYS_HAS_GPS 1
 param set-default SYS_HAS_MAG 1
 
 # Barometer Priority (prevents switching during 27+ hour missions)
+param set-default CAL_BARO0_ID 6620172
 param set-default CAL_BARO0_PRIO 100     # Primary barometer
+param set-default CAL_BARO1_ID 6620428
 param set-default CAL_BARO1_PRIO 0       # Backup disabled
 
 # EKF2 Core Configuration
@@ -135,7 +137,7 @@ param set-default EKF2_GYR_NOISE 0.015   # Gyro measurement noise (rad/s)
 param set-default EKF2_GYR_B_NOISE 0.001 # Gyro bias process noise (rad/s)
 
 # Barometer (v3.2.0 - critical for 27+ hour missions without drift)
-param set-default EKF2_BARO_NOISE 0.003  # 3mm - matches plugin sensor noise
+param set-default EKF2_BARO_NOISE 0.05   # Avoid overconfident baro fusion from frame-limited SITL data
 param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0    # Increased for day/night temp tolerance
 
@@ -349,7 +351,7 @@ param set-default CBRK_IO_SAFETY 22027   # Disable safety switch
 ################################################################################
 #
 # Altitude drift during long mission (27+ hours):
-#   - Verify EKF2_BARO_NOISE = 0.0035
+#   - Verify EKF2_BARO_NOISE = 0.05
 #   - Check CAL_BARO1_PRIO = 0
 #   - Verify innovation gates = 5.0
 #

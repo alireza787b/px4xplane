@@ -24,10 +24,13 @@ This index is the stable entry point for user and developer documentation.
 - [Report v17 - Config Schema Metadata Slice](reports/report_v17.md)
 - [Report v18 - Static Config Editor Prototype](reports/report_v18.md)
 - [Report v19 - Config Editor Menu Link Slice](reports/report_v19.md)
+- [Report v20 - v3.4.8 Release Build Recovery](reports/report_v20.md)
+- [Report v21 - Alia v3.4.9 Vertical Tune](reports/report_v21.md)
 
 ## Current Policy
 
-- Keep Alia parameters frozen until the next complete v3.4.6 baseline retest.
+- Use the `v3.4.9` Alia airframe for the next vertical-control retest, and
+  reset PX4 SITL parameters with `distclean` before judging the tune.
 - Use `tools/validate_config.py config/config.ini` before packaging custom
   mappings.
 - Use the X-Plane menu `Advanced > Validate Config` after changing the active

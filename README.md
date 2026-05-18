@@ -27,15 +27,15 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
   - Resolved altitude drift and height estimate reset issues
   - GPS altitude noise reduced from σ=0.5m to σ=0.15m (3.3× improvement)
   - EKF2_GPS_P_NOISE properly tuned (0.01 → 0.15) across all aircraft
-  - Barometer (±3mm) now correctly prioritized over GPS (±30cm)
+  - Simulated barometer priority seeded with explicit PX4 device IDs
   - Height estimate resets reduced from ~10/hour to rare occurrences
   - Eliminated false climb/descent detections caused by GPS noise
 
 - **⚡ Multi-Threaded Communication Architecture**:
   - Robust, stable PX4 ↔ X-Plane MAVLink communication
   - Asynchronous sensor data processing with thread-safe queues
-  - HIL_SENSOR update rate increased to 250Hz (matches PX4 Gazebo standard)
-  - Enhanced barometer noise modeling (3cm std dev) for proper liveness detection
+  - Frame-rate-aware HIL_SENSOR timing diagnostics
+  - Barometer fusion noise tuned for frame-limited X-Plane SITL
   - Synchronized GPS-Barometer altitude quantization (5mm resolution)
   - Prevents sensor timeout/STALE errors
 
@@ -166,7 +166,7 @@ Once merged with official PX4, you'll be able to use the standard PX4-Autopilot 
   - Reduced GPS altitude noise from 0.5m to 0.15m (matches high-quality GPS vertical accuracy)
   - Updated EKF2_GPS_P_NOISE parameter from 0.01 to 0.15 across all aircraft configurations
   - Eliminated ±1m GPS altitude jumps that caused EKF2 to incorrectly detect climbing/descending
-  - Height estimate now stable with barometer (±3mm) properly prioritized over GPS (±30cm)
+  - Height estimate tuned with explicit simulated barometer device priorities
 - **🖥️ Connection Status HUD**: Professional HUD-style overlay for connection feedback:
   - Real-time connection progress indicator with elapsed time display
   - 30-second timeout with clear warning messages
@@ -182,7 +182,7 @@ Once merged with official PX4, you'll be able to use the standard PX4-Autopilot 
 
 - **🎯 Critical Sensor Stability Fix**: Resolved BARO STALE errors and vertical velocity oscillation issues:
   - Increased HIL_SENSOR update rate from 100Hz to 250Hz (matches PX4 Gazebo SITL standard)
-  - Enhanced barometer noise modeling (3cm std dev) for proper liveness detection
+  - Barometer fusion noise tuned for frame-limited X-Plane SITL
   - Synchronized GPS-Barometer altitude quantization (5mm resolution) to eliminate EKF2 innovation conflicts
   - Relaxed EKF2 innovation gates (BARO_GATE, GPS_V_GATE: 8.0) for SITL environment
   - Tuned COM_ARM_EKF_VEL parameter (0.8) to prevent false preflight velocity errors

@@ -828,3 +828,31 @@ This log preserves project decisions, evidence, and next actions across the long
 - No Alia tuning, sensor-contract, actuator mapping, prop-brake policy, or
   XPlaneTruthCapture code change was made in this recovery slice.
 - New report: `docs/reports/report_v20.md`.
+
+### px4xplane v3.4.9 Alia Vertical Tune And Baro Source Fix
+
+- Analyzed `/home/alireza/alia-test2.zip` plus the pasted PX4 terminal log.
+- Confirmed the run was valid Alia evidence with `SYS_AUTOSTART=5020`, full
+  takeoff, front transition, RTL, back transition, landing, disarm, and ULog
+  close.
+- Truth capture quality was strong: `42,344` frames, zero dropped rows, no
+  sim-time resets, and about `77.5 Hz` mean callback rate.
+- Main remaining flight issue is real vertical dynamics:
+  - fixed-wing climb rate swung about `-12.3` to `+12.6 m/s`
+  - worst 10 s fixed-wing altitude swing was about `61.7 m`
+  - TECS saturated throttle and pitch while airspeed remained accepted
+- Baro switch root cause was clarified:
+  - PX4 simulator_mavlink publishes two simulated baro uORB instances from one
+    incoming `HIL_SENSOR` stream
+  - airframes were setting priorities without seeding the simulated device IDs
+  - PX4 could therefore auto-create both baros at default priority `50`
+- Changes prepared:
+  - bump px4xplane to `v3.4.9` build `017`
+  - seed simulated baro IDs and disable baro1 in all X-Plane PX4 airframes
+  - relax `EKF2_BARO_NOISE` to `0.05`
+  - damp Alia TECS and back-transition parameters
+  - add prop-brake hysteresis and clamp negative IAS before diff-pressure
+- Updated `docs/ALIA_XPLANE12_TEST.md` with the v3.4.9 parameter sanity list
+  and the requirement to run `distclean` or otherwise reset SITL parameters
+  after replacing airframe defaults.
+- New report: `docs/reports/report_v21.md`.

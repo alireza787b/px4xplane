@@ -23,6 +23,8 @@
 
 namespace {
 constexpr uint64_t ACTUATOR_STALE_TIMEOUT_USEC = 500000;
+constexpr float PROP_BRAKE_APPLY_THRESHOLD = 0.01f;
+constexpr float PROP_BRAKE_RELEASE_THRESHOLD = 0.05f;
 }
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
@@ -935,8 +937,16 @@ void DataRefManager::checkAndApplyPropBrakes() {
 		for (int i = 0; i < 8; ++i) {
 			// Check if the motor has a brake feature and needs a brake applied or removed
 			if (ConfigManager::hasPropBrake(i)) {
-				bool shouldBrake = throttleValues[i] == 0.0f;
+				const float throttle = std::isfinite(throttleValues[i]) ? throttleValues[i] : 0.0f;
 				bool isBraking = motorBrakeStates.test(i);
+
+				bool shouldBrake = isBraking;
+				if (isBraking && throttle >= PROP_BRAKE_RELEASE_THRESHOLD) {
+					shouldBrake = false;
+				} else if (!isBraking && throttle <= PROP_BRAKE_APPLY_THRESHOLD) {
+					shouldBrake = true;
+				}
+
 				if (shouldBrake != isBraking) {
 					applyBrake(i, shouldBrake);
 				}

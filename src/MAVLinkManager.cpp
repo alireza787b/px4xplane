@@ -10,6 +10,7 @@
 #include "TimeManager.h"  // Include the TimeManager class
 #include "AccelCalibration.h"  // Runtime accelerometer gravity calibration
 #include "TimestampProvider.h"  // High-precision timestamps (fixes EKF2 time_slip)
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -527,6 +528,8 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	fields_updated |= (1 << 8);  // HIL_SENSOR_UPDATED_ZMAG
 	fields_updated |= (1 << 9);  // HIL_SENSOR_UPDATED_ABS_PRESSURE
 	fields_updated |= (1 << 10); // HIL_SENSOR_UPDATED_DIF_PRESSURE
+	// PX4 simulator_mavlink currently treats bit 11 as part of the baro source
+	// availability mask, even though it derives altitude from abs_pressure.
 	fields_updated |= (1 << 11); // HIL_SENSOR_UPDATED_PRESSURE_ALT
 	fields_updated |= (1 << 12); // HIL_SENSOR_UPDATED_TEMPERATURE
 
@@ -1438,7 +1441,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 
 	// Retrieve Indicated Airspeed from X-Plane
 	// DataRef: "sim/flightmodel/position/indicated_airspeed" (knots)
-	float ias_knots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
+	float ias_knots = (std::max)(0.0f, dataRefFloat("sim/flightmodel/position/indicated_airspeed"));
 
 	// Convert IAS from knots to m/s
 	// Conversion factor: 1 knot = 0.514444 m/s (exactly 1852m/3600s)
