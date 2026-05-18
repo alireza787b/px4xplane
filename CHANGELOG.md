@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.10] - 2026-05-18
+
+### Changed
+
+- Reverted the unproven Alia v3.4.9 TECS, throttle, RTL descent, and
+  back-transition tuning to the last better-tracking baseline.
+- Raised X-Plane SITL barometer height noise to `1.0 m` across the X-Plane PX4
+  airframes after ULog evidence showed `0.05 m` was still overconfident for
+  multi-meter VTOL/FW baro innovations.
+- Seeded Alia simulated accelerometer offsets so fresh `distclean` runs do not
+  start from the zero-offset state that produced the high-accelerometer-bias
+  warning in `alia-test4`.
+
+### Fixed
+
+- Strengthened optional prop brakes: configured lift props are now feathered,
+  commanded to zero prop speed, and kept seized while braked instead of relying
+  on the prop-separation failure trick alone.
+
+---
+
 ## [3.4.9] - 2026-05-18
 
 ### Changed

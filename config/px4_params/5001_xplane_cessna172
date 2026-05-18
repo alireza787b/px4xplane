@@ -74,7 +74,7 @@ param set-default PWM_MAIN_REV 7
 # SECTION 2: EKF2 SENSOR FUSION - OPTIMIZED FOR X-PLANE SITL
 ################################################################################
 # Applied optimizations from Ehang 184 & Alia-250:
-# - Barometer: 0.05 m noise floor to avoid overconfident SITL height fusion
+# - Barometer: 1.0 m noise floor to avoid overconfident SITL height fusion
 # - Single sensor priority prevents BARO switch errors
 # - Innovation gates: 5.0 for FPS-independent robustness
 
@@ -113,7 +113,7 @@ param set-default EKF2_GYR_NOISE 0.015   # Gyro measurement noise (rad/s)
 param set-default EKF2_GYR_B_NOISE 0.001 # Gyro bias process noise (rad/s)
 
 # Barometer (v3.2.0 - optimized for stable altitude)
-param set-default EKF2_BARO_NOISE 0.05   # Avoid overconfident baro fusion from frame-limited SITL data
+param set-default EKF2_BARO_NOISE 1.0    # Baro height noise in m; avoids overconfident fusion during X-Plane transients
 param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0    # Increased for FPS/transition tolerance
 
@@ -316,7 +316,7 @@ param set-default CBRK_IO_SAFETY 22027   # Disable safety switch
 ################################################################################
 #
 # Altitude oscillation during cruise:
-#   - Verify EKF2_BARO_NOISE = 0.05
+#   - Verify EKF2_BARO_NOISE = 1.0
 #   - Check FW_T_THR_DAMPING = 0.08
 #   - Verify FW_T_PTCH_DAMP = 0.1
 #

@@ -102,9 +102,9 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.9` Alia tuning test, verify these key defaults are active
-in the PX4 ULog. If they still show the previous values, reset the SITL
-parameter store and rerun before judging the tune.
+For the current `v3.4.10` Alia recovery test, verify these key defaults are
+active in the PX4 ULog. If they still show the previous values, reset the SITL
+parameter store and rerun before judging the package.
 
 - `NPFG_PERIOD=45.0`
 - `NPFG_DAMPING=0.7`
@@ -114,15 +114,19 @@ parameter store and rerun before judging the tune.
 - `CAL_BARO0_PRIO=100`
 - `CAL_BARO1_ID=6620428`
 - `CAL_BARO1_PRIO=0`
-- `EKF2_BARO_NOISE=0.05`
-- `FW_T_ALT_TC=7.0`
+- `EKF2_BARO_NOISE=1.0`
+- `CAL_ACC0_PRIO=50`
+- `CAL_ACC0_XOFF=-0.0100629`
+- `CAL_ACC0_YOFF=-0.0362144`
+- `CAL_ACC0_ZOFF=-0.645399`
+- `FW_T_ALT_TC=4.0`
 - `FW_T_STE_R_TC=1.5`
-- `FW_T_THR_DAMPING=0.25`
-- `FW_T_PTCH_DAMP=0.30`
-- `FW_T_I_GAIN_PIT=0.15`
-- `FW_THR_TRIM=0.65`
-- `FW_THR_SLEW_MAX=0.30`
-- `VT_B_TRANS_DUR=20.0`
-- `VT_B_DEC_MSS=2.2`
-- `VT_B_DEC_I=0.25`
-- `RTL_DESCEND_ALT=120`
+- `FW_T_THR_DAMPING=0.12`
+- `FW_T_PTCH_DAMP=0.14`
+- `FW_T_I_GAIN_PIT=0.30`
+- `FW_THR_TRIM=0.80`
+- `FW_THR_SLEW_MAX=0.50`
+- `VT_B_TRANS_DUR=35.0`
+- `VT_B_DEC_MSS=3.0`
+- `VT_B_DEC_I=0.40`
+- `RTL_DESCEND_ALT=300`

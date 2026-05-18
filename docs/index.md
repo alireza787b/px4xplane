@@ -26,11 +26,12 @@ This index is the stable entry point for user and developer documentation.
 - [Report v19 - Config Editor Menu Link Slice](reports/report_v19.md)
 - [Report v20 - v3.4.8 Release Build Recovery](reports/report_v20.md)
 - [Report v21 - Alia v3.4.9 Vertical Tune](reports/report_v21.md)
+- [Report v22 - Alia v3.4.10 Regression Recovery](reports/report_v22.md)
 
 ## Current Policy
 
-- Use the `v3.4.9` Alia airframe for the next vertical-control retest, and
-  reset PX4 SITL parameters with `distclean` before judging the tune.
+- Use the `v3.4.10` Alia recovery package for the next retest, and reset PX4
+  SITL parameters with `distclean` before judging the package.
 - Use `tools/validate_config.py config/config.ini` before packaging custom
   mappings.
 - Use the X-Plane menu `Advanced > Validate Config` after changing the active

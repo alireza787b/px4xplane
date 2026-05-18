@@ -10,6 +10,7 @@
 #include <cstdint>
 #include<cmath>
 #include <bitset>
+#include <array>
 #include "MAVLinkManager.h"
 #include "XPLMUtilities.h"
 #include <ConfigManager.h>
@@ -23,8 +24,132 @@
 
 namespace {
 constexpr uint64_t ACTUATOR_STALE_TIMEOUT_USEC = 500000;
-constexpr float PROP_BRAKE_APPLY_THRESHOLD = 0.01f;
-constexpr float PROP_BRAKE_RELEASE_THRESHOLD = 0.05f;
+constexpr float PROP_BRAKE_APPLY_THRESHOLD = 0.05f;
+constexpr float PROP_BRAKE_RELEASE_THRESHOLD = 0.08f;
+constexpr float PROP_BRAKE_FEATHER_ANGLE_DEG = 90.0f;
+constexpr int XPLANE_FAILURE_NONE = 0;
+constexpr int XPLANE_FAILURE_ALWAYS = 6;
+
+struct PropBrakeSnapshot {
+	bool hasPropMode{false};
+	int propMode{1};
+	bool hasPropAngle{false};
+	float propAngle{0.0f};
+	bool hasPropPitch{false};
+	float propPitch{0.0f};
+	bool hasPropTargetSpeed{false};
+	float propTargetSpeed{0.0f};
+	bool hasPointPitch{false};
+	float pointPitch{0.0f};
+	bool hasPointPitchUse{false};
+	float pointPitchUse{0.0f};
+};
+
+std::array<PropBrakeSnapshot, 8> propBrakeSnapshots;
+std::bitset<8> propBrakeSnapshotValid;
+std::bitset<8> propBrakeWarningLogged;
+
+bool getFloatArrayElement(const char* dataRefName, int index, float& value)
+{
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (dataRef == nullptr) {
+		return false;
+	}
+
+	return XPLMGetDatavf(dataRef, &value, index, 1) == 1;
+}
+
+bool setFloatArrayElement(const char* dataRefName, int index, float value)
+{
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (dataRef == nullptr) {
+		return false;
+	}
+
+	XPLMSetDatavf(dataRef, &value, index, 1);
+	return true;
+}
+
+bool getIntArrayElement(const char* dataRefName, int index, int& value)
+{
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (dataRef == nullptr) {
+		return false;
+	}
+
+	return XPLMGetDatavi(dataRef, &value, index, 1) == 1;
+}
+
+bool setIntArrayElement(const char* dataRefName, int index, int value)
+{
+	XPLMDataRef dataRef = XPLMFindDataRef(dataRefName);
+	if (dataRef == nullptr) {
+		return false;
+	}
+
+	XPLMSetDatavi(dataRef, &value, index, 1);
+	return true;
+}
+
+void savePropBrakeSnapshot(int motorIndex)
+{
+	if (motorIndex < 0 || motorIndex >= static_cast<int>(propBrakeSnapshots.size()) || propBrakeSnapshotValid.test(motorIndex)) {
+		return;
+	}
+
+	PropBrakeSnapshot snapshot;
+	snapshot.hasPropMode = getIntArrayElement("sim/cockpit2/engine/actuators/prop_mode", motorIndex, snapshot.propMode);
+	snapshot.hasPropAngle = getFloatArrayElement("sim/cockpit2/engine/actuators/prop_angle_degrees", motorIndex, snapshot.propAngle);
+	snapshot.hasPropPitch = getFloatArrayElement("sim/cockpit2/engine/actuators/prop_pitch_deg", motorIndex, snapshot.propPitch);
+	snapshot.hasPropTargetSpeed = getFloatArrayElement("sim/cockpit2/engine/actuators/prop_rotation_speed_rad_sec", motorIndex, snapshot.propTargetSpeed);
+	snapshot.hasPointPitch = getFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg", motorIndex, snapshot.pointPitch);
+	snapshot.hasPointPitchUse = getFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, snapshot.pointPitchUse);
+	propBrakeSnapshots[static_cast<size_t>(motorIndex)] = snapshot;
+	propBrakeSnapshotValid.set(motorIndex);
+}
+
+bool enforcePropBrakeDataRefs(int motorIndex)
+{
+	bool wroteAny = false;
+	wroteAny |= setIntArrayElement("sim/cockpit2/engine/actuators/prop_mode", motorIndex, 0);
+	wroteAny |= setFloatArrayElement("sim/cockpit2/engine/actuators/prop_angle_degrees", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
+	wroteAny |= setFloatArrayElement("sim/cockpit2/engine/actuators/prop_pitch_deg", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
+	wroteAny |= setFloatArrayElement("sim/cockpit2/engine/actuators/prop_rotation_speed_rad_sec", motorIndex, 0.0f);
+	wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
+	wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
+	wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_tacrad", motorIndex, 0.0f);
+	wroteAny |= setFloatArrayElement("sim/flightmodel2/engines/prop_rotation_angle_deg", motorIndex, 0.0f);
+	return wroteAny;
+}
+
+void restorePropBrakeSnapshot(int motorIndex)
+{
+	if (motorIndex < 0 || motorIndex >= static_cast<int>(propBrakeSnapshots.size()) || !propBrakeSnapshotValid.test(motorIndex)) {
+		return;
+	}
+
+	const PropBrakeSnapshot& snapshot = propBrakeSnapshots[static_cast<size_t>(motorIndex)];
+	if (snapshot.hasPropMode) {
+		setIntArrayElement("sim/cockpit2/engine/actuators/prop_mode", motorIndex, snapshot.propMode);
+	}
+	if (snapshot.hasPropAngle) {
+		setFloatArrayElement("sim/cockpit2/engine/actuators/prop_angle_degrees", motorIndex, snapshot.propAngle);
+	}
+	if (snapshot.hasPropPitch) {
+		setFloatArrayElement("sim/cockpit2/engine/actuators/prop_pitch_deg", motorIndex, snapshot.propPitch);
+	}
+	if (snapshot.hasPropTargetSpeed) {
+		setFloatArrayElement("sim/cockpit2/engine/actuators/prop_rotation_speed_rad_sec", motorIndex, snapshot.propTargetSpeed);
+	}
+	if (snapshot.hasPointPitch) {
+		setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg", motorIndex, snapshot.pointPitch);
+	}
+	if (snapshot.hasPointPitchUse) {
+		setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, snapshot.pointPitchUse);
+	}
+
+	propBrakeSnapshotValid.reset(motorIndex);
+}
 }
 
 std::vector<DataRefItem> DataRefManager::dataRefs = {
@@ -839,44 +964,49 @@ std::string DataRefManager::GetFormattedDroneConfig() {
 
 
 /**
- * @brief Applies or releases a brake on a specific motor by manipulating X-Plane's failure DataRefs.
- * This function simulates applying a brake to a motor by injecting a seizure failure and a prop separation failure
- * into X-Plane's simulation for the specified motor. It constructs the DataRef names for the specific motor's
- * failures and then sets the failure modes to simulate the brake being applied or released. The function also
- * tracks the state of each motor's brake to avoid unnecessary operations.
+ * @brief Applies or releases a brake on a specific motor.
+ *
+ * X-Plane can keep stopped lift props windmilling in forward flight even when
+ * throttle is zero. The configured auto prop brake therefore combines the
+ * existing seizure failure with prop feather/zero-speed actuator requests and
+ * continuously enforces those requests while the brake state is active.
  *
  * @param motorIndex The index of the motor to which the brake will be applied or released.
  *                   This should correspond to the actual motor numbers in X-Plane (typically 0-7).
  * @param enable A boolean flag indicating whether to apply (true) or release (false) the brake.
  */
 void DataRefManager::applyBrake(int motorIndex, bool enable) {
-	// Construct the DataRef names for the specific motor's seizure and prop separation failures
 	std::string seizureFailureDataRefName = "sim/operation/failures/rel_seize_" + std::to_string(motorIndex);
 	std::string propSepFailureDataRefName = "sim/operation/failures/rel_prpsep" + std::to_string(motorIndex);
 
-	// Find the DataRefs
 	XPLMDataRef seizureFailureDataRef = XPLMFindDataRef(seizureFailureDataRefName.c_str());
 	XPLMDataRef propSepFailureDataRef = XPLMFindDataRef(propSepFailureDataRefName.c_str());
 
-	if (seizureFailureDataRef != nullptr && propSepFailureDataRef != nullptr) {
-		if (enable) {
-			// Inject failures to simulate brake - Set failure modes for both seizure and prop separation
-			XPLMSetDatai(seizureFailureDataRef, 6); // Engine Seize
-			XPLMSetDatai(propSepFailureDataRef, 6); // Prop Separation
-			XPLMDebugString(("Applying brake to motor " + std::to_string(motorIndex) + "\n").c_str());
+	if (enable) {
+		savePropBrakeSnapshot(motorIndex);
+		if (seizureFailureDataRef != nullptr) {
+			XPLMSetDatai(seizureFailureDataRef, XPLANE_FAILURE_ALWAYS);
 		}
-		else {
-			// Remove failures to release brake - Reset failure modes to 0 (No failure)
-			XPLMSetDatai(seizureFailureDataRef, 0);
-			XPLMSetDatai(propSepFailureDataRef, 0);
-			XPLMDebugString(("Releasing brake from motor " + std::to_string(motorIndex) + "\n").c_str());
+		if (propSepFailureDataRef != nullptr) {
+			XPLMSetDatai(propSepFailureDataRef, XPLANE_FAILURE_NONE);
 		}
-		motorBrakeStates.set(motorIndex, enable); // Update the brake state tracking
+		if (!enforcePropBrakeDataRefs(motorIndex) && !propBrakeWarningLogged.test(motorIndex)) {
+			XPLMDebugString(("px4xplane: No prop feather/speed DataRefs available for brake motor " + std::to_string(motorIndex) + "\n").c_str());
+			propBrakeWarningLogged.set(motorIndex);
+		}
+		XPLMDebugString(("Applying prop brake to motor " + std::to_string(motorIndex) + "\n").c_str());
+	} else {
+		if (seizureFailureDataRef != nullptr) {
+			XPLMSetDatai(seizureFailureDataRef, XPLANE_FAILURE_NONE);
+		}
+		if (propSepFailureDataRef != nullptr) {
+			XPLMSetDatai(propSepFailureDataRef, XPLANE_FAILURE_NONE);
+		}
+		restorePropBrakeSnapshot(motorIndex);
+		XPLMDebugString(("Releasing prop brake from motor " + std::to_string(motorIndex) + "\n").c_str());
 	}
-	else {
-		// Log an error if the DataRefs were not found
-		XPLMDebugString(("px4xplane: Failed to find failure DataRefs for motor " + std::to_string(motorIndex) + "\n").c_str());
-	}
+
+	motorBrakeStates.set(motorIndex, enable);
 }
 
 
@@ -949,6 +1079,9 @@ void DataRefManager::checkAndApplyPropBrakes() {
 
 				if (shouldBrake != isBraking) {
 					applyBrake(i, shouldBrake);
+				}
+				if (shouldBrake) {
+					enforcePropBrakeDataRefs(i);
 				}
 			}
 		}

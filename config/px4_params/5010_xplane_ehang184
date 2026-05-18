@@ -166,7 +166,7 @@ param set-default EKF2_GYR_NOISE 0.015    # Gyro measurement noise (rad/s)
 param set-default EKF2_GYR_B_NOISE 0.001  # Gyro bias process noise (rad/s)
 
 # Barometer parameters (v3.2.0 - CRITICAL)
-param set-default EKF2_BARO_NOISE 0.05    # Avoid overconfident baro fusion from frame-limited SITL data
+param set-default EKF2_BARO_NOISE 1.0     # Baro height noise in m; avoids overconfident fusion during X-Plane transients
 param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0     # Increased for FPS variability tolerance
 

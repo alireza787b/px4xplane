@@ -856,3 +856,21 @@ This log preserves project decisions, evidence, and next actions across the long
   and the requirement to run `distclean` or otherwise reset SITL parameters
   after replacing airframe defaults.
 - New report: `docs/reports/report_v21.md`.
+
+### px4xplane v3.4.10 Alia Regression Recovery
+
+- Analyzed `/home/alireza/alia-test3.zip` and `/home/alireza/alia-test4.zip`.
+- Confirmed both runs used `SYS_AUTOSTART=5020` and `px4xplane v3.4.9`.
+- Found the v3.4.9 Alia TECS/back-transition tuning degraded lateral tracking
+  and landing behavior despite reducing some vertical-rate extremes.
+- Found the test4 high-accelerometer-bias warning came from a fresh `distclean`
+  simulated accel calibration state, not a new bridge sign/axis failure.
+- Kept the baro device-ID/priority fix, but corrected `EKF2_BARO_NOISE` from
+  overconfident `0.05 m` to `1.0 m` across X-Plane airframes.
+- Seeded Alia `CAL_ACC0` simulated accel offsets from the successful baseline.
+- Reverted the unproven Alia v3.4.9 TECS, throttle, back-transition, and RTL
+  descent tuning to the better-tracking baseline.
+- TruthCapture showed hover props still windmilled around `33-35 rad/s` in
+  fixed-wing with throttle zero; prop brakes now enforce feather/zero-speed
+  state continuously while braked.
+- New report: `docs/reports/report_v22.md`.
