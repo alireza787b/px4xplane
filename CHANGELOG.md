@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.13] - 2026-05-18
+
+### Fixed
+
+- Reduced normal X-Plane log noise by disabling compact bridge diagnostics by
+  default and gating magnetic-field update messages behind verbose logging.
+- Clarified that packaged `px4_airframes` are reference/install copies; PX4
+  SITL reads the airframe file from the PX4 repository branch.
+
+### Changed
+
+- Recovered Alia fixed-wing loiter behavior after `alia-test7`: shortened NPFG
+  look-ahead, lowered FW bank limit, reduced loiter radius to a passenger-level
+  large-eVTOL turn, restored stronger roll-to-throttle compensation, and added
+  a small fixed-wing pitch offset for front-transition/cruise trim.
+- Set Alia `MPC_TKO_SPEED=3.0` so QGC takeoff climb matches the intended
+  autonomous climb behavior.
+
+---
+
 ## [3.4.12] - 2026-05-18
 
 ### Fixed

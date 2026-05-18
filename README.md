@@ -99,7 +99,7 @@ px4xplane/
 ├── 64/
 │   ├── win.xpl
 │   └── config.ini                ← WITH binary
-├── px4_airframes/                ← Organized
+├── px4_airframes/                ← Reference/install copies, not read by plugin
 │   ├── 5001_xplane_cessna172
 │   ├── 5002_xplane_tb2
 │   ├── 5010_xplane_ehang184
@@ -112,6 +112,8 @@ px4xplane/
 
 Config tooling:
 - Runtime remains `64/config.ini`.
+- PX4 SITL reads airframes from the PX4 repository, not from the plugin folder;
+  packaged `px4_airframes` files are reference copies for manual install/sync.
 - `64/config_schema.json` documents valid fields, ranges, and reload policy.
 - `docs/config-editor.html` can import/review/edit/export `config.ini` without
   writing directly into X-Plane or PX4.

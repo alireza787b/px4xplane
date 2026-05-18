@@ -63,7 +63,7 @@
     },
     "diagnostic_log_enabled": {
       "type": "bool",
-      "default": true,
+      "default": false,
       "group": "diagnostics",
       "reload_policy": "live_reload",
       "description": "Emit compact bridge health lines to X-Plane Log.txt."

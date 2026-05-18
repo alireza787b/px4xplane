@@ -102,35 +102,37 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.12` Alia fixed-wing tuning test, verify these key defaults are
+For the current `v3.4.13` Alia orbit-recovery test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
-- `NPFG_PERIOD=70.0`
-- `NPFG_DAMPING=0.85`
-- `NPFG_ROLL_TC=1.0`
+- `MPC_TKO_SPEED=3.0`
+- `NPFG_PERIOD=35.0`
+- `NPFG_DAMPING=0.80`
+- `NPFG_ROLL_TC=0.7`
 - `NPFG_SW_DST_MLT=0.7`
-- `NAV_LOITER_RAD=2000.0`
-- `RTL_LOITER_RAD=2000.0`
+- `NAV_LOITER_RAD=1200.0`
+- `RTL_LOITER_RAD=1200.0`
 - `CAL_BARO0_ID=6620172`
 - `CAL_BARO0_PRIO=100`
 - `CAL_BARO1_ID=6620428`
 - `CAL_BARO1_PRIO=0`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_ACC0_PRIO=50`
-- `CAL_ACC0_XOFF=0.0978824`
-- `CAL_ACC0_YOFF=0.0953933`
-- `CAL_ACC0_ZOFF=-1.2080466`
 - `VT_ARSP_TRANS=46.0`
 - `VT_F_TRANS_DUR=45.0`
 - `VT_F_TR_OL_TM=55.0`
 - `FW_T_ALT_TC=6.0`
+- `FW_T_RLL2THR=12.0`
 - `FW_T_STE_R_TC=2.0`
 - `FW_T_THR_DAMPING=0.25`
 - `FW_T_PTCH_DAMP=0.25`
 - `FW_T_I_GAIN_PIT=0.20`
 - `FW_T_CLMB_R_SP=2.0`
 - `FW_T_SINK_R_SP=1.5`
+- `FW_PSP_OFF=3.0`
+- `FW_P_LIM_MAX=18.0`
+- `FW_R_LIM=22.0`
 - `FW_THR_TRIM=0.80`
 - `FW_THR_SLEW_MAX=0.50`
 - `WEIGHT_BASE=3120.0`
@@ -140,7 +142,14 @@ parameter store and rerun before judging the package.
 - `VT_B_DEC_I=0.25`
 - `RTL_DESCEND_ALT=300`
 
+Do not use the exact accelerometer offset values as a package pass/fail check.
+PX4 can update them after a run; verify estimator behavior from ULog instead.
+
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.12`
+- `px4xplane: Version: v3.4.13`
 - `px4xplane: Motor brakes configured for motors: 00000000`
+
+The `px4xplane/px4_airframes` folder in plugin releases contains reference
+copies only. PX4 SITL reads the airframe from the PX4 repository branch under
+`ROMFS/px4fmu_common/init.d-posix/airframes/`.

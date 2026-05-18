@@ -703,7 +703,9 @@ void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps
 	};
 
 	if (DataRefManager::calculateDistance(currentPosition, DataRefManager::lastPosition) > DataRefManager::UPDATE_THRESHOLD) {
-		XPLMDebugString("px4xplane: Mag ValidityTreshold Reached!\n");
+		if (ConfigManager::debug_verbose_logging) {
+			XPLMDebugString("px4xplane: Magnetic-field update threshold reached\n");
+		}
 
 		DataRefManager::updateEarthMagneticFieldNED(currentPosition);
 		DataRefManager::lastPosition = currentPosition;

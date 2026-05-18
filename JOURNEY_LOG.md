@@ -917,3 +917,29 @@ This log preserves project decisions, evidence, and next actions across the long
 - Kept Alia prop braking disabled; generic opt-in prop-brake policy remains the
   systematic reusable bridge solution.
 - New report: `docs/reports/report_v24.md`.
+
+### px4xplane v3.4.13 Alia Test7 Orbit Recovery
+
+- Analyzed `/home/alireza/alia-test7.zip`.
+- Confirmed test7 used the intended v3.4.12 params and `SYS_AUTOSTART=5020`.
+- Found the v3.4.12 lateral tune was too lazy:
+  - `NPFG_PERIOD=70` was active.
+  - FW loiter/RTL roll setpoint stayed near `+-30 deg` for more than `90%` of
+    fixed-wing flight.
+  - Loiter signed track error reached roughly `-1000 m` to `+900 m`.
+- Confirmed throttle saturation was real:
+  - TECS and pusher command were near `1.0` for most FW RTL.
+  - TruthCapture confirmed the X-Plane pusher was actually full throttle.
+- Clarified takeoff behavior:
+  - Hover takeoff climb used `MPC_TKO_SPEED=1.5`, not the FW climb parameter.
+  - The local MC takeoff setpoint plateaued around `62.9 m` before the external
+    Auto Loiter command locked current altitude.
+- Prepared v3.4.13:
+  - `MPC_TKO_SPEED=3.0`
+  - `FW_PSP_OFF=3.0`
+  - lower FW bank limit and shorter NPFG period
+  - `NAV_LOITER_RAD`/`RTL_LOITER_RAD=1200`
+  - stronger roll-to-throttle compensation
+- Reduced normal plugin log noise and documented packaged PX4 airframes as
+  reference/install copies only.
+- New report: `docs/reports/report_v25.md`.

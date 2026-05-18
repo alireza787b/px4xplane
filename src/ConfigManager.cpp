@@ -133,7 +133,7 @@ bool ConfigManager::debug_log_sensor_values = false;
 bool ConfigManager::debug_log_ekf_innovations = false;
 bool ConfigManager::debug_log_accel_pipeline = false;
 bool ConfigManager::debug_accel_bypass_calibration = false;
-bool ConfigManager::diagnostic_log_enabled = true;
+bool ConfigManager::diagnostic_log_enabled = false;
 float ConfigManager::diagnostic_log_interval_s = 1.0f;
 
 // UX configuration flags
@@ -205,7 +205,7 @@ void ConfigManager::loadConfiguration() {
     debug_log_ekf_innovations = ini.GetBoolValue("", "debug_log_ekf_innovations", false);
     debug_log_accel_pipeline = ini.GetBoolValue("", "debug_log_accel_pipeline", false);
     debug_accel_bypass_calibration = ini.GetBoolValue("", "debug_accel_bypass_calibration", false);
-    diagnostic_log_enabled = ini.GetBoolValue("", "diagnostic_log_enabled", true);
+    diagnostic_log_enabled = ini.GetBoolValue("", "diagnostic_log_enabled", false);
     diagnostic_log_interval_s = static_cast<float>(ini.GetDoubleValue("", "diagnostic_log_interval_s", 1.0));
     if (diagnostic_log_interval_s < 0.25f || diagnostic_log_interval_s > 60.0f) {
         XPLMDebugString("px4xplane: [WARNING] Invalid diagnostic_log_interval_s, using default 1.0\n");

@@ -327,7 +327,7 @@ param set-default MPC_YAW_MODE 0
 ################################################################################
 
 # Takeoff
-param set-default MPC_TKO_SPEED 1.5
+param set-default MPC_TKO_SPEED 3.0
 param set-default MPC_TKO_RAMP_T 3
 
 # Landing
@@ -413,24 +413,26 @@ param set-default VT_PITCH_MIN -5.0
 ################################################################################
 # SECTION 11: FIXED-WING FLIGHT PARAMETERS (CRUISE MODE)
 ################################################################################
-# v3.4.12 tuning focus: test6 showed clean transition/estimator behavior, but
-# fixed-wing orbit was roll-limit saturated and TECS held pusher throttle at
-# 100% for most FW flight. Keep this slice focused on FW energy/path smoothing.
+# v3.4.13 recovery focus: test7 used the intended v3.4.12 params, but the
+# long NPFG period made loiter capture too lazy while roll still saturated.
+# Keep the next slice focused on smoother capture, lower bank, and transition
+# pitch trim without changing the bridge sensor contract.
 
 # Rate Control
 param set-default FW_RR_P 0.47
 param set-default FW_RR_I 0.05
 param set-default FW_RR_D 0.1
 param set-default FW_RR_FF 0.5
-param set-default FW_R_RMAX 12.0
-param set-default FW_R_TC 0.9
-param set-default FW_R_LIM 30.0
+param set-default FW_R_RMAX 18.0
+param set-default FW_R_TC 0.7
+param set-default FW_R_LIM 22.0
 
 param set-default FW_PR_P 0.365
 param set-default FW_PR_I 0.045
 param set-default FW_PR_D 0.355
 param set-default FW_PR_FF 2.0
-param set-default FW_P_LIM_MAX 15.0
+param set-default FW_PSP_OFF 3.0
+param set-default FW_P_LIM_MAX 18.0
 param set-default FW_P_LIM_MIN -5.0
 param set-default FW_P_TC 0.45
 param set-default FW_PN_R_SLEW_MAX 50.0
@@ -454,7 +456,7 @@ param set-default SYS_HAS_NUM_ASPD 1     # 1 virtual airspeed sensor
 
 # TECS
 param set-default FW_T_ALT_TC 6.0
-param set-default FW_T_RLL2THR 6.0
+param set-default FW_T_RLL2THR 12.0
 param set-default FW_T_STE_R_TC 2.0
 param set-default FW_T_SINK_MIN 1.5
 param set-default FW_T_SINK_MAX 3.0
@@ -496,12 +498,12 @@ param set-default MC_ORBIT_RAD_MAX 2000
 # SECTION 12: NPFG GUIDANCE (Modern PX4 v1.14+)
 ################################################################################
 # Formula: L1_distance = (1/pi) * NPFG_DAMPING * NPFG_PERIOD * groundspeed.
-# Test6 spent about 90% of FW orbit at the roll limit and flipped roll command
-# every ~17-19 s. This recovery baseline deliberately lengthens/smooths NPFG.
+# Test7 showed NPFG_PERIOD=70 was too lazy for loiter capture. This baseline
+# returns to a shorter look-ahead with lower bank demand for a large eVTOL.
 
-param set-default NPFG_PERIOD 70.0
-param set-default NPFG_DAMPING 0.85
-param set-default NPFG_ROLL_TC 1.0
+param set-default NPFG_PERIOD 35.0
+param set-default NPFG_DAMPING 0.80
+param set-default NPFG_ROLL_TC 0.7
 param set-default NPFG_SW_DST_MLT 0.7
 
 
@@ -522,7 +524,7 @@ param set-default NAV_ACC_RAD 30         # Tighter landing (reduced from 50m)
 param set-default NAV_MC_ALT_RAD 5.0     # Heavier aircraft
 
 # FW Mode Acceptance
-param set-default NAV_LOITER_RAD 2000.0
+param set-default NAV_LOITER_RAD 1200.0
 param set-default NAV_FW_ALT_RAD 50.0
 param set-default NAV_MIN_LTR_ALT -1.0
 
@@ -530,7 +532,7 @@ param set-default NAV_MIN_LTR_ALT -1.0
 param set-default RTL_RETURN_ALT 100
 param set-default RTL_DESCEND_ALT 300
 param set-default RTL_MIN_DIST 50.0
-param set-default RTL_LOITER_RAD 2000.0
+param set-default RTL_LOITER_RAD 1200.0
 
 
 ################################################################################
@@ -598,8 +600,8 @@ param set-default MC_BAT_SCALE_EN 0
 #   - Tune deceleration and transition duration from position/velocity traces.
 #
 # Tight loiter radius / oscillation in FW mode:
-#   - Current baseline uses NPFG_PERIOD = 70.0, NPFG_DAMPING = 0.85,
-#     NAV_LOITER_RAD = 2000.0, RTL_LOITER_RAD = 2000.0, FW_R_LIM = 30.0
+#   - Current baseline uses NPFG_PERIOD = 35.0, NPFG_DAMPING = 0.80,
+#     NAV_LOITER_RAD = 1200.0, RTL_LOITER_RAD = 1200.0, FW_R_LIM = 22.0
 #   - Tune NPFG period/damping, roll limit, and TECS together from ULog evidence
 #
 # Altitude oscillation during cruise:
