@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.11] - 2026-05-18
+
+### Fixed
+
+- Disabled Alia lift-prop auto braking by default after `alia-test5` proved the
+  v3.4.10 brake policy could leave lift props feathered/stopped during
+  transition recovery.
+- Reworked optional prop-brake policy with all-motor apply gating, immediate
+  all-motor release, dwell time, optional true-airspeed gate, and experimental
+  failure-dataref use disabled by default.
+- Released active prop brakes during actuator stale/reset/disconnect cleanup.
+
+### Changed
+
+- Narrowly adjusted Alia front-transition margin: `VT_ARSP_TRANS=46.0`,
+  `VT_F_TRANS_DUR=45.0`, and `VT_F_TR_OL_TM=55.0`.
+- Updated Alia simulated accel offset defaults to the latest no-warning
+  test5-start calibration values.
+
+---
+
 ## [3.4.10] - 2026-05-18
 
 ### Changed

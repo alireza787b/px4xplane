@@ -102,7 +102,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.10` Alia recovery test, verify these key defaults are
+For the current `v3.4.11` Alia crash-recovery test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
@@ -116,9 +116,12 @@ parameter store and rerun before judging the package.
 - `CAL_BARO1_PRIO=0`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_ACC0_PRIO=50`
-- `CAL_ACC0_XOFF=-0.0100629`
-- `CAL_ACC0_YOFF=-0.0362144`
-- `CAL_ACC0_ZOFF=-0.645399`
+- `CAL_ACC0_XOFF=0.0978824`
+- `CAL_ACC0_YOFF=0.0953933`
+- `CAL_ACC0_ZOFF=-1.2080466`
+- `VT_ARSP_TRANS=46.0`
+- `VT_F_TRANS_DUR=45.0`
+- `VT_F_TR_OL_TM=55.0`
 - `FW_T_ALT_TC=4.0`
 - `FW_T_STE_R_TC=1.5`
 - `FW_T_THR_DAMPING=0.12`
@@ -130,3 +133,8 @@ parameter store and rerun before judging the package.
 - `VT_B_DEC_MSS=3.0`
 - `VT_B_DEC_I=0.40`
 - `RTL_DESCEND_ALT=300`
+
+In the X-Plane `Log.txt`, confirm:
+
+- `px4xplane: Version: v3.4.11`
+- `px4xplane: Motor brakes configured for motors: 00000000`

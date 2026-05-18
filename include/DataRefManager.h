@@ -102,8 +102,8 @@ public:
     static constexpr float UPDATE_THRESHOLD=100;  // Define a threshold for position change in meters
     static std::bitset<8> motorBrakeStates; // Tracks the current brake states
     static void checkAndApplyPropBrakes();
+    static void releaseAllPropBrakes();
 
     static void applyBrake(int motorIndex, bool enable);
 
 };
-

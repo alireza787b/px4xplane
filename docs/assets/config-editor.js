@@ -14,6 +14,11 @@
     },
     airframe_fields: {
       autoPropBrakes: { type: "motor_index_list", min: 0, max: 7 },
+      autoPropBrakeApplyThreshold: { type: "float", min: 0, max: 1 },
+      autoPropBrakeReleaseThreshold: { type: "float", min: 0, max: 1 },
+      autoPropBrakeDwellSec: { type: "float", min: 0, max: 30 },
+      autoPropBrakeMinAirspeedMps: { type: "float", min: 0, max: 200 },
+      autoPropBrakeUseFailure: { type: "bool" },
       channelN: { type: "actuator_mapping", min_channel: 0, max_channel: 15 }
     }
   };
@@ -127,8 +132,8 @@
     issues.push({ level, location, message });
   }
 
-  function validateScalar(issues, key, value, field) {
-    const location = `global.${key}`;
+  function validateScalar(issues, key, value, field, locationPrefix = "global") {
+    const location = `${locationPrefix}.${key}`;
     const trimmed = String(value || "").trim();
     if (field.required && !trimmed) {
       addIssue(issues, "error", location, "required value is empty");
@@ -186,6 +191,7 @@
 
     for (const section of config.sections) {
       const channelKeys = sortedChannelKeys(section.keys);
+      const airframeFields = activeSchema.airframe_fields || DEFAULT_SCHEMA.airframe_fields || {};
       if (section.name === active && channelKeys.length === 0) {
         addIssue(issues, "error", section.name, "active airframe has no channel mappings");
       }
@@ -198,6 +204,24 @@
           if (!Number.isInteger(index) || String(index) !== trimmed || index < 0 || index > 7) {
             addIssue(issues, "error", `${section.name}.autoPropBrakes`, `invalid motor index '${trimmed}'`);
           }
+        }
+      }
+
+      for (const [key, value] of Object.entries(section.keys)) {
+        if (key === "autoPropBrakes" || /^channel\d+$/.test(key)) continue;
+        const field = airframeFields[key];
+        if (!field) {
+          addIssue(issues, "warning", `${section.name}.${key}`, "unknown airframe key");
+          continue;
+        }
+        validateScalar(issues, key, value, field, section.name);
+      }
+
+      if (section.keys.autoPropBrakeApplyThreshold && section.keys.autoPropBrakeReleaseThreshold) {
+        const applyValue = Number.parseFloat(section.keys.autoPropBrakeApplyThreshold);
+        const releaseValue = Number.parseFloat(section.keys.autoPropBrakeReleaseThreshold);
+        if (Number.isFinite(applyValue) && Number.isFinite(releaseValue) && releaseValue <= applyValue) {
+          addIssue(issues, "error", `${section.name}.autoPropBrakeReleaseThreshold`, "release threshold must be greater than apply threshold");
         }
       }
 

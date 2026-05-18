@@ -54,6 +54,11 @@ config_name = Alia250
 ; Auto-Prop Brakes: Specifies which motors have an auto-prop brake system.
 ; Format: Comma-separated list of motor indices in X-Plane.
 autoPropBrakes = 0, 1, 2, 3
+autoPropBrakeApplyThreshold = 0.01
+autoPropBrakeReleaseThreshold = 0.12
+autoPropBrakeDwellSec = 2.0
+autoPropBrakeMinAirspeedMps = 55.0
+autoPropBrakeUseFailure = false
 
 ; Quadcopter Motors (1-4)
 channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]

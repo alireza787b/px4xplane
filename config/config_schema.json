@@ -173,6 +173,44 @@
       "reload_policy": "reconnect_before_flight",
       "description": "X-Plane engine indices that use the current configurable prop-brake behavior."
     },
+    "autoPropBrakeApplyThreshold": {
+      "type": "float",
+      "default": 0.01,
+      "min": 0,
+      "max": 1,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Apply prop brakes only after every configured brake motor command stays at or below this normalized command."
+    },
+    "autoPropBrakeReleaseThreshold": {
+      "type": "float",
+      "default": 0.12,
+      "min": 0,
+      "max": 1,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Release all prop brakes immediately when any configured brake motor command reaches or exceeds this normalized command."
+    },
+    "autoPropBrakeDwellSec": {
+      "type": "float",
+      "default": 2.0,
+      "min": 0,
+      "max": 30,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Continuous low-command dwell time before configured prop brakes may apply."
+    },
+    "autoPropBrakeMinAirspeedMps": {
+      "type": "float",
+      "default": 0,
+      "min": 0,
+      "max": 200,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Optional true-airspeed gate for applying prop brakes. Zero disables the airspeed gate."
+    },
+    "autoPropBrakeUseFailure": {
+      "type": "bool",
+      "default": false,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Experimental. Also use X-Plane engine-seizure failure while prop brakes are active."
+    },
     "channelN": {
       "type": "actuator_mapping",
       "min_channel": 0,

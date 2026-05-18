@@ -13,6 +13,7 @@
 #include <array>
 #include "MAVLinkManager.h"
 #include "XPLMUtilities.h"
+#include "XPLMProcessing.h"
 #include <ConfigManager.h>
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -24,8 +25,6 @@
 
 namespace {
 constexpr uint64_t ACTUATOR_STALE_TIMEOUT_USEC = 500000;
-constexpr float PROP_BRAKE_APPLY_THRESHOLD = 0.05f;
-constexpr float PROP_BRAKE_RELEASE_THRESHOLD = 0.08f;
 constexpr float PROP_BRAKE_FEATHER_ANGLE_DEG = 90.0f;
 constexpr int XPLANE_FAILURE_NONE = 0;
 constexpr int XPLANE_FAILURE_ALWAYS = 6;
@@ -43,11 +42,18 @@ struct PropBrakeSnapshot {
 	float pointPitch{0.0f};
 	bool hasPointPitchUse{false};
 	float pointPitchUse{0.0f};
+	bool hasPointTacrad{false};
+	float pointTacrad{0.0f};
+	bool hasPropRotationAngle{false};
+	float propRotationAngle{0.0f};
 };
 
 std::array<PropBrakeSnapshot, 8> propBrakeSnapshots;
 std::bitset<8> propBrakeSnapshotValid;
 std::bitset<8> propBrakeWarningLogged;
+std::array<float, 8> lastMappedMotorCommand{};
+std::bitset<8> lastMappedMotorCommandValid;
+float propBrakeLowCommandSinceS = -1.0f;
 
 bool getFloatArrayElement(const char* dataRefName, int index, float& value)
 {
@@ -104,6 +110,8 @@ void savePropBrakeSnapshot(int motorIndex)
 	snapshot.hasPropTargetSpeed = getFloatArrayElement("sim/cockpit2/engine/actuators/prop_rotation_speed_rad_sec", motorIndex, snapshot.propTargetSpeed);
 	snapshot.hasPointPitch = getFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg", motorIndex, snapshot.pointPitch);
 	snapshot.hasPointPitchUse = getFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, snapshot.pointPitchUse);
+	snapshot.hasPointTacrad = getFloatArrayElement("sim/flightmodel/engine/POINT_tacrad", motorIndex, snapshot.pointTacrad);
+	snapshot.hasPropRotationAngle = getFloatArrayElement("sim/flightmodel2/engines/prop_rotation_angle_deg", motorIndex, snapshot.propRotationAngle);
 	propBrakeSnapshots[static_cast<size_t>(motorIndex)] = snapshot;
 	propBrakeSnapshotValid.set(motorIndex);
 }
@@ -146,6 +154,12 @@ void restorePropBrakeSnapshot(int motorIndex)
 	}
 	if (snapshot.hasPointPitchUse) {
 		setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, snapshot.pointPitchUse);
+	}
+	if (snapshot.hasPointTacrad) {
+		setFloatArrayElement("sim/flightmodel/engine/POINT_tacrad", motorIndex, snapshot.pointTacrad);
+	}
+	if (snapshot.hasPropRotationAngle) {
+		setFloatArrayElement("sim/flightmodel2/engines/prop_rotation_angle_deg", motorIndex, snapshot.propRotationAngle);
 	}
 
 	propBrakeSnapshotValid.reset(motorIndex);
@@ -733,6 +747,10 @@ void DataRefManager::enableOverride() {
  * → Safe to disconnect and reconnect without ghost commands
  */
 void DataRefManager::resetActuatorValues() {
+	releaseAllPropBrakes();
+	lastMappedMotorCommandValid.reset();
+	propBrakeLowCommandSinceS = -1.0f;
+
 	// Zero common throttle datarefs (covers most aircraft)
 	XPLMDataRef throttleRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro");
 	if (throttleRef) {
@@ -844,6 +862,8 @@ void DataRefManager::overrideActuators() {
 	staleActuatorsZeroed = false;
 
 	MAVLinkManager::HILActuatorControlsData hilControls = MAVLinkManager::hilActuatorControlsData;
+	lastMappedMotorCommand.fill(0.0f);
+	lastMappedMotorCommandValid.reset();
 
 	for (const auto& [channel, actuatorConfig] : ConfigManager::actuatorConfigs) {
 		float originalValue = ActuatorSafety::clampFinite(hilControls.controls[channel], -1.0f, 1.0f, 0.0f);
@@ -872,6 +892,11 @@ void DataRefManager::overrideActuators() {
 					if (arrayDataRef != nullptr) {
 						for (int index : datarefConfig.arrayIndices) {
 							XPLMSetDatavf(arrayDataRef, &scaledValue, index, 1);
+							if (datarefConfig.datarefName == "sim/flightmodel/engine/ENGN_thro_use"
+								&& index >= 0 && index < static_cast<int>(lastMappedMotorCommand.size())) {
+								lastMappedMotorCommand[static_cast<size_t>(index)] = scaledValue;
+								lastMappedMotorCommandValid.set(index);
+							}
 						}
 					}
 				}
@@ -967,9 +992,10 @@ std::string DataRefManager::GetFormattedDroneConfig() {
  * @brief Applies or releases a brake on a specific motor.
  *
  * X-Plane can keep stopped lift props windmilling in forward flight even when
- * throttle is zero. The configured auto prop brake therefore combines the
- * existing seizure failure with prop feather/zero-speed actuator requests and
- * continuously enforces those requests while the brake state is active.
+ * throttle is zero. The normal auto prop brake therefore uses feather/zero-speed
+ * actuator requests and continuously enforces those requests while the brake
+ * state is active. The X-Plane seizure failure is available only as an explicit
+ * experimental config option because it can prevent rapid VTOL recovery.
  *
  * @param motorIndex The index of the motor to which the brake will be applied or released.
  *                   This should correspond to the actual motor numbers in X-Plane (typically 0-7).
@@ -984,7 +1010,7 @@ void DataRefManager::applyBrake(int motorIndex, bool enable) {
 
 	if (enable) {
 		savePropBrakeSnapshot(motorIndex);
-		if (seizureFailureDataRef != nullptr) {
+		if (ConfigManager::prop_brake_use_failure && seizureFailureDataRef != nullptr) {
 			XPLMSetDatai(seizureFailureDataRef, XPLANE_FAILURE_ALWAYS);
 		}
 		if (propSepFailureDataRef != nullptr) {
@@ -1059,34 +1085,86 @@ float DataRefManager::applyFilteringIfNeeded(float raw_value,
  * actual application or release of the brake.
  */
 void DataRefManager::checkAndApplyPropBrakes() {
-	XPLMDataRef throttleDataRef = XPLMFindDataRef("sim/flightmodel/engine/ENGN_thro_use");
-	if (throttleDataRef != nullptr) {
-		float throttleValues[8]; // Assuming a maximum of 8 motors
-		XPLMGetDatavf(throttleDataRef, throttleValues, 0, 8);
+	bool hasConfiguredBrake = false;
+	bool allConfiguredMotorsLow = true;
+	bool anyConfiguredMotorRequestsRelease = false;
 
-		for (int i = 0; i < 8; ++i) {
-			// Check if the motor has a brake feature and needs a brake applied or removed
-			if (ConfigManager::hasPropBrake(i)) {
-				const float throttle = std::isfinite(throttleValues[i]) ? throttleValues[i] : 0.0f;
-				bool isBraking = motorBrakeStates.test(i);
+	for (int i = 0; i < 8; ++i) {
+		if (!ConfigManager::hasPropBrake(i)) {
+			continue;
+		}
 
-				bool shouldBrake = isBraking;
-				if (isBraking && throttle >= PROP_BRAKE_RELEASE_THRESHOLD) {
-					shouldBrake = false;
-				} else if (!isBraking && throttle <= PROP_BRAKE_APPLY_THRESHOLD) {
-					shouldBrake = true;
-				}
+		hasConfiguredBrake = true;
 
-				if (shouldBrake != isBraking) {
-					applyBrake(i, shouldBrake);
-				}
-				if (shouldBrake) {
-					enforcePropBrakeDataRefs(i);
-				}
+		if (!lastMappedMotorCommandValid.test(i)) {
+			allConfiguredMotorsLow = false;
+			if (motorBrakeStates.test(i)) {
+				anyConfiguredMotorRequestsRelease = true;
 			}
+			continue;
+		}
+
+		const float command = lastMappedMotorCommand[static_cast<size_t>(i)];
+		if (command >= ConfigManager::prop_brake_release_threshold) {
+			anyConfiguredMotorRequestsRelease = true;
+		}
+		if (command > ConfigManager::prop_brake_apply_threshold) {
+			allConfiguredMotorsLow = false;
 		}
 	}
-	else {
-		XPLMDebugString("px4xplane: Unable to find throttle dataref\n");
+
+	if (!hasConfiguredBrake) {
+		releaseAllPropBrakes();
+		propBrakeLowCommandSinceS = -1.0f;
+		return;
+	}
+
+	if (anyConfiguredMotorRequestsRelease) {
+		releaseAllPropBrakes();
+		propBrakeLowCommandSinceS = -1.0f;
+		return;
+	}
+
+	for (int i = 0; i < 8; ++i) {
+		if (motorBrakeStates.test(i)) {
+			enforcePropBrakeDataRefs(i);
+		}
+	}
+
+	if (!allConfiguredMotorsLow) {
+		propBrakeLowCommandSinceS = -1.0f;
+		return;
+	}
+
+	if (ConfigManager::prop_brake_min_airspeed_mps > 0.0f) {
+		const float trueAirspeedMps = getFloat("sim/flightmodel/position/true_airspeed");
+		if (!std::isfinite(trueAirspeedMps) || trueAirspeedMps < ConfigManager::prop_brake_min_airspeed_mps) {
+			propBrakeLowCommandSinceS = -1.0f;
+			return;
+		}
+	}
+
+	const float nowS = XPLMGetElapsedTime();
+	if (propBrakeLowCommandSinceS < 0.0f) {
+		propBrakeLowCommandSinceS = nowS;
+		return;
+	}
+
+	if ((nowS - propBrakeLowCommandSinceS) < ConfigManager::prop_brake_dwell_s) {
+		return;
+	}
+
+	for (int i = 0; i < 8; ++i) {
+		if (ConfigManager::hasPropBrake(i) && !motorBrakeStates.test(i)) {
+			applyBrake(i, true);
+		}
+	}
+}
+
+void DataRefManager::releaseAllPropBrakes() {
+	for (int i = 0; i < 8; ++i) {
+		if (motorBrakeStates.test(i)) {
+			applyBrake(i, false);
+		}
 	}
 }

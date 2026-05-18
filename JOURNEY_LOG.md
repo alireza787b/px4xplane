@@ -874,3 +874,22 @@ This log preserves project decisions, evidence, and next actions across the long
   fixed-wing with throttle zero; prop brakes now enforce feather/zero-speed
   state continuously while braked.
 - New report: `docs/reports/report_v22.md`.
+
+### px4xplane v3.4.11 Alia Crash Recovery
+
+- Analyzed `/home/alireza/alia-test5.zip` after the transition crash.
+- Confirmed the terminal PX4 event was `Quad-chute triggered due to minimum
+  altitude breach`, not an estimator/baro/airspeed failure.
+- Found PX4 stayed in `TRANSITION_TO_FW`; no fixed-wing VTOL state appeared.
+- Found the effective front-transition airspeed gate was about `51.0 m/s`
+  because `VT_ARSP_TRANS=48` is scaled by `sqrt(WEIGHT_GROSS/WEIGHT_BASE)`,
+  while test5 peaked around `50.6 m/s`.
+- Found v3.4.10 prop-brake enforcement was unsafe: TruthCapture showed
+  feathered/stopped/asymmetric lift props during recovery while PX4 commanded
+  thrust.
+- Disabled Alia auto prop braking by default and made future opt-in braking
+  dwell-gated, all-motor gated, immediate-release, and non-failure-based by
+  default.
+- Narrowly reduced Alia front-transition gates to `VT_ARSP_TRANS=46`,
+  `VT_F_TRANS_DUR=45`, and `VT_F_TR_OL_TM=55`.
+- New report: `docs/reports/report_v23.md`.

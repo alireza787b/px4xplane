@@ -13,6 +13,8 @@ or aircraft behavior.
 - supported actuator mapping types: `float` and `floatArray`
 - channel range: `channel0` through `channel15`
 - X-Plane motor index range for `autoPropBrakes`: `0` through `7`
+- prop-brake policy fields: apply/release thresholds, dwell, optional
+  true-airspeed gate, and experimental failure-dataref use
 - config reload policy for user-facing tools and docs
 
 Run the validator before packaging:
@@ -42,6 +44,7 @@ diagnostic use:
 - active airframe name
 - actuator channel mappings
 - prop-brake motor list
+- prop-brake policy fields
 - accelerometer calibration/offset fields
 - MAVLink target message rates
 

@@ -27,11 +27,14 @@ This index is the stable entry point for user and developer documentation.
 - [Report v20 - v3.4.8 Release Build Recovery](reports/report_v20.md)
 - [Report v21 - Alia v3.4.9 Vertical Tune](reports/report_v21.md)
 - [Report v22 - Alia v3.4.10 Regression Recovery](reports/report_v22.md)
+- [Report v23 - Alia Test5 Crash Recovery](reports/report_v23.md)
 
 ## Current Policy
 
-- Use the `v3.4.10` Alia recovery package for the next retest, and reset PX4
+- Use the `v3.4.11` Alia crash-recovery package for the next retest, and reset PX4
   SITL parameters with `distclean` before judging the package.
+- Alia lift-prop auto braking is disabled by default until a mode-aware brake
+  policy is validated.
 - Use `tools/validate_config.py config/config.ini` before packaging custom
   mappings.
 - Use the X-Plane menu `Advanced > Validate Config` after changing the active

@@ -137,6 +137,13 @@ public:
     static bool fps_warning_enabled;         // Show warning when X-Plane FPS is low
     static int fps_warning_threshold;        // FPS below this triggers warning (default: 50)
 
+    // Prop-brake policy for configured X-Plane motor indices.
+    static float prop_brake_apply_threshold;       // Apply only after all configured motors stay below this command
+    static float prop_brake_release_threshold;     // Release all brakes as soon as any configured motor rises above this
+    static float prop_brake_dwell_s;               // Required continuous low-command dwell before applying
+    static float prop_brake_min_airspeed_mps;      // Optional true-airspeed gate for applying
+    static bool prop_brake_use_failure;            // Experimental: also use X-Plane seizure failure while braked
+
     // MAVLink message rates (Hz)
     static int mavlink_sensor_rate_hz;       // HIL_SENSOR rate (IMU + barometer)
     static int mavlink_gps_rate_hz;          // HIL_GPS rate

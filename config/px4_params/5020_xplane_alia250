@@ -166,9 +166,9 @@ param set-default EKF2_BARO_GATE 10.0    # Increased tolerance for VTOL transiti
 # empirically stable offsets came from successful baseline Alia runs and keep
 # fresh SITL roots consistent with the known-good calibration state.
 param set-default CAL_ACC0_PRIO 50
-param set-default CAL_ACC0_XOFF -0.0100629
-param set-default CAL_ACC0_YOFF -0.0362144
-param set-default CAL_ACC0_ZOFF -0.645399
+param set-default CAL_ACC0_XOFF 0.0978824
+param set-default CAL_ACC0_YOFF 0.0953933
+param set-default CAL_ACC0_ZOFF -1.2080466
 
 # GPS Parameters
 param set-default EKF2_GPS_DELAY 0.0
@@ -381,12 +381,12 @@ param set-default VT_TYPE 2              # Current PX4 airframe type used by thi
 
 # Transition Airspeeds
 param set-default VT_ARSP_BLEND 25.0     # Airspeed to start blending
-param set-default VT_ARSP_TRANS 48.0     # Airspeed to complete transition
+param set-default VT_ARSP_TRANS 46.0     # Effective weighted gate ~49 m/s for this mass model
 
 # Front Transition (MC -> FW)
-param set-default VT_F_TRANS_DUR 60.0
+param set-default VT_F_TRANS_DUR 45.0
 param set-default VT_F_TRANS_THR 1.0
-param set-default VT_F_TR_OL_TM 70.0
+param set-default VT_F_TR_OL_TM 55.0
 
 # Back Transition (FW -> MC)
 param set-default VT_B_TRANS_DUR 35.0
@@ -583,9 +583,10 @@ param set-default MC_BAT_SCALE_EN 0
 #       before stopping PX4 so the shutdown phase is captured clearly
 #
 # Altitude drop during front transition (MC -> FW):
-#   - Current baseline uses VT_F_TRANS_THR = 1.0 and VT_F_TRANS_DUR = 60.0
-#   - Check airspeed build-up, pusher thrust, and altitude error in ULog before
-#     changing transition timing
+#   - Current recovery baseline uses VT_F_TRANS_THR = 1.0,
+#     VT_F_TRANS_DUR = 45.0, VT_ARSP_TRANS = 46.0, and VT_F_TR_OL_TM = 55.0
+#   - Check airspeed build-up, tilt state, pusher thrust, and altitude error in
+#     ULog before changing transition timing
 #
 # Aircraft overshoots landing point:
 #   - Current baseline uses VT_B_DEC_MSS = 3.0, VT_B_TRANS_DUR = 35.0,

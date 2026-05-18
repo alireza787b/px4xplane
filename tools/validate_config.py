@@ -172,6 +172,7 @@ def validate_channel(section: str, key: str, value: str, supported_types: set[st
 def validate_config(path: Path, schema_path: Path = DEFAULT_SCHEMA_PATH) -> list[Issue]:
     schema = load_schema(schema_path)
     supported_types = set(schema.get("runtime_supported_channel_types", sorted(SUPPORTED_TYPES)))
+    airframe_field_schemas: dict[str, Any] = schema.get("airframe_fields", {})
 
     parser = configparser.ConfigParser(interpolation=None, strict=False)
     parser.optionxform = str
@@ -220,6 +221,28 @@ def validate_config(path: Path, schema_path: Path = DEFAULT_SCHEMA_PATH) -> list
                 index = int(token)
                 if index < 0 or index > 7:
                     issues.append(Issue("error", section, "autoPropBrakes", f"motor index {index} outside 0..7"))
+
+        for key, value in parser.items(section, raw=True):
+            if key == "autoPropBrakes" or key.startswith("channel"):
+                continue
+
+            field_schema = airframe_field_schemas.get(key)
+            if field_schema is None:
+                issues.append(Issue("warning", section, key, "unknown airframe config key"))
+                continue
+            yield_issues = validate_scalar_field(section, key, value, field_schema)
+            issues.extend(yield_issues)
+
+        apply_key = "autoPropBrakeApplyThreshold"
+        release_key = "autoPropBrakeReleaseThreshold"
+        if parser.has_option(section, apply_key) and parser.has_option(section, release_key):
+            try:
+                apply_value = float(parser.get(section, apply_key, raw=True))
+                release_value = float(parser.get(section, release_key, raw=True))
+                if math.isfinite(apply_value) and math.isfinite(release_value) and release_value <= apply_value:
+                    issues.append(Issue("error", section, release_key, "release threshold must be greater than apply threshold"))
+            except ValueError:
+                pass
 
     return issues
 
