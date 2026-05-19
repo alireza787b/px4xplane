@@ -417,8 +417,8 @@ param set-default VT_PITCH_MIN -5.0
 ################################################################################
 # SECTION 11: FIXED-WING FLIGHT PARAMETERS (CRUISE MODE)
 ################################################################################
-# v3.4.16 recovery focus: keep the accepted v3.4.13 fixed-wing bank envelope
-# and add transition margin before the lift props are shut down.
+# v3.4.17 recovery baseline: keep the accepted v3.4.13 fixed-wing bank envelope,
+# add transition margin, and keep validated virtual-pitot airspeed alive.
 # The v3.4.14 PX4-metadata-valid 35 deg bank limit produced sustained high-bank
 # capture, throttle/elevator saturation, and altitude loss in X-Plane Alia logs.
 
@@ -454,7 +454,7 @@ param set-default FW_AIRSPD_STALL 40.0   # Stall speed
 
 # Airspeed Sensor (SITL)
 param set-default FW_USE_AIRSPD 1        # Use airspeed for control
-param set-default ASPD_DO_CHECKS 7
+param set-default ASPD_DO_CHECKS 1       # SITL virtual pitot: missing-data check only
 param set-default ASPD_FALLBACK  1       # Fallback to G/S - W/S
 param set-default SYS_HAS_NUM_ASPD 1     # 1 virtual airspeed sensor
 
@@ -594,8 +594,10 @@ param set-default MC_BAT_SCALE_EN 0
 # Altitude drop during front transition (MC -> FW):
 #   - Current recovery baseline uses VT_F_TRANS_THR = 1.0,
 #     VT_F_TRANS_DUR = 45.0, VT_ARSP_TRANS = 50.0, and VT_F_TR_OL_TM = 55.0
-#   - v3.4.16 raises VT_ARSP_TRANS and FW_PSP_OFF after a brake-enabled run
-#     switched to FW too close to the low-speed sink margin
+#   - v3.4.17 uses VT_ARSP_TRANS = 50.0 and FW_PSP_OFF = 4.0 after a
+#     brake-enabled run switched to FW too close to the low-speed sink margin
+#   - If QGC shows zero airspeed while raw ULog `airspeed` is valid, check
+#     `airspeed_validated` freshness and keep ASPD_DO_CHECKS = 1 for SITL
 #   - Check airspeed build-up, tilt state, pusher thrust, and altitude error in
 #     ULog before changing transition timing
 #

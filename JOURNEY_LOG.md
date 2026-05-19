@@ -4,6 +4,25 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-19
 
+### v3.4.17 Alia Airspeed And Reconnect Follow-Up
+
+- Reviewed `/home/alireza/evtol3.zip`.
+- Alia raw `differential_pressure` and raw `airspeed` were present; raw IAS
+  reached about `58 m/s`. The failure was that `airspeed_validated` stopped
+  publishing at `14.35 s`, so PX4/QGC kept showing stale near-zero validated
+  airspeed and Standard VTOL never completed the FW switch.
+- Updated Alia to `ASPD_DO_CHECKS=1` for the SITL virtual pitot. This keeps
+  missing-data detection but avoids validator checks that are not useful while
+  a VTOL is intentionally at near-zero airspeed in multicopter mode.
+- Patched the PX4 fork `airspeed_selector` to avoid indexing the sensor
+  validator array when the selected source is disabled, ground-minus-wind, or
+  synthetic.
+- Fixed the px4xplane first-reconnect disconnect after aircraft changes by
+  resetting `lastFlightTime` before opening a new SITL server socket.
+- Ehang `evtol3` used a `146.47 m` orbit radius with the aircraft starting
+  about `518 m` from the center. It spent most of the run capturing the orbit;
+  at `5 m/s` and `146 m` radius, expected lateral tilt is only about `1 deg`.
+
 ### v3.4.16 Alia/Ehang Follow-Up
 
 - Reviewed `/home/alireza/evtol2.zip`.

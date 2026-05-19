@@ -102,7 +102,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.16` Alia transition/brake recovery test, verify these key defaults are
+For the current `v3.4.17` Alia airspeed/transition recovery test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
@@ -125,6 +125,7 @@ parameter store and rerun before judging the package.
 - `CAL_BARO1_PRIO=0`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_ACC0_PRIO=50`
+- `ASPD_DO_CHECKS=1`
 - `VT_ARSP_TRANS=50.0`
 - `VT_F_TRANS_DUR=45.0`
 - `VT_F_TR_OL_TM=55.0`
@@ -155,14 +156,14 @@ PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.16`
+- `px4xplane: Version: v3.4.17`
 - `px4xplane: Motor brakes configured for motors: 00001111`
 - `px4xplane: Prop brake policy mode=feather apply<=0.010 release>=0.011 dwell=8.00s min_tas=52.0m/s failure=false`
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
 only applies to motors `0-3` after those commands remain near zero for the dwell
 time and true airspeed is above the configured gate. Any lift-motor recovery
-command releases the brake immediately. v3.4.16 uses `autoPropBrakeMode=feather`
+command releases the brake immediately. v3.4.17 uses `autoPropBrakeMode=feather`
 for the main Alia retest; `hard_lock` and `prop_separate` are available for
 controlled A/B testing only, because the v3.4.15 hard-lock behavior correlated
 with unrecovered fixed-wing sink after transition.
@@ -173,7 +174,7 @@ copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 
 If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
 unstable`, do not tune from that run until the aircraft has been restarted with
-the v3.4.16 airframe defaults and the warning state is rechecked. Keep the log:
+the v3.4.17 airframe defaults and the warning state is rechecked. Keep the log:
 that case is useful for validating frame-rate robustness, but it is not the
 same evidence as a clean high-FPS Alia tuning flight.
 

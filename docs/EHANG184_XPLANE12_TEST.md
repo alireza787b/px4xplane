@@ -63,7 +63,7 @@ Confirm these values in the ULog before judging the result:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.16`
+- `px4xplane: Version: v3.4.17`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
 
 The `evtol1` Ehang log showed QGC `MAV_CMD_DO_REPOSITION` commands accepted
@@ -73,12 +73,16 @@ tracking. A QGC "Go to location" test is still useful, but only record it as a
 command/mode-behavior check unless PX4 changes into a mode that actually follows
 the reposition setpoint.
 
-The `evtol2` orbit log showed the vehicle initially starting well outside the
-commanded circle. PX4 Orbit mode first captures the closest point on the
-commanded circle, so a short S-turn/zigzag before the stable orbit is expected
-when the command is sent from outside the radius. Judge the tune after capture:
-radius hunting should be damped and the vehicle should not repeatedly hit the
-horizontal velocity limit.
+The `evtol2` and `evtol3` orbit logs showed the vehicle initially starting well
+outside the commanded circle. PX4 Orbit mode first captures the closest point on
+the commanded circle, so a short S-turn/zigzag before the stable orbit is
+expected when the command is sent from outside the radius. Judge the tune after
+capture: radius hunting should be damped and the vehicle should not repeatedly
+hit the horizontal velocity limit.
+
+For a large commanded orbit, visible roll can be very small. For example,
+`5 m/s` around a `146 m` circle only requires about `1 deg` lateral tilt. That
+is not a missing roll-channel symptom by itself.
 
 ## Acceptance
 

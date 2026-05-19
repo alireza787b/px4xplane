@@ -36,10 +36,11 @@ This index is the stable entry point for user and developer documentation.
 - [Report v26 - Alia Final Polish and Ehang Prep](reports/report_v26.md)
 - [Report v27 - Alia Bank Recovery and Ehang Nav Tuning](reports/report_v27.md)
 - [Report v28 - Alia Transition Brake and Ehang Orbit Tuning](reports/report_v28.md)
+- [Report v29 - Alia Airspeed and Ehang Orbit Evidence](reports/report_v29.md)
 
 ## Current Policy
 
-- Use the `v3.4.16` package for the next Alia and Ehang validation, and reset
+- Use the `v3.4.17` package for the next Alia and Ehang validation, and reset
   PX4 SITL parameters with `distclean` before judging the package.
 - Alia lift-prop braking is enabled only through the generic command/dwell/
   airspeed-gated policy; `feather` is the default retest mode, while

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.17] - 2026-05-19
+
+### Fixed
+
+- Fixed the first-connect disconnect after changing aircraft or reloading a new
+  flight by resetting `lastFlightTime` and bridge timing state before opening a
+  new SITL server socket.
+- Updated Alia `ASPD_DO_CHECKS=1` so the SITL virtual pitot keeps the
+  missing-data check but avoids validator checks that can invalidate the sensor
+  while the VTOL is still in low-airspeed multicopter flight.
+
+### Changed
+
+- Added report v29 with the `evtol3` findings: raw Alia airspeed was present,
+  but `airspeed_validated` stopped after arming; Ehang was flying a long capture
+  to a `146 m` commanded orbit, where only a very small visible roll angle is
+  physically expected.
+
+---
+
 ## [3.4.16] - 2026-05-19
 
 ### Fixed

@@ -483,6 +483,7 @@ void toggleEnable() {
 	}
 	else {
 		XPLMDebugString("px4xplane: Currently disconnected, attempting to set up server socket.\n");
+		resetFlightLoopTimers();
 		ConnectionManager::setupServerSocket();
 	}
 	updateMenuItems(); // Update menu items after toggling connection
@@ -829,6 +830,7 @@ void resetFlightLoopTimers() {
 	lastStateQuatSendTime = 0.0f;
 	lastRcSendTime = 0.0f;
 	lastDiagnosticLogTime = 0.0f;
+	lastFlightTime = 0.0f;
 	resetDiagnosticCounters();
 	XPLMDebugString("px4xplane: Flight loop timers reset\n");
 }
