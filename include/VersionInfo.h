@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.17";
+    constexpr const char* VERSION = "3.4.18";
 
     /** Version phase description */
-    constexpr const char* PHASE = "Alia Airspeed + Reconnect Fix";
+    constexpr const char* PHASE = "Alia Brake Recovery + Ehang Orbit Damping";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "025";
+    constexpr const char* BUILD = "026";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

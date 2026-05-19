@@ -4,6 +4,24 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-19
 
+### v3.4.18 Alia Brake Recovery And Ehang Orbit Damping
+
+- Reviewed `/home/alireza/evtol4.zip`.
+- Alia pusher thrust was present: PX4 commanded output 8 at full throttle and
+  TruthCapture showed X-Plane engine 4 producing about `4 kN` thrust in FW.
+- The Alia crash was not an airspeed loss. `airspeed_validated` stayed live and
+  matched raw airspeed at the FW switch. The aircraft initially recovered the
+  same first-FW sink shape as v3.4.13, then the lift-prop brake window removed
+  the remaining margin and the aircraft entered a fatal sink.
+- Restored Alia to the accepted no-brake baseline by disabling default
+  `autoPropBrakes`, returning `VT_ARSP_TRANS=46.0`, and returning
+  `FW_PSP_OFF=3.0`. Kept `ASPD_DO_CHECKS=1`.
+- Ehang Orbit was not a missing roll-channel or motor-mapping failure. The
+  ULog showed radial velocity setpoints dominating the slow Orbit command and
+  pitch setpoint repeatedly reaching `+-30 deg` while actual pitch lagged.
+- Corrected Ehang's under-responsive MC attitude gains and reduced the high
+  horizontal velocity D gain so the next test judges a damped Orbit response.
+
 ### v3.4.17 Alia Airspeed And Reconnect Follow-Up
 
 - Reviewed `/home/alireza/evtol3.zip`.

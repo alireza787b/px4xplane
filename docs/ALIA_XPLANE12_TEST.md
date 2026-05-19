@@ -102,7 +102,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.17` Alia airspeed/transition recovery test, verify these key defaults are
+For the current `v3.4.18` Alia brake-recovery test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
@@ -126,7 +126,7 @@ parameter store and rerun before judging the package.
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_ACC0_PRIO=50`
 - `ASPD_DO_CHECKS=1`
-- `VT_ARSP_TRANS=50.0`
+- `VT_ARSP_TRANS=46.0`
 - `VT_F_TRANS_DUR=45.0`
 - `VT_F_TR_OL_TM=55.0`
 - `FW_T_ALT_TC=6.0`
@@ -137,7 +137,7 @@ parameter store and rerun before judging the package.
 - `FW_T_I_GAIN_PIT=0.20`
 - `FW_T_CLMB_R_SP=2.0`
 - `FW_T_SINK_R_SP=1.5`
-- `FW_PSP_OFF=4.0`
+- `FW_PSP_OFF=3.0`
 - `FW_P_LIM_MAX=18.0`
 - `FW_R_LIM=22.0`
 - `FW_THR_TRIM=0.80`
@@ -156,17 +156,16 @@ PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.17`
-- `px4xplane: Motor brakes configured for motors: 00001111`
-- `px4xplane: Prop brake policy mode=feather apply<=0.010 release>=0.011 dwell=8.00s min_tas=52.0m/s failure=false`
+- `px4xplane: Version: v3.4.18`
+- `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
+- `px4xplane: Motor brakes configured for motors: 00000000`
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
-only applies to motors `0-3` after those commands remain near zero for the dwell
-time and true airspeed is above the configured gate. Any lift-motor recovery
-command releases the brake immediately. v3.4.17 uses `autoPropBrakeMode=feather`
-for the main Alia retest; `hard_lock` and `prop_separate` are available for
-controlled A/B testing only, because the v3.4.15 hard-lock behavior correlated
-with unrecovered fixed-wing sink after transition.
+only applies when `autoPropBrakes` lists motor indices. v3.4.18 disables Alia
+braking by default because `evtol4` matched the accepted v3.4.13 first-FW sink
+recovery until the brake window removed the remaining margin. `feather`,
+`hard_lock`, and `prop_separate` remain available for controlled A/B testing
+only.
 
 The `px4xplane/px4_airframes` folder in plugin releases contains reference
 copies only. PX4 SITL reads the airframe from the PX4 repository branch under
@@ -174,7 +173,7 @@ copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 
 If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
 unstable`, do not tune from that run until the aircraft has been restarted with
-the v3.4.17 airframe defaults and the warning state is rechecked. Keep the log:
+the v3.4.18 airframe defaults and the warning state is rechecked. Keep the log:
 that case is useful for validating frame-rate robustness, but it is not the
 same evidence as a clean high-FPS Alia tuning flight.
 

@@ -33,9 +33,15 @@ X-Plane multicopter after the Alia tuning lessons were applied.
 Confirm these values in the ULog before judging the result:
 
 - `SYS_AUTOSTART=5010`
-- `MPC_XY_CRUISE=5.0`
-- `MPC_XY_VEL_MAX=6.5`
-- `MPC_VEL_MANUAL=5.0`
+- `MC_ROLL_P=3.0`
+- `MC_PITCH_P=3.0`
+- `MC_YAW_P=1.2`
+- `MPC_XY_P=0.30`
+- `MPC_XY_VEL_P_ACC=1.4`
+- `MPC_XY_VEL_D_ACC=0.25`
+- `MPC_XY_CRUISE=4.0`
+- `MPC_XY_VEL_MAX=5.0`
+- `MPC_VEL_MANUAL=4.0`
 - `MPC_Z_V_AUTO_UP=2.0`
 - `MPC_Z_V_AUTO_DN=1.2`
 - `MPC_TKO_SPEED=2.0`
@@ -44,14 +50,14 @@ Confirm these values in the ULog before judging the result:
 - `MPC_LAND_ALT2=3.0`
 - `MPC_LAND_CRWL=0.25`
 - `LNDMC_Z_VEL_MAX=0.20`
-- `MPC_ACC_HOR=1.5`
-- `MPC_ACC_HOR_MAX=1.8`
+- `MPC_ACC_HOR=2.0`
+- `MPC_ACC_HOR_MAX=2.0`
 - `MPC_ACC_UP_MAX=2.0`
 - `MPC_ACC_DOWN_MAX=2.0`
 - `MPC_JERK_AUTO=1.0`
 - `MPC_JERK_MAX=2.0`
 - `MPC_MAN_TILT_MAX=25.0`
-- `MPC_TILTMAX_AIR=30.0`
+- `MPC_TILTMAX_AIR=25.0`
 - `MPC_MAN_Y_MAX=15.0`
 - `MPC_YAWRAUTO_MAX=20.0`
 - `NAV_ACC_RAD=12.0`
@@ -63,7 +69,7 @@ Confirm these values in the ULog before judging the result:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.17`
+- `px4xplane: Version: v3.4.18`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
 
 The `evtol1` Ehang log showed QGC `MAV_CMD_DO_REPOSITION` commands accepted
@@ -73,12 +79,13 @@ tracking. A QGC "Go to location" test is still useful, but only record it as a
 command/mode-behavior check unless PX4 changes into a mode that actually follows
 the reposition setpoint.
 
-The `evtol2` and `evtol3` orbit logs showed the vehicle initially starting well
+The `evtol2`, `evtol3`, and `evtol4` orbit logs showed the vehicle initially starting well
 outside the commanded circle. PX4 Orbit mode first captures the closest point on
 the commanded circle, so a short S-turn/zigzag before the stable orbit is
 expected when the command is sent from outside the radius. Judge the tune after
-capture: radius hunting should be damped and the vehicle should not repeatedly
-hit the horizontal velocity limit.
+capture: radius hunting should be damped, pitch should not hit repeated
+`+-30 deg` setpoints, and the vehicle should not repeatedly hit the horizontal
+velocity limit.
 
 For a large commanded orbit, visible roll can be very small. For example,
 `5 m/s` around a `146 m` circle only requires about `1 deg` lateral tilt. That

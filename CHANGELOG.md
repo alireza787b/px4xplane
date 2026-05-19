@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.18] - 2026-05-19
+
+### Fixed
+
+- Disabled Alia lift-prop braking by default after `evtol4` showed the
+  no-brake handoff recovered like the accepted v3.4.13 baseline until the brake
+  window removed the remaining fixed-wing recovery margin.
+- Restored Alia `VT_ARSP_TRANS=46.0` and `FW_PSP_OFF=3.0` while keeping the
+  `ASPD_DO_CHECKS=1` virtual-pitot recovery from v3.4.17.
+- Corrected Ehang 184 multicopter orbit tuning by raising attitude P gains from
+  the under-responsive `0.3` values and reducing horizontal velocity D gain
+  from the oscillation-prone `1.5` value.
+
+### Changed
+
+- Lowered Ehang horizontal cruise/manual/max speeds and tilt cap for smoother
+  Orbit validation while keeping PX4-valid acceleration and jerk limits.
+- Added report v30 with the `evtol4` Alia/Ehang evidence and next-test sanity
+  checks.
+
+---
+
 ## [3.4.17] - 2026-05-19
 
 ### Fixed
