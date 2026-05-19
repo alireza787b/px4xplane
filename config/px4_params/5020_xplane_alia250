@@ -167,9 +167,9 @@ param set-default EKF2_BARO_GATE 10.0    # Increased tolerance for VTOL transiti
 # empirically stable offsets came from successful baseline Alia runs and keep
 # fresh SITL roots consistent with the known-good calibration state.
 param set-default CAL_ACC0_PRIO 50
-param set-default CAL_ACC0_XOFF 0.0978824
-param set-default CAL_ACC0_YOFF 0.0953933
-param set-default CAL_ACC0_ZOFF -1.2080466
+param set-default CAL_ACC0_XOFF 0.205
+param set-default CAL_ACC0_YOFF -0.160
+param set-default CAL_ACC0_ZOFF -0.714
 
 # GPS Parameters
 param set-default EKF2_GPS_DELAY 0.0
@@ -345,7 +345,7 @@ param set-default MPC_LAND_RC_HELP 1
 # Land Detector
 param set-default LNDMC_ALT_GND 2
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.25
+param set-default LNDMC_Z_VEL_MAX 0.20
 param set-default LNDMC_ROT_MAX 20
 param set-default LNDMC_TRIG_TIME 1
 
@@ -417,9 +417,9 @@ param set-default VT_PITCH_MIN -5.0
 ################################################################################
 # SECTION 11: FIXED-WING FLIGHT PARAMETERS (CRUISE MODE)
 ################################################################################
-# v3.4.14 final-polish focus: keep the accepted v3.4.13 guidance behavior,
-# restore PX4-valid bank metadata, and use larger loiter radii for comfortable
-# large-eVTOL turns without changing the bridge sensor contract.
+# v3.4.15 recovery focus: keep the accepted v3.4.13 fixed-wing bank envelope.
+# The v3.4.14 PX4-metadata-valid 35 deg bank limit produced sustained high-bank
+# capture, throttle/elevator saturation, and altitude loss in X-Plane Alia logs.
 
 # Rate Control
 param set-default FW_RR_P 0.47
@@ -428,7 +428,7 @@ param set-default FW_RR_D 0.1
 param set-default FW_RR_FF 0.5
 param set-default FW_R_RMAX 18.0
 param set-default FW_R_TC 0.7
-param set-default FW_R_LIM 35.0
+param set-default FW_R_LIM 22.0
 
 param set-default FW_PR_P 0.365
 param set-default FW_PR_I 0.045
@@ -527,7 +527,7 @@ param set-default NAV_ACC_RAD 30         # Tighter landing (reduced from 50m)
 param set-default NAV_MC_ALT_RAD 5.0     # Heavier aircraft
 
 # FW Mode Acceptance
-param set-default NAV_LOITER_RAD 1500.0
+param set-default NAV_LOITER_RAD 2000.0
 param set-default NAV_FW_ALT_RAD 50.0
 param set-default NAV_MIN_LTR_ALT -1.0
 
@@ -535,7 +535,7 @@ param set-default NAV_MIN_LTR_ALT -1.0
 param set-default RTL_RETURN_ALT 100
 param set-default RTL_DESCEND_ALT 80
 param set-default RTL_MIN_DIST 50.0
-param set-default RTL_LOITER_RAD 1500.0
+param set-default RTL_LOITER_RAD 2000.0
 
 
 ################################################################################
@@ -604,7 +604,7 @@ param set-default MC_BAT_SCALE_EN 0
 #
 # Tight loiter radius / oscillation in FW mode:
 #   - Current baseline uses NPFG_PERIOD = 35.0, NPFG_DAMPING = 0.80,
-#     NAV_LOITER_RAD = 1500.0, RTL_LOITER_RAD = 1500.0, FW_R_LIM = 35.0
+#     NAV_LOITER_RAD = 2000.0, RTL_LOITER_RAD = 2000.0, FW_R_LIM = 22.0
 #   - Tune NPFG period/damping, roll limit, and TECS together from ULog evidence
 #
 # Altitude oscillation during cruise:

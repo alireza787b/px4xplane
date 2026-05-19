@@ -20,7 +20,9 @@ X-Plane multicopter after the Alia tuning lessons were applied.
    - yaw left/right with no aggressive heading snap
    - translate forward/back/left/right
    - climb and descend
-   - auto loiter/hold or mission waypoint if available
+   - Orbit with a commanded radius of `80-100 m`
+   - mission waypoint or auto reposition if QGC switches the vehicle into an
+     auto mode that consumes the reposition setpoint
    - RTL and landing
 6. Wait `10-15 s` after disarm before stopping PX4.
 7. Save PX4 ULog, PX4 terminal output, X-Plane `Log.txt`, and the
@@ -31,15 +33,17 @@ X-Plane multicopter after the Alia tuning lessons were applied.
 Confirm these values in the ULog before judging the result:
 
 - `SYS_AUTOSTART=5010`
-- `MPC_XY_CRUISE=8.0`
-- `MPC_XY_VEL_MAX=12.0`
+- `MPC_XY_CRUISE=6.0`
+- `MPC_XY_VEL_MAX=8.0`
+- `MPC_VEL_MANUAL=6.0`
 - `MPC_Z_V_AUTO_UP=2.0`
-- `MPC_Z_V_AUTO_DN=1.0`
-- `MPC_TKO_SPEED=1.2`
+- `MPC_Z_V_AUTO_DN=1.2`
+- `MPC_TKO_SPEED=2.0`
 - `MPC_LAND_SPEED=0.6`
 - `MPC_LAND_ALT1=8.0`
 - `MPC_LAND_ALT2=3.0`
 - `MPC_LAND_CRWL=0.25`
+- `LNDMC_Z_VEL_MAX=0.20`
 - `MPC_ACC_HOR=2.0`
 - `MPC_ACC_HOR_MAX=2.0`
 - `MPC_ACC_UP_MAX=2.0`
@@ -50,16 +54,24 @@ Confirm these values in the ULog before judging the result:
 - `MPC_TILTMAX_AIR=30.0`
 - `MPC_MAN_Y_MAX=15.0`
 - `MPC_YAWRAUTO_MAX=20.0`
-- `NAV_ACC_RAD=25.0`
+- `NAV_ACC_RAD=12.0`
 - `NAV_MC_ALT_RAD=2.0`
+- `CAL_ACC0_PRIO=50`
 - `EKF2_BARO_NOISE=1.0`
 - `IMU_GYRO_RATEMAX=200`
 - `IMU_INTEG_RATE=200`
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.14`
+- `px4xplane: Version: v3.4.15`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
+
+The `evtol1` Ehang log showed QGC `MAV_CMD_DO_REPOSITION` commands accepted
+while the vehicle stayed in Position mode and did not move horizontally. For the
+next validation, use Orbit, RTL, or a mission/auto mode for objective path
+tracking. A QGC "Go to location" test is still useful, but only record it as a
+command/mode-behavior check unless PX4 changes into a mode that actually follows
+the reposition setpoint.
 
 ## Acceptance
 

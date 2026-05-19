@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.15] - 2026-05-19
+
+### Fixed
+
+- Recovered Alia fixed-wing loiter behavior after `evtol1`: restored the
+  ULog-proven `FW_R_LIM=22` envelope because v3.4.14's `35 deg` bank limit
+  caused sustained high-bank capture, throttle/elevator saturation, and
+  altitude loss.
+- Re-enabled Alia lift-prop braking through the generic opt-in brake policy
+  with conservative command, dwell, and airspeed gates; the X-Plane failure
+  seizure path remains disabled.
+- Updated Alia and Ehang simulated accelerometer offset defaults from the latest
+  clean logs so fresh `distclean` runs do not start from stale calibration.
+- Set `LNDMC_Z_VEL_MAX=0.20` for Alia and Ehang so it is consistent with
+  `MPC_LAND_CRWL=0.25` and does not trigger PX4's land-detector auto-correction.
+
+### Changed
+
+- Increased Alia fixed-wing loiter/RTL radii to `2000 m` for large-eVTOL
+  validation turns.
+- Tuned Ehang 184 first-log navigation defaults for smoother validation:
+  `MPC_XY_CRUISE=6`, `MPC_XY_VEL_MAX=8`, `MPC_TKO_SPEED=2.0`,
+  `MPC_VEL_MANUAL=6`, `MPC_Z_V_AUTO_DN=1.2`, and `NAV_ACC_RAD=12`.
+- Updated Alia and Ehang test cards with the v3.4.15 sanity values and the QGC
+  reposition/orbit caveat observed in the Ehang log.
+
+---
+
 ## [3.4.14] - 2026-05-18
 
 ### Changed

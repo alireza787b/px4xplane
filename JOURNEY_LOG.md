@@ -962,3 +962,27 @@ This log preserves project decisions, evidence, and next actions across the long
 - Moved tracked root reports v12/v13 into `docs/reports` and removed a stale
   tracked Windows temp file.
 - New report: `docs/reports/report_v26.md`.
+
+### px4xplane v3.4.15 Alia Bank Recovery and Ehang Nav Tuning
+
+- Analyzed `/home/alireza/evtol1.zip`, covering one low-FPS Alia startup, one
+  v3.4.14 Alia flight, and one first Ehang 184 flight.
+- Found the Alia regression was caused by v3.4.14 restoring `FW_R_LIM=35`:
+  the aircraft spent about `45%` of fixed-wing time above `34 deg` actual bank
+  and about `91%` of fixed-wing time at max throttle, with frequent elevator
+  saturation and altitude loss. v3.4.13 had no high-bank fraction with
+  `FW_R_LIM=22`.
+- Restored `FW_R_LIM=22` and increased Alia `NAV_LOITER_RAD` and
+  `RTL_LOITER_RAD` to `2000 m`.
+- Re-enabled Alia lift-prop braking through the generic opt-in brake policy,
+  gated by low command, dwell time, and airspeed, with X-Plane failure seizure
+  still disabled.
+- Updated Alia and Ehang `CAL_ACC0` seed offsets from the latest clean logs to
+  avoid stale fresh-`distclean` calibration and low-FPS preflight bias warnings.
+- Tuned Ehang 184 first-log defaults: slower horizontal cruise/max/manual
+  speed, faster takeoff than v3.4.14, tighter `NAV_ACC_RAD`, and
+  `LNDMC_Z_VEL_MAX=0.20`.
+- Documented that QGC `MAV_CMD_DO_REPOSITION` was accepted in the Ehang log but
+  not flown while PX4 stayed in Position mode; the next Ehang validation should
+  use Orbit, mission/auto, RTL, and explicit mode checks.
+- New report: `docs/reports/report_v27.md`.

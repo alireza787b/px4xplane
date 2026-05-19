@@ -102,7 +102,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.14` Alia final-polish test, verify these key defaults are
+For the current `v3.4.15` Alia recovery test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
@@ -117,8 +117,8 @@ parameter store and rerun before judging the package.
 - `NPFG_DAMPING=0.80`
 - `NPFG_ROLL_TC=0.7`
 - `NPFG_SW_DST_MLT=0.7`
-- `NAV_LOITER_RAD=1500.0`
-- `RTL_LOITER_RAD=1500.0`
+- `NAV_LOITER_RAD=2000.0`
+- `RTL_LOITER_RAD=2000.0`
 - `CAL_BARO0_ID=6620172`
 - `CAL_BARO0_PRIO=100`
 - `CAL_BARO1_ID=6620428`
@@ -138,7 +138,7 @@ parameter store and rerun before judging the package.
 - `FW_T_SINK_R_SP=1.5`
 - `FW_PSP_OFF=3.0`
 - `FW_P_LIM_MAX=18.0`
-- `FW_R_LIM=35.0`
+- `FW_R_LIM=22.0`
 - `FW_THR_TRIM=0.80`
 - `FW_THR_SLEW_MAX=0.50`
 - `WEIGHT_BASE=3120.0`
@@ -148,15 +148,28 @@ parameter store and rerun before judging the package.
 - `VT_B_DEC_I=0.25`
 - `RTL_RETURN_ALT=100`
 - `RTL_DESCEND_ALT=80`
+- `LNDMC_Z_VEL_MAX=0.20`
 
 Do not use the exact accelerometer offset values as a package pass/fail check.
 PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.14`
-- `px4xplane: Motor brakes configured for motors: 00000000`
+- `px4xplane: Version: v3.4.15`
+- `px4xplane: Motor brakes configured for motors: 00001111`
+
+The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
+only applies to motors `0-3` after those commands remain near zero for the dwell
+time and true airspeed is above the configured gate. Any lift-motor recovery
+command releases the brake immediately. The failure-dataref seizure path remains
+disabled.
 
 The `px4xplane/px4_airframes` folder in plugin releases contains reference
 copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 `ROMFS/px4fmu_common/init.d-posix/airframes/`.
+
+If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
+unstable`, do not tune from that run until the aircraft has been restarted with
+the v3.4.15 airframe defaults and the warning state is rechecked. Keep the log:
+that case is useful for validating frame-rate robustness, but it is not the
+same evidence as a clean high-FPS Alia tuning flight.

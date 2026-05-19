@@ -26,8 +26,8 @@
 # Key values:
 # - Barometer noise: 1.0 m to avoid overconfident frame-limited X-Plane fusion
 # - Innovation gates: 5.0-10.0 to tolerate simulator timing variability
-# - Navigation radii: 25 m horizontal, 2 m vertical for smooth but useful tracking
-# - Cruise speed: 8 m/s (~29 km/h)
+# - Navigation radii: 12 m horizontal, 2 m vertical for smooth but useful tracking
+# - Cruise speed: 6 m/s (~22 km/h)
 # - Jerk/acceleration limits kept near PX4-valid comfort-oriented minimums
 #
 ################################################################################
@@ -167,6 +167,14 @@ param set-default EKF2_BARO_NOISE 1.0     # Baro height noise in m; avoids overc
 param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0     # Increased for FPS variability tolerance
 
+# Simulated accelerometer calibration. Seed the fresh-SITL offsets from the
+# successful Ehang X-Plane log so low-FPS startup does not begin from stale Alia
+# calibration values.
+param set-default CAL_ACC0_PRIO 50
+param set-default CAL_ACC0_XOFF -0.084
+param set-default CAL_ACC0_YOFF 0.112
+param set-default CAL_ACC0_ZOFF -0.815
+
 # GPS parameters
 param set-default EKF2_GPS_DELAY 0.0
 param set-default EKF2_GPS_P_NOISE 0.15   # Position noise (matches vertical accuracy)
@@ -271,13 +279,13 @@ param set-default MPC_Z_VEL_I_ACC 2
 param set-default MPC_Z_VEL_D_ACC 0.2
 
 # Velocity limits (passenger comfort priority)
-param set-default MPC_XY_VEL_MAX 12       # Max horizontal (m/s) ~43 km/h
+param set-default MPC_XY_VEL_MAX 8        # Max horizontal (m/s) ~29 km/h
 param set-default MPC_Z_VEL_MAX_UP 3      # Max ascent (m/s)
 param set-default MPC_Z_VEL_MAX_DN 1.5    # Max manual descent (m/s)
 param set-default MPC_Z_V_AUTO_UP 2.0
-param set-default MPC_Z_V_AUTO_DN 1.0
-param set-default MPC_VEL_MANUAL 10
-param set-default MPC_XY_CRUISE 8         # Cruise speed ~29 km/h (passenger comfort)
+param set-default MPC_Z_V_AUTO_DN 1.2
+param set-default MPC_VEL_MANUAL 6        # Manual horizontal speed below MPC_XY_VEL_MAX
+param set-default MPC_XY_CRUISE 6         # Cruise speed ~22 km/h (passenger comfort)
 
 # Trajectory & jerk limits (reduced for smooth ride)
 param set-default MPC_XY_TRAJ_P 0.5
@@ -335,7 +343,7 @@ param set-default MPC_XY_VEL_ALL -10
 ################################################################################
 
 # Takeoff
-param set-default MPC_TKO_SPEED 1.2       # Smooth takeoff climb rate (m/s)
+param set-default MPC_TKO_SPEED 2.0       # Smooth takeoff climb rate (m/s)
 param set-default MPC_TKO_RAMP_T 3        # Ramp time (s)
 
 # Landing
@@ -350,7 +358,7 @@ param set-default MPC_LAND_RC_HELP 1
 # Land detector
 param set-default LNDMC_ALT_GND 2
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.25
+param set-default LNDMC_Z_VEL_MAX 0.20
 param set-default LNDMC_ROT_MAX 20
 param set-default LNDMC_TRIG_TIME 1
 
@@ -391,7 +399,7 @@ param set-default MC_AT_SYSID_AMP 0.7
 # TUNING BY AIRCRAFT SIZE:
 # - Small drone (<2kg):       NAV_ACC_RAD=5m,  ALT_RAD=0.8m, JERK=2.0
 # - Medium drone (2-25kg):    NAV_ACC_RAD=10m, ALT_RAD=1.5m, JERK=1.5
-# - Large multicopter (>100kg): NAV_ACC_RAD=25m, ALT_RAD=2m, JERK=1.0 <-- Current
+# - Large multicopter (>100kg): NAV_ACC_RAD=12m, ALT_RAD=2m, JERK=1.0 <-- Current
 # - Heavy cargo (>500kg):     NAV_ACC_RAD=50m, ALT_RAD=5m, JERK=0.5
 
 # Mission parameters
@@ -402,7 +410,7 @@ param set-default MIS_TAKEOFF_ALT 2.5     # Default takeoff alt (m)
 # Navigation acceptance radii
 # Large enough for smooth waypoint capture, but tighter than the early
 # conservative file so final Ehang validation can judge tracking quality.
-param set-default NAV_ACC_RAD 25          # Horizontal acceptance radius (m)
+param set-default NAV_ACC_RAD 12          # Horizontal acceptance radius (m)
 param set-default NAV_MC_ALT_RAD 2        # Vertical acceptance radius (m)
 
 # Return to launch
