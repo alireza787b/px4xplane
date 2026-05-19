@@ -317,7 +317,7 @@ void refreshAirframesMenu() {
 
 	for (size_t i = 0; i < airframeNames.size(); ++i) {
 		const std::string& name = airframeNames[i];
-		std::string menuItemName = name;
+		std::string menuItemName = ConfigManager::getAirframeDisplayName(name);
 		if (name == activeAirframe) {
 			menuItemName += " *";
 		}
@@ -367,7 +367,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 
 		if (index >= 0 && index < (int)airframeNames.size()) {
 			const std::string& selectedAirframe = airframeNames[index];
-			debugLog(("Airframe selected: " + selectedAirframe).c_str());
+			debugLog(("Airframe selected: " + ConfigManager::getAirframeDisplayName(selectedAirframe) + " (" + selectedAirframe + ")").c_str());
 
 			ConfigManager::setActiveAirframeName(selectedAirframe);
 			ConfigManager::loadConfiguration();
@@ -376,7 +376,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			initializeMessagePeriods();
 
 			refreshAirframesMenu();
-			XPLMDebugString(("px4xplane: Configuration reloaded for: " + selectedAirframe + "\n").c_str());
+			XPLMDebugString(("px4xplane: Configuration reloaded for: " + ConfigManager::getAirframeDisplayName(selectedAirframe) + " (" + selectedAirframe + ")\n").c_str());
 		}
 		else {
 			snprintf(debugBuf, sizeof(debugBuf), "Invalid airframe index: %d (total: %d)", index, (int)airframeNames.size());
@@ -543,7 +543,7 @@ void create_menu() {
 	std::string activeAirframe = ConfigManager::getActiveAirframeName();
 	for (size_t i = 0; i < airframeNames.size(); ++i) {
 		const std::string& name = airframeNames[i];
-		std::string menuItemName = name;
+		std::string menuItemName = ConfigManager::getAirframeDisplayName(name);
 		if (name == activeAirframe) {
 			menuItemName += " *";
 		}
@@ -583,7 +583,7 @@ void updateMenuItems() {
 	std::string activeAirframe = ConfigManager::getActiveAirframeName();
 	for (size_t i = 0; i < airframeNames.size(); ++i) {
 		const std::string& name = airframeNames[i];
-		std::string menuItemName = name;
+		std::string menuItemName = ConfigManager::getAirframeDisplayName(name);
 		if (name == activeAirframe) {
 			menuItemName += " *";
 		}
@@ -607,7 +607,7 @@ void updateMenuItems() {
 // Placeholder function for handling airframe selection commands.
 void handleAirframeSelection(const std::string& airframeName) {
 	// TODO: Implement the logic for when a user selects an airframe from the "Airframes" submenu.
-	debugLog(("Airframe selected: " + airframeName).c_str());
+	debugLog(("Airframe selected: " + ConfigManager::getAirframeDisplayName(airframeName) + " (" + airframeName + ")").c_str());
 	// Perform necessary actions to activate the selected airframe.
 }
 

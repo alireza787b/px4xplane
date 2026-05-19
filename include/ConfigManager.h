@@ -88,6 +88,8 @@ public:
     static void configureMotorBrakes(const CSimpleIniA& ini);
     static std::vector<std::string> getAirframeLists();
     static std::string getActiveAirframeName();
+    static std::string getAirframeDisplayName(const std::string& airframeName);
+    static std::string getActiveAirframeDisplayName();
     static void setActiveAirframeName(const std::string& airframeName);
     static std::string getAirframeByIndex(int index);
     static void validateLoadedConfiguration();

@@ -83,6 +83,10 @@ void ConnectionStatusHUD::notifyConnected() {
     isActivelyConnected = true;
 }
 
+static std::string getHUDAirframeText() {
+    return ConfigManager::getActiveAirframeDisplayName();
+}
+
 int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, void* inRefcon) {
     // Skip if HUD is disabled entirely
     if (!enabled) {
@@ -216,6 +220,7 @@ int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, 
     float subColor[3] = { 0.9f, 0.9f, 0.9f }; // Light gray for subtitle
 
     subText[0] = '\0'; // Default: no subtitle
+    const std::string airframeText = getHUDAirframeText();
 
     switch (currentStatus) {
         case ConnectionStatusHUD::Status::WAITING: {
@@ -229,17 +234,17 @@ int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, 
             // Subtitle: Show elapsed time and hint
             if (elapsedTime > 20.0f) {
                 // Warning after 20s
-                snprintf(subText, sizeof(subText), "Waiting %ds - Check PX4 SITL is running", (int)elapsedTime);
+                snprintf(subText, sizeof(subText), "Airframe: %s | Waiting %ds - check PX4 SITL", airframeText.c_str(), (int)elapsedTime);
                 subColor[0] = 1.0f; subColor[1] = 0.6f; subColor[2] = 0.2f; // Orange warning
             } else {
-                snprintf(subText, sizeof(subText), "Waiting for PX4 (%ds)", (int)elapsedTime);
+                snprintf(subText, sizeof(subText), "Airframe: %s | Waiting for PX4 (%ds)", airframeText.c_str(), (int)elapsedTime);
             }
             break;
         }
         case ConnectionStatusHUD::Status::CONNECTED:
             snprintf(mainText, sizeof(mainText), "PX4 SITL CONNECTED");
             mainColor[0] = 0.2f; mainColor[1] = 1.0f; mainColor[2] = 0.2f; // Bright green
-            snprintf(subText, sizeof(subText), "Ready for flight");
+            snprintf(subText, sizeof(subText), "Airframe: %s | Ready for flight", airframeText.c_str());
             break;
         case ConnectionStatusHUD::Status::TIMEOUT:
             snprintf(mainText, sizeof(mainText), "PX4 CONNECTION TIMEOUT");

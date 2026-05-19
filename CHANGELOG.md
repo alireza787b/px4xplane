@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.19] - 2026-05-19
+
+### Fixed
+
+- Raised Alia `MPC_XY_ERR_MAX` from `2` to `10` after `evtol5` showed PX4
+  pausing the takeoff altitude trajectory while lateral residual stayed above
+  the default multicopter threshold. No Alia fixed-wing, TECS, NPFG, transition,
+  or prop-brake default was changed.
+- Recovered Ehang 184 from the v3.4.18 roll oscillation by returning the
+  multicopter attitude/position defaults to the last non-oscillatory baseline.
+  The failed run showed actual roll reaching about `70 deg` against a capped
+  `25 deg` setpoint with allocator saturation.
+- Added the active airframe name to the connection HUD while waiting for PX4
+  SITL, so wrong-airframe selection is visible before arming.
+
+### Changed
+
+- Menu and data-window display now show friendly airframe labels such as
+  `Ehang 184` while preserving config keys like `ehang184` for compatibility.
+- Added report v31 with the `evtol5` Alia/Ehang evidence and next validation
+  checklist.
+
+---
+
 ## [3.4.18] - 2026-05-19
 
 ### Fixed

@@ -4,6 +4,28 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-19
 
+### v3.4.19 Alia Takeoff Gate And Ehang Roll Recovery
+
+- Reviewed `/home/alireza/evtol5.zip`.
+- Alia was a valid `SYS_AUTOSTART=5020` run and had no in-flight PX4 warnings.
+  FW loiter/RTL altitude and lateral behavior matched the intended no-brake
+  baseline, so fixed-wing and transition parameters remain frozen.
+- The only Alia issue was takeoff acceptance delay. The ULog showed
+  `MPC_XY_ERR_MAX=2` stopping vertical setpoint integration while horizontal
+  error stayed above the default threshold; changed only this MC takeoff gate to
+  the PX4 maximum `10`.
+- Confirmed Alia `autoPropBrakes` was disabled in X-Plane Log.txt, with
+  `Motor brakes configured for motors: 00000000`. TruthCapture showed the
+  pusher active in FW and lift motors near idle with low residual rotation.
+- Ehang `evtol5` was a valid `SYS_AUTOSTART=5010` run and failed from control
+  tuning, not mapping. Actual roll exceeded `70 deg` while setpoint was capped
+  around `25 deg`, motors saturated, and PX4 reported repeated roll attitude
+  failures.
+- Rolled Ehang back to the last non-oscillatory MC attitude/position baseline
+  instead of adding another speculative gain increase.
+- Added active airframe display to the waiting HUD and menu-friendly display
+  names, while keeping `config.ini` section names and PX4 make targets unchanged.
+
 ### v3.4.18 Alia Brake Recovery And Ehang Orbit Damping
 
 - Reviewed `/home/alireza/evtol4.zip`.

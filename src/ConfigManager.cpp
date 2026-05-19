@@ -360,6 +360,30 @@ std::string ConfigManager::getConfigName() {
     return configName;
 }
 
+std::string ConfigManager::getAirframeDisplayName(const std::string& airframeName) {
+    if (airframeName == "Alia250") {
+        return "Alia 250";
+    }
+    if (airframeName == "ehang184" || airframeName == "Ehang184") {
+        return "Ehang 184";
+    }
+    if (airframeName == "Cessna172") {
+        return "Cessna 172";
+    }
+    if (airframeName == "QuadTailsitter") {
+        return "Quad Tailsitter";
+    }
+    return airframeName;
+}
+
+std::string ConfigManager::getActiveAirframeDisplayName() {
+    std::string activeAirframe = getActiveAirframeName();
+    if (activeAirframe.empty()) {
+        return "not configured";
+    }
+    return getAirframeDisplayName(activeAirframe);
+}
+
 void ConfigManager::validateLoadedConfiguration() {
     validationSummary = {};
     validationSummary.loaded = !configName.empty();

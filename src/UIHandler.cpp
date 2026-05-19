@@ -959,7 +959,7 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
         drawSmartText(left + 35, scrolledY, buf, (float*)Colors::WARNING, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     }
     else {
-        snprintf(buf, sizeof(buf), "Active Airframe: %s", activeAirframe.c_str());
+        snprintf(buf, sizeof(buf), "Active Airframe: %s (%s)", ConfigManager::getAirframeDisplayName(activeAirframe).c_str(), activeAirframe.c_str());
         scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
         drawSmartText(left + 35, scrolledY, buf, mixingColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     }
