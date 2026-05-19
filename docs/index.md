@@ -7,6 +7,7 @@ This index is the stable entry point for user and developer documentation.
 - [Build](BUILD.md)
 - [Build System](BUILD_SYSTEM.md)
 - [Alia X-Plane 12 Test Card](ALIA_XPLANE12_TEST.md)
+- [Ehang 184 X-Plane 12 Test Card](EHANG184_XPLANE12_TEST.md)
 - [Custom Airframe Config](custom-airframe-config.md)
 - [Config Editor](config-editor.html)
 
@@ -18,6 +19,8 @@ This index is the stable entry point for user and developer documentation.
 
 ## Reports
 
+- [Report v12 - Alia Validation Follow-Up](reports/report_v12.md)
+- [Report v13 - Alia Retest Regression Triage](reports/report_v13.md)
 - [Report v14 - Offline Work Plan](reports/report_v14.md)
 - [Report v15 - Config Safety Slice](reports/report_v15.md)
 - [Report v16 - Runtime Config Validation UI Slice](reports/report_v16.md)
@@ -30,11 +33,13 @@ This index is the stable entry point for user and developer documentation.
 - [Report v23 - Alia Test5 Crash Recovery](reports/report_v23.md)
 - [Report v24 - Alia Test6 Fixed-Wing Tuning](reports/report_v24.md)
 - [Report v25 - Alia Test7 Orbit Recovery](reports/report_v25.md)
+- [Report v26 - Alia Final Polish and Ehang Prep](reports/report_v26.md)
 
 ## Current Policy
 
-- Use the `v3.4.13` Alia orbit-recovery package for the next retest, and reset PX4
-  SITL parameters with `distclean` before judging the package.
+- Use the `v3.4.14` package for the final Alia confirmation and first controlled
+  Ehang 184 validation, and reset PX4 SITL parameters with `distclean` before
+  judging the package.
 - Alia lift-prop auto braking is disabled by default until a mode-aware brake
   policy is validated.
 - Use `tools/validate_config.py config/config.ini` before packaging custom

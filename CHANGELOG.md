@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.14] - 2026-05-18
+
+### Changed
+
+- Polished Alia final-test parameters after the first broadly accepted v3.4.13
+  run: faster high-altitude multicopter descent, slower final touchdown phase,
+  larger fixed-wing loiter/RTL radii, and PX4-valid fixed-wing roll limit.
+- Prepared Ehang 184 for controlled validation with PX4-valid low jerk,
+  explicit acceleration limits, smoother yaw/tilt limits, slower takeoff, and
+  a documented landing profile.
+- Removed unsupported passenger/production certainty from Ehang comments and
+  aligned sensor comments with the Alia X-Plane baro/FPS lessons.
+
+### Fixed
+
+- Moved tracked root reports into `docs/reports` and removed a stale tracked
+  Windows console temp file from the repository.
+- Added an Ehang 184 validation card to the packaged plugin docs.
+
+---
+
 ## [3.4.13] - 2026-05-18
 
 ### Fixed

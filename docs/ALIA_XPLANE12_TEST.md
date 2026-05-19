@@ -102,17 +102,23 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.13` Alia orbit-recovery test, verify these key defaults are
+For the current `v3.4.14` Alia final-polish test, verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
 
 - `MPC_TKO_SPEED=3.0`
+- `MPC_Z_VEL_MAX_DN=2.2`
+- `MPC_Z_V_AUTO_DN=2.2`
+- `MPC_LAND_ALT1=8.0`
+- `MPC_LAND_ALT2=3.0`
+- `MPC_LAND_SPEED=0.6`
+- `MPC_LAND_CRWL=0.25`
 - `NPFG_PERIOD=35.0`
 - `NPFG_DAMPING=0.80`
 - `NPFG_ROLL_TC=0.7`
 - `NPFG_SW_DST_MLT=0.7`
-- `NAV_LOITER_RAD=1200.0`
-- `RTL_LOITER_RAD=1200.0`
+- `NAV_LOITER_RAD=1500.0`
+- `RTL_LOITER_RAD=1500.0`
 - `CAL_BARO0_ID=6620172`
 - `CAL_BARO0_PRIO=100`
 - `CAL_BARO1_ID=6620428`
@@ -132,7 +138,7 @@ parameter store and rerun before judging the package.
 - `FW_T_SINK_R_SP=1.5`
 - `FW_PSP_OFF=3.0`
 - `FW_P_LIM_MAX=18.0`
-- `FW_R_LIM=22.0`
+- `FW_R_LIM=35.0`
 - `FW_THR_TRIM=0.80`
 - `FW_THR_SLEW_MAX=0.50`
 - `WEIGHT_BASE=3120.0`
@@ -140,14 +146,15 @@ parameter store and rerun before judging the package.
 - `VT_B_TRANS_DUR=35.0`
 - `VT_B_DEC_MSS=2.2`
 - `VT_B_DEC_I=0.25`
-- `RTL_DESCEND_ALT=300`
+- `RTL_RETURN_ALT=100`
+- `RTL_DESCEND_ALT=80`
 
 Do not use the exact accelerometer offset values as a package pass/fail check.
 PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.13`
+- `px4xplane: Version: v3.4.14`
 - `px4xplane: Motor brakes configured for motors: 00000000`
 
 The `px4xplane/px4_airframes` folder in plugin releases contains reference

@@ -18,18 +18,17 @@
 #   make px4_sitl xplane_ehang184
 #
 # CONFIGURATION NOTES:
-# This airframe is optimized for large manned aircraft operations with focus on:
-# - Passenger comfort (smooth flight, gentle transitions)
-# - Urban air mobility safety margins
-# - Robust sensor fusion for variable X-Plane FPS (30-150 Hz)
-# - Production-ready parameter set for passenger operations
+# This airframe starts from conservative large-multicopter SITL values focused on:
+# - Smooth flight and gentle commanded accelerations
+# - Urban air mobility style margins for demonstration work
+# - Robust sensor fusion for variable X-Plane FPS
 #
-# Key optimizations:
-# - Barometer noise: 3.5mm (10x reduction from default for stable altitude)
-# - Innovation gates: 5.0-8.0 (tolerates FPS variability)
-# - Navigation radii: 35m horizontal, 3m vertical (smooth waypoint transitions)
-# - Cruise speed: 8 m/s (~29 km/h) for passenger comfort
-# - Reduced jerk limits (0.8 m/s³) for smooth ride quality
+# Key values:
+# - Barometer noise: 1.0 m to avoid overconfident frame-limited X-Plane fusion
+# - Innovation gates: 5.0-10.0 to tolerate simulator timing variability
+# - Navigation radii: 25 m horizontal, 2 m vertical for smooth but useful tracking
+# - Cruise speed: 8 m/s (~29 km/h)
+# - Jerk/acceleration limits kept near PX4-valid comfort-oriented minimums
 #
 ################################################################################
 
@@ -58,7 +57,7 @@
 # Motor 3: Rear-Right  (CW)  - Position: (-1.4, +1.4, 0)m from CG
 #
 # CT=6.5: Thrust coefficient tuned for large rotors
-# KM=±0.05: Moment coefficient (sign determines rotation direction)
+# KM=+/-0.05: Moment coefficient (sign determines rotation direction)
 
 param set-default CA_AIRFRAME 0
 param set-default CA_ROTOR_COUNT 4
@@ -106,21 +105,19 @@ param set-default PWM_MAIN_FUNC4 104
 # Optimized for X-Plane SITL with variable FPS (30-150 Hz)
 #
 # BAROMETER TUNING:
-# - BARO_NOISE: 3.5mm (matches sensor implementation + safety margin)
-#   * Actual sensor noise: 1mm gaussian
-#   * 3.5x margin accounts for X-Plane physics + network jitter
-#   * Result: Vertical velocity <0.3 m/s (was 0.5-1.5 m/s with default)
-# - BARO_GATE: 8.0 (increased from default 3.0)
+# - BARO_NOISE: 1.0 m, matching the Alia SITL lesson that X-Plane baro should
+#   not be treated as centimeter-class when frame timing and physics vary.
+# - BARO_GATE: 10.0 (increased from default 3.0)
 #   * Tolerates FPS-induced timing gaps and altitude transients
 #   * Prevents false "BARO switch" errors during mission climbs
 #
 # GPS TUNING:
-# - GPS_P_NOISE: 0.15m (matches vertical GPS accuracy)
-#   * Prevents height drift by favoring barometer (±3.5mm) over GPS (±30cm)
+# - GPS_P_NOISE: 0.15 m, kept conservative for this X-Plane model.
+#   * Barometer remains the primary smooth height source, but not centimeter-class.
 # - Horizontal noise: 0.01m (GPS horizontal is more accurate)
 #
 # INNOVATION GATES:
-# All gates increased to 5.0-8.0 (default 3.0) for FPS variability tolerance.
+# All gates increased from default values for FPS variability tolerance.
 # Prevents false sensor faults during:
 # - X-Plane FPS drops (timing jitter)
 # - Mission altitude changes (pressure transients)
@@ -157,8 +154,8 @@ param set-default EKF2_ACC_NOISE 1.0      # Better accelerometer trust
 param set-default EKF2_ACC_B_NOISE 0.001  # Accel bias noise - enables bias learning
 
 # X-PLANE SITL NOTE: EKF2_ABL_LIM = 2.5 (vs Gazebo/jMAVSim default 0.4)
-# Required because X-Plane has lower sensor rate (~100Hz vs 250Hz) and
-# inherent physics engine variations that cause EKF2 to estimate higher bias.
+# Required because X-Plane sensor updates are frame-paced and can vary with
+# rendering load, which can make EKF2 estimate higher acceleration bias.
 # This does NOT affect flight performance - only the preflight arming check.
 
 # Gyroscope Noise (v3.2.0 - added for bias estimation stability)
@@ -192,8 +189,8 @@ param set-default EKF2_WIND_NSD 0.01
 param set-default EKF2_REQ_VDRIFT 1.0
 
 # IMU configuration
-param set-default IMU_GYRO_RATEMAX 100
-param set-default IMU_INTEG_RATE 100
+param set-default IMU_GYRO_RATEMAX 200
+param set-default IMU_INTEG_RATE 200
 
 
 ################################################################################
@@ -275,15 +272,21 @@ param set-default MPC_Z_VEL_D_ACC 0.2
 
 # Velocity limits (passenger comfort priority)
 param set-default MPC_XY_VEL_MAX 12       # Max horizontal (m/s) ~43 km/h
-param set-default MPC_Z_VEL_MAX_UP 3      # Max ascent (m/s) - smooth climb
-param set-default MPC_Z_VEL_MAX_DN 1.5    # Max descent (m/s) - gentle
+param set-default MPC_Z_VEL_MAX_UP 3      # Max ascent (m/s)
+param set-default MPC_Z_VEL_MAX_DN 1.5    # Max manual descent (m/s)
+param set-default MPC_Z_V_AUTO_UP 2.0
+param set-default MPC_Z_V_AUTO_DN 1.0
 param set-default MPC_VEL_MANUAL 10
 param set-default MPC_XY_CRUISE 8         # Cruise speed ~29 km/h (passenger comfort)
 
 # Trajectory & jerk limits (reduced for smooth ride)
 param set-default MPC_XY_TRAJ_P 0.5
-param set-default MPC_JERK_AUTO 0.8       # Auto jerk limit (reduced for comfort)
-param set-default MPC_JERK_MAX 2.5        # Max jerk (reduced for comfort)
+param set-default MPC_ACC_HOR 2.0
+param set-default MPC_ACC_HOR_MAX 2.0
+param set-default MPC_ACC_UP_MAX 2.0
+param set-default MPC_ACC_DOWN_MAX 2.0
+param set-default MPC_JERK_AUTO 1.0       # PX4-valid low jerk for smooth auto motion
+param set-default MPC_JERK_MAX 2.0        # Smooth manual acceleration changes
 
 # Error limits
 param set-default MPC_XY_ERR_MAX 2
@@ -295,8 +298,8 @@ param set-default MPC_XY_ERR_MAX 2
 # Manual flight characteristics and feel.
 
 # Tilt & attitude limits
-param set-default MPC_MAN_TILT_MAX 35
-param set-default MPC_TILTMAX_AIR 45
+param set-default MPC_MAN_TILT_MAX 25
+param set-default MPC_TILTMAX_AIR 30
 param set-default MPC_TILTMAX_LND 12
 
 # Throttle settings
@@ -308,10 +311,10 @@ param set-default MPC_THR_CURVE 0
 param set-default MPC_THR_XY_MARG 0.3
 
 # Yaw control
-param set-default MPC_MAN_Y_MAX 20
+param set-default MPC_MAN_Y_MAX 15
 param set-default MPC_MAN_Y_TAU 0.08
 param set-default MPC_YAWRAUTO_ACC 20
-param set-default MPC_YAWRAUTO_MAX 30
+param set-default MPC_YAWRAUTO_MAX 20
 
 # Position hold
 param set-default MPC_HOLD_MAX_XY 0.8
@@ -332,15 +335,16 @@ param set-default MPC_XY_VEL_ALL -10
 ################################################################################
 
 # Takeoff
-param set-default MPC_TKO_SPEED 1.5       # Climb rate (m/s)
+param set-default MPC_TKO_SPEED 1.2       # Smooth takeoff climb rate (m/s)
 param set-default MPC_TKO_RAMP_T 3        # Ramp time (s)
 
 # Landing
-param set-default MPC_LAND_ALT1 10        # Phase 1 altitude (m)
-param set-default MPC_LAND_ALT2 5         # Phase 2 altitude (m)
+param set-default MPC_LAND_ALT1 8         # Start slowing close to ground (m)
+param set-default MPC_LAND_ALT2 3         # Final landing speed below this height (m)
 param set-default MPC_LAND_ALT3 1         # Phase 3 altitude (m)
-param set-default MPC_LAND_CRWL 0.3       # Crawl speed (m/s)
-param set-default MPC_LAND_RADIUS 1000
+param set-default MPC_LAND_SPEED 0.6      # PX4 minimum landing descend rate (m/s)
+param set-default MPC_LAND_CRWL 0.25      # Crawl speed with valid range data (m/s)
+param set-default MPC_LAND_RADIUS 25
 param set-default MPC_LAND_RC_HELP 1
 
 # Land detector
@@ -378,16 +382,16 @@ param set-default MC_AT_SYSID_AMP 0.7
 ################################################################################
 # NAVIGATION & MISSION
 ################################################################################
-# LARGE MANNED AIRCRAFT CONFIGURATION
+# LARGE MULTICOPTER CONFIGURATION
 #
-# Design philosophy: This is a passenger-carrying airtaxi (~600kg MTOW),
-# not a small racing drone. Parameters prioritize passenger comfort, safety
-# margins, and operational efficiency over pinpoint accuracy.
+# Design philosophy: this X-Plane Ehang-style multicopter is not a small racing
+# drone. Parameters prioritize smooth motion and stable demonstration behavior
+# over aggressive point capture.
 #
 # TUNING BY AIRCRAFT SIZE:
 # - Small drone (<2kg):       NAV_ACC_RAD=5m,  ALT_RAD=0.8m, JERK=2.0
 # - Medium drone (2-25kg):    NAV_ACC_RAD=10m, ALT_RAD=1.5m, JERK=1.5
-# - Large airtaxi (>100kg):   NAV_ACC_RAD=35m, ALT_RAD=3m, JERK=0.8  ← Current
+# - Large multicopter (>100kg): NAV_ACC_RAD=25m, ALT_RAD=2m, JERK=1.0 <-- Current
 # - Heavy cargo (>500kg):     NAV_ACC_RAD=50m, ALT_RAD=5m, JERK=0.5
 
 # Mission parameters
@@ -395,11 +399,11 @@ param set-default MIS_YAW_ERR 30          # Max yaw error (deg) - gentle correct
 param set-default MIS_YAW_TMT 5
 param set-default MIS_TAKEOFF_ALT 2.5     # Default takeoff alt (m)
 
-# Navigation acceptance radii (CRITICAL FOR LARGE AIRCRAFT)
-# Larger radii = smoother flight, less hovering at waypoints
-# 35m radius provides smooth urban flight comfortable for passengers
-param set-default NAV_ACC_RAD 35          # Horizontal acceptance radius (m)
-param set-default NAV_MC_ALT_RAD 3        # Vertical acceptance radius (m)
+# Navigation acceptance radii
+# Large enough for smooth waypoint capture, but tighter than the early
+# conservative file so final Ehang validation can judge tracking quality.
+param set-default NAV_ACC_RAD 25          # Horizontal acceptance radius (m)
+param set-default NAV_MC_ALT_RAD 2        # Vertical acceptance radius (m)
 
 # Return to launch
 param set-default RTL_RETURN_ALT 30       # RTL altitude (m)
@@ -440,7 +444,8 @@ param set-default GPS_UBX_DYNMODEL 6      # Airborne <1g
 param set-default MC_ORBIT_RAD_MAX 1000
 
 # System response
-param set-default SYS_VEHICLE_RESP -0.4   # Smooth (-1=very smooth, 0=responsive)
+# Negative value keeps the explicit airframe parameters above in control.
+param set-default SYS_VEHICLE_RESP -0.4
 
 # Battery compensation
 param set-default MC_BAT_SCALE_EN 0

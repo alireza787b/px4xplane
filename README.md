@@ -99,6 +99,8 @@ px4xplane/
 ├── 64/
 │   ├── win.xpl
 │   └── config.ini                ← WITH binary
+├── ALIA_XPLANE12_TEST.md
+├── EHANG184_XPLANE12_TEST.md
 ├── px4_airframes/                ← Reference/install copies, not read by plugin
 │   ├── 5001_xplane_cessna172
 │   ├── 5002_xplane_tb2
@@ -117,6 +119,8 @@ Config tooling:
 - `64/config_schema.json` documents valid fields, ranges, and reload policy.
 - `docs/config-editor.html` can import/review/edit/export `config.ini` without
   writing directly into X-Plane or PX4.
+- The packaged Alia and Ehang test cards describe the expected PX4 airframe,
+  plugin config, sanity values, and log bundle for validation runs.
 
 **To upgrade**: Remove old v2.x installation and download v3.0.0 from [Releases](https://github.com/alireza787b/px4xplane/releases/tag/v3.0.0). See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
 

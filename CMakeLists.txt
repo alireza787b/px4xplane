@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.13 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.14 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -303,6 +303,13 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/EHANG184_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../EHANG184_XPLANE12_TEST.md
+    COMMENT "Copying Ehang 184 X-Plane test card to plugin root directory"
+)
+
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -349,6 +356,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/ALIA_XPLANE12_TEST.md
         ${OUTPUT_DIR}/../ALIA_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/EHANG184_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../EHANG184_XPLANE12_TEST.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

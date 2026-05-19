@@ -15,7 +15,8 @@
 # Date:              May 2026
 #
 # AIRCRAFT REFERENCE VALUES USED FOR INITIAL TUNING:
-# - MTOW: 6,000 lb (2,721 kg) - Large passenger eVTOL
+# - Active SITL mass model: 3,120 kg, matching the tested X-Plane aircraft
+# - Public Alia reference MTOW: about 6,000 lb (2,721 kg)
 # - Wingspan: 50 ft (15 m) - Fixed-wing design
 # - Cruise Speed: 170 mph (75 m/s) in forward flight
 # - Range: 250 nautical miles (460 km)
@@ -270,7 +271,8 @@ param set-default MPC_Z_VEL_D_ACC 0.55  # Increased from 0.45 for better damping
 # Velocity Limits (heavy aircraft performance)
 param set-default MPC_XY_VEL_MAX 15      # Increased for heavy aircraft
 param set-default MPC_Z_VEL_MAX_UP 4     # Increased for heavy aircraft
-param set-default MPC_Z_VEL_MAX_DN 1.5
+param set-default MPC_Z_VEL_MAX_DN 2.2
+param set-default MPC_Z_V_AUTO_DN 2.2
 param set-default MPC_VEL_MANUAL 10
 param set-default MPC_XY_CRUISE 10
 param set-default MPC_XY_VEL_ALL -10
@@ -331,10 +333,12 @@ param set-default MPC_TKO_SPEED 3.0
 param set-default MPC_TKO_RAMP_T 3
 
 # Landing
-param set-default MPC_LAND_ALT1 10
-param set-default MPC_LAND_ALT2 5
+# Descend efficiently above 8 m AGL, then slow to a passenger-friendly flare.
+param set-default MPC_LAND_ALT1 8
+param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1
-param set-default MPC_LAND_CRWL 0.3
+param set-default MPC_LAND_SPEED 0.6
+param set-default MPC_LAND_CRWL 0.25
 param set-default MPC_LAND_RADIUS 1000
 param set-default MPC_LAND_RC_HELP 1
 
@@ -413,10 +417,9 @@ param set-default VT_PITCH_MIN -5.0
 ################################################################################
 # SECTION 11: FIXED-WING FLIGHT PARAMETERS (CRUISE MODE)
 ################################################################################
-# v3.4.13 recovery focus: test7 used the intended v3.4.12 params, but the
-# long NPFG period made loiter capture too lazy while roll still saturated.
-# Keep the next slice focused on smoother capture, lower bank, and transition
-# pitch trim without changing the bridge sensor contract.
+# v3.4.14 final-polish focus: keep the accepted v3.4.13 guidance behavior,
+# restore PX4-valid bank metadata, and use larger loiter radii for comfortable
+# large-eVTOL turns without changing the bridge sensor contract.
 
 # Rate Control
 param set-default FW_RR_P 0.47
@@ -425,7 +428,7 @@ param set-default FW_RR_D 0.1
 param set-default FW_RR_FF 0.5
 param set-default FW_R_RMAX 18.0
 param set-default FW_R_TC 0.7
-param set-default FW_R_LIM 22.0
+param set-default FW_R_LIM 35.0
 
 param set-default FW_PR_P 0.365
 param set-default FW_PR_I 0.045
@@ -524,15 +527,15 @@ param set-default NAV_ACC_RAD 30         # Tighter landing (reduced from 50m)
 param set-default NAV_MC_ALT_RAD 5.0     # Heavier aircraft
 
 # FW Mode Acceptance
-param set-default NAV_LOITER_RAD 1200.0
+param set-default NAV_LOITER_RAD 1500.0
 param set-default NAV_FW_ALT_RAD 50.0
 param set-default NAV_MIN_LTR_ALT -1.0
 
 # Return to Launch
 param set-default RTL_RETURN_ALT 100
-param set-default RTL_DESCEND_ALT 300
+param set-default RTL_DESCEND_ALT 80
 param set-default RTL_MIN_DIST 50.0
-param set-default RTL_LOITER_RAD 1200.0
+param set-default RTL_LOITER_RAD 1500.0
 
 
 ################################################################################
@@ -601,7 +604,7 @@ param set-default MC_BAT_SCALE_EN 0
 #
 # Tight loiter radius / oscillation in FW mode:
 #   - Current baseline uses NPFG_PERIOD = 35.0, NPFG_DAMPING = 0.80,
-#     NAV_LOITER_RAD = 1200.0, RTL_LOITER_RAD = 1200.0, FW_R_LIM = 22.0
+#     NAV_LOITER_RAD = 1500.0, RTL_LOITER_RAD = 1500.0, FW_R_LIM = 35.0
 #   - Tune NPFG period/damping, roll limit, and TECS together from ULog evidence
 #
 # Altitude oscillation during cruise:

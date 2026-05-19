@@ -943,3 +943,22 @@ This log preserves project decisions, evidence, and next actions across the long
 - Reduced normal plugin log noise and documented packaged PX4 airframes as
   reference/install copies only.
 - New report: `docs/reports/report_v25.md`.
+
+### px4xplane v3.4.14 Alia Final Polish and Ehang Prep
+
+- Analyzed `/home/alireza/alia-test8.zip`, the first broadly accepted Alia run.
+- Confirmed v3.4.13 used `SYS_AUTOSTART=5020`, had no ULog dropouts, no
+  in-flight estimator/baro/GPS warnings, and zero TruthCapture dropped rows.
+- Found landing duration was mostly commanded descent time from about `165 m`
+  AGL, not an estimator or bridge fault.
+- Changed Alia RTL/landing to descend faster above `8 m` AGL, slow the final
+  touchdown phase below `3 m`, and stop treating `300 m` as the RTL descent
+  altitude.
+- Increased Alia FW loiter/RTL radius to `1500 m` and restored `FW_R_LIM` to
+  PX4's valid minimum of `35 deg`.
+- Prepared Ehang 184 for first controlled validation with PX4-valid low jerk,
+  explicit acceleration limits, smoother yaw/tilt limits, and a documented
+  test card.
+- Moved tracked root reports v12/v13 into `docs/reports` and removed a stale
+  tracked Windows temp file.
+- New report: `docs/reports/report_v26.md`.
