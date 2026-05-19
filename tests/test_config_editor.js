@@ -21,6 +21,7 @@ autoPropBrakeApplyThreshold = 0.01
 autoPropBrakeReleaseThreshold = 0.12
 autoPropBrakeDwellSec = 2.0
 autoPropBrakeMinAirspeedMps = 55.0
+autoPropBrakeMode = feather
 autoPropBrakeUseFailure = false
 channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
 channel4 = sim/flightmodel/controls/wing2l_ail1def, float, 0, [-20 10] | sim/flightmodel/controls/wing2l_ail2def, float, 0, [-20 10]
@@ -49,6 +50,7 @@ channel0 = , floatArray, 0, [1 1]
 autoPropBrakes = 9
 autoPropBrakeApplyThreshold = 0.2
 autoPropBrakeReleaseThreshold = 0.1
+autoPropBrakeMode = broken
 `);
 
 const messages = editor.validateConfig(bad, schema).map((issue) => `${issue.level}:${issue.location}:${issue.message}`);
@@ -58,6 +60,7 @@ assert(messages.some((message) => message.includes("below minimum 20")));
 assert(messages.some((message) => message.includes("unknown global key")));
 assert(messages.some((message) => message.includes("invalid motor index '9'")));
 assert(messages.some((message) => message.includes("release threshold must be greater")));
+assert(messages.some((message) => message.includes("expected one of: feather, hard_lock, prop_separate")));
 assert(messages.some((message) => message.includes("empty dataref")));
 assert(messages.some((message) => message.includes("floatArray requires")));
 assert(messages.some((message) => message.includes("output range endpoints are equal")));

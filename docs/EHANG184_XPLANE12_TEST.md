@@ -33,9 +33,9 @@ X-Plane multicopter after the Alia tuning lessons were applied.
 Confirm these values in the ULog before judging the result:
 
 - `SYS_AUTOSTART=5010`
-- `MPC_XY_CRUISE=6.0`
-- `MPC_XY_VEL_MAX=8.0`
-- `MPC_VEL_MANUAL=6.0`
+- `MPC_XY_CRUISE=5.0`
+- `MPC_XY_VEL_MAX=6.5`
+- `MPC_VEL_MANUAL=5.0`
 - `MPC_Z_V_AUTO_UP=2.0`
 - `MPC_Z_V_AUTO_DN=1.2`
 - `MPC_TKO_SPEED=2.0`
@@ -44,8 +44,8 @@ Confirm these values in the ULog before judging the result:
 - `MPC_LAND_ALT2=3.0`
 - `MPC_LAND_CRWL=0.25`
 - `LNDMC_Z_VEL_MAX=0.20`
-- `MPC_ACC_HOR=2.0`
-- `MPC_ACC_HOR_MAX=2.0`
+- `MPC_ACC_HOR=1.5`
+- `MPC_ACC_HOR_MAX=1.8`
 - `MPC_ACC_UP_MAX=2.0`
 - `MPC_ACC_DOWN_MAX=2.0`
 - `MPC_JERK_AUTO=1.0`
@@ -63,7 +63,7 @@ Confirm these values in the ULog before judging the result:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.15`
+- `px4xplane: Version: v3.4.16`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
 
 The `evtol1` Ehang log showed QGC `MAV_CMD_DO_REPOSITION` commands accepted
@@ -72,6 +72,13 @@ next validation, use Orbit, RTL, or a mission/auto mode for objective path
 tracking. A QGC "Go to location" test is still useful, but only record it as a
 command/mode-behavior check unless PX4 changes into a mode that actually follows
 the reposition setpoint.
+
+The `evtol2` orbit log showed the vehicle initially starting well outside the
+commanded circle. PX4 Orbit mode first captures the closest point on the
+commanded circle, so a short S-turn/zigzag before the stable orbit is expected
+when the command is sent from outside the radius. Judge the tune after capture:
+radius hunting should be damped and the vehicle should not repeatedly hit the
+horizontal velocity limit.
 
 ## Acceptance
 

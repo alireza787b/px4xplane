@@ -205,6 +205,17 @@
       "reload_policy": "reconnect_before_flight",
       "description": "Optional true-airspeed gate for applying prop brakes. Zero disables the airspeed gate."
     },
+    "autoPropBrakeMode": {
+      "type": "string",
+      "default": "feather",
+      "enum": [
+        "feather",
+        "hard_lock",
+        "prop_separate"
+      ],
+      "reload_policy": "reconnect_before_flight",
+      "description": "X-Plane prop-brake mechanism. feather writes normal prop actuator requests; hard_lock also writes low-level flightmodel prop geometry; prop_separate uses X-Plane prop-separation failures."
+    },
     "autoPropBrakeUseFailure": {
       "type": "bool",
       "default": false,

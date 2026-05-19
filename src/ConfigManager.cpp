@@ -146,6 +146,7 @@ float ConfigManager::prop_brake_apply_threshold = 0.01f;
 float ConfigManager::prop_brake_release_threshold = 0.12f;
 float ConfigManager::prop_brake_dwell_s = 2.0f;
 float ConfigManager::prop_brake_min_airspeed_mps = 0.0f;
+std::string ConfigManager::prop_brake_mode = "feather";
 bool ConfigManager::prop_brake_use_failure = false;
 
 // MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
@@ -736,6 +737,7 @@ void ConfigManager::configureMotorBrakes(const CSimpleIniA& ini) {
     prop_brake_release_threshold = static_cast<float>(ini.GetDoubleValue(configName.c_str(), "autoPropBrakeReleaseThreshold", 0.12));
     prop_brake_dwell_s = static_cast<float>(ini.GetDoubleValue(configName.c_str(), "autoPropBrakeDwellSec", 2.0));
     prop_brake_min_airspeed_mps = static_cast<float>(ini.GetDoubleValue(configName.c_str(), "autoPropBrakeMinAirspeedMps", 0.0));
+    prop_brake_mode = ini.GetValue(configName.c_str(), "autoPropBrakeMode", "feather");
     prop_brake_use_failure = ini.GetBoolValue(configName.c_str(), "autoPropBrakeUseFailure", false);
 
     if (!std::isfinite(prop_brake_apply_threshold) || prop_brake_apply_threshold < 0.0f || prop_brake_apply_threshold > 1.0f) {
@@ -758,6 +760,10 @@ void ConfigManager::configureMotorBrakes(const CSimpleIniA& ini) {
         XPLMDebugString("px4xplane: [WARNING] Invalid autoPropBrakeMinAirspeedMps, using 0.0\n");
         prop_brake_min_airspeed_mps = 0.0f;
     }
+    if (prop_brake_mode != "feather" && prop_brake_mode != "hard_lock" && prop_brake_mode != "prop_separate") {
+        XPLMDebugString("px4xplane: [WARNING] Invalid autoPropBrakeMode, using feather\n");
+        prop_brake_mode = "feather";
+    }
 
     if (!brakesConfig.empty()) {
         std::vector<int> motorIndices = parseMotorIndices(brakesConfig);
@@ -773,8 +779,8 @@ void ConfigManager::configureMotorBrakes(const CSimpleIniA& ini) {
     XPLMDebugString(("px4xplane: Motor brakes configured for motors: " + motorsWithBrakes.to_string() + "\n").c_str());
     char policyBuf[256];
     snprintf(policyBuf, sizeof(policyBuf),
-        "px4xplane: Prop brake policy apply<=%.3f release>=%.3f dwell=%.2fs min_tas=%.1fm/s failure=%s\n",
-        prop_brake_apply_threshold, prop_brake_release_threshold, prop_brake_dwell_s,
+        "px4xplane: Prop brake policy mode=%s apply<=%.3f release>=%.3f dwell=%.2fs min_tas=%.1fm/s failure=%s\n",
+        prop_brake_mode.c_str(), prop_brake_apply_threshold, prop_brake_release_threshold, prop_brake_dwell_s,
         prop_brake_min_airspeed_mps, prop_brake_use_failure ? "true" : "false");
     XPLMDebugString(policyBuf);
 }

@@ -14,7 +14,7 @@ or aircraft behavior.
 - channel range: `channel0` through `channel15`
 - X-Plane motor index range for `autoPropBrakes`: `0` through `7`
 - prop-brake policy fields: apply/release thresholds, dwell, optional
-  true-airspeed gate, and experimental failure-dataref use
+  true-airspeed gate, mode, and experimental failure-dataref use
 - config reload policy for user-facing tools and docs
 
 Run the validator before packaging:

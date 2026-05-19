@@ -123,10 +123,12 @@ bool enforcePropBrakeDataRefs(int motorIndex)
 	wroteAny |= setFloatArrayElement("sim/cockpit2/engine/actuators/prop_angle_degrees", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
 	wroteAny |= setFloatArrayElement("sim/cockpit2/engine/actuators/prop_pitch_deg", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
 	wroteAny |= setFloatArrayElement("sim/cockpit2/engine/actuators/prop_rotation_speed_rad_sec", motorIndex, 0.0f);
-	wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
-	wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
-	wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_tacrad", motorIndex, 0.0f);
-	wroteAny |= setFloatArrayElement("sim/flightmodel2/engines/prop_rotation_angle_deg", motorIndex, 0.0f);
+	if (ConfigManager::prop_brake_mode == "hard_lock") {
+		wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
+		wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_pitch_deg_use", motorIndex, PROP_BRAKE_FEATHER_ANGLE_DEG);
+		wroteAny |= setFloatArrayElement("sim/flightmodel/engine/POINT_tacrad", motorIndex, 0.0f);
+		wroteAny |= setFloatArrayElement("sim/flightmodel2/engines/prop_rotation_angle_deg", motorIndex, 0.0f);
+	}
 	return wroteAny;
 }
 
@@ -1014,9 +1016,11 @@ void DataRefManager::applyBrake(int motorIndex, bool enable) {
 			XPLMSetDatai(seizureFailureDataRef, XPLANE_FAILURE_ALWAYS);
 		}
 		if (propSepFailureDataRef != nullptr) {
-			XPLMSetDatai(propSepFailureDataRef, XPLANE_FAILURE_NONE);
+			XPLMSetDatai(propSepFailureDataRef,
+				     ConfigManager::prop_brake_mode == "prop_separate" ? XPLANE_FAILURE_ALWAYS : XPLANE_FAILURE_NONE);
 		}
-		if (!enforcePropBrakeDataRefs(motorIndex) && !propBrakeWarningLogged.test(motorIndex)) {
+		if (ConfigManager::prop_brake_mode != "prop_separate"
+		    && !enforcePropBrakeDataRefs(motorIndex) && !propBrakeWarningLogged.test(motorIndex)) {
 			XPLMDebugString(("px4xplane: No prop feather/speed DataRefs available for brake motor " + std::to_string(motorIndex) + "\n").c_str());
 			propBrakeWarningLogged.set(motorIndex);
 		}

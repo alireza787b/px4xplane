@@ -80,6 +80,10 @@ def validate_scalar_field(section: str, key: str, value: str, field_schema: dict
         return
 
     if field_type == "string":
+        allowed_values = field_schema.get("enum")
+        if allowed_values and value not in allowed_values:
+            joined = ", ".join(str(item) for item in allowed_values)
+            yield Issue("error", section, key, f"expected one of: {joined}")
         return
 
     if field_type == "bool":

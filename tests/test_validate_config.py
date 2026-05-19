@@ -30,6 +30,7 @@ class ValidateConfigTest(unittest.TestCase):
                         "autoPropBrakes = 0, 9, bad",
                         "autoPropBrakeApplyThreshold = 0.20",
                         "autoPropBrakeReleaseThreshold = 0.10",
+                        "autoPropBrakeMode = broken",
                     ]
                 ),
                 encoding="utf-8",
@@ -43,6 +44,7 @@ class ValidateConfigTest(unittest.TestCase):
         self.assertTrue(any("motor index 9 outside" in message for message in messages))
         self.assertTrue(any("invalid motor index 'bad'" in message for message in messages))
         self.assertTrue(any("release threshold must be greater" in message for message in messages))
+        self.assertTrue(any("expected one of: feather, hard_lock, prop_separate" in message for message in messages))
 
     def test_detects_float_array_without_index_and_bad_range(self):
         with tempfile.TemporaryDirectory() as tmp_dir:

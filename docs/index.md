@@ -35,13 +35,15 @@ This index is the stable entry point for user and developer documentation.
 - [Report v25 - Alia Test7 Orbit Recovery](reports/report_v25.md)
 - [Report v26 - Alia Final Polish and Ehang Prep](reports/report_v26.md)
 - [Report v27 - Alia Bank Recovery and Ehang Nav Tuning](reports/report_v27.md)
+- [Report v28 - Alia Transition Brake and Ehang Orbit Tuning](reports/report_v28.md)
 
 ## Current Policy
 
-- Use the `v3.4.15` package for the next Alia and Ehang validation, and reset
+- Use the `v3.4.16` package for the next Alia and Ehang validation, and reset
   PX4 SITL parameters with `distclean` before judging the package.
 - Alia lift-prop braking is enabled only through the generic command/dwell/
-  airspeed-gated policy; failure-dataref seizure remains disabled.
+  airspeed-gated policy; `feather` is the default retest mode, while
+  `hard_lock` and `prop_separate` are controlled A/B options.
 - Use `tools/validate_config.py config/config.ini` before packaging custom
   mappings.
 - Use the X-Plane menu `Advanced > Validate Config` after changing the active

@@ -142,6 +142,7 @@ public:
     static float prop_brake_release_threshold;     // Release all brakes as soon as any configured motor rises above this
     static float prop_brake_dwell_s;               // Required continuous low-command dwell before applying
     static float prop_brake_min_airspeed_mps;      // Optional true-airspeed gate for applying
+    static std::string prop_brake_mode;            // feather, hard_lock, or prop_separate
     static bool prop_brake_use_failure;            // Experimental: also use X-Plane seizure failure while braked
 
     // MAVLink message rates (Hz)

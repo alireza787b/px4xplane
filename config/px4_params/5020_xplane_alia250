@@ -385,7 +385,7 @@ param set-default VT_TYPE 2              # Current PX4 airframe type used by thi
 
 # Transition Airspeeds
 param set-default VT_ARSP_BLEND 25.0     # Airspeed to start blending
-param set-default VT_ARSP_TRANS 46.0     # Effective weighted gate ~49 m/s for this mass model
+param set-default VT_ARSP_TRANS 50.0     # Higher margin before lift-prop shutdown
 
 # Front Transition (MC -> FW)
 param set-default VT_F_TRANS_DUR 45.0
@@ -417,7 +417,8 @@ param set-default VT_PITCH_MIN -5.0
 ################################################################################
 # SECTION 11: FIXED-WING FLIGHT PARAMETERS (CRUISE MODE)
 ################################################################################
-# v3.4.15 recovery focus: keep the accepted v3.4.13 fixed-wing bank envelope.
+# v3.4.16 recovery focus: keep the accepted v3.4.13 fixed-wing bank envelope
+# and add transition margin before the lift props are shut down.
 # The v3.4.14 PX4-metadata-valid 35 deg bank limit produced sustained high-bank
 # capture, throttle/elevator saturation, and altitude loss in X-Plane Alia logs.
 
@@ -434,7 +435,7 @@ param set-default FW_PR_P 0.365
 param set-default FW_PR_I 0.045
 param set-default FW_PR_D 0.355
 param set-default FW_PR_FF 2.0
-param set-default FW_PSP_OFF 3.0
+param set-default FW_PSP_OFF 4.0
 param set-default FW_P_LIM_MAX 18.0
 param set-default FW_P_LIM_MIN -5.0
 param set-default FW_P_TC 0.45
@@ -592,7 +593,9 @@ param set-default MC_BAT_SCALE_EN 0
 #
 # Altitude drop during front transition (MC -> FW):
 #   - Current recovery baseline uses VT_F_TRANS_THR = 1.0,
-#     VT_F_TRANS_DUR = 45.0, VT_ARSP_TRANS = 46.0, and VT_F_TR_OL_TM = 55.0
+#     VT_F_TRANS_DUR = 45.0, VT_ARSP_TRANS = 50.0, and VT_F_TR_OL_TM = 55.0
+#   - v3.4.16 raises VT_ARSP_TRANS and FW_PSP_OFF after a brake-enabled run
+#     switched to FW too close to the low-speed sink margin
 #   - Check airspeed build-up, tilt state, pusher thrust, and altitude error in
 #     ULog before changing transition timing
 #

@@ -58,6 +58,7 @@ autoPropBrakeApplyThreshold = 0.01
 autoPropBrakeReleaseThreshold = 0.12
 autoPropBrakeDwellSec = 2.0
 autoPropBrakeMinAirspeedMps = 55.0
+autoPropBrakeMode = feather
 autoPropBrakeUseFailure = false
 
 ; Quadcopter Motors (1-4)
@@ -79,8 +80,16 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
 ### Key Sections Explained
 
 - **Configuration Name**: Displayed in the PX4-XPlane UI; this helps you identify the active configuration.
-- **Auto-Prop Brakes**: Reduces drag by braking the propellers when they’re not needed, useful for eVTOL configurations.
+- **Auto-Prop Brakes**: Reduces drag by braking configured X-Plane engine indices when they are not commanded. Use `feather` first; `hard_lock`, `prop_separate`, and `autoPropBrakeUseFailure` are experimental recovery-test options.
 - **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
+
+Auto-prop brakes are mode-agnostic. The bridge watches the configured motor
+commands: it applies brakes only after all listed motors stay below
+`autoPropBrakeApplyThreshold` for `autoPropBrakeDwellSec` seconds and the
+optional true-airspeed gate is met. Any listed motor above
+`autoPropBrakeReleaseThreshold` releases all configured brakes immediately, so
+PX4 remains the source of authority during hover, front transition,
+back-transition, and assisted recovery.
 
 ## Step 4: Understanding Datarefs and Their Types
 

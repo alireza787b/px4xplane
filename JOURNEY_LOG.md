@@ -2,6 +2,27 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-19
+
+### v3.4.16 Alia/Ehang Follow-Up
+
+- Reviewed `/home/alireza/evtol2.zip`.
+- Ehang 184 completed the validation flow cleanly. The initial zigzag after
+  QGC Orbit was orbit-capture behavior: the vehicle started outside the
+  commanded circle and PX4 first flew to the closest point on that circle.
+- Ehang post-capture orbit hunting was reduced by lowering horizontal
+  cruise/max/manual speeds and horizontal acceleration limits.
+- Alia transitioned to FW then sank until quadchute. ULog and TruthCapture
+  showed TECS asking for full throttle/nose-up while actual pitch and altitude
+  recovery stayed poor. The hard-lock prop-brake window correlated with the
+  failure to recover.
+- The prop-brake behavior was made explicitly configurable: `feather` for
+  normal retest, `hard_lock` for the old invasive low-level refs, and
+  `prop_separate` for controlled X-Plane failure-based A/B testing.
+- Alia transition margin was increased with `VT_ARSP_TRANS=50.0` and
+  `FW_PSP_OFF=4.0`. Do not claim this as real ALIA flight-quality tuning; it is
+  the next X-Plane model validation step backed by the latest logs.
+
 ## 2026-04-28
 
 ### Context

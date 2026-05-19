@@ -18,6 +18,7 @@
       autoPropBrakeReleaseThreshold: { type: "float", min: 0, max: 1 },
       autoPropBrakeDwellSec: { type: "float", min: 0, max: 30 },
       autoPropBrakeMinAirspeedMps: { type: "float", min: 0, max: 200 },
+      autoPropBrakeMode: { type: "string", enum: ["feather", "hard_lock", "prop_separate"] },
       autoPropBrakeUseFailure: { type: "bool" },
       channelN: { type: "actuator_mapping", min_channel: 0, max_channel: 15 }
     }
@@ -140,7 +141,12 @@
       return;
     }
 
-    if (field.type === "string") return;
+    if (field.type === "string") {
+      if (Array.isArray(field.enum) && !field.enum.includes(trimmed)) {
+        addIssue(issues, "error", location, `expected one of: ${field.enum.join(", ")}`);
+      }
+      return;
+    }
 
     if (field.type === "bool") {
       if (parseBool(trimmed) === null) addIssue(issues, "error", location, "expected boolean");
@@ -321,15 +327,23 @@
       }
     }
 
-    function inputForField(key, field, value) {
+    function inputForField(key, field, value, datasetName = "global") {
+      const dataAttr = datasetName === "global" ? "data-global" : "data-airframe-field";
       if (field.type === "bool") {
         const selectedTrue = String(value).toLowerCase() === "true" ? "selected" : "";
         const selectedFalse = String(value).toLowerCase() === "false" ? "selected" : "";
-        return `<select data-global="${key}"><option value="true" ${selectedTrue}>true</option><option value="false" ${selectedFalse}>false</option></select>`;
+        return `<select ${dataAttr}="${key}"><option value="true" ${selectedTrue}>true</option><option value="false" ${selectedFalse}>false</option></select>`;
+      }
+      if (Array.isArray(field.enum)) {
+        const options = field.enum.map((item) => {
+          const selected = String(item) === String(value) ? "selected" : "";
+          return `<option value="${escapeHtml(item)}" ${selected}>${escapeHtml(item)}</option>`;
+        });
+        return `<select ${dataAttr}="${key}">${options.join("")}</select>`;
       }
       const type = field.type === "int" || field.type === "float" ? "number" : "text";
       const step = field.type === "int" ? "1" : "any";
-      return `<input data-global="${key}" type="${type}" step="${step}" value="${escapeHtml(value)}">`;
+      return `<input ${dataAttr}="${key}" type="${type}" step="${step}" value="${escapeHtml(value)}">`;
     }
 
     function renderGlobals() {
@@ -361,6 +375,19 @@
         return;
       }
 
+      const airframeFields = state.schema.airframe_fields || DEFAULT_SCHEMA.airframe_fields || {};
+      const scalarRows = [];
+      for (const [key, field] of Object.entries(airframeFields)) {
+        if (key === "autoPropBrakes" || key === "channelN") continue;
+        const value = section.keys[key] ?? field.default ?? "";
+        scalarRows.push(`<tr>
+          <th>${key}</th>
+          <td>${inputForField(key, field, value, "airframe")}</td>
+          <td><span class="policy">${field.reload_policy || ""}</span></td>
+          <td>${field.description || ""}</td>
+        </tr>`);
+      }
+
       const channelRows = [];
       for (const key of sortedChannelKeys(section.keys)) {
         const channel = Number.parseInt(key.slice(7), 10);
@@ -384,6 +411,10 @@
           <button id="removeAirframe">Remove</button>
         </div>
         <label class="full">autoPropBrakes <input id="autoPropBrakes" value="${escapeHtml(section.keys.autoPropBrakes || "")}"></label>
+        <table>
+          <thead><tr><th>Setting</th><th>Value</th><th>Reload</th><th>Description</th></tr></thead>
+          <tbody>${scalarRows.join("")}</tbody>
+        </table>
         <div class="sectionBar">
           <label>Add channel <input id="newChannel" type="number" min="0" max="15" value="0"></label>
           <button id="addMapping">Add Mapping</button>
@@ -398,6 +429,12 @@
         section.keys.autoPropBrakes = event.target.value;
         renderIssues();
       });
+      for (const input of $("airframeEditor").querySelectorAll("[data-airframe-field]")) {
+        input.addEventListener("input", () => {
+          section.keys[input.dataset.airframeField] = input.value;
+          renderIssues();
+        });
+      }
       $("renameAirframe").addEventListener("click", () => {
         const nextName = $("airframeName").value.trim();
         if (!nextName) return;

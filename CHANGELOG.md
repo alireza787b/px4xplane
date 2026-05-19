@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.16] - 2026-05-19
+
+### Fixed
+
+- Split the Alia lift-prop brake mechanism into configurable modes:
+  `feather`, `hard_lock`, and `prop_separate`. The default Alia retest path now
+  uses the less invasive `feather` mode after the v3.4.15 hard-lock behavior
+  correlated with unrecovered fixed-wing sink.
+- Raised Alia transition margin to `VT_ARSP_TRANS=50.0` and `FW_PSP_OFF=4.0`
+  so PX4 does not shut down lift support as close to the low-speed sink margin.
+- Added `autoPropBrakeMode` to the config schema, validator, and static config
+  editor so brake behavior is visible and validated instead of hidden in code.
+
+### Changed
+
+- Smoothed Ehang 184 orbit capture by reducing horizontal cruise/max/manual
+  velocity and horizontal acceleration defaults.
+- Updated Alia and Ehang X-Plane 12 test cards with v3.4.16 sanity checks,
+  prop-brake policy expectations, and orbit-capture interpretation.
+
+---
+
 ## [3.4.15] - 2026-05-19
 
 ### Fixed
