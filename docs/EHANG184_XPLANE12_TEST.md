@@ -33,12 +33,13 @@ X-Plane multicopter after the Alia tuning lessons were applied.
 Confirm these values in the ULog before judging the result:
 
 - `SYS_AUTOSTART=5010`
-- `MC_ROLL_P=0.3`
-- `MC_PITCH_P=0.3`
+- `MC_ROLL_P=0.45`
+- `MC_PITCH_P=0.45`
 - `MC_YAW_P=0.6`
 - `MPC_XY_P=0.05`
 - `MPC_XY_VEL_P_ACC=1.2`
-- `MPC_XY_VEL_D_ACC=1.5`
+- `MPC_XY_VEL_D_ACC=0.8`
+- `MPC_XY_ERR_MAX=10.0`
 - `MPC_XY_CRUISE=5.0`
 - `MPC_XY_VEL_MAX=6.5`
 - `MPC_VEL_MANUAL=5.0`
@@ -48,8 +49,8 @@ Confirm these values in the ULog before judging the result:
 - `MPC_LAND_SPEED=0.6`
 - `MPC_LAND_ALT1=8.0`
 - `MPC_LAND_ALT2=3.0`
-- `MPC_LAND_CRWL=0.25`
-- `LNDMC_Z_VEL_MAX=0.20`
+- `MPC_LAND_CRWL=0.30`
+- `LNDMC_Z_VEL_MAX=0.24`
 - `MPC_ACC_HOR=1.5`
 - `MPC_ACC_HOR_MAX=1.8`
 - `MPC_ACC_UP_MAX=2.0`
@@ -69,7 +70,7 @@ Confirm these values in the ULog before judging the result:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.20`
+- `px4xplane: Version: v3.4.21`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
 - the X-Plane connection HUD shows `Airframe: Ehang 184` while waiting for PX4
 

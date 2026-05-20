@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.21] - 2026-05-20
+
+### Fixed
+
+- Recovered the PX4 SITL connection path after v3.4.20 made the accepted
+  simulator TCP stream non-blocking and could drop MAVLink packets on send
+  back-pressure. v3.4.21 keeps the non-blocking listener/wait UI but restores
+  the connected stream behavior from v3.4.19.
+- Reduced false Alia startup airspeed noise by keeping `FW_USE_AIRSPD=1` and
+  `ASPD_DO_CHECKS=1`, while no longer making the virtual SITL pitot a prearm
+  hardware requirement through `SYS_HAS_NUM_ASPD`.
+- Increased Alia and Ehang land-detector vertical headroom
+  (`MPC_LAND_CRWL=0.30`, `LNDMC_Z_VEL_MAX=0.24`) after evtol6 showed
+  post-touchdown `landed` state bouncing at about `0.5 m/s` estimated vertical
+  velocity.
+- Applied the ULog-tested Alia back-transition expected deceleration
+  (`VT_B_DEC_MSS=1.5`) while leaving `VT_B_TRANS_DUR=35.0`.
+- Fixed Ehang's lingering takeoff gate by raising `MPC_XY_ERR_MAX` to `10`,
+  matching the Alia fix.
+
+### Changed
+
+- Moderately increased Ehang attitude response (`MC_ROLL_P=0.45`,
+  `MC_PITCH_P=0.45`) and reduced horizontal velocity D damping
+  (`MPC_XY_VEL_D_ACC=0.8`) without returning to the failed v3.4.18 high-gain
+  values.
+- Added report v33 with the v3.4.20 regression explanation and evtol6 Alia/Ehang
+  log findings.
+
+---
+
 ## [3.4.20] - 2026-05-20
 
 ### Fixed

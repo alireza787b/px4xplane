@@ -102,7 +102,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.20` Alia takeoff-gate and connection-reliability test,
+For the current `v3.4.21` Alia connection-recovery and landing-polish test,
 verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
@@ -114,7 +114,7 @@ parameter store and rerun before judging the package.
 - `MPC_LAND_ALT1=8.0`
 - `MPC_LAND_ALT2=3.0`
 - `MPC_LAND_SPEED=0.6`
-- `MPC_LAND_CRWL=0.25`
+- `MPC_LAND_CRWL=0.30`
 - `NPFG_PERIOD=35.0`
 - `NPFG_DAMPING=0.80`
 - `NPFG_ROLL_TC=0.7`
@@ -128,6 +128,7 @@ parameter store and rerun before judging the package.
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_ACC0_PRIO=50`
 - `ASPD_DO_CHECKS=1`
+- `SYS_HAS_NUM_ASPD=0`
 - `VT_ARSP_TRANS=46.0`
 - `VT_F_TRANS_DUR=45.0`
 - `VT_F_TR_OL_TM=55.0`
@@ -147,23 +148,23 @@ parameter store and rerun before judging the package.
 - `WEIGHT_BASE=3120.0`
 - `WEIGHT_GROSS=3120.0`
 - `VT_B_TRANS_DUR=35.0`
-- `VT_B_DEC_MSS=2.2`
+- `VT_B_DEC_MSS=1.5`
 - `VT_B_DEC_I=0.25`
 - `RTL_RETURN_ALT=100`
 - `RTL_DESCEND_ALT=80`
-- `LNDMC_Z_VEL_MAX=0.20`
+- `LNDMC_Z_VEL_MAX=0.24`
 
 Do not use the exact accelerometer offset values as a package pass/fail check.
 PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.20`
+- `px4xplane: Version: v3.4.21`
 - `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
 - `px4xplane: Motor brakes configured for motors: 00000000`
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
-only applies when `autoPropBrakes` lists motor indices. v3.4.20 keeps Alia
+only applies when `autoPropBrakes` lists motor indices. v3.4.21 keeps Alia
 lift-prop braking disabled by default because `evtol4` matched the accepted
 v3.4.13 first-FW sink recovery until the brake window removed the remaining margin. `feather`,
 `hard_lock`, and `prop_separate` remain available for controlled A/B testing
@@ -175,7 +176,7 @@ copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 
 If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
 unstable`, do not tune from that run until the aircraft has been restarted with
-the v3.4.20 airframe defaults and the warning state is rechecked. Keep the log:
+the v3.4.21 airframe defaults and the warning state is rechecked. Keep the log:
 that case is useful for validating frame-rate robustness, but it is not the
 same evidence as a clean high-FPS Alia tuning flight.
 

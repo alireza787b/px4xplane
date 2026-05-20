@@ -4,6 +4,35 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-20
 
+### v3.4.21 SITL Connection Recovery And evtol6 Follow-Up
+
+- Reviewed `/home/alireza/evtol6.zip`. The flight evidence in the archive used
+  v3.4.19, not v3.4.20, so v3.4.20's QGC/telemetry failure was traced from the
+  connection code delta and the user's terminal observation.
+- Identified the v3.4.20 regression: after accepting PX4's simulator TCP
+  connection, the plugin made the connected stream non-blocking and could drop
+  a complete MAVLink packet when `send()` would block. That is unsafe for the
+  simulator MAVLink stream even if commands sometimes still pass.
+- Restored the connected stream behavior to the v3.4.19 baseline while keeping
+  the cancellable waiting menu/HUD flow.
+- Confirmed Alia's v3.4.19 fixed-wing path/altitude behavior remains the
+  protected baseline. No TECS, NPFG, fixed-wing bank, or front-transition
+  retune was made.
+- Found Alia's airspeed warning is a startup health-check race: the virtual
+  pitot is valid once the simulator stream is warm, but `SYS_HAS_NUM_ASPD=1`
+  makes PX4 report a physical-airspeed prearm failure before that. v3.4.21 keeps
+  airspeed control/checking active but sets `SYS_HAS_NUM_ASPD=0` for the SITL
+  airframe.
+- Found delayed disarm in Alia/Ehang was land-detector bouncing. `landed=true`
+  dropped false when estimated vertical speed briefly reached about
+  `0.50-0.54 m/s`; raised final crawl and land-detector velocity headroom.
+- Adopted the user-tested Alia `VT_B_DEC_MSS=1.5`; the ULog did not show the
+  claimed `VT_B_TRANS_DUR=10`, so duration stays at `35.0`.
+- Ehang still had Alia's old takeoff gate problem (`MPC_XY_ERR_MAX=2`) and
+  under-responsive Orbit pitch/roll behavior. v3.4.21 raises the gate to `10`,
+  moderately raises attitude response to `0.45`, and reduces high velocity D
+  damping to `0.8`.
+
 ### v3.4.20 SITL Connection Reliability
 
 - Reviewed the px4xplane connection lifecycle after user feedback that SITL can

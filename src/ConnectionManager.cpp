@@ -10,7 +10,6 @@
 #include <fcntl.h>      // For fcntl(), F_GETFL, F_SETFL, O_NONBLOCK
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <netinet/tcp.h>
 #include <arpa/inet.h>
 
 #endif
@@ -62,22 +61,6 @@ bool socketWouldBlock() {
 #endif
 }
 
-bool socketInterrupted() {
-#if IBM
-    return false;
-#else
-    return errno == EINTR;
-#endif
-}
-
-int sendNoSignalFlags() {
-#ifdef MSG_NOSIGNAL
-    return MSG_NOSIGNAL;
-#else
-    return 0;
-#endif
-}
-
 bool setSocketNonBlocking(int socketFd, const char* label) {
 #if IBM
     u_long mode = 1;  // 1 = non-blocking, 0 = blocking
@@ -97,28 +80,6 @@ bool setSocketNonBlocking(int socketFd, const char* label) {
     }
 #endif
     return true;
-}
-
-bool setTcpNoDelay(int socketFd) {
-    int enabled = 1;
-    if (setsockopt(socketFd, IPPROTO_TCP, TCP_NODELAY,
-                   reinterpret_cast<const char*>(&enabled), sizeof(enabled)) < 0) {
-        std::string msg = "px4xplane: Warning - could not set TCP_NODELAY: " +
-            socketErrorString() + "\n";
-        XPLMDebugString(msg.c_str());
-        return false;
-    }
-    return true;
-}
-
-void setNoSigPipeIfSupported(int socketFd) {
-#ifdef SO_NOSIGPIPE
-    int enabled = 1;
-    setsockopt(socketFd, SOL_SOCKET, SO_NOSIGPIPE,
-               reinterpret_cast<const char*>(&enabled), sizeof(enabled));
-#else
-    (void)socketFd;
-#endif
 }
 
 std::string endpointString(const sockaddr_in& addr) {
@@ -258,25 +219,8 @@ void ConnectionManager::tryAcceptConnection() {
         return;
     }
 
-    if (!setSocketNonBlocking(acceptedSocket, "PX4 client")) {
-        closeSocket(acceptedSocket);
-        status = "Socket Error";
-        setLastMessage("Accepted PX4 SITL connection, but failed to configure socket.");
-        closeSocket(sockfd);
-        extern void updateMenuItems();  // Defined in px4xplane.cpp
-        updateMenuItems();
-        return;
-    }
-
-    setTcpNoDelay(acceptedSocket);
-    setNoSigPipeIfSupported(acceptedSocket);
-
     newsockfd = acceptedSocket;
     peerEndpoint = endpointString(cli_addr);
-
-    // The connected TCP stream is now established. Close the listening socket
-    // so port ownership is unambiguous until the user disconnects/reconnects.
-    closeSocket(sockfd);
 
     // Successfully connected!
     std::string connectedMsg = "px4xplane: PX4 SITL connected successfully from " + peerEndpoint + "\n";
@@ -437,28 +381,21 @@ void ConnectionManager::sendData(const uint8_t* buffer, int len) {
 
     int totalBytesSent = 0;
     while (totalBytesSent < len) {
-        int bytesSent = send(newsockfd, reinterpret_cast<const char*>(buffer) + totalBytesSent,
-                             len - totalBytesSent, sendNoSignalFlags());
+        int bytesSent = send(newsockfd, reinterpret_cast<const char*>(buffer) + totalBytesSent, len - totalBytesSent, 0);
 
         if (bytesSent < 0) {
-            if (socketWouldBlock()) {
-                if (ConfigManager::debug_verbose_logging) {
-                    XPLMDebugString("px4xplane: TCP send would block; dropping current MAVLink packet\n");
-                }
-                return;
-            }
-
-            std::string msg = "px4xplane: Error sending data to PX4: " + socketErrorString() + "\n";
-            XPLMDebugString(msg.c_str());
-            setLastMessage("PX4 socket send failed; disconnected.");
-            disconnect();
+            char buf[256];
+#if IBM
+            snprintf(buf, sizeof(buf), "px4xplane: Error sending data: %d\n", WSAGetLastError());
+#elif LIN || APL
+            snprintf(buf, sizeof(buf), "px4xplane: Error sending data: %s\n", strerror(errno));
+#endif
+            XPLMDebugString(buf);
             return;
         }
         else if (bytesSent == 0) {
             // The peer has closed the connection.
-            XPLMDebugString("px4xplane: PX4 socket closed during send\n");
-            setLastMessage("PX4 closed the socket; disconnected.");
-            disconnect();
+            XPLMDebugString("px4xplane: Peer has closed the connection\n");
             return;
         }
 
@@ -487,14 +424,8 @@ void ConnectionManager::receiveData() {
         // Use select to check if there is data available to read
         int result = select(newsockfd + 1, &readSet, NULL, NULL, &timeout);
         if (result < 0) {
-            if (socketInterrupted()) {
-                continue;
-            }
-            std::string msg = "px4xplane: Error in select: " + socketErrorString() + "\n";
-            XPLMDebugString(msg.c_str());
-            setLastMessage("PX4 socket select failed; disconnected.");
-            disconnect();
-            return;
+            XPLMDebugString("px4xplane: Error in select\n");
+            break;
         }
         if (result == 0 || !FD_ISSET(newsockfd, &readSet)) {
             break;
@@ -502,17 +433,9 @@ void ConnectionManager::receiveData() {
 
         int bytesReceived = recv(newsockfd, reinterpret_cast<char*>(buffer), sizeof(buffer), 0);
         if (bytesReceived < 0) {
-            if (socketWouldBlock()) {
-                break;
-            }
-            if (socketInterrupted()) {
-                continue;
-            }
-            std::string msg = "px4xplane: Error receiving data from PX4: " + socketErrorString() + "\n";
-            XPLMDebugString(msg.c_str());
-            setLastMessage("PX4 socket receive failed; disconnected.");
-            disconnect();
-            return;
+            XPLMDebugString("px4xplane: Error receiving data\n");
+            setLastMessage("Error receiving from PX4!"); // Store the received message
+            break;
         }
         else if (bytesReceived == 0) {
             XPLMDebugString("px4xplane: PX4 closed the MAVLink socket\n");

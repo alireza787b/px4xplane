@@ -252,8 +252,8 @@ param set-default MC_YR_INT_LIM 0.3
 ################################################################################
 # Attitude controllers for orientation angles.
 
-param set-default MC_ROLL_P 0.3
-param set-default MC_PITCH_P 0.3
+param set-default MC_ROLL_P 0.45
+param set-default MC_PITCH_P 0.45
 param set-default MC_YAW_P 0.6
 param set-default MC_YAW_WEIGHT 0.4
 
@@ -273,7 +273,7 @@ param set-default MPC_Z_P 0.25            # Vertical position P
 # Velocity control
 param set-default MPC_XY_VEL_P_ACC 1.2
 param set-default MPC_XY_VEL_I_ACC 0.2
-param set-default MPC_XY_VEL_D_ACC 1.5
+param set-default MPC_XY_VEL_D_ACC 0.8
 param set-default MPC_Z_VEL_P_ACC 3
 param set-default MPC_Z_VEL_I_ACC 2
 param set-default MPC_Z_VEL_D_ACC 0.2
@@ -297,7 +297,7 @@ param set-default MPC_JERK_AUTO 1.0       # PX4-valid low jerk for smooth auto m
 param set-default MPC_JERK_MAX 2.0        # Smooth manual acceleration changes
 
 # Error limits
-param set-default MPC_XY_ERR_MAX 2
+param set-default MPC_XY_ERR_MAX 10
 
 
 ################################################################################
@@ -351,14 +351,14 @@ param set-default MPC_LAND_ALT1 8         # Start slowing close to ground (m)
 param set-default MPC_LAND_ALT2 3         # Final landing speed below this height (m)
 param set-default MPC_LAND_ALT3 1         # Phase 3 altitude (m)
 param set-default MPC_LAND_SPEED 0.6      # PX4 minimum landing descend rate (m/s)
-param set-default MPC_LAND_CRWL 0.25      # Crawl speed with valid range data (m/s)
+param set-default MPC_LAND_CRWL 0.30      # Crawl speed with valid range data (m/s)
 param set-default MPC_LAND_RADIUS 25
 param set-default MPC_LAND_RC_HELP 1
 
 # Land detector
 param set-default LNDMC_ALT_GND 2
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.20
+param set-default LNDMC_Z_VEL_MAX 0.24
 param set-default LNDMC_ROT_MAX 20
 param set-default LNDMC_TRIG_TIME 1
 
