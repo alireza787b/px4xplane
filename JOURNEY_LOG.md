@@ -4,6 +4,25 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-20
 
+### v3.4.25 QuadTailsitter qtail3 Yaw Authority Recovery
+
+- Reviewed `/home/alireza/qtail3.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
+  px4xplane `v3.4.24`, and no longer had the violent first-lift roll/pitch
+  oscillation.
+- TruthCapture was healthy: `9,261` frames, about `84.0 Hz` mean callback, zero
+  dropped rows, and no sim-time resets. The aircraft mass stayed at `2.27 kg`,
+  consistent with the Quantix-class `5 lb / 2.3 kg` reference size.
+- Found the remaining slow divergence was yaw authority, not mass/CG/airfoil or
+  FPS. Between about `30-53 s`, motors stayed around `0.21-0.31`, yaw error
+  grew to about `70 deg`, PX4 commanded about `28 deg/s` yaw correction, and
+  control allocation reported yaw torque as unallocated.
+- Restored `MC_AIRMODE=2` while keeping the reduced qtail3 roll/pitch gains,
+  moderately raised yaw response, set `MIS_TAKEOFF_ALT=3.0`, and aligned
+  `LNDMC_Z_VEL_MAX=0.25` with the actual PX4 parameter clamp.
+- Checked the connection wait: X-Plane listened on port `4560` for about `25 s`
+  before PX4 connected, then PX4 became ready quickly. This log does not show a
+  broken telemetry/stream path.
+
 ### v3.4.24 QuadTailsitter qtail2 Hover Dynamics Recovery
 
 - Reviewed `/home/alireza/qtail2.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded

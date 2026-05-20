@@ -134,17 +134,15 @@ param set-default IMU_INTEG_RATE 200
 # MULTICOPTER HOVER CONTROL
 ################################################################################
 
-# Keep airmode disabled while the hover loop is still being tuned. PX4's MC
-# tuning guide recommends disabling airmode when reducing first-takeoff
-# oscillations, and qtail2 showed yaw allocation pressure before roll/pitch
-# control was stable.
-param set-default MC_AIRMODE 0
+# Preserve yaw authority at low hover thrust. PX4 requires stick arming to be
+# disabled when yaw airmode is enabled.
+param set-default MC_AIRMODE 2
 param set-default MAN_ARM_GESTURE 0
 
 param set-default MC_ROLL_P 0.8
 param set-default MC_PITCH_P 0.8
-param set-default MC_YAW_P 0.4
-param set-default MC_YAW_WEIGHT 0.2
+param set-default MC_YAW_P 0.6
+param set-default MC_YAW_WEIGHT 0.4
 
 param set-default MC_ROLLRATE_P 0.08
 param set-default MC_ROLLRATE_I 0.02
@@ -160,11 +158,11 @@ param set-default MC_PITCHRATE_FF 0.0
 param set-default MC_PITCHRATE_K 0.30
 param set-default MC_PITCHRATE_MAX 70
 
-param set-default MC_YAWRATE_P 0.06
-param set-default MC_YAWRATE_I 0.02
+param set-default MC_YAWRATE_P 0.10
+param set-default MC_YAWRATE_I 0.03
 param set-default MC_YAWRATE_D 0.0
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_MAX 45
+param set-default MC_YAWRATE_MAX 60
 
 
 ################################################################################
@@ -208,6 +206,7 @@ param set-default MPC_USE_HTE 0
 
 param set-default MPC_TKO_SPEED 0.6
 param set-default MPC_TKO_RAMP_T 5
+param set-default MIS_TAKEOFF_ALT 3.0
 param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1
@@ -217,7 +216,7 @@ param set-default MPC_LAND_RADIUS 30
 
 param set-default LNDMC_ALT_GND 1.5
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.20
+param set-default LNDMC_Z_VEL_MAX 0.25
 param set-default LNDMC_ROT_MAX 25
 param set-default LNDMC_TRIG_TIME 1
 param set-default COM_DISARM_LAND 1.5

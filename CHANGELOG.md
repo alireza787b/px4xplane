@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.25] - 2026-05-20
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail3.zip`. v3.4.24 removed the violent first-lift
+  roll/pitch oscillation, but yaw torque was effectively unallocated after
+  takeoff while motors were not saturated.
+- Restored QuadTailsitter roll/pitch/yaw airmode (`MC_AIRMODE=2`) with the
+  reduced qtail3 roll/pitch gains so PX4 can allocate yaw correction in hover.
+- Set `MIS_TAKEOFF_ALT=3.0` for the hover-recovery test instead of inheriting
+  the VTOL default `20 m` takeoff altitude.
+- Set `LNDMC_Z_VEL_MAX=0.25` to match PX4's effective parameter clamp while
+  keeping it below the configured landing crawl speed.
+
+### Changed
+
+- Moderately raised QuadTailsitter yaw response for the next hover-only test.
+- Added report v37 and updated the QuadTailsitter test card for v3.4.25.
+
+---
+
 ## [3.4.24] - 2026-05-20
 
 ### Fixed
