@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.22] - 2026-05-20
+
+### Fixed
+
+- Adopted the accepted `evtol7` Alia back-transition ramp:
+  `VT_B_TRANS_RAMP=15.0`. The ULog showed this was the only live
+  back-transition parameter change in the accepted run.
+- Reduced post-touchdown auto-disarm delay for Alia and Ehang SITL by setting
+  `COM_DISARM_LAND=1.5`, while keeping the existing land-detector velocity
+  headroom.
+- Finalized Ehang orbit tuning from the successful live parameter sequence:
+  `MC_ROLL_P=1.0`, `MC_PITCH_P=1.0`, `MC_ROLLRATE_K=3.0`, and
+  `MC_PITCHRATE_K=2.05`.
+
+### Changed
+
+- Increased the visible PX4 SITL connection wait timeout from `30 s` to `60 s`
+  so PX4's simulator TCP retry cadence has more room before the user has to
+  retry manually.
+- Reworked the PB50 QuadTailsitter PX4 airframe into a conservative first-test
+  configuration based on PX4's official quadtailsitter SITL defaults, the
+  uploaded X-Plane model geometry, and the validated px4xplane sensor settings.
+- Added a PB50 QuadTailsitter X-Plane 12 first-test card and report v34.
+
+---
+
 ## [3.4.21] - 2026-05-20
 
 ### Fixed

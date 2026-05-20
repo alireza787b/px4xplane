@@ -351,6 +351,7 @@ param set-default LNDMC_XY_VEL_MAX 1.5
 param set-default LNDMC_Z_VEL_MAX 0.24
 param set-default LNDMC_ROT_MAX 20
 param set-default LNDMC_TRIG_TIME 1
+param set-default COM_DISARM_LAND 1.5
 
 
 ################################################################################
@@ -399,7 +400,7 @@ param set-default VT_F_TR_OL_TM 55.0
 param set-default VT_B_TRANS_DUR 35.0
 param set-default VT_B_DEC_MSS 1.5
 param set-default VT_B_DEC_I 0.25
-param set-default VT_B_TRANS_RAMP 2.5    # Transition ramp time
+param set-default VT_B_TRANS_RAMP 15.0   # Smooth MC motor ramp-up for this large SITL eVTOL
 
 # Transition Safety
 param set-default VT_TRANS_MIN_TM 15.0    # Minimum transition time
@@ -608,7 +609,7 @@ param set-default MC_BAT_SCALE_EN 0
 # Aircraft overshoots landing point:
 #   - Test6 measured about 2.27 m/s^2 average back-transition deceleration.
 #   - Current baseline uses VT_B_DEC_MSS = 1.5, VT_B_TRANS_DUR = 35.0,
-#     VT_B_DEC_I = 0.25
+#     VT_B_DEC_I = 0.25, VT_B_TRANS_RAMP = 15.0
 #   - Tune deceleration and transition duration from position/velocity traces.
 #
 # Tight loiter radius / oscillation in FW mode:

@@ -19,6 +19,7 @@ estimator topics.
    - `px4xplane/64/config.ini`
    - `px4xplane/px4_airframes/5020_xplane_alia250`
    - this test note or an equivalent run card
+   Set `px4xplane/64/config.ini` to `config_name = Alia250` before connecting.
 2. Install XPlaneTruthCapture `v0.1.7` or newer. Confirm that starting capture
    changes the menu state to `Recording Active`; the optional overlay can be
    hidden with `overlay_enabled = false` in its `capture_config.ini`.
@@ -102,7 +103,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.21` Alia connection-recovery and landing-polish test,
+For the current `v3.4.22` Alia milestone test,
 verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
@@ -150,25 +151,32 @@ parameter store and rerun before judging the package.
 - `VT_B_TRANS_DUR=35.0`
 - `VT_B_DEC_MSS=1.5`
 - `VT_B_DEC_I=0.25`
+- `VT_B_TRANS_RAMP=15.0`
 - `RTL_RETURN_ALT=100`
 - `RTL_DESCEND_ALT=80`
 - `LNDMC_Z_VEL_MAX=0.24`
+- `COM_DISARM_LAND=1.5`
 
 Do not use the exact accelerometer offset values as a package pass/fail check.
 PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.21`
+- `px4xplane: Version: v3.4.22`
 - `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
 - `px4xplane: Motor brakes configured for motors: 00000000`
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
-only applies when `autoPropBrakes` lists motor indices. v3.4.21 keeps Alia
+only applies when `autoPropBrakes` lists motor indices. v3.4.22 keeps Alia
 lift-prop braking disabled by default because `evtol4` matched the accepted
 v3.4.13 first-FW sink recovery until the brake window removed the remaining margin. `feather`,
 `hard_lock`, and `prop_separate` remain available for controlled A/B testing
 only.
+
+If the first connection attempt times out, click `Connect to SITL` again after
+PX4 is visibly waiting on `simulator_mavlink`. A first timeout usually means
+PX4 and the plugin missed one TCP retry window; the retry is safe and should not
+change the active airframe or parameters.
 
 The `px4xplane/px4_airframes` folder in plugin releases contains reference
 copies only. PX4 SITL reads the airframe from the PX4 repository branch under
@@ -176,7 +184,7 @@ copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 
 If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
 unstable`, do not tune from that run until the aircraft has been restarted with
-the v3.4.21 airframe defaults and the warning state is rechecked. Keep the log:
+the v3.4.22 airframe defaults and the warning state is rechecked. Keep the log:
 that case is useful for validating frame-rate robustness, but it is not the
 same evidence as a clean high-FPS Alia tuning flight.
 

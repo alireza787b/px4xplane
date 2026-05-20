@@ -224,7 +224,7 @@ param set-default MC_ROLLRATE_P 0.15
 param set-default MC_ROLLRATE_I 0.1
 param set-default MC_ROLLRATE_D 0.01
 param set-default MC_ROLLRATE_FF 0
-param set-default MC_ROLLRATE_K 2.25
+param set-default MC_ROLLRATE_K 3.0
 param set-default MC_ROLLRATE_MAX 220
 param set-default MC_RR_INT_LIM 0.3
 
@@ -233,7 +233,7 @@ param set-default MC_PITCHRATE_P 0.15
 param set-default MC_PITCHRATE_I 0.1
 param set-default MC_PITCHRATE_D 0.01
 param set-default MC_PITCHRATE_FF 0
-param set-default MC_PITCHRATE_K 3
+param set-default MC_PITCHRATE_K 2.05
 param set-default MC_PITCHRATE_MAX 220
 param set-default MC_PR_INT_LIM 0.3
 
@@ -252,8 +252,8 @@ param set-default MC_YR_INT_LIM 0.3
 ################################################################################
 # Attitude controllers for orientation angles.
 
-param set-default MC_ROLL_P 0.45
-param set-default MC_PITCH_P 0.45
+param set-default MC_ROLL_P 1.0
+param set-default MC_PITCH_P 1.0
 param set-default MC_YAW_P 0.6
 param set-default MC_YAW_WEIGHT 0.4
 
@@ -361,6 +361,7 @@ param set-default LNDMC_XY_VEL_MAX 1.5
 param set-default LNDMC_Z_VEL_MAX 0.24
 param set-default LNDMC_ROT_MAX 20
 param set-default LNDMC_TRIG_TIME 1
+param set-default COM_DISARM_LAND 1.5
 
 
 ################################################################################

@@ -8,6 +8,7 @@ This index is the stable entry point for user and developer documentation.
 - [Build System](BUILD_SYSTEM.md)
 - [Alia X-Plane 12 Test Card](ALIA_XPLANE12_TEST.md)
 - [Ehang 184 X-Plane 12 Test Card](EHANG184_XPLANE12_TEST.md)
+- [PB50 QuadTailsitter X-Plane 12 Test Card](QUADTAILSITTER_XPLANE12_TEST.md)
 - [Custom Airframe Config](custom-airframe-config.md)
 - [Config Editor](config-editor.html)
 
@@ -41,11 +42,13 @@ This index is the stable entry point for user and developer documentation.
 - [Report v31 - Alia Takeoff Gate and Ehang Roll Recovery](reports/report_v31.md)
 - [Report v32 - SITL Connection Reliability](reports/report_v32.md)
 - [Report v33 - v3.4.20 Regression and evtol6 Follow-Up](reports/report_v33.md)
+- [Report v34 - evtol7 Milestone and PB50 Prep](reports/report_v34.md)
 
 ## Current Policy
 
-- Use the `v3.4.21` package for the next Alia and Ehang validation, and reset
-  PX4 SITL parameters with `distclean` before judging the package.
+- Use the `v3.4.22` package for the next PB50 QuadTailsitter first test. Alia
+  and Ehang are now milestone airframes, but still require `distclean` after
+  airframe-file changes before judging regressions.
 - Alia lift-prop braking is disabled by default. The generic brake policy still
   exists, but `feather`, `hard_lock`, and `prop_separate` are controlled A/B
   options only.

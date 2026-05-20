@@ -4,6 +4,33 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-20
 
+### v3.4.22 evtol7 Milestone And PB50 Prep
+
+- Reviewed `/home/alireza/evtol7.zip`. `08_44_10.ulg` is Alia
+  (`SYS_AUTOSTART=5020`); `08_51_36.ulg` is Ehang (`SYS_AUTOSTART=5010`).
+- Accepted Alia as the milestone baseline. The only live back-transition change
+  in the accepted Alia run was `VT_B_TRANS_RAMP=15.0`, so v3.4.22 adopts that
+  ramp while keeping the accepted front-transition, TECS, NPFG, bank, and
+  no-brake defaults unchanged.
+- Found the remaining late disarm is not a flight-control issue. Both Alia and
+  Ehang briefly toggled `landed=false` after touchdown, then disarmed 2 s after
+  the final stable `landed=true`. v3.4.22 sets `COM_DISARM_LAND=1.5` for the
+  two SITL eVTOL airframes.
+- Confirmed Ehang's successful live tuning sequence ended at
+  `MC_ROLLRATE_K=3.0`, `MC_PITCHRATE_K=2.05`, `MC_ROLL_P=1.0`, and
+  `MC_PITCH_P=1.0`. These become the final Ehang defaults for the milestone.
+- The first Alia connection timeout in X-Plane `Log.txt` was a listen/retry
+  timing issue, not a flight-stack fault. The plugin is left on the recovered
+  v3.4.21 stream path, but the user-visible wait window is extended to 60 s.
+- Audited the uploaded `PB50 - vert.acf`: it is a four-motor, no-control-surface
+  tailsitter with about `5-6 kg` mass and motors near `+/-1.4 m` longitudinal
+  and `+/-0.72 m` lateral offsets. The old `5021_xplane_qtailsitter` comments
+  overclaimed readiness and used faster-than-official first-test speeds.
+- Rebuilt the PB50 QuadTailsitter parameter file from PX4's official
+  quadtailsitter SITL baseline, with px4xplane estimator settings and a
+  conservative first-test envelope (`FW_AIRSPD_TRIM=18`, `VT_ARSP_TRANS=15`,
+  `NAV_LOITER_RAD=120`).
+
 ### v3.4.21 SITL Connection Recovery And evtol6 Follow-Up
 
 - Reviewed `/home/alireza/evtol6.zip`. The flight evidence in the archive used

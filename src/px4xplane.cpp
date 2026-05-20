@@ -922,7 +922,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	static float waitElapsedTime = 0.0f;
 	static bool wasWaitingForConnection = false;
 	static int lastWaitLogBucket = -1;
-	static const float CONNECTION_TIMEOUT = 30.0f;  // 30 second timeout
+	static const float CONNECTION_TIMEOUT = 60.0f;  // PX4 can be between simulator TCP retry attempts
 
 	if (ConnectionManager::isWaitingForConnection()) {
 		if (!wasWaitingForConnection) {
@@ -952,9 +952,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 			XPLMDebugString(waitBuf);
 		}
 
-		// Timeout after 30 seconds
+		// Timeout after the configured wait window.
 		if (waitElapsedTime > CONNECTION_TIMEOUT) {
-			XPLMDebugString("px4xplane: Connection timeout after 30s\n");
+			XPLMDebugString("px4xplane: Connection timeout after 60s\n");
 
 			ConnectionManager::setLastMessage(
 				"Connection timeout. Is PX4 running? Click Connect to retry.");

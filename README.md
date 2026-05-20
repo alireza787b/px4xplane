@@ -78,7 +78,7 @@ This project establishes a robust connection between X-Plane and PX4 SITL (Softw
 #### 🖥️ User Interface
 
 - **Connection Status HUD**: Professional on-screen feedback for SITL connection
-  - Real-time progress indicator with elapsed time (0-30 seconds)
+  - Real-time progress indicator with elapsed time (0-60 seconds)
   - Visual states: WAITING (yellow), CONNECTED (green), TIMEOUT (red), ERROR (orange)
   - Auto-fade success notification after 3 seconds
   - Configurable via `show_connection_status_hud` in config.ini
@@ -101,6 +101,7 @@ px4xplane/
 │   └── config.ini                ← WITH binary
 ├── ALIA_XPLANE12_TEST.md
 ├── EHANG184_XPLANE12_TEST.md
+├── QUADTAILSITTER_XPLANE12_TEST.md
 ├── px4_airframes/                ← Reference/install copies, not read by plugin
 │   ├── 5001_xplane_cessna172
 │   ├── 5002_xplane_tb2
@@ -119,8 +120,9 @@ Config tooling:
 - `64/config_schema.json` documents valid fields, ranges, and reload policy.
 - `docs/config-editor.html` can import/review/edit/export `config.ini` without
   writing directly into X-Plane or PX4.
-- The packaged Alia and Ehang test cards describe the expected PX4 airframe,
-  plugin config, sanity values, and log bundle for validation runs.
+- The packaged Alia, Ehang, and PB50 QuadTailsitter test cards describe the
+  expected PX4 airframe, plugin config, sanity values, and log bundle for
+  validation runs.
 
 **To upgrade**: Remove old v2.x installation and download v3.0.0 from [Releases](https://github.com/alireza787b/px4xplane/releases/tag/v3.0.0). See [CHANGELOG.md](CHANGELOG.md) for complete migration guide.
 
@@ -175,7 +177,7 @@ Once merged with official PX4, you'll be able to use the standard PX4-Autopilot 
   - Height estimate tuned with explicit simulated barometer device priorities
 - **🖥️ Connection Status HUD**: Professional HUD-style overlay for connection feedback:
   - Real-time connection progress indicator with elapsed time display
-  - 30-second timeout with clear warning messages
+  - 60-second timeout with clear warning messages
   - Auto-fade success notification after 3 seconds
   - Clean, minimal design following X-Plane standards (top-center positioning)
   - Configurable via `show_connection_status_hud` in config.ini
@@ -358,7 +360,7 @@ The script supports 5 pre-configured X-Plane airframes:
 - **xplane_tb2** - TB2 UAV (fixed-wing)
 - **xplane_ehang184** - Ehang 184 (quadcopter airtaxi)
 - **xplane_alia250** - Alia-250 (eVTOL quadplane)
-- **xplane_qtailsitter** - Quantix (quad tailsitter VTOL)
+- **xplane_qtailsitter** - PB50 QuadTailsitter (small VTOL tailsitter)
 
 ### Uninstall
 
