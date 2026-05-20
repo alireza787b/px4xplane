@@ -39,10 +39,11 @@ This index is the stable entry point for user and developer documentation.
 - [Report v29 - Alia Airspeed and Ehang Orbit Evidence](reports/report_v29.md)
 - [Report v30 - Alia Brake Recovery and Ehang Orbit Damping](reports/report_v30.md)
 - [Report v31 - Alia Takeoff Gate and Ehang Roll Recovery](reports/report_v31.md)
+- [Report v32 - SITL Connection Reliability](reports/report_v32.md)
 
 ## Current Policy
 
-- Use the `v3.4.19` package for the next Alia and Ehang validation, and reset
+- Use the `v3.4.20` package for the next Alia and Ehang validation, and reset
   PX4 SITL parameters with `distclean` before judging the package.
 - Alia lift-prop braking is disabled by default. The generic brake policy still
   exists, but `feather`, `hard_lock`, and `prop_separate` are controlled A/B

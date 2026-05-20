@@ -475,8 +475,10 @@ void resetFlightLoopTimers();  // Forward declaration
 
 void toggleEnable() {
 	XPLMDebugString("px4xplane: toggleEnable() called.\n");
-	if (ConnectionManager::isConnected()) {
-		XPLMDebugString("px4xplane: Currently connected, attempting to disconnect.\n");
+	if (ConnectionManager::isConnectionActiveOrWaiting()) {
+		XPLMDebugString(ConnectionManager::isConnected() ?
+			"px4xplane: Currently connected, attempting to disconnect.\n" :
+			"px4xplane: Currently waiting for PX4, cancelling connection wait.\n");
 
 		resetFlightLoopTimers();  // Reset timing state BEFORE disconnect
 		ConnectionManager::disconnect();
@@ -597,6 +599,9 @@ void updateMenuItems() {
 	XPLMAppendMenuSeparator(g_menu_id);
 	if (ConnectionManager::isConnected()) {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
+	}
+	else if (ConnectionManager::isWaitingForConnection()) {
+		XPLMAppendMenuItemWithCommand(g_menu_id, "Cancel SITL Connection Wait", toggleEnableCmd);
 	}
 	else {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);
@@ -914,28 +919,41 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon) {
 	// CRITICAL FIX (January 2025): Non-blocking connection polling with timeout
 	// Poll for incoming PX4 connection if socket is waiting
-	static float waitStartTime = 0.0f;
+	static float waitElapsedTime = 0.0f;
+	static bool wasWaitingForConnection = false;
+	static int lastWaitLogBucket = -1;
 	static const float CONNECTION_TIMEOUT = 30.0f;  // 30 second timeout
 
 	if (ConnectionManager::isWaitingForConnection()) {
-		// Get current simulation time for timeout tracking
-		float currentSimTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_running_time_sec"));
-
-		if (waitStartTime == 0.0f) {
-			waitStartTime = currentSimTime;
+		if (!wasWaitingForConnection) {
+			waitElapsedTime = 0.0f;
+			lastWaitLogBucket = -1;
+			wasWaitingForConnection = true;
 		}
 
-		float elapsed = currentSimTime - waitStartTime;
+		if (std::isfinite(inElapsedSinceLastCall) && inElapsedSinceLastCall > 0.0f) {
+			waitElapsedTime += inElapsedSinceLastCall;
+		}
 
 		// Update HUD with current wait time
 		ConnectionStatusHUD::updateStatus(
 			ConnectionStatusHUD::Status::WAITING,
 			"Start PX4 SITL to connect",
-			elapsed
+			waitElapsedTime
 		);
 
+		const int waitLogBucket = static_cast<int>(waitElapsedTime) / 5;
+		if (waitLogBucket > 0 && waitLogBucket != lastWaitLogBucket) {
+			lastWaitLogBucket = waitLogBucket;
+			char waitBuf[192];
+			snprintf(waitBuf, sizeof(waitBuf),
+				"px4xplane: Waiting for PX4 SITL TCP connection on port 4560 for %.1fs\n",
+				waitElapsedTime);
+			XPLMDebugString(waitBuf);
+		}
+
 		// Timeout after 30 seconds
-		if (elapsed > CONNECTION_TIMEOUT) {
+		if (waitElapsedTime > CONNECTION_TIMEOUT) {
 			XPLMDebugString("px4xplane: Connection timeout after 30s\n");
 
 			ConnectionManager::setLastMessage(
@@ -950,7 +968,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 			// Auto-disconnect to allow retry
 			ConnectionManager::disconnect();
-			waitStartTime = 0.0f;
+			waitElapsedTime = 0.0f;
+			wasWaitingForConnection = false;
+			lastWaitLogBucket = -1;
 			return -1.0f;
 		}
 
@@ -967,9 +987,13 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 			ConnectionStatusHUD::Status::CONNECTED,
 			"Ready to fly!"
 		);
-		waitStartTime = 0.0f;
+		waitElapsedTime = 0.0f;
+		wasWaitingForConnection = false;
+		lastWaitLogBucket = -1;
 	} else {
-		waitStartTime = 0.0f;  // Reset when not waiting
+		waitElapsedTime = 0.0f;  // Reset when not waiting
+		wasWaitingForConnection = false;
+		lastWaitLogBucket = -1;
 
 		// Hide HUD when not connecting
 		if (!ConnectionManager::isConnected()) {
@@ -1088,7 +1112,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 PLUGIN_API void XPluginStop(void) {
 	// Unregister the flight loop callback
-	if (ConnectionManager::isConnected()) {
+	if (ConnectionManager::isConnectionActiveOrWaiting()) {
 		toggleEnable();
 	}
 
@@ -1123,7 +1147,7 @@ PLUGIN_API int XPluginEnable(void) {
 }
 
 PLUGIN_API void XPluginDisable(void) {
-	if (ConnectionManager::isConnected() || ConnectionManager::isWaitingForConnection()) {
+	if (ConnectionManager::isConnectionActiveOrWaiting()) {
 		resetFlightLoopTimers();
 		ConnectionManager::disconnect();
 	}

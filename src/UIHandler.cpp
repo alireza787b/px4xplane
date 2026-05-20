@@ -232,8 +232,13 @@ void UIHandler::updateCurrentTabScroll() {
 // =================================================================
 
 const char* UIHandler::getConnectionMenuText() {
-    return ConnectionManager::isConnected() ?
-        "Disconnect from PX4 SITL" : "Connect to PX4 SITL";
+    if (ConnectionManager::isConnected()) {
+        return "Disconnect from PX4 SITL";
+    }
+    if (ConnectionManager::isWaitingForConnection()) {
+        return "Cancel PX4 SITL Connection Wait";
+    }
+    return "Connect to PX4 SITL";
 }
 
 void UIHandler::updateAirframesMenu() {
@@ -549,11 +554,16 @@ int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, 
 
     // Clear connection status with improved visibility
     bool isConnected = ConnectionManager::isConnected();
+    bool isWaiting = ConnectionManager::isWaitingForConnection();
     const std::string& status = ConnectionManager::getStatus();
 
     if (isConnected) {
         memcpy(statusColor, Colors::CONNECTED, sizeof(statusColor));
         snprintf(buf, sizeof(buf), "%s %s", Status::CONNECTED_ICON, Status::CONNECTED_TEXT);
+    }
+    else if (isWaiting) {
+        memcpy(statusColor, Colors::WARNING, sizeof(statusColor));
+        snprintf(buf, sizeof(buf), "%s WAITING FOR PX4 SITL", Status::WARNING_ICON);
     }
     else {
         memcpy(statusColor, Colors::DISCONNECTED, sizeof(statusColor));
@@ -569,6 +579,14 @@ int UIHandler::Internal::drawConnectionTabContent(int left, int top, int right, 
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
     drawSmartText(left + 30, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+
+    const std::string& lastMessage = ConnectionManager::getLastMessage();
+    if (!lastMessage.empty()) {
+        snprintf(buf, sizeof(buf), "Last Event: %.420s", lastMessage.c_str());
+        scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
+        drawSmartText(left + 30, scrolledY, buf, contentColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+        lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
+    }
 
     const auto& validation = ConfigManager::getValidationSummary();
     float validationColor[3];

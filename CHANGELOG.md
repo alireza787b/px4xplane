@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.20] - 2026-05-20
+
+### Fixed
+
+- Tightened the PX4 SITL TCP connection lifecycle without changing Alia or
+  Ehang flight-tuning parameters.
+- While waiting for PX4, the menu now offers `Cancel SITL Connection Wait`
+  instead of another ambiguous connect action.
+- `XPluginStop` now closes both connected and waiting sockets, preventing a
+  stale listener when X-Plane unloads the plugin during a connection wait.
+- Accepted PX4 TCP sockets are explicitly configured non-blocking and
+  `TCP_NODELAY`, so the plugin does not block X-Plane on a slow or stale peer.
+- Send, receive, and select socket failures now disconnect cleanly and update
+  the data-window last-event text instead of leaving the UI looking connected.
+
+### Changed
+
+- Removed `SO_REUSEPORT` from the listening socket setup. `SO_REUSEADDR` still
+  allows quick reconnects, but duplicate listeners on port `4560` are no longer
+  silently allowed.
+- Connection wait timing now uses flight-loop wall time instead of simulator
+  running-time datarefs, so the 30s timeout is user-visible wall-clock behavior.
+- The Connection tab now shows the waiting state and the last connection event.
+- Added report v32 documenting why occasional 5-10s waits can happen when PX4
+  starts before the plugin and how this slice handles clean retry/cancel paths.
+
+---
+
 ## [3.4.19] - 2026-05-19
 
 ### Fixed

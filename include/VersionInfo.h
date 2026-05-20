@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.19";
+    constexpr const char* VERSION = "3.4.20";
 
     /** Version phase description */
-    constexpr const char* PHASE = "Alia Takeoff Gate + Ehang Roll Recovery";
+    constexpr const char* PHASE = "SITL Connection Reliability";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "027";
+    constexpr const char* BUILD = "028";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

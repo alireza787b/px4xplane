@@ -8,12 +8,14 @@ public:
     static void setupServerSocket();
     static void tryAcceptConnection();  // RENAMED from acceptConnection() - now non-blocking
     static bool isWaitingForConnection();  // NEW: Check if socket ready but not connected
+    static bool isConnectionActiveOrWaiting();
     static void disconnect();
     static void closeSocket(int& sock);
     static void sendData(const uint8_t* buffer, int len);
     static void receiveData();
     static bool isConnected();
     static const std::string& getStatus();
+    static const std::string& getPeerEndpoint();
     static void setLastMessage(const std::string& message); // Function to set the last message
     static const std::string& getLastMessage(); // Function to get the last message
     static void cleanupWinSock();
@@ -27,5 +29,6 @@ private:
     static std::string status;
     static int sitlPort;
     static std::string lastMessage; // Variable to keep the last message
+    static std::string peerEndpoint;
 
 };

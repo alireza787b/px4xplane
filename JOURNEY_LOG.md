@@ -2,6 +2,31 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-20
+
+### v3.4.20 SITL Connection Reliability
+
+- Reviewed the px4xplane connection lifecycle after user feedback that SITL can
+  connect immediately in some runs and after roughly `5-10 s` in others.
+- The current architecture is correct for PX4's simulator TCP model: px4xplane
+  listens on port `4560`, PX4 `simulator_mavlink` connects as the client, and
+  the plugin polls non-blocking `accept()` once per X-Plane flight loop.
+- The observed few-second wait is expected when PX4 was already running before
+  the plugin began listening, because PX4's client side may be between retry
+  attempts. The plugin cannot force that retry earlier, but it can make the
+  wait/cancel/error states clear and safe.
+- Fixed the confusing waiting-state menu. While the server socket is listening,
+  the menu now says `Cancel SITL Connection Wait` and closes the listener if
+  selected.
+- Hardened socket handling: accepted PX4 sockets are non-blocking,
+  `TCP_NODELAY` is enabled, stale send/receive/select failures trigger clean
+  disconnect, and plugin unload also closes a waiting listener.
+- Removed `SO_REUSEPORT`; quick reconnect still uses `SO_REUSEADDR`, but a
+  second listener on port `4560` should fail visibly instead of creating
+  ambiguous ownership.
+- No Alia or Ehang PX4 parameter changes were made in this slice. v3.4.19
+  tuning remains the flight-test baseline.
+
 ## 2026-05-19
 
 ### v3.4.19 Alia Takeoff Gate And Ehang Roll Recovery
