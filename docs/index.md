@@ -44,12 +44,16 @@ This index is the stable entry point for user and developer documentation.
 - [Report v33 - v3.4.20 Regression and evtol6 Follow-Up](reports/report_v33.md)
 - [Report v34 - evtol7 Milestone and QuadTailsitter Prep](reports/report_v34.md)
 - [Report v35 - QuadTailsitter qtail1 Crash Recovery](reports/report_v35.md)
+- [Report v36 - QuadTailsitter qtail2 Hover Dynamics Recovery](reports/report_v36.md)
 
 ## Current Policy
 
-- Use the `v3.4.23` package for the next QuadTailsitter hover-only recovery
+- Use the `v3.4.24` package for the next QuadTailsitter hover-only recovery
   test. Alia and Ehang are now milestone airframes, but still require
   `distclean` after airframe-file changes before judging regressions.
+- QuadTailsitter aircraft assets are now source-controlled under
+  `aircraft/QuadTailsitter/`. Use that folder for packages instead of local
+  `PB50` or ad hoc aircraft copies.
 - Alia lift-prop braking is disabled by default. The generic brake policy still
   exists, but `feather`, `hard_lock`, and `prop_separate` are controlled A/B
   options only.

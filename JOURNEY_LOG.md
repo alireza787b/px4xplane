@@ -4,6 +4,25 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-20
 
+### v3.4.24 QuadTailsitter qtail2 Hover Dynamics Recovery
+
+- Reviewed `/home/alireza/qtail2.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
+  px4xplane `v3.4.23`, and had the corrected qtail1 rotor geometry active.
+- TruthCapture was healthy: `9,138` frames, about `75.2 Hz` mean callback, zero
+  dropped rows, and no sim-time resets.
+- Found that qtail2 was not a simple FPS, sensor, or motor-order failure. In
+  the first `10 s` after takeoff, motor outputs were not saturated, but roll
+  already reached about `-35/+19 deg` and p99 roll rate about `136 deg/s`.
+- Found hidden aircraft-side control authority in the X-Plane model:
+  Plane Maker Artificial Stability had P/Q/R application enabled for all four
+  engines. v3.4.24 source-controls the QuadTailsitter aircraft and disables
+  those engine-stability paths for external-autopilot use.
+- Reduced the QuadTailsitter PX4 hover tune aggressively for a hover-only
+  recovery pass: lower attitude/rate gains, lower rate limits, lower yaw demand,
+  disabled `MC_AIRMODE`, slower takeoff, lower tilt/acceleration/jerk limits.
+- Fixed the startup land-detector correction by setting
+  `LNDMC_Z_VEL_MAX=0.20`, below the landing crawl speed.
+
 ### v3.4.23 QuadTailsitter qtail1 Hover Recovery
 
 - Reviewed `/home/alireza/qtail1.zip`. PX4 used `SYS_AUTOSTART=5021`, armed at

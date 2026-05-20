@@ -13,10 +13,10 @@
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
 #
-# This is a conservative first-test configuration. It follows PX4's official
+# This is a hover-recovery configuration. It follows PX4's official
 # quadtailsitter SITL pattern, then applies the px4xplane sensor-fusion lessons
-# learned from Alia and Ehang. Do not treat the fixed-wing or transition values
-# as final until an X-Plane ULog and truth-capture run are reviewed.
+# learned from Alia and Ehang. qtail2 still diverged in hover, so this file
+# keeps fixed-wing and transition values present but not yet validated.
 #
 # USAGE:
 #   make px4_sitl_default xplane_qtailsitter
@@ -134,66 +134,70 @@ param set-default IMU_INTEG_RATE 200
 # MULTICOPTER HOVER CONTROL
 ################################################################################
 
-param set-default MC_AIRMODE 2
+# Keep airmode disabled while the hover loop is still being tuned. PX4's MC
+# tuning guide recommends disabling airmode when reducing first-takeoff
+# oscillations, and qtail2 showed yaw allocation pressure before roll/pitch
+# control was stable.
+param set-default MC_AIRMODE 0
 param set-default MAN_ARM_GESTURE 0
 
-param set-default MC_ROLL_P 2.0
-param set-default MC_PITCH_P 2.0
-param set-default MC_YAW_P 1.2
-param set-default MC_YAW_WEIGHT 0.4
+param set-default MC_ROLL_P 0.8
+param set-default MC_PITCH_P 0.8
+param set-default MC_YAW_P 0.4
+param set-default MC_YAW_WEIGHT 0.2
 
-param set-default MC_ROLLRATE_P 0.18
-param set-default MC_ROLLRATE_I 0.05
-param set-default MC_ROLLRATE_D 0.001
+param set-default MC_ROLLRATE_P 0.08
+param set-default MC_ROLLRATE_I 0.02
+param set-default MC_ROLLRATE_D 0.0005
 param set-default MC_ROLLRATE_FF 0.0
-param set-default MC_ROLLRATE_K 0.45
-param set-default MC_ROLLRATE_MAX 120
+param set-default MC_ROLLRATE_K 0.30
+param set-default MC_ROLLRATE_MAX 70
 
-param set-default MC_PITCHRATE_P 0.18
-param set-default MC_PITCHRATE_I 0.05
-param set-default MC_PITCHRATE_D 0.001
+param set-default MC_PITCHRATE_P 0.08
+param set-default MC_PITCHRATE_I 0.02
+param set-default MC_PITCHRATE_D 0.0005
 param set-default MC_PITCHRATE_FF 0.0
-param set-default MC_PITCHRATE_K 0.50
-param set-default MC_PITCHRATE_MAX 120
+param set-default MC_PITCHRATE_K 0.30
+param set-default MC_PITCHRATE_MAX 70
 
-param set-default MC_YAWRATE_P 0.12
-param set-default MC_YAWRATE_I 0.05
+param set-default MC_YAWRATE_P 0.06
+param set-default MC_YAWRATE_I 0.02
 param set-default MC_YAWRATE_D 0.0
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_MAX 90
+param set-default MC_YAWRATE_MAX 45
 
 
 ################################################################################
 # MULTICOPTER POSITION, TAKEOFF, AND LANDING
 ################################################################################
 
-param set-default MPC_XY_P 0.10
-param set-default MPC_Z_P 0.65
-param set-default MPC_XY_VEL_P_ACC 1.2
-param set-default MPC_XY_VEL_I_ACC 0.2
-param set-default MPC_XY_VEL_D_ACC 0.5
-param set-default MPC_Z_VEL_P_ACC 4.0
-param set-default MPC_Z_VEL_I_ACC 1.5
-param set-default MPC_Z_VEL_D_ACC 0.4
+param set-default MPC_XY_P 0.08
+param set-default MPC_Z_P 0.60
+param set-default MPC_XY_VEL_P_ACC 0.8
+param set-default MPC_XY_VEL_I_ACC 0.1
+param set-default MPC_XY_VEL_D_ACC 0.2
+param set-default MPC_Z_VEL_P_ACC 3.0
+param set-default MPC_Z_VEL_I_ACC 0.8
+param set-default MPC_Z_VEL_D_ACC 0.3
 
-param set-default MPC_XY_VEL_MAX 10
-param set-default MPC_XY_CRUISE 8
-param set-default MPC_VEL_MANUAL 8
-param set-default MPC_Z_V_AUTO_UP 1.2
+param set-default MPC_XY_VEL_MAX 4
+param set-default MPC_XY_CRUISE 3
+param set-default MPC_VEL_MANUAL 3
+param set-default MPC_Z_V_AUTO_UP 0.8
 param set-default MPC_Z_V_AUTO_DN 1.0
-param set-default MPC_Z_VEL_MAX_UP 1.8
-param set-default MPC_Z_VEL_MAX_DN 1.5
+param set-default MPC_Z_VEL_MAX_UP 1.2
+param set-default MPC_Z_VEL_MAX_DN 1.0
 param set-default MPC_XY_ERR_MAX 10
 
-param set-default MPC_ACC_HOR 3.0
-param set-default MPC_ACC_HOR_MAX 4.0
-param set-default MPC_ACC_UP_MAX 3.0
-param set-default MPC_ACC_DOWN_MAX 2.5
-param set-default MPC_JERK_AUTO 4.0
-param set-default MPC_JERK_MAX 6.0
+param set-default MPC_ACC_HOR 1.5
+param set-default MPC_ACC_HOR_MAX 2.0
+param set-default MPC_ACC_UP_MAX 1.8
+param set-default MPC_ACC_DOWN_MAX 1.5
+param set-default MPC_JERK_AUTO 2.0
+param set-default MPC_JERK_MAX 3.0
 
-param set-default MPC_MAN_TILT_MAX 25
-param set-default MPC_TILTMAX_AIR 25
+param set-default MPC_MAN_TILT_MAX 15
+param set-default MPC_TILTMAX_AIR 15
 param set-default MPC_TILTMAX_LND 12
 
 param set-default MPC_THR_HOVER 0.22
@@ -202,8 +206,8 @@ param set-default MPC_THR_MAX 1.0
 param set-default MPC_THR_XY_MARG 0.3
 param set-default MPC_USE_HTE 0
 
-param set-default MPC_TKO_SPEED 1.0
-param set-default MPC_TKO_RAMP_T 4
+param set-default MPC_TKO_SPEED 0.6
+param set-default MPC_TKO_RAMP_T 5
 param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1
@@ -213,7 +217,7 @@ param set-default MPC_LAND_RADIUS 30
 
 param set-default LNDMC_ALT_GND 1.5
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.30
+param set-default LNDMC_Z_VEL_MAX 0.20
 param set-default LNDMC_ROT_MAX 25
 param set-default LNDMC_TRIG_TIME 1
 param set-default COM_DISARM_LAND 1.5

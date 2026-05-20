@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.24] - 2026-05-20
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail2.zip`. v3.4.23 used the corrected
+  QuadTailsitter rotor geometry and healthy TruthCapture timing, but still
+  diverged in hover after takeoff.
+- Disabled the QuadTailsitter X-Plane aircraft's internal Artificial Stability
+  engine mixing for motors 0-3 so px4xplane/PX4 has exclusive authority over
+  motor throttle datarefs.
+- Removed the QuadTailsitter land-detector startup correction by setting
+  `LNDMC_Z_VEL_MAX=0.20`, below `MPC_LAND_CRWL=0.30`.
+
+### Changed
+
+- Added `aircraft/QuadTailsitter/` as source-controlled aircraft assets and
+  copied it into CMake package outputs under `X-Plane_Aircraft/`.
+- Reduced QuadTailsitter hover recovery gains, rate limits, yaw demand, takeoff
+  speed, horizontal correction, acceleration, jerk, and tilt limits for the next
+  controlled hover-only test.
+- Added report v36 and updated the QuadTailsitter test card for v3.4.24.
+
+---
+
 ## [3.4.23] - 2026-05-20
 
 ### Fixed

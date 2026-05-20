@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.23 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.24 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -51,6 +51,7 @@ message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
 #==============================================================================
 
 # Output directory structure: build/{platform}/{config}/px4xplane/64/
+set(PACKAGE_ROOT "${CMAKE_BINARY_DIR}/${PLUGIN_PLATFORM}/${CMAKE_BUILD_TYPE}")
 set(OUTPUT_DIR "${CMAKE_BINARY_DIR}/${PLUGIN_PLATFORM}/${CMAKE_BUILD_TYPE}/px4xplane/64")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
@@ -315,6 +316,17 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         ${OUTPUT_DIR}/../QUADTAILSITTER_XPLANE12_TEST.md
     COMMENT "Copying QuadTailsitter X-Plane test card to plugin root directory"
 )
+
+if(EXISTS "${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter")
+    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${PACKAGE_ROOT}/X-Plane_Aircraft
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter
+            ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
+        COMMENT "Copying QuadTailsitter aircraft source to package output"
+    )
+endif()
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
