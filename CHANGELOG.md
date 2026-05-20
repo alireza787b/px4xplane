@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.23] - 2026-05-20
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail1.zip`. The run used `SYS_AUTOSTART=5021`,
+  px4xplane `v3.4.22`, and failed in multicopter hover before transition:
+  takeoff at `29.37 s`, roll attitude failure at `33.22 s`.
+- Corrected `5021_xplane_qtailsitter` rotor geometry. The previous file used
+  X-Plane ACF positions directly; v3.4.23 converts X-Plane aircraft
+  coordinates (`X=right`, `Y=up`, `Z=tail`) into PX4 body-frame meters.
+- Reduced QuadTailsitter multicopter rate/attitude aggressiveness and rate
+  limits for a hover-only recovery test.
+
+### Changed
+
+- Softened QuadTailsitter takeoff and disabled hover-thrust estimation for the
+  first recovery run so initial climb behavior is deterministic.
+- Renamed user-visible package, docs, and UI text to `QuadTailsitter`. The PX4
+  target remains `xplane_qtailsitter` for build compatibility.
+- Added report v35 and changed the QuadTailsitter test card to hover-only
+  validation before transition testing resumes.
+
+---
+
 ## [3.4.22] - 2026-05-20
 
 ### Fixed
@@ -26,10 +50,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Increased the visible PX4 SITL connection wait timeout from `30 s` to `60 s`
   so PX4's simulator TCP retry cadence has more room before the user has to
   retry manually.
-- Reworked the PB50 QuadTailsitter PX4 airframe into a conservative first-test
+- Reworked the QuadTailsitter PX4 airframe into a conservative first-test
   configuration based on PX4's official quadtailsitter SITL defaults, the
   uploaded X-Plane model geometry, and the validated px4xplane sensor settings.
-- Added a PB50 QuadTailsitter X-Plane 12 first-test card and report v34.
+- Added a QuadTailsitter X-Plane 12 first-test card and report v34.
 
 ---
 

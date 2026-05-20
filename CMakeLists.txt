@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.22 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.23 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -313,7 +313,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
         ${OUTPUT_DIR}/../QUADTAILSITTER_XPLANE12_TEST.md
-    COMMENT "Copying PB50 QuadTailsitter X-Plane test card to plugin root directory"
+    COMMENT "Copying QuadTailsitter X-Plane test card to plugin root directory"
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

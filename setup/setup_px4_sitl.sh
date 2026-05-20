@@ -73,7 +73,7 @@
 # - xplane_tb2: TB2 UAV (fixed-wing)
 # - xplane_ehang184: Ehang 184 (quadcopter airtaxi)
 # - xplane_alia250: Alia-250 (eVTOL quadplane)
-# - xplane_qtailsitter: Quantix (quad tailsitter VTOL)
+# - xplane_qtailsitter: QuadTailsitter (small VTOL tailsitter)
 #
 # === Future ===
 # Once the PR is merged into the official PX4 repository, this script will be updated
@@ -234,7 +234,7 @@ echo "  • Cessna 172 (fixed-wing trainer)"
 echo "  • TB2 UAV (fixed-wing)"
 echo "  • Ehang 184 (quadcopter airtaxi)"
 echo "  • Alia-250 (eVTOL quadplane)"
-echo "  • Quantix (quad tailsitter VTOL)"
+echo "  • QuadTailsitter (small VTOL tailsitter)"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 highlight "Press Enter to continue (auto-continue in 10 seconds)..."

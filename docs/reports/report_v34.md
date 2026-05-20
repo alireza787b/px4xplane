@@ -1,8 +1,8 @@
-# Report v34 - evtol7 Milestone and PB50 Prep
+# Report v34 - evtol7 Milestone and QuadTailsitter Prep
 
 Scope: review `/home/alireza/evtol7.zip`, close the Alia/Ehang tuning milestone,
-explain the connection timeout observation, and prepare the first PB50
-QuadTailsitter test slice.
+explain the connection timeout observation, and prepare the first QuadTailsitter
+test slice.
 
 ## evtol7 Evidence
 
@@ -57,14 +57,15 @@ plugin miss each other during startup, the plugin can time out before the next
 client attempt lands. v3.4.22 extends the visible wait window from `30 s` to
 `60 s`; a manual retry remains safe and does not change airframe state.
 
-## PB50 QuadTailsitter Prep
+## QuadTailsitter Prep
 
-The uploaded `PB50 - vert.acf` is a four-motor tailsitter with no configured
-control surfaces. The file shows:
+The uploaded QuadTailsitter source `.acf` was the source model for the QuadTailsitter
+package. It is a four-motor tailsitter with no configured control surfaces. The
+file shows:
 
-- empty mass about `5 kg`, max mass about `6 kg`
+- empty mass about `5 lb` (`2.27 kg`), max mass about `6 lb`
 - four direct electric motors
-- motor offsets near `+/-1.4 m` longitudinal and `+/-0.72 m` lateral
+- motor offsets near `+/-1.4 ft` lateral and `+/-0.72 ft` longitudinal
 - no active aileron/elevator control surfaces in the inspected wing entries
 
 The previous `5021_xplane_qtailsitter` overclaimed readiness and used a very
@@ -92,7 +93,7 @@ file based on PX4's official quadtailsitter SITL pattern:
 
 ## Next Test
 
-Use v3.4.22 for one PB50 QuadTailsitter first test:
+Use v3.4.22 for one QuadTailsitter first test:
 
 1. Set px4xplane `config_name = QuadTailsitter`.
 2. Run `make px4_sitl_default xplane_qtailsitter`.
@@ -102,5 +103,5 @@ Use v3.4.22 for one PB50 QuadTailsitter first test:
    back-transition, land, and wait after disarm.
 
 Abort early if hover axes are wrong, airspeed remains zero, or fixed-wing mode
-cannot hold altitude. The first PB50 log should be treated as a motor-order,
+cannot hold altitude. The first QuadTailsitter log should be treated as a motor-order,
 axis-sign, and conservative-envelope validation, not a final performance demo.

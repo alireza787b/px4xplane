@@ -4,7 +4,26 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-20
 
-### v3.4.22 evtol7 Milestone And PB50 Prep
+### v3.4.23 QuadTailsitter qtail1 Hover Recovery
+
+- Reviewed `/home/alireza/qtail1.zip`. PX4 used `SYS_AUTOSTART=5021`, armed at
+  `28.15 s`, detected takeoff at `29.37 s`, and reported roll attitude failure
+  at `33.22 s`.
+- TruthCapture was not the cause: `5,357` frames, about `82.3 Hz` mean callback,
+  no dropped rows, and no sim-time resets.
+- Found the first-order fault in the QuadTailsitter control-allocation geometry.
+  The previous file copied X-Plane ACF motor coordinates directly; X-Plane
+  aircraft axes are X=right, Y=up, Z=tail, while PX4 allocation needs body
+  X=forward and body Y=right in meters.
+- Corrected the rotor positions to the converted motor geometry and reduced
+  multicopter rate/attitude aggressiveness for a hover-only recovery test.
+- Kept the ACF flight physics unchanged for this slice. The log supports fixing
+  allocator/tuning first; changing motor/wing/mass physics at the same time
+  would hide whether the root cause was actually fixed.
+- Cleaned user-visible naming to `QuadTailsitter`. The PX4 build target and
+  airframe file remain `xplane_qtailsitter` / `5021_xplane_qtailsitter`.
+
+### v3.4.22 evtol7 Milestone And QuadTailsitter Prep
 
 - Reviewed `/home/alireza/evtol7.zip`. `08_44_10.ulg` is Alia
   (`SYS_AUTOSTART=5020`); `08_51_36.ulg` is Ehang (`SYS_AUTOSTART=5010`).
@@ -22,11 +41,12 @@ This log preserves project decisions, evidence, and next actions across the long
 - The first Alia connection timeout in X-Plane `Log.txt` was a listen/retry
   timing issue, not a flight-stack fault. The plugin is left on the recovered
   v3.4.21 stream path, but the user-visible wait window is extended to 60 s.
-- Audited the uploaded `PB50 - vert.acf`: it is a four-motor, no-control-surface
-  tailsitter with about `5-6 kg` mass and motors near `+/-1.4 m` longitudinal
-  and `+/-0.72 m` lateral offsets. The old `5021_xplane_qtailsitter` comments
-  overclaimed readiness and used faster-than-official first-test speeds.
-- Rebuilt the PB50 QuadTailsitter parameter file from PX4's official
+- Audited the uploaded QuadTailsitter source `.acf`: it is a four-motor, no-control-surface
+  tailsitter with about `5-6 lb` mass and motors near `+/-1.4 ft` lateral
+  and `+/-0.72 ft` longitudinal offsets. The old `5021_xplane_qtailsitter`
+  comments overclaimed readiness and used faster-than-official first-test
+  speeds.
+- Rebuilt the QuadTailsitter parameter file from PX4's official
   quadtailsitter SITL baseline, with px4xplane estimator settings and a
   conservative first-test envelope (`FW_AIRSPD_TRIM=18`, `VT_ARSP_TRANS=15`,
   `NAV_LOITER_RAD=120`).

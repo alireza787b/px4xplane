@@ -371,7 +371,7 @@ std::string ConfigManager::getAirframeDisplayName(const std::string& airframeNam
         return "Cessna 172";
     }
     if (airframeName == "QuadTailsitter") {
-        return "PB50 QuadTailsitter";
+        return "QuadTailsitter";
     }
     return airframeName;
 }

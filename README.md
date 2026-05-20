@@ -120,7 +120,7 @@ Config tooling:
 - `64/config_schema.json` documents valid fields, ranges, and reload policy.
 - `docs/config-editor.html` can import/review/edit/export `config.ini` without
   writing directly into X-Plane or PX4.
-- The packaged Alia, Ehang, and PB50 QuadTailsitter test cards describe the
+- The packaged Alia, Ehang, and QuadTailsitter test cards describe the
   expected PX4 airframe, plugin config, sanity values, and log bundle for
   validation runs.
 
@@ -360,7 +360,7 @@ The script supports 5 pre-configured X-Plane airframes:
 - **xplane_tb2** - TB2 UAV (fixed-wing)
 - **xplane_ehang184** - Ehang 184 (quadcopter airtaxi)
 - **xplane_alia250** - Alia-250 (eVTOL quadplane)
-- **xplane_qtailsitter** - PB50 QuadTailsitter (small VTOL tailsitter)
+- **xplane_qtailsitter** - QuadTailsitter (small VTOL tailsitter)
 
 ### Uninstall
 

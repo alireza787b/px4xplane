@@ -1,15 +1,15 @@
 #!/bin/sh
 ################################################################################
-# PX4 SITL Configuration for PB50 QuadTailsitter in X-Plane
+# PX4 SITL Configuration for QuadTailsitter in X-Plane
 ################################################################################
 #
-# @name              PB50 QuadTailsitter X-Plane SITL
+# @name              QuadTailsitter X-Plane SITL
 # @class             VTOL
 # @type              VTOL Quad Tailsitter
 # @maintainer        alireza787b <p30planets@gmail.com>
 # @url               https://github.com/alireza787b/px4xplane/
 #
-# X-Plane model:     PB50 - vert.acf
+# X-Plane model:     QuadTailsitter.acf
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
 #
@@ -35,31 +35,36 @@ param set-default CA_AIRFRAME 4
 param set-default CA_METHOD 2
 param set-default CA_FAILURE_MODE 0
 
-# The uploaded PB50 model has four direct electric motors placed roughly at
-# +/-1.4 m longitudinal and +/-0.72 m lateral offsets. The order below preserves
-# the existing px4xplane channel order and the PX4 quadtailsitter sign pattern.
+# qtail1 showed that the previous geometry used the X-Plane coordinates
+# directly. X-Plane aircraft coordinates use X=right, Y=up, Z=tail; Plane Maker
+# ACF position values are in feet. PX4 control allocation needs body X=forward
+# and body Y=right in meters. The conversion below is:
+#   PX4_X = -XPLANE_Z * 0.3048
+#   PX4_Y =  XPLANE_X * 0.3048
+# It preserves the existing px4xplane channel order and PX4 quadtailsitter sign
+# pattern.
 param set-default CA_ROTOR_COUNT 4
 
-param set-default CA_ROTOR0_PX 1.4
-param set-default CA_ROTOR0_PY 0.72
+param set-default CA_ROTOR0_PX 0.22
+param set-default CA_ROTOR0_PY 0.43
 param set-default CA_ROTOR0_AZ -1
 param set-default CA_ROTOR0_CT 1.0
 param set-default CA_ROTOR0_KM 0.05
 
-param set-default CA_ROTOR1_PX -1.4
-param set-default CA_ROTOR1_PY -0.72
+param set-default CA_ROTOR1_PX -0.22
+param set-default CA_ROTOR1_PY -0.43
 param set-default CA_ROTOR1_AZ -1
 param set-default CA_ROTOR1_CT 1.0
 param set-default CA_ROTOR1_KM 0.05
 
-param set-default CA_ROTOR2_PX 1.4
-param set-default CA_ROTOR2_PY -0.72
+param set-default CA_ROTOR2_PX 0.22
+param set-default CA_ROTOR2_PY -0.43
 param set-default CA_ROTOR2_AZ -1
 param set-default CA_ROTOR2_CT 1.0
 param set-default CA_ROTOR2_KM -0.05
 
-param set-default CA_ROTOR3_PX -1.4
-param set-default CA_ROTOR3_PY 0.72
+param set-default CA_ROTOR3_PX -0.22
+param set-default CA_ROTOR3_PY 0.43
 param set-default CA_ROTOR3_AZ -1
 param set-default CA_ROTOR3_CT 1.0
 param set-default CA_ROTOR3_KM -0.05
@@ -132,28 +137,30 @@ param set-default IMU_INTEG_RATE 200
 param set-default MC_AIRMODE 2
 param set-default MAN_ARM_GESTURE 0
 
-param set-default MC_ROLL_P 3.0
-param set-default MC_PITCH_P 3.0
-param set-default MC_YAW_P 2.0
+param set-default MC_ROLL_P 2.0
+param set-default MC_PITCH_P 2.0
+param set-default MC_YAW_P 1.2
 param set-default MC_YAW_WEIGHT 0.4
 
-param set-default MC_ROLLRATE_P 0.30
-param set-default MC_ROLLRATE_I 0.10
-param set-default MC_ROLLRATE_D 0.003
+param set-default MC_ROLLRATE_P 0.18
+param set-default MC_ROLLRATE_I 0.05
+param set-default MC_ROLLRATE_D 0.001
 param set-default MC_ROLLRATE_FF 0.0
-param set-default MC_ROLLRATE_MAX 220
+param set-default MC_ROLLRATE_K 0.45
+param set-default MC_ROLLRATE_MAX 120
 
-param set-default MC_PITCHRATE_P 0.30
-param set-default MC_PITCHRATE_I 0.10
-param set-default MC_PITCHRATE_D 0.003
+param set-default MC_PITCHRATE_P 0.18
+param set-default MC_PITCHRATE_I 0.05
+param set-default MC_PITCHRATE_D 0.001
 param set-default MC_PITCHRATE_FF 0.0
-param set-default MC_PITCHRATE_MAX 220
+param set-default MC_PITCHRATE_K 0.50
+param set-default MC_PITCHRATE_MAX 120
 
-param set-default MC_YAWRATE_P 0.20
+param set-default MC_YAWRATE_P 0.12
 param set-default MC_YAWRATE_I 0.05
 param set-default MC_YAWRATE_D 0.0
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_MAX 120
+param set-default MC_YAWRATE_MAX 90
 
 
 ################################################################################
@@ -172,10 +179,10 @@ param set-default MPC_Z_VEL_D_ACC 0.4
 param set-default MPC_XY_VEL_MAX 10
 param set-default MPC_XY_CRUISE 8
 param set-default MPC_VEL_MANUAL 8
-param set-default MPC_Z_V_AUTO_UP 2.5
-param set-default MPC_Z_V_AUTO_DN 1.5
-param set-default MPC_Z_VEL_MAX_UP 3.0
-param set-default MPC_Z_VEL_MAX_DN 2.0
+param set-default MPC_Z_V_AUTO_UP 1.2
+param set-default MPC_Z_V_AUTO_DN 1.0
+param set-default MPC_Z_VEL_MAX_UP 1.8
+param set-default MPC_Z_VEL_MAX_DN 1.5
 param set-default MPC_XY_ERR_MAX 10
 
 param set-default MPC_ACC_HOR 3.0
@@ -185,18 +192,18 @@ param set-default MPC_ACC_DOWN_MAX 2.5
 param set-default MPC_JERK_AUTO 4.0
 param set-default MPC_JERK_MAX 6.0
 
-param set-default MPC_MAN_TILT_MAX 35
-param set-default MPC_TILTMAX_AIR 45
+param set-default MPC_MAN_TILT_MAX 25
+param set-default MPC_TILTMAX_AIR 25
 param set-default MPC_TILTMAX_LND 12
 
-param set-default MPC_THR_HOVER 0.5
+param set-default MPC_THR_HOVER 0.22
 param set-default MPC_THR_MIN 0.12
 param set-default MPC_THR_MAX 1.0
 param set-default MPC_THR_XY_MARG 0.3
-param set-default MPC_USE_HTE 1
+param set-default MPC_USE_HTE 0
 
-param set-default MPC_TKO_SPEED 2.5
-param set-default MPC_TKO_RAMP_T 2
+param set-default MPC_TKO_SPEED 1.0
+param set-default MPC_TKO_RAMP_T 4
 param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1
