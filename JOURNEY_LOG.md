@@ -4,6 +4,27 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-21
 
+### v3.4.28 QuadTailsitter qtail6 Hover Yaw Polish
+
+- Reviewed `/home/alireza/qtail6.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
+  px4xplane `v3.4.27`, and flew the first QuadTailsitter takeoff, two Go-To
+  commands, landing, and disarm without a crash.
+- TruthCapture was healthy: `16,866` frames, about `79.8 Hz` mean callback,
+  zero dropped rows, and no sim-time resets.
+- Confirmed qtail6 fixed the previous allocator/control-authority failure:
+  no sustained unallocated torque, no sustained motor saturation, and clean
+  estimator test ratios.
+- Found the near-ground takeoff pause was commanded by `MPC_TKO_SPEED=0.6` and
+  `MPC_TKO_RAMP_T=2.5`; the local setpoint stayed near the ground for the first
+  seconds after takeoff before climbing to QGC's commanded altitude.
+- Found the remaining Go-To wobble is mostly yaw lag. First-leg yaw p95 error
+  was about `30.7 deg`, while roll/pitch errors stayed in the low single-digit
+  degree range and position tracking was usable for a recovery tune.
+- Prepared v3.4.28 as a param-only polish: faster but still conservative
+  takeoff/climb, modest yaw authority increase, and no ACF/canted-motor change.
+- Documented motor cant as a valid next physical-model slice if qtail7 still
+  shows yaw lag with clean motor headroom.
+
 ### v3.4.27 QuadTailsitter qtail5 Hover Authority Recovery
 
 - Reviewed `/home/alireza/qtail5.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded

@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.28] - 2026-05-21
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail6.zip`. The v3.4.27 QuadTailsitter run was the
+  first controlled hover/Go-To/land/disarm cycle without a crash.
+- Confirmed the qtail6 low-after-takeoff behavior was commanded by
+  `MPC_TKO_SPEED=0.6` and `MPC_TKO_RAMP_T=2.5`, not a bridge sensor or motor
+  mapping bug.
+- Confirmed yaw allocation is now healthy: no sustained unallocated torque, no
+  motor saturation, and clean estimator test ratios.
+
+### Changed
+
+- Raised QuadTailsitter takeoff climb/ramp authority to reduce the near-ground
+  pause: `MPC_TKO_SPEED=1.0`, `MPC_TKO_RAMP_T=1.5`,
+  `MPC_Z_V_AUTO_UP=1.0`, `MPC_Z_VEL_MAX_UP=1.5`, and
+  `MPC_ACC_UP_MAX=2.2`.
+- Modestly increased QuadTailsitter yaw tracking after qtail6 showed yaw lag
+  with motor headroom: `MC_YAW_P=0.42`, `MC_YAW_WEIGHT=0.35`,
+  `MC_YAWRATE_P=0.05`, `MC_YAWRATE_I=0.010`, and `MC_YAWRATE_MAX=45`.
+- Documented the canted-motor decision: valid and likely useful, but deferred
+  to a controlled ACF/control-allocation geometry slice if qtail7 still shows
+  yaw lag.
+- Added report v40 and updated the QuadTailsitter test card for v3.4.28.
+
+---
+
 ## [3.4.27] - 2026-05-21
 
 ### Fixed

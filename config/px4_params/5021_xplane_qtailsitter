@@ -47,8 +47,9 @@ param set-default CA_FAILURE_MODE 0
 # qtail4 showed CT=1.0 with KM=0.05 puts yaw exactly on PX4 control
 # allocator's weak-effectiveness cutoff. qtail5 showed the generic PX4 default
 # CT=6.5 overestimates this X-Plane aircraft's attitude effectiveness and
-# under-commands differential thrust. CT=2.0 keeps yaw safely above the cutoff
-# while restoring enough pitch/roll motor differential for hover recovery.
+# under-commands differential thrust. qtail6 confirmed CT=2.0 keeps yaw
+# allocated, reports torque achieved, and restores enough pitch/roll
+# differential for controlled hover recovery.
 param set-default CA_ROTOR_COUNT 4
 
 param set-default CA_ROTOR0_PX 0.22
@@ -147,8 +148,8 @@ param set-default MAN_ARM_GESTURE 0
 
 param set-default MC_ROLL_P 0.8
 param set-default MC_PITCH_P 0.8
-param set-default MC_YAW_P 0.35
-param set-default MC_YAW_WEIGHT 0.25
+param set-default MC_YAW_P 0.42
+param set-default MC_YAW_WEIGHT 0.35
 
 param set-default MC_ROLLRATE_P 0.08
 param set-default MC_ROLLRATE_I 0.02
@@ -164,11 +165,11 @@ param set-default MC_PITCHRATE_FF 0.0
 param set-default MC_PITCHRATE_K 0.60
 param set-default MC_PITCHRATE_MAX 70
 
-param set-default MC_YAWRATE_P 0.04
-param set-default MC_YAWRATE_I 0.008
+param set-default MC_YAWRATE_P 0.05
+param set-default MC_YAWRATE_I 0.010
 param set-default MC_YAWRATE_D 0.0
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_MAX 30
+param set-default MC_YAWRATE_MAX 45
 
 
 ################################################################################
@@ -187,15 +188,15 @@ param set-default MPC_Z_VEL_D_ACC 0.3
 param set-default MPC_XY_VEL_MAX 2
 param set-default MPC_XY_CRUISE 1.5
 param set-default MPC_VEL_MANUAL 2
-param set-default MPC_Z_V_AUTO_UP 0.8
+param set-default MPC_Z_V_AUTO_UP 1.0
 param set-default MPC_Z_V_AUTO_DN 1.0
-param set-default MPC_Z_VEL_MAX_UP 1.2
+param set-default MPC_Z_VEL_MAX_UP 1.5
 param set-default MPC_Z_VEL_MAX_DN 1.0
 param set-default MPC_XY_ERR_MAX 10
 
 param set-default MPC_ACC_HOR 0.8
 param set-default MPC_ACC_HOR_MAX 1.2
-param set-default MPC_ACC_UP_MAX 1.8
+param set-default MPC_ACC_UP_MAX 2.2
 param set-default MPC_ACC_DOWN_MAX 1.5
 param set-default MPC_JERK_AUTO 1.0
 param set-default MPC_JERK_MAX 2.0
@@ -210,8 +211,8 @@ param set-default MPC_THR_MAX 1.0
 param set-default MPC_THR_XY_MARG 0.3
 param set-default MPC_USE_HTE 0
 
-param set-default MPC_TKO_SPEED 0.6
-param set-default MPC_TKO_RAMP_T 2.5
+param set-default MPC_TKO_SPEED 1.0
+param set-default MPC_TKO_RAMP_T 1.5
 param set-default MIS_TAKEOFF_ALT 1.5
 param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3

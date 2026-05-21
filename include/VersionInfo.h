@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.27";
+    constexpr const char* VERSION = "3.4.28";
 
     /** Version phase description */
-    constexpr const char* PHASE = "QuadTailsitter Hover Authority Recovery";
+    constexpr const char* PHASE = "QuadTailsitter Hover Yaw Polish";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "035";
+    constexpr const char* BUILD = "036";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

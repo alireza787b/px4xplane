@@ -1,10 +1,9 @@
-# QuadTailsitter X-Plane 12 Hover-Recovery Workflow
+# QuadTailsitter X-Plane 12 Hover and Go-To Workflow
 
-This card is for the next controlled QuadTailsitter validation after `qtail5`.
-qtail5 confirmed yaw allocation was restored, but the generic `CT=6.5`
-effectiveness made PX4 under-command differential thrust for this X-Plane
-aircraft. The next test is still hover-first and should verify stronger
-pitch/roll recovery before any transition work resumes.
+This card is for the next controlled QuadTailsitter validation after `qtail6`.
+qtail6 completed takeoff, two Go-To commands, landing, and disarm without a
+crash. The next test should verify that v3.4.28 reduces the low-after-takeoff
+pause and improves yaw tracking before transition work resumes.
 
 ## Setup
 
@@ -23,17 +22,16 @@ pitch/roll recovery before any transition work resumes.
 
 Use calm weather and model calculations per frame `6`.
 
-1. Take off to `1.5 m`.
-2. Hold in multicopter mode for at least `30 s`.
-3. If hover is stable for `20 s`, apply very small roll and pitch stick inputs
-   or short Hold reposition commands. Keep angles below about `8 deg`.
+1. Take off and let PX4 reach QGC's commanded takeoff altitude.
+2. Hold in multicopter mode for `15-20 s`.
+3. Command two modest Go-To movements, similar to qtail6.
 4. Land and wait `10-15 s` after disarm before stopping PX4.
 
-Do not command forward transition on this first recovery run. Abort immediately
-if roll or pitch exceeds about `15 deg`, yaw diverges by more than about
-`20 deg`, an attitude warning appears, motors sit at min/max for more than a
-brief recovery pulse, persistent unallocated torque is visible, or rapid
-uncontrolled climb/descent starts.
+Do not command forward transition on this validation run. Abort immediately if
+roll or pitch exceeds about `20 deg`, yaw diverges by more than about `35 deg`,
+an attitude warning appears, motors sit at min/max for more than a brief
+recovery pulse, persistent unallocated torque is visible, or rapid uncontrolled
+climb/descent starts.
 
 ## Parameter Sanity Check
 
@@ -54,11 +52,11 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_AIRMODE=2`
 - `MC_ROLL_P=0.8`
 - `MC_PITCH_P=0.8`
-- `MC_YAW_P=0.35`
-- `MC_YAW_WEIGHT=0.25`
-- `MC_YAWRATE_P=0.04`
-- `MC_YAWRATE_I=0.008`
-- `MC_YAWRATE_MAX=30`
+- `MC_YAW_P=0.42`
+- `MC_YAW_WEIGHT=0.35`
+- `MC_YAWRATE_P=0.05`
+- `MC_YAWRATE_I=0.010`
+- `MC_YAWRATE_MAX=45`
 - `MC_ROLLRATE_P=0.08`
 - `MC_PITCHRATE_P=0.08`
 - `MC_ROLLRATE_K=0.45`
@@ -68,8 +66,11 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_THR_HOVER=0.27`
 - `MPC_USE_HTE=0`
 - `MIS_TAKEOFF_ALT=1.5`
-- `MPC_TKO_SPEED=0.6`
-- `MPC_TKO_RAMP_T=2.5`
+- `MPC_Z_V_AUTO_UP=1.0`
+- `MPC_Z_VEL_MAX_UP=1.5`
+- `MPC_ACC_UP_MAX=2.2`
+- `MPC_TKO_SPEED=1.0`
+- `MPC_TKO_RAMP_T=1.5`
 - `MPC_TILTMAX_AIR=10.0`
 - `LNDMC_Z_VEL_MAX=0.25`
 - `FW_USE_AIRSPD=1`
@@ -82,7 +83,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.27`
+- `px4xplane: Version: v3.4.28`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -96,8 +97,9 @@ Save and send:
 - X-Plane `Log.txt`
 - XPlaneTruthCapture folder or zip
 
-The next log should be used to verify that pitch/roll rate tracking recovers
-within a few seconds, motor differential is visibly stronger than qtail5 but
-not constantly saturated, yaw remains allocated, and land detection remains
-safe. Transition, canted-motor geometry, and any 6 kg physical-rescale work
-come only after the multicopter hover loop is stable.
+The next log should be used to verify that the near-ground takeoff pause is
+shorter than qtail6, yaw tracking improves during Go-To, pitch/roll tracking
+does not regress, yaw remains allocated, motors are not constantly saturated,
+and land detection remains safe. Transition, canted-motor geometry, and any
+6 kg physical-rescale work come only after this multicopter hover/Go-To loop is
+stable.
