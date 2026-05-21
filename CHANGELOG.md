@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.27] - 2026-05-21
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail5.zip`. The v3.4.26 yaw allocation fix was
+  active and yaw torque was no longer persistently unallocated, but the aircraft
+  still crashed from weak pitch/roll recovery.
+- Changed QuadTailsitter `CA_ROTOR*_CT` from `6.5` to `2.0`. qtail5 showed the
+  generic PX4 default overestimated this X-Plane model's control effectiveness,
+  under-commanding motor differential while reporting torque achieved.
+- Increased pitch/roll rate authority for hover recovery and reduced yaw demand
+  for the lower `CT` value.
+
+### Changed
+
+- Reduced QuadTailsitter horizontal/tilt aggressiveness for the hover-only
+  recovery test so position hold does not drive the aircraft into
+  forward-flight-like excursions before attitude is stable.
+- Set `MPC_THR_HOVER=0.27` and `MPC_TKO_RAMP_T=2.5` to reduce the near-ground
+  pause observed in qtail5.
+- Added report v39 and updated the QuadTailsitter test card for v3.4.27.
+
+---
+
 ## [3.4.26] - 2026-05-21
 
 ### Fixed

@@ -4,6 +4,26 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-21
 
+### v3.4.27 QuadTailsitter qtail5 Hover Authority Recovery
+
+- Reviewed `/home/alireza/qtail5.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
+  px4xplane `v3.4.26`, and had the intended `CT=6.5` yaw-allocation fix active.
+- TruthCapture was healthy: `10,263` frames, about `77 Hz` effective callback,
+  zero dropped rows, and no sim-time resets.
+- Confirmed qtail4's yaw allocation fault was fixed: yaw motor differential was
+  present and `control_allocator_status` no longer reported persistent
+  unallocated yaw torque.
+- Found the new dominant failure: `CT=6.5` overestimated the current X-Plane
+  aircraft's pitch/roll effectiveness. PX4 reported torque achieved while
+  motor differentials stayed too small and the aircraft slowly entered
+  high-speed tilted flight before recovery could catch up.
+- Confirmed this is not a 6 kg aircraft yet. The current ACF is `2.27 kg`, and
+  TruthCapture showed only about `43-47 N` total thrust near full throttle,
+  which is not enough for the requested future `6-6.5 kg` physical model.
+- Changed `CA_ROTOR*_CT` to `2.0`, increased pitch/roll rate authority, reduced
+  yaw demand for the lower CT, softened horizontal/tilt recovery commands, and
+  raised nominal hover thrust to reduce the near-ground pause.
+
 ### v3.4.26 QuadTailsitter qtail4 Yaw Allocation Recovery
 
 - Reviewed `/home/alireza/qtail4.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
