@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.26] - 2026-05-21
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail4.zip`. The crash was traced to PX4 control
+  allocation, not TruthCapture timing or estimator data: PX4 requested yaw
+  torque, but the QuadTailsitter motor outputs kept zero yaw differential and
+  `control_allocator_status` reported yaw as unallocated.
+- Restored QuadTailsitter rotor thrust coefficients to the PX4 allocator
+  default `CA_ROTOR*_CT=6.5`. The previous `CT=1.0` with `KM=0.05` put yaw
+  effectiveness exactly at the allocator weak-row cutoff, so yaw could be
+  removed.
+- Reduced yaw gains and yaw rate limit for the first restored-authority
+  hover-only test.
+
+### Changed
+
+- Updated the QuadTailsitter hover test defaults to match the current 2.27 kg
+  X-Plane aircraft: `MPC_THR_HOVER=0.25`, `MPC_TKO_RAMP_T=3`, and
+  `MIS_TAKEOFF_ALT=1.5`.
+- Added report v38 and updated the QuadTailsitter X-Plane 12 test card.
+
+---
+
 ## [3.4.25] - 2026-05-20
 
 ### Fixed

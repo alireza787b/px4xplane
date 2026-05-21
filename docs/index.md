@@ -46,10 +46,11 @@ This index is the stable entry point for user and developer documentation.
 - [Report v35 - QuadTailsitter qtail1 Crash Recovery](reports/report_v35.md)
 - [Report v36 - QuadTailsitter qtail2 Hover Dynamics Recovery](reports/report_v36.md)
 - [Report v37 - QuadTailsitter qtail3 Yaw Authority Recovery](reports/report_v37.md)
+- [Report v38 - QuadTailsitter qtail4 Yaw Allocation Recovery](reports/report_v38.md)
 
 ## Current Policy
 
-- Use the `v3.4.25` package for the next QuadTailsitter hover-only recovery
+- Use the `v3.4.26` package for the next QuadTailsitter hover-only recovery
   test. Alia and Ehang are now milestone airframes, but still require
   `distclean` after airframe-file changes before judging regressions.
 - QuadTailsitter aircraft assets are now source-controlled under

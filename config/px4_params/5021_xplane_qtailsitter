@@ -43,30 +43,34 @@ param set-default CA_FAILURE_MODE 0
 #   PX4_Y =  XPLANE_X * 0.3048
 # It preserves the existing px4xplane channel order and PX4 quadtailsitter sign
 # pattern.
+#
+# Keep CT at the PX4 multicopter default. With CT=1.0 and KM=0.05, the yaw row
+# is exactly at PX4 control allocator's weak-effectiveness cutoff and can be
+# zeroed, leaving commanded yaw torque unallocated.
 param set-default CA_ROTOR_COUNT 4
 
 param set-default CA_ROTOR0_PX 0.22
 param set-default CA_ROTOR0_PY 0.43
 param set-default CA_ROTOR0_AZ -1
-param set-default CA_ROTOR0_CT 1.0
+param set-default CA_ROTOR0_CT 6.5
 param set-default CA_ROTOR0_KM 0.05
 
 param set-default CA_ROTOR1_PX -0.22
 param set-default CA_ROTOR1_PY -0.43
 param set-default CA_ROTOR1_AZ -1
-param set-default CA_ROTOR1_CT 1.0
+param set-default CA_ROTOR1_CT 6.5
 param set-default CA_ROTOR1_KM 0.05
 
 param set-default CA_ROTOR2_PX 0.22
 param set-default CA_ROTOR2_PY -0.43
 param set-default CA_ROTOR2_AZ -1
-param set-default CA_ROTOR2_CT 1.0
+param set-default CA_ROTOR2_CT 6.5
 param set-default CA_ROTOR2_KM -0.05
 
 param set-default CA_ROTOR3_PX -0.22
 param set-default CA_ROTOR3_PY 0.43
 param set-default CA_ROTOR3_AZ -1
-param set-default CA_ROTOR3_CT 1.0
+param set-default CA_ROTOR3_CT 6.5
 param set-default CA_ROTOR3_KM -0.05
 
 param set-default CA_SV_CS_COUNT 0
@@ -141,8 +145,8 @@ param set-default MAN_ARM_GESTURE 0
 
 param set-default MC_ROLL_P 0.8
 param set-default MC_PITCH_P 0.8
-param set-default MC_YAW_P 0.6
-param set-default MC_YAW_WEIGHT 0.4
+param set-default MC_YAW_P 0.4
+param set-default MC_YAW_WEIGHT 0.3
 
 param set-default MC_ROLLRATE_P 0.08
 param set-default MC_ROLLRATE_I 0.02
@@ -158,11 +162,11 @@ param set-default MC_PITCHRATE_FF 0.0
 param set-default MC_PITCHRATE_K 0.30
 param set-default MC_PITCHRATE_MAX 70
 
-param set-default MC_YAWRATE_P 0.10
-param set-default MC_YAWRATE_I 0.03
+param set-default MC_YAWRATE_P 0.06
+param set-default MC_YAWRATE_I 0.01
 param set-default MC_YAWRATE_D 0.0
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_MAX 60
+param set-default MC_YAWRATE_MAX 35
 
 
 ################################################################################
@@ -198,15 +202,15 @@ param set-default MPC_MAN_TILT_MAX 15
 param set-default MPC_TILTMAX_AIR 15
 param set-default MPC_TILTMAX_LND 12
 
-param set-default MPC_THR_HOVER 0.22
+param set-default MPC_THR_HOVER 0.25
 param set-default MPC_THR_MIN 0.12
 param set-default MPC_THR_MAX 1.0
 param set-default MPC_THR_XY_MARG 0.3
 param set-default MPC_USE_HTE 0
 
 param set-default MPC_TKO_SPEED 0.6
-param set-default MPC_TKO_RAMP_T 5
-param set-default MIS_TAKEOFF_ALT 3.0
+param set-default MPC_TKO_RAMP_T 3
+param set-default MIS_TAKEOFF_ALT 1.5
 param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1

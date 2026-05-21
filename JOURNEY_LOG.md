@@ -2,6 +2,30 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-21
+
+### v3.4.26 QuadTailsitter qtail4 Yaw Allocation Recovery
+
+- Reviewed `/home/alireza/qtail4.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
+  px4xplane `v3.4.25`, and crashed after yaw drift grew into pitch/roll
+  attitude failure.
+- TruthCapture was healthy: `11,609` frames, about `77 Hz` effective callback,
+  zero dropped rows, and no sim-time resets. The current ACF mass was
+  `2.27 kg`, not the proposed `6-6.5 kg` physical redesign.
+- Found the specific allocator fault: the active airframe used
+  `CA_ROTOR*_CT=1.0` and `CA_ROTOR*_KM=+/-0.05`. PX4's allocator zeros rows
+  with no effectiveness entry above `0.05`, so the yaw row landed exactly on
+  the cutoff and could be removed.
+- Confirmed the signature in ULog: yaw torque was requested, yaw torque was
+  reported unallocated, and `actuator_motors` kept the yaw differential near
+  zero even while yaw error grew.
+- Restored `CA_ROTOR*_CT=6.5`, reduced yaw demand, set hover thrust to `0.25`,
+  shortened takeoff ramp to `3 s`, and made the next validation a `1.5 m`
+  hover-only test.
+- Deferred the requested 6 kg / 10 inch prop / canted-motor ACF redesign to a
+  separate slice after stable hover is proven, so this package isolates the
+  allocator fix.
+
 ## 2026-05-20
 
 ### v3.4.25 QuadTailsitter qtail3 Yaw Authority Recovery
