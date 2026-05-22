@@ -4,6 +4,31 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-22
 
+### v3.4.31 QuadTailsitter qtail9 Go-To Smoothness Polish
+
+- Reviewed `/home/alireza/05_30_57.ulg`. The log was valid: about `366.9 s`,
+  full topic set, successful takeoff, Go-To, Orbit, RTL, landing, disarm, and
+  no crash.
+- Confirmed the run did not use clean v3.4.30 defaults. Persistent/manual
+  values were active at boot, including `MPC_XY_VEL_MAX=5`,
+  `MPC_VEL_MANUAL=5`, `MPC_TILTMAX_AIR=45`, `MPC_XY_P=0.15`,
+  `MPC_Z_P=1.0`, `MC_YAW_P=0.8`, `MC_YAWRATE_P=0.2`,
+  `MC_YAWRATE_D=0.04`, and roll/pitch rate `K=1.0`.
+- Found the user's Go-To observation in the data. The main visible
+  brake/continue behavior came from PX4 point-reposition behavior: the
+  trajectory setpoint deliberately slowed near the Go-To target, then the next
+  Go-To accelerated again. This is expected for `DO_REPOSITION`, not a blended
+  waypoint path. A secondary tracking issue remains: during parts of the Go-To,
+  actual speed fell below demanded speed while motors had headroom and pitch
+  lagged the setpoint by about `15-19 deg`.
+- Found the Orbit segment was much healthier than qtail8: yaw/attitude errors
+  were small and no thrust saturation sequence appeared.
+- Prepared v3.4.31 as a parameter-only polish: keep the successful speed
+  direction, strengthen roll/pitch/yaw authority moderately, document Go-To as
+  point-reposition behavior, and avoid bridge, aircraft-geometry,
+  canted-motor, FW, or transition changes until MC Position/Go-To/Orbit is
+  clean at `4-5 m/s`.
+
 ### v3.4.30 QuadTailsitter qtail8 Agile MC Recovery
 
 - Reviewed `/home/alireza/qtail8.zip`. The package was partly corrupt:

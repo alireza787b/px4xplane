@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.31] - 2026-05-22
+
+### Fixed
+
+- Analyzed `/home/alireza/05_30_57.ulg`. The log is valid and captured the
+  best QuadTailsitter multicopter-mode validation so far, using persistent live
+  tuning values from qtail8/qtail9.
+- Confirmed the reported Go-To brake/continue behavior is not a bridge,
+  connection, GPS, or EKF fault. Most of it is expected PX4
+  `DO_REPOSITION` behavior: Go-To is a point-hold command, so PX4 decelerates
+  near the target before the next Go-To accelerates again. A secondary tracking
+  issue remains: pitch lagged the trajectory setpoint when actual speed fell
+  below demanded speed.
+- Confirmed the qtail9 Orbit was stable with the larger radius/yaw policy:
+  attitude errors stayed small and motor saturation was not the driver.
+
+### Changed
+
+- Promoted the successful higher-speed MC direction into the QuadTailsitter
+  defaults while keeping acceleration/jerk guarded: `MPC_XY_CRUISE=5.0`,
+  `MPC_XY_VEL_MAX=5.0`, `MPC_VEL_MANUAL=4.0`, `MPC_ACC_HOR=2.2`,
+  `MPC_ACC_HOR_MAX=2.5`, `MPC_JERK_AUTO=1.5`, and `MPC_JERK_MAX=2.5`.
+- Increased QuadTailsitter roll/pitch authority for smoother Go-To tracking:
+  `MC_ROLL_P=0.9`, `MC_PITCH_P=0.9`, `MC_ROLLRATE_P=0.10`,
+  `MC_PITCHRATE_P=0.10`, `MC_ROLLRATE_D=0.0008`,
+  `MC_PITCHRATE_D=0.0008`, `MC_ROLLRATE_K=1.00`,
+  `MC_PITCHRATE_K=1.00`, and rate limits of `80 deg/s`.
+- Adopted a moderated version of the successful live yaw tune:
+  `MC_YAW_P=0.75`, `MC_YAWRATE_P=0.16`, `MC_YAWRATE_D=0.015`, and
+  `MC_YAWRATE_K=1.15`.
+- Raised MC tilt authority to `32 deg`, below the qtail9 live `45 deg` value,
+  and updated the test card for staged `3 -> 4 -> 5 m/s` Go-To validation.
+- Left px4xplane bridge code, connection handling, aircraft geometry, motor
+  cant, fixed-wing, and transition parameters unchanged in this slice.
+
+---
+
 ## [3.4.30] - 2026-05-22
 
 ### Fixed
