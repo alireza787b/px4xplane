@@ -13,10 +13,12 @@
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
 #
-# This is a hover-recovery configuration. It follows PX4's official
-# quadtailsitter SITL pattern, then applies the px4xplane sensor-fusion lessons
-# learned from Alia and Ehang. qtail2 still diverged in hover, so this file
-# keeps fixed-wing and transition values present but not yet validated.
+# This is a hover and low-speed navigation recovery configuration. It follows
+# PX4's official quadtailsitter SITL pattern, then applies the px4xplane
+# sensor-fusion lessons learned from Alia and Ehang. qtail7 completed takeoff,
+# Go-To, Orbit, RTL, landing, and disarm, but still showed yaw lag and a rough
+# orbit capture. Fixed-wing and transition values are present but not yet
+# validated.
 #
 # USAGE:
 #   make px4_sitl_default xplane_qtailsitter
@@ -47,34 +49,36 @@ param set-default CA_FAILURE_MODE 0
 # qtail4 showed CT=1.0 with KM=0.05 puts yaw exactly on PX4 control
 # allocator's weak-effectiveness cutoff. qtail5 showed the generic PX4 default
 # CT=6.5 overestimates this X-Plane aircraft's attitude effectiveness and
-# under-commands differential thrust. qtail6 confirmed CT=2.0 keeps yaw
-# allocated, reports torque achieved, and restores enough pitch/roll
-# differential for controlled hover recovery.
+# under-commands differential thrust. qtail6/qtail7 confirmed CT=2.0 keeps yaw
+# allocated and reports torque achieved. qtail7 still lagged yaw with motor
+# headroom, so KM is slightly reduced to request more differential motor output
+# for the same yaw torque command while staying above the weak-effectiveness
+# cutoff.
 param set-default CA_ROTOR_COUNT 4
 
 param set-default CA_ROTOR0_PX 0.22
 param set-default CA_ROTOR0_PY 0.43
 param set-default CA_ROTOR0_AZ -1
 param set-default CA_ROTOR0_CT 2.0
-param set-default CA_ROTOR0_KM 0.05
+param set-default CA_ROTOR0_KM 0.04
 
 param set-default CA_ROTOR1_PX -0.22
 param set-default CA_ROTOR1_PY -0.43
 param set-default CA_ROTOR1_AZ -1
 param set-default CA_ROTOR1_CT 2.0
-param set-default CA_ROTOR1_KM 0.05
+param set-default CA_ROTOR1_KM 0.04
 
 param set-default CA_ROTOR2_PX 0.22
 param set-default CA_ROTOR2_PY -0.43
 param set-default CA_ROTOR2_AZ -1
 param set-default CA_ROTOR2_CT 2.0
-param set-default CA_ROTOR2_KM -0.05
+param set-default CA_ROTOR2_KM -0.04
 
 param set-default CA_ROTOR3_PX -0.22
 param set-default CA_ROTOR3_PY 0.43
 param set-default CA_ROTOR3_AZ -1
 param set-default CA_ROTOR3_CT 2.0
-param set-default CA_ROTOR3_KM -0.05
+param set-default CA_ROTOR3_KM -0.04
 
 param set-default CA_SV_CS_COUNT 0
 
@@ -151,25 +155,25 @@ param set-default MC_PITCH_P 0.8
 param set-default MC_YAW_P 0.42
 param set-default MC_YAW_WEIGHT 0.35
 
-param set-default MC_ROLLRATE_P 0.08
+param set-default MC_ROLLRATE_P 0.09
 param set-default MC_ROLLRATE_I 0.02
 param set-default MC_ROLLRATE_D 0.0005
 param set-default MC_ROLLRATE_FF 0.0
 param set-default MC_ROLLRATE_K 0.45
 param set-default MC_ROLLRATE_MAX 70
 
-param set-default MC_PITCHRATE_P 0.08
+param set-default MC_PITCHRATE_P 0.09
 param set-default MC_PITCHRATE_I 0.02
 param set-default MC_PITCHRATE_D 0.0005
 param set-default MC_PITCHRATE_FF 0.0
 param set-default MC_PITCHRATE_K 0.60
 param set-default MC_PITCHRATE_MAX 70
 
-param set-default MC_YAWRATE_P 0.05
-param set-default MC_YAWRATE_I 0.010
+param set-default MC_YAWRATE_P 0.065
+param set-default MC_YAWRATE_I 0.015
 param set-default MC_YAWRATE_D 0.0
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_MAX 45
+param set-default MC_YAWRATE_MAX 60
 
 
 ################################################################################
@@ -185,21 +189,21 @@ param set-default MPC_Z_VEL_P_ACC 3.0
 param set-default MPC_Z_VEL_I_ACC 0.8
 param set-default MPC_Z_VEL_D_ACC 0.3
 
-param set-default MPC_XY_VEL_MAX 2
-param set-default MPC_XY_CRUISE 1.5
-param set-default MPC_VEL_MANUAL 2
+param set-default MPC_XY_VEL_MAX 1.8
+param set-default MPC_XY_CRUISE 1.2
+param set-default MPC_VEL_MANUAL 1.8
 param set-default MPC_Z_V_AUTO_UP 1.0
 param set-default MPC_Z_V_AUTO_DN 1.0
 param set-default MPC_Z_VEL_MAX_UP 1.5
 param set-default MPC_Z_VEL_MAX_DN 1.0
 param set-default MPC_XY_ERR_MAX 10
 
-param set-default MPC_ACC_HOR 0.8
-param set-default MPC_ACC_HOR_MAX 1.2
+param set-default MPC_ACC_HOR 0.7
+param set-default MPC_ACC_HOR_MAX 1.0
 param set-default MPC_ACC_UP_MAX 2.2
 param set-default MPC_ACC_DOWN_MAX 1.5
-param set-default MPC_JERK_AUTO 1.0
-param set-default MPC_JERK_MAX 2.0
+param set-default MPC_JERK_AUTO 0.8
+param set-default MPC_JERK_MAX 1.5
 
 param set-default MPC_MAN_TILT_MAX 10
 param set-default MPC_TILTMAX_AIR 10
@@ -227,6 +231,12 @@ param set-default LNDMC_Z_VEL_MAX 0.25
 param set-default LNDMC_ROT_MAX 25
 param set-default LNDMC_TRIG_TIME 1
 param set-default COM_DISARM_LAND 1.5
+
+param set-default MPC_YAW_MODE 0
+param set-default MPC_YAWRAUTO_ACC 20
+param set-default MPC_YAWRAUTO_MAX 60
+param set-default MIS_YAW_ERR 25
+param set-default MIS_YAW_TMT 5
 
 
 ################################################################################

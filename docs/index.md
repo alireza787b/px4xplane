@@ -49,12 +49,13 @@ This index is the stable entry point for user and developer documentation.
 - [Report v38 - QuadTailsitter qtail4 Yaw Allocation Recovery](reports/report_v38.md)
 - [Report v39 - QuadTailsitter qtail5 Hover Authority Recovery](reports/report_v39.md)
 - [Report v40 - QuadTailsitter qtail6 Hover Yaw Polish](reports/report_v40.md)
+- [Report v41 - QuadTailsitter qtail7 Orbit Damping](reports/report_v41.md)
 
 ## Current Policy
 
-- Use the `v3.4.28` package for the next QuadTailsitter hover and Go-To
-  validation. Alia and Ehang are now milestone airframes, but still require
-  `distclean` after airframe-file changes before judging regressions.
+- Use the `v3.4.29` package for the next QuadTailsitter hover, Go-To, and
+  Orbit validation. Alia and Ehang are now milestone airframes, but still
+  require `distclean` after airframe-file changes before judging regressions.
 - QuadTailsitter aircraft assets are now source-controlled under
   `aircraft/QuadTailsitter/`. Use that folder for packages instead of local
   `PB50` or ad hoc aircraft copies.

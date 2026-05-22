@@ -2,6 +2,33 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-22
+
+### v3.4.29 QuadTailsitter qtail7 Orbit Damping
+
+- Reviewed `/home/alireza/qtail7.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded
+  px4xplane `v3.4.28`, and completed takeoff, Go-To, Orbit, RTL, landing, and
+  disarm without a crash.
+- TruthCapture was healthy: `28,643` frames over about `352.7 s`, about
+  `81.2 Hz` mean callback rate, zero dropped rows, no sim-time resets, and max
+  frame period about `50 ms`.
+- Found no estimator-rooted failure: in-flight innovation ratios stayed low and
+  estimator-vs-truth attitude errors were small enough for this phase.
+- Found the remaining Go-To and Orbit problem is yaw/attitude tracking lag:
+  Go-To yaw p95 was about `22.6 deg`, Orbit yaw p95 about `38.6 deg`, and
+  Orbit roll/pitch p95 about `18-20 deg` during early capture.
+- Confirmed PX4 control allocation reported torque achieved and motors had
+  headroom, so this slice keeps the aircraft geometry unchanged and defers
+  canted-motor work to a later controlled sweep.
+- Prepared v3.4.29 as a parameter-only orbit-damping slice: stronger yaw-rate
+  tracking, slightly stronger roll/pitch rate P, lower yaw `KM` magnitude to
+  request more yaw motor differential, and softer low-speed XY trajectory
+  limits.
+- Rechecked the connection concern. Current code still has the v3.4.20
+  accepted-socket nonblocking regression reverted; a QGC parameter progress
+  hang should be triaged on the GCS-PX4 MAVLink/cache path before changing
+  px4xplane simulator-TCP code again.
+
 ## 2026-05-21
 
 ### v3.4.28 QuadTailsitter qtail6 Hover Yaw Polish

@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.29] - 2026-05-22
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail7.zip`. The v3.4.28 QuadTailsitter run
+  completed takeoff, Go-To, Orbit, RTL, landing, and disarm without a crash,
+  but the first Orbit capture still had large yaw and attitude lag.
+- Confirmed the qtail7 issue is not an estimator or bridge sensor failure:
+  TruthCapture timing was healthy, estimator innovation ratios stayed low, and
+  PX4 control allocation reported torque achieved with motor headroom.
+- Confirmed the QGC parameter-progress hang does not match the old v3.4.20
+  px4xplane simulator-TCP regression; no connection code was changed in this
+  slice.
+
+### Changed
+
+- Increased QuadTailsitter yaw tracking authority:
+  `MC_YAWRATE_P=0.065`, `MC_YAWRATE_I=0.015`, and
+  `MC_YAWRATE_MAX=60`.
+- Changed QuadTailsitter `CA_ROTOR*_KM` from `+/-0.05` to `+/-0.04` so PX4
+  commands more yaw motor differential for the same yaw torque while keeping
+  the yaw row above the control allocator's weak-effectiveness cutoff.
+- Raised roll/pitch rate P from `0.08` to `0.09` and softened horizontal
+  trajectory demand: `MPC_XY_CRUISE=1.2`, `MPC_XY_VEL_MAX=1.8`,
+  `MPC_ACC_HOR=0.7`, `MPC_ACC_HOR_MAX=1.0`, `MPC_JERK_AUTO=0.8`, and
+  `MPC_JERK_MAX=1.5`.
+- Explicitly set QuadTailsitter auto yaw defaults:
+  `MPC_YAW_MODE=0`, `MPC_YAWRAUTO_MAX=60`, `MPC_YAWRAUTO_ACC=20`,
+  `MIS_YAW_ERR=25`, and `MIS_YAW_TMT=5`.
+- Added report v41 and updated the QuadTailsitter test card for v3.4.29.
+
+---
+
 ## [3.4.28] - 2026-05-21
 
 ### Fixed
