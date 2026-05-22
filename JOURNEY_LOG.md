@@ -4,6 +4,24 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-22
 
+### v3.4.33 QuadTailsitter qtail10 FW Energy Recovery
+
+- Reviewed `/home/alireza/qtail10.zip`: valid ULog, valid TruthCapture,
+  `45,719` truth frames, no dropped rows, about `80 Hz` mean callback rate.
+- Confirmed the first forward-transition failure was expected because it was
+  attempted around `26 m` AGL while `VT_FW_MIN_ALT=40`.
+- Confirmed the second transition reached FW state, but the FW segment oversped
+  around `40-60 m/s` while PX4's airspeedless controller used a synthetic
+  `18 m/s` airspeed reference.
+- Found the `120 m` FW loiter radius was not compatible with qtail10 speed:
+  at `50 m/s`, even a `45 deg` bank needs about `255 m` radius.
+- Kept the airspeedless control policy for this test, but added reusable
+  `airspeedSource` and `pitotAxisBody` config/schema support for later physical
+  pitot-axis validation.
+- Prepared v3.4.33 to reduce FW throttle/energy, use a `250 m` FW loiter
+  radius, smooth MC Go-To acceleration, and make MC landing less slow while
+  keeping a final crawl.
+
 ### v3.4.32 QuadTailsitter qtail9 Transition Airspeed Recovery
 
 - Reviewed `/home/alireza/qtail9.zip`: valid ULog, valid TruthCapture, about

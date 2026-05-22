@@ -31,6 +31,7 @@ const config = editor.parseIni(source);
 assert.strictEqual(config.globals.config_name, "Alia250");
 assert.strictEqual(config.sections.length, 1);
 assert.strictEqual(editor.parseMappings(config.sections[0].keys.channel4).length, 2);
+assert(editor.DEFAULT_SCHEMA.airframe_fields.airspeedSource.enum.includes("body_axis"));
 
 const serialized = editor.serializeIni(config);
 assert(serialized.includes("[Alia250]"));

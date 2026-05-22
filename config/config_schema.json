@@ -222,6 +222,31 @@
       "reload_policy": "reconnect_before_flight",
       "description": "Experimental. Also use X-Plane engine-seizure failure while prop brakes are active."
     },
+    "airspeedSource": {
+      "type": "string",
+      "default": "xplane_indicated",
+      "enum": [
+        "xplane_indicated",
+        "disabled",
+        "body_axis"
+      ],
+      "reload_policy": "reconnect_before_flight",
+      "description": "Differential-pressure source for HIL_SENSOR. xplane_indicated uses X-Plane IAS, disabled sends zero pressure, body_axis projects velocity onto pitotAxisBody for controlled pitot experiments."
+    },
+    "pitotAxisBody": {
+      "type": "string",
+      "default": "+X",
+      "enum": [
+        "+X",
+        "-X",
+        "+Y",
+        "-Y",
+        "+Z",
+        "-Z"
+      ],
+      "reload_policy": "reconnect_before_flight",
+      "description": "Physical pitot probe axis in PX4 body frame. Used only when airspeedSource is body_axis."
+    },
     "channelN": {
       "type": "actuator_mapping",
       "min_channel": 0,

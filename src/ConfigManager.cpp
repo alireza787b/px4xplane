@@ -149,6 +149,9 @@ float ConfigManager::prop_brake_min_airspeed_mps = 0.0f;
 std::string ConfigManager::prop_brake_mode = "feather";
 bool ConfigManager::prop_brake_use_failure = false;
 
+std::string ConfigManager::airspeed_source = "xplane_indicated";
+std::string ConfigManager::pitot_axis_body = "+X";
+
 // MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
 int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
 int ConfigManager::mavlink_gps_rate_hz = 10;        // HIL_GPS
@@ -297,6 +300,23 @@ void ConfigManager::loadConfiguration() {
 
     // Configure motor brakes based on the loaded configuration
     configureMotorBrakes(ini);
+
+    airspeed_source = ini.GetValue(configName.c_str(), "airspeedSource", "xplane_indicated");
+    pitot_axis_body = ini.GetValue(configName.c_str(), "pitotAxisBody", "+X");
+
+    if (airspeed_source != "xplane_indicated" && airspeed_source != "disabled" && airspeed_source != "body_axis") {
+        XPLMDebugString("px4xplane: [WARNING] Invalid airspeedSource, using xplane_indicated\n");
+        airspeed_source = "xplane_indicated";
+    }
+    if (pitot_axis_body != "+X" && pitot_axis_body != "-X" &&
+        pitot_axis_body != "+Y" && pitot_axis_body != "-Y" &&
+        pitot_axis_body != "+Z" && pitot_axis_body != "-Z") {
+        XPLMDebugString("px4xplane: [WARNING] Invalid pitotAxisBody, using +X\n");
+        pitot_axis_body = "+X";
+    }
+
+    XPLMDebugString(("px4xplane: Airspeed source=" + airspeed_source +
+        " pitotAxisBody=" + pitot_axis_body + "\n").c_str());
 
     parseConfig(ini);
 

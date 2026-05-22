@@ -1,9 +1,9 @@
 # QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
-This card is for the next controlled QuadTailsitter validation after the long
-`qtail9.zip` run. qtail9 showed that multicopter Go-To/Orbit is close, but all
-forward-transition attempts failed because PX4 waited on a finite near-zero
-validated airspeed while X-Plane truth speed and groundspeed were high.
+This card is for the next controlled QuadTailsitter validation after the
+`qtail10.zip` run. qtail10 reached fixed-wing state, but oversped badly in FW
+because the aircraft is intentionally running PX4's airspeedless VTOL workflow
+until a body-axis pitot model is validated.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -35,14 +35,15 @@ Use calm weather and model calculations per frame `6`.
 2. Hold in multicopter mode for `15-20 s`.
 3. Command one modest Go-To movement around `3 m/s`.
 4. Command one faster Go-To around `4-5 m/s`.
-6. At `20 m` AGL or higher, command one `40-50 m` Orbit.
+5. At `20 m` AGL or higher, command one `40-50 m` multicopter Orbit.
    - If QGC exposes Orbit yaw behavior, use hold initial heading or tangent
      heading for this test. If it does not, use the default center-facing Orbit
      and keep the radius at least `40 m`.
-7. If the MC phase is clean, climb to at least `80 m` AGL and command one
+6. If the MC phase is clean, climb to at least `80 m` AGL and command one
    forward transition while pointed into open space.
-8. If it reaches fixed-wing state cleanly, keep it straight and shallow for
-   `10-15 s`, then command back-transition or RTL.
+7. If it reaches fixed-wing state cleanly, keep it straight and shallow for
+   `10-15 s`; if you test FW loiter, use at least `250 m` radius.
+8. Back-transition manually before RTL if FW path following looks poor.
 9. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
@@ -94,7 +95,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_PITCHRATE_MAX=80`
 - `MPC_THR_HOVER=0.27`
 - `MPC_USE_HTE=0`
-- `MPC_XY_P=0.15`
+- `MPC_XY_P=0.18`
 - `MPC_Z_P=1.00`
 - `MPC_Z_VEL_P_ACC=2.0`
 - `MPC_Z_VEL_I_ACC=0.5`
@@ -103,10 +104,10 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_XY_VEL_MAX=5.0`
 - `MPC_VEL_MANUAL=5.0`
 - `MPC_XY_ERR_MAX=10`
-- `MPC_ACC_HOR=2.2`
-- `MPC_ACC_HOR_MAX=2.5`
-- `MPC_JERK_AUTO=1.5`
-- `MPC_JERK_MAX=2.5`
+- `MPC_ACC_HOR=1.8`
+- `MPC_ACC_HOR_MAX=2.2`
+- `MPC_JERK_AUTO=1.2`
+- `MPC_JERK_MAX=2.0`
 - `MIS_TAKEOFF_ALT=1.5`
 - `MPC_Z_V_AUTO_UP=1.0`
 - `MPC_Z_VEL_MAX_UP=1.5`
@@ -121,17 +122,29 @@ Before judging the run, confirm these defaults in the ULog:
 - `MIS_YAW_ERR=30`
 - `MIS_YAW_TMT=5`
 - `MC_ORBIT_YAW_MOD=1`
-- `LNDMC_Z_VEL_MAX=0.25`
+- `MPC_Z_V_AUTO_DN=1.4`
+- `MPC_Z_VEL_MAX_DN=1.4`
+- `MPC_LAND_SPEED=0.9`
+- `MPC_LAND_CRWL=0.35`
+- `LNDMC_Z_VEL_MAX=0.30`
 - `FW_USE_AIRSPD=0`
 - `ASPD_DO_CHECKS=0`
 - `SYS_HAS_NUM_ASPD=0`
 - `VT_ARSP_BLEND=0`
 - `VT_ARSP_TRANS=0`
-- `VT_F_TRANS_DUR=6.0`
-- `VT_F_TRANS_THR=0.65`
-- `VT_TRANS_TIMEOUT=20`
+- `FW_THR_TRIM=0.20`
+- `FW_THR_MAX=0.45`
+- `FW_R_LIM=35`
+- `VT_F_TRANS_DUR=7.0`
+- `VT_F_TRANS_THR=0.45`
+- `VT_TRANS_MIN_TM=6.0`
+- `VT_TRANS_TIMEOUT=25`
 - `VT_FW_MIN_ALT=40`
 - `VT_QC_T_ALT_LOSS=35`
+- `NAV_LOITER_RAD=250`
+- `RTL_LOITER_RAD=250`
+- `RTL_RETURN_ALT=80`
+- `RTL_DESCEND_ALT=60`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_BARO1_PRIO=0`
 - `IMU_GYRO_RATEMAX=200`
@@ -139,10 +152,11 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.32`
+- `px4xplane: Version: v3.4.33`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
+- `Airspeed source=xplane_indicated pitotAxisBody=-Z`
 
 ## Log Package
 
@@ -165,3 +179,7 @@ The next log should be used to verify:
 - X-Plane IAS may be negative during high-AoA tailsitter motion; px4xplane
   preserves this as signed differential pressure for diagnostics. This is not
   expected to be a reliable transition gate for this aircraft yet.
+- The future pitot experiment should use `airspeedSource=body_axis` only after
+  validating the correct physical probe axis from truth data. For this
+  QuadTailsitter, the current candidate axis is `pitotAxisBody=-Z` because
+  fixed-wing forward thrust is the hover-body thrust axis.

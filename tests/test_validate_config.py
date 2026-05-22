@@ -96,6 +96,8 @@ class ValidateConfigTest(unittest.TestCase):
         schema = validate_config.load_schema()
         self.assertIn("global_fields", schema)
         self.assertIn("config_name", schema["global_fields"])
+        self.assertIn("airspeedSource", schema["airframe_fields"])
+        self.assertIn("body_axis", schema["airframe_fields"]["airspeedSource"]["enum"])
         self.assertEqual(schema["global_fields"]["config_name"]["reload_policy"], "reconnect_before_flight")
 
 

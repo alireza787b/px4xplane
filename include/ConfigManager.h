@@ -147,6 +147,10 @@ public:
     static std::string prop_brake_mode;            // feather, hard_lock, or prop_separate
     static bool prop_brake_use_failure;            // Experimental: also use X-Plane seizure failure while braked
 
+    // Airspeed/differential-pressure source policy.
+    static std::string airspeed_source;            // xplane_indicated, disabled, or body_axis
+    static std::string pitot_axis_body;            // +X, -X, +Y, -Y, +Z, or -Z
+
     // MAVLink message rates (Hz)
     static int mavlink_sensor_rate_hz;       // HIL_SENSOR rate (IMU + barometer)
     static int mavlink_gps_rate_hz;          // HIL_GPS rate

@@ -20,6 +20,8 @@
       autoPropBrakeMinAirspeedMps: { type: "float", min: 0, max: 200 },
       autoPropBrakeMode: { type: "string", enum: ["feather", "hard_lock", "prop_separate"] },
       autoPropBrakeUseFailure: { type: "bool" },
+      airspeedSource: { type: "string", enum: ["xplane_indicated", "disabled", "body_axis"] },
+      pitotAxisBody: { type: "string", enum: ["+X", "-X", "+Y", "-Y", "+Z", "-Z"] },
       channelN: { type: "actuator_mapping", min_channel: 0, max_channel: 15 }
     }
   };

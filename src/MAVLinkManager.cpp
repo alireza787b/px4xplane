@@ -99,6 +99,8 @@ uint16_t degreesToCentidegrees(float degrees)
 	return value == 36000 ? 0 : value;
 }
 
+float signedDynamicPressureHpaFromMps(float airspeedMps);
+
 float localVnMps()
 {
 	return -dataRefFloat("sim/flightmodel/position/local_vz");
@@ -135,8 +137,60 @@ float signedDynamicPressureHpaFromIasKnots(float iasKnots)
 	}
 
 	const float iasMps = iasKnots * KNOT_TO_MPS;
-	const float dynamicPressurePa = 0.5f * DataRefManager::AirDensitySeaLevel * iasMps * std::fabs(iasMps);
+	return signedDynamicPressureHpaFromMps(iasMps);
+}
+
+float signedDynamicPressureHpaFromMps(float airspeedMps)
+{
+	if (!std::isfinite(airspeedMps)) {
+		return 0.0f;
+	}
+
+	const float dynamicPressurePa = 0.5f * DataRefManager::AirDensitySeaLevel * airspeedMps * std::fabs(airspeedMps);
 	return dynamicPressurePa * 0.01f;
+}
+
+float projectOntoConfiguredPitotAxis(const Eigen::Vector3f& bodyVelocity)
+{
+	const std::string& axis = ConfigManager::pitot_axis_body;
+	if (axis == "-X") return -bodyVelocity.x();
+	if (axis == "+Y") return bodyVelocity.y();
+	if (axis == "-Y") return -bodyVelocity.y();
+	if (axis == "+Z") return bodyVelocity.z();
+	if (axis == "-Z") return -bodyVelocity.z();
+	return bodyVelocity.x();
+}
+
+float bodyAxisPitotAirspeedMps()
+{
+	const std::vector<float> q = dataRefFloatArray("sim/flightmodel/position/q");
+	if (q.size() < 4) {
+		return 0.0f;
+	}
+
+	Eigen::Quaternionf attitude(q[0], q[1], q[2], q[3]);
+	if (!std::isfinite(attitude.norm()) || attitude.norm() <= std::numeric_limits<float>::epsilon()) {
+		return 0.0f;
+	}
+
+	attitude.normalize();
+	const Eigen::Vector3f nedVelocity(localVnMps(), localVeMps(), localVdMps());
+	const Eigen::Vector3f bodyVelocity = attitude.toRotationMatrix().transpose() * nedVelocity;
+	return projectOntoConfiguredPitotAxis(bodyVelocity);
+}
+
+float configuredDifferentialPressureHpa()
+{
+	if (ConfigManager::airspeed_source == "disabled") {
+		return 0.0f;
+	}
+
+	if (ConfigManager::airspeed_source == "body_axis") {
+		return signedDynamicPressureHpaFromMps(bodyAxisPitotAirspeedMps());
+	}
+
+	const float iasKnots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
+	return signedDynamicPressureHpaFromIasKnots(iasKnots);
 }
 
 } // namespace
@@ -1450,16 +1504,15 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// where:
 	//   q   = dynamic pressure (Pa)
 	//   ρ   = air density (kg/m³) - using sea-level standard
-	//   V   = airspeed (m/s) - Indicated Airspeed (IAS) from X-Plane
+	//   V   = airspeed (m/s) from the configured airspeed source
 	//
-	// PX4's differential_pressure uORB field may be negative. Preserve X-Plane's
-	// signed IAS so high-AoA or reverse-flow cases remain observable instead of
-	// being silently converted to zero pressure.
+	// PX4's differential_pressure uORB field may be negative. The default
+	// X-Plane IAS source preserves signed IAS so high-AoA or reverse-flow cases
+	// remain observable instead of being silently converted to zero pressure.
+	// The experimental body_axis source projects velocity onto a configured
+	// physical pitot axis for future tailsitter validation.
 
-	// Retrieve Indicated Airspeed from X-Plane
-	// DataRef: "sim/flightmodel/position/indicated_airspeed" (knots)
-	float ias_knots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
-	float dynamicPressure_hPa = signedDynamicPressureHpaFromIasKnots(ias_knots);
+	float dynamicPressure_hPa = configuredDifferentialPressureHpa();
 
 	// Populate differential pressure in HIL_SENSOR
 	// PX4 uses this for airspeed estimation (combined with static pressure)

@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.32";
+    constexpr const char* VERSION = "3.4.33";
 
     /** Version phase description */
-    constexpr const char* PHASE = "QuadTailsitter Transition Airspeed Recovery";
+    constexpr const char* PHASE = "QuadTailsitter qtail10 FW Energy Recovery";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "040";
+    constexpr const char* BUILD = "041";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

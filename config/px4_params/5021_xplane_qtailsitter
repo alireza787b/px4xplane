@@ -13,13 +13,13 @@
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
 #
-# This is a hover, low-speed navigation, and first-transition candidate
-# configuration. It follows PX4's official quadtailsitter SITL pattern, then
-# applies the px4xplane sensor-fusion lessons learned from Alia and Ehang.
-# qtail9 showed that multicopter Go-To/Orbit is close, but transition failed
-# because PX4 was waiting on a finite near-zero airspeed source while X-Plane
-# truth speed was high. The first transition tests therefore use PX4's
-# airspeed-less VTOL workflow until the aircraft has a validated pitot model.
+# This is a hover, low-speed navigation, and first-transition configuration. It
+# follows PX4's official quadtailsitter SITL pattern, then applies the
+# px4xplane sensor-fusion lessons learned from Alia and Ehang. qtail10 reached
+# fixed-wing state, but oversped badly in FW because this aircraft is still
+# running PX4's airspeedless VTOL workflow. Keep transition tests high and
+# conservative until a validated body-axis pitot model replaces the synthetic
+# FW airspeed assumption.
 #
 # USAGE:
 #   make px4_sitl_default xplane_qtailsitter
@@ -182,7 +182,7 @@ param set-default MC_YAWRATE_MAX 65
 # MULTICOPTER POSITION, TAKEOFF, AND LANDING
 ################################################################################
 
-param set-default MPC_XY_P 0.15
+param set-default MPC_XY_P 0.18
 param set-default MPC_Z_P 1.00
 param set-default MPC_XY_VEL_P_ACC 0.8
 param set-default MPC_XY_VEL_I_ACC 0.1
@@ -195,17 +195,17 @@ param set-default MPC_XY_VEL_MAX 5.0
 param set-default MPC_XY_CRUISE 5.0
 param set-default MPC_VEL_MANUAL 5.0
 param set-default MPC_Z_V_AUTO_UP 1.0
-param set-default MPC_Z_V_AUTO_DN 1.0
+param set-default MPC_Z_V_AUTO_DN 1.4
 param set-default MPC_Z_VEL_MAX_UP 1.5
-param set-default MPC_Z_VEL_MAX_DN 1.0
+param set-default MPC_Z_VEL_MAX_DN 1.4
 param set-default MPC_XY_ERR_MAX 10
 
-param set-default MPC_ACC_HOR 2.2
-param set-default MPC_ACC_HOR_MAX 2.5
+param set-default MPC_ACC_HOR 1.8
+param set-default MPC_ACC_HOR_MAX 2.2
 param set-default MPC_ACC_UP_MAX 2.2
 param set-default MPC_ACC_DOWN_MAX 1.5
-param set-default MPC_JERK_AUTO 1.5
-param set-default MPC_JERK_MAX 2.5
+param set-default MPC_JERK_AUTO 1.2
+param set-default MPC_JERK_MAX 2.0
 
 param set-default MPC_MAN_TILT_MAX 35
 param set-default MPC_TILTMAX_AIR 40
@@ -223,13 +223,13 @@ param set-default MIS_TAKEOFF_ALT 1.5
 param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1
-param set-default MPC_LAND_SPEED 0.7
-param set-default MPC_LAND_CRWL 0.30
+param set-default MPC_LAND_SPEED 0.9
+param set-default MPC_LAND_CRWL 0.35
 param set-default MPC_LAND_RADIUS 30
 
 param set-default LNDMC_ALT_GND 1.5
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.25
+param set-default LNDMC_Z_VEL_MAX 0.30
 param set-default LNDMC_ROT_MAX 25
 param set-default LNDMC_TRIG_TIME 1
 param set-default COM_DISARM_LAND 1.5
@@ -259,11 +259,11 @@ param set-default FW_AIRSPD_MIN 14
 param set-default FW_AIRSPD_TRIM 18
 param set-default FW_AIRSPD_MAX 24
 
-param set-default FW_THR_TRIM 0.35
-param set-default FW_THR_MAX 0.80
+param set-default FW_THR_TRIM 0.20
+param set-default FW_THR_MAX 0.45
 param set-default FW_THR_MIN 0.05
 param set-default FW_THR_IDLE 0.00
-param set-default FW_THR_SLEW_MAX 0.80
+param set-default FW_THR_SLEW_MAX 0.35
 
 param set-default FW_T_CLMB_MAX 6
 param set-default FW_T_SINK_MAX 3
@@ -285,7 +285,7 @@ param set-default FW_PR_I 0.30
 param set-default FW_PR_D 0.0
 
 param set-default FW_R_TC 0.6
-param set-default FW_R_LIM 45
+param set-default FW_R_LIM 35
 param set-default FW_RR_P 0.20
 param set-default FW_RR_I 0.10
 param set-default FW_RR_D 0.0
@@ -304,14 +304,15 @@ param set-default FW_YR_FF 0.0
 param set-default VT_TYPE 0
 param set-default VT_ARSP_BLEND 0
 param set-default VT_ARSP_TRANS 0
-param set-default VT_F_TRANS_DUR 6.0
-param set-default VT_F_TRANS_THR 0.65
-param set-default VT_F_TR_OL_TM 8.0
-param set-default VT_TRANS_TIMEOUT 20
-param set-default VT_B_TRANS_DUR 6.0
-param set-default VT_B_DEC_MSS 2.0
+param set-default VT_F_TRANS_DUR 7.0
+param set-default VT_F_TRANS_THR 0.45
+param set-default VT_F_TR_OL_TM 10.0
+param set-default VT_TRANS_MIN_TM 6.0
+param set-default VT_TRANS_TIMEOUT 25
+param set-default VT_B_TRANS_DUR 7.0
+param set-default VT_B_DEC_MSS 1.5
 param set-default VT_B_DEC_I 0.1
-param set-default VT_B_TRANS_RAMP 4.0
+param set-default VT_B_TRANS_RAMP 5.0
 param set-default VT_FW_MIN_ALT 40
 param set-default VT_QC_T_ALT_LOSS 35
 param set-default VT_PITCH_MIN -10
@@ -327,15 +328,15 @@ param set-default VT_FW_DIFTHR_S_Y 1.0
 # NAVIGATION AND FAILSAFE
 ################################################################################
 
-param set-default NPFG_PERIOD 10.0
+param set-default NPFG_PERIOD 14.0
 param set-default NPFG_DAMPING 0.70
-param set-default NPFG_ROLL_TC 0.5
-param set-default NAV_ACC_RAD 20
+param set-default NPFG_ROLL_TC 0.8
+param set-default NAV_ACC_RAD 12
 param set-default NAV_MC_ALT_RAD 2
-param set-default NAV_LOITER_RAD 120
-param set-default RTL_LOITER_RAD 120
-param set-default RTL_RETURN_ALT 60
-param set-default RTL_DESCEND_ALT 45
+param set-default NAV_LOITER_RAD 250
+param set-default RTL_LOITER_RAD 250
+param set-default RTL_RETURN_ALT 80
+param set-default RTL_DESCEND_ALT 60
 param set-default RTL_MIN_DIST 50
 
 param set-default FD_FAIL_R 70

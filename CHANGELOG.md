@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.33] - 2026-05-22
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail10.zip`. The log is valid and confirms
+  QuadTailsitter reached fixed-wing state, but FW speed/path behavior was not
+  acceptable.
+- Confirmed the first transition failure was caused by starting below
+  `VT_FW_MIN_ALT=40`, not by a bridge airspeed regression.
+- Confirmed the second transition entered FW, then oversped around `40-60 m/s`
+  while PX4's airspeedless FW controller assumed a synthetic `18 m/s` trim.
+- Confirmed the commanded `120 m` FW loiter radius was too small for the
+  qtail10 speed envelope.
+
+### Changed
+
+- Added reusable `airspeedSource` and `pitotAxisBody` config fields, plus
+  schema/config-editor validation, for future pitot-axis experiments.
+- Kept QuadTailsitter airspeedless for control, but documented the candidate
+  physical pitot axis as `-Z` for this model.
+- Reduced QuadTailsitter FW energy demand:
+  `FW_THR_TRIM=0.20`, `FW_THR_MAX=0.45`, `FW_THR_SLEW_MAX=0.35`,
+  and `FW_R_LIM=35`.
+- Slowed the first transition candidate:
+  `VT_F_TRANS_DUR=7.0`, `VT_F_TRANS_THR=0.45`,
+  `VT_TRANS_MIN_TM=6.0`, `VT_F_TR_OL_TM=10.0`, and
+  `VT_TRANS_TIMEOUT=25`.
+- Increased FW loiter/RTL radii and altitude margins:
+  `NAV_LOITER_RAD=250`, `RTL_LOITER_RAD=250`, `RTL_RETURN_ALT=80`,
+  `RTL_DESCEND_ALT=60`, `NPFG_PERIOD=14`, and `NPFG_ROLL_TC=0.8`.
+- Smoothed MC Go-To and landing defaults:
+  `MPC_XY_P=0.18`, `MPC_ACC_HOR=1.8`, `MPC_JERK_AUTO=1.2`,
+  `MPC_Z_V_AUTO_DN=1.4`, `MPC_LAND_SPEED=0.9`, and
+  `MPC_LAND_CRWL=0.35`.
+- Updated the QuadTailsitter test card and added report v45.
+
+---
+
 ## [3.4.32] - 2026-05-22
 
 ### Fixed
