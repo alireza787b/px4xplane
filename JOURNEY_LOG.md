@@ -4,6 +4,27 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-22
 
+### v3.4.30 QuadTailsitter qtail8 Agile MC Recovery
+
+- Reviewed `/home/alireza/qtail8.zip`. The package was partly corrupt:
+  `04_17_10.ulg` had a bad CRC and TruthCapture `frames.csv` failed inflate,
+  so tuning conclusions use the valid `04_31_13.ulg` and TruthCapture metadata.
+- Confirmed the usable log started airborne and did not represent clean v3.4.29
+  defaults. It already had `MPC_XY_VEL_MAX=5`, `MPC_VEL_MANUAL=5`,
+  `MPC_TILTMAX_AIR=45`, `MC_YAWRATE_K=1.2`, and yaw D active.
+- Found the live experiments did contain useful information: with
+  `MPC_XY_CRUISE=3`, the vehicle reached about `2.8 m/s` p95 and `3.4 m/s`
+  max in Go-To while maintaining altitude within about `0.6 m` p95.
+- Found the crash sequence: a `30 m`, center-facing Orbit command at low
+  altitude caused rapid yaw motion, vertical sink, motor saturation,
+  thrust-not-achieved, ground contact, and then roll attitude failure. Estimator
+  health was clean until after impact.
+- Prepared v3.4.30 as an agile-but-guarded MC slice: faster than v3.4.29,
+  capped at `25 deg` tilt, moderate yaw gain increase, slower auto yaw setpoint
+  motion, and moderate altitude-hold gain changes.
+- Deferred connection-code and aircraft-geometry changes. The usable log did
+  not prove a bridge sensor failure or a new simulator-TCP regression.
+
 ### v3.4.29 QuadTailsitter qtail7 Orbit Damping
 
 - Reviewed `/home/alireza/qtail7.zip`. PX4 used `SYS_AUTOSTART=5021`, loaded

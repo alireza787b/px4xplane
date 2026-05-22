@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.30] - 2026-05-22
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail8.zip`. The package was partly corrupt:
+  `04_17_10.ulg` and TruthCapture `frames.csv` are not reliable, but
+  `04_31_13.ulg` and TruthCapture metadata were usable.
+- Confirmed the qtail8 crash happened after a `30 m` center-facing Orbit
+  command while live-test values were already more aggressive than v3.4.29:
+  `MPC_TILTMAX_AIR=45`, `MPC_XY_VEL_MAX=5`, and yaw D/K changes were active.
+- Confirmed the usable qtail8 ULog does not show estimator loss before impact;
+  the failure sequence was yaw/attitude/vertical coupling with motor thrust
+  saturation during Orbit entry.
+
+### Changed
+
+- Raised QuadTailsitter MC-mode speed above the hover-recovery defaults without
+  keeping the live crash envelope: `MPC_XY_CRUISE=3.0`,
+  `MPC_XY_VEL_MAX=3.5`, `MPC_VEL_MANUAL=3.0`,
+  `MPC_ACC_HOR=2.0`, `MPC_ACC_HOR_MAX=2.0`,
+  `MPC_JERK_AUTO=1.2`, and `MPC_JERK_MAX=2.0`.
+- Raised QuadTailsitter tilt authority to `25 deg`, not the live-test
+  `45 deg`.
+- Adopted moderate yaw-response improvements:
+  `MC_YAW_P=0.55`, `MC_YAWRATE_P=0.10`, `MC_YAWRATE_I=0.015`,
+  `MC_YAWRATE_D=0.005`, `MC_YAWRATE_K=1.10`, and `MC_YAWRATE_MAX=60`.
+- Slowed automatic yaw setpoint motion to reduce Orbit entry yaw swings:
+  `MPC_YAWRAUTO_MAX=35`, `MPC_YAWRAUTO_ACC=12`, and `MIS_YAW_ERR=30`.
+- Moderately improved altitude hold: `MPC_Z_P=0.80`,
+  `MPC_Z_VEL_P_ACC=2.5`, `MPC_Z_VEL_I_ACC=0.6`, and
+  `MPC_Z_VEL_D_ACC=0.4`.
+- Added report v42 and updated the QuadTailsitter test card for v3.4.30.
+
+---
+
 ## [3.4.29] - 2026-05-22
 
 ### Fixed
