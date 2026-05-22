@@ -4,6 +4,30 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-22
 
+### v3.4.32 QuadTailsitter qtail9 Transition Airspeed Recovery
+
+- Reviewed `/home/alireza/qtail9.zip`: valid ULog, valid TruthCapture, about
+  `650.8 s` of PX4 data and `54,342` truth frames at about `83 Hz`.
+- Found qtail9 did not use clean v3.4.31 defaults. `SYS_AUTOCONFIG=0` and
+  persistent/manual values were active, including `MPC_TILTMAX_AIR=45`,
+  `MPC_VEL_MANUAL=5`, `MC_YAWRATE_P=0.20`, and `MC_YAWRATE_D=0.04`.
+- Confirmed Go-To speed changes were mostly PX4 `DO_REPOSITION` point-hold
+  behavior: each clicked target accelerates toward the point, decelerates near
+  it, then the next clicked target accelerates again.
+- Found six forward-transition attempts. Each entered transition-to-FW and
+  returned to MC; none reached fixed-wing state. The main blocker was
+  `FW_USE_AIRSPD=1` plus `VT_ARSP_TRANS=15` while validated airspeed stayed
+  near zero.
+- Truth capture showed X-Plane IAS ranged from about `-134 kt` to `+8 kt`
+  while true airspeed reached about `76 m/s`. px4xplane had been clamping
+  negative IAS to zero before calculating differential pressure.
+- Implemented signed differential pressure in the bridge and replay tool,
+  following PX4's signed `differential_pressure` topic semantics. This keeps
+  high-AoA/reverse-flow evidence visible without faking airspeed from TAS.
+- Prepared a first-transition QuadTailsitter candidate that disables transition
+  airspeed gating for this airframe, slows pitch-over, raises transition safety
+  margins, and promotes moderated live MC yaw/tilt authority.
+
 ### v3.4.31 QuadTailsitter qtail9 Go-To Smoothness Polish
 
 - Reviewed `/home/alireza/05_30_57.ulg`. The log was valid: about `366.9 s`,

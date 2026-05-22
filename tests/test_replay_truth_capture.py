@@ -40,6 +40,7 @@ class ReplayTruthCaptureTest(unittest.TestCase):
         self.assertAlmostEqual(sensor["xacc"], -0.980665)
         self.assertAlmostEqual(sensor["yacc"], 1.96133)
         self.assertAlmostEqual(sensor["zacc"], -9.80665)
+        self.assertGreater(sensor["diff_pressure_hpa"], 0.0)
         self.assertEqual(sensor["pressure_alt"], 0.0)
 
         gps, cog = replay.decode_gps(row, 1_000_000, 0)
@@ -103,8 +104,24 @@ class ReplayTruthCaptureTest(unittest.TestCase):
                 },
             )()
             rows = list(replay.iter_decoded_rows(args))
-            self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["message"], "HIL_SENSOR")
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["message"], "HIL_SENSOR")
+
+    def test_preserves_signed_differential_pressure(self):
+        row = {
+            "frame_id": "1",
+            "sim/time/total_flight_time_sec": "1.0",
+            "sim/flightmodel/position/indicated_airspeed": "-20",
+            "sim/flightmodel/position/elevation": "0",
+        }
+
+        sensor = replay.decode_sensor(row, 1_000_000)
+        self.assertLess(sensor["diff_pressure_hpa"], 0.0)
+        self.assertAlmostEqual(
+            abs(sensor["diff_pressure_hpa"]),
+            replay.signed_dynamic_pressure_hpa_from_ias_knots(20),
+        )
 
 
 if __name__ == "__main__":

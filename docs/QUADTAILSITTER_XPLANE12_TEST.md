@@ -1,12 +1,12 @@
-# QuadTailsitter X-Plane 12 Hover, Go-To, and Orbit Workflow
+# QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
-This card is for the next controlled QuadTailsitter validation after `qtail9`.
-qtail9 was the best multicopter-mode flight so far. The reported Go-To
-brake/continue behavior was mostly expected PX4 point-reposition behavior:
-Go-To decelerates near the target instead of blending separate points as a
-continuous path. A smaller tuning issue remains because pitch lagged the
-trajectory setpoint in parts of the Go-To. The next test should verify v3.4.31
-in Position, Go-To, and Orbit before transition work resumes.
+This card is for the next controlled QuadTailsitter validation after the long
+`qtail9.zip` run. qtail9 showed that multicopter Go-To/Orbit is close, but all
+forward-transition attempts failed because PX4 waited on a finite near-zero
+validated airspeed while X-Plane truth speed and groundspeed were high.
+
+Go-To is still a point-hold command. It will decelerate near the target instead
+of blending separate target clicks as one continuous path.
 
 ## Setup
 
@@ -18,8 +18,14 @@ in Position, Go-To, and Orbit before transition work resumes.
 4. Run PX4 with:
    - `make px4_sitl_default xplane_qtailsitter`
    - `SYS_AUTOSTART` must be `5021`
-5. Run `make distclean` once after replacing or pulling the airframe file.
-6. Start XPlaneTruthCapture before connecting PX4.
+5. Force a clean PX4 parameter load before the test. Use one of:
+   - preferred: `make distclean`, then rebuild/run `xplane_qtailsitter`
+   - targeted: delete `build/px4_sitl_default/rootfs/parameters.bson` and
+     `build/px4_sitl_default/rootfs/parameters_backup.bson`
+   - PX4 shell: `param reset_all`, then stop and restart PX4
+6. Do not judge the test if the ULog shows `SYS_AUTOCONFIG=0` with old/manual
+   values that do not match the sanity-check list below.
+7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
 
@@ -28,20 +34,25 @@ Use calm weather and model calculations per frame `6`.
 1. Take off and let PX4 reach QGC's commanded takeoff altitude.
 2. Hold in multicopter mode for `15-20 s`.
 3. Command one modest Go-To movement around `3 m/s`.
-4. Command one faster Go-To around `4 m/s`.
-5. If attitude tracking, altitude, and motor headroom remain clean, command one
-   `5 m/s` Go-To.
+4. Command one faster Go-To around `4-5 m/s`.
 6. At `20 m` AGL or higher, command one `40-50 m` Orbit.
    - If QGC exposes Orbit yaw behavior, use hold initial heading or tangent
      heading for this test. If it does not, use the default center-facing Orbit
      and keep the radius at least `40 m`.
-7. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
+7. If the MC phase is clean, climb to at least `80 m` AGL and command one
+   forward transition while pointed into open space.
+8. If it reaches fixed-wing state cleanly, keep it straight and shallow for
+   `10-15 s`, then command back-transition or RTL.
+9. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
 
-Do not command forward transition on this validation run. Abort immediately if
-roll or pitch exceeds about `35 deg`, stays above about `25 deg`, yaw diverges
-by more than about `45 deg` and keeps growing, an attitude warning appears,
-motors sit at min/max for more than a brief recovery pulse, persistent
-unallocated torque is visible, or rapid uncontrolled climb/descent starts.
+Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
+after transition should have stabilized, motors sit at min/max for more than a
+brief recovery pulse, an attitude warning appears, or the vehicle travels out of
+the safe test area.
+
+QGC heading/attitude can look strange during tailsitter pitch-over near
+vertical attitude. Judge transition state, local position, altitude, and the ULog
+quaternion/attitude topics rather than QGC's small vehicle icon alone.
 
 Go-To is a point-hold command. A smooth deceleration near the target is normal.
 For continuous path-following, use a mission/path workflow or send the next
@@ -66,13 +77,13 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_AIRMODE=2`
 - `MC_ROLL_P=0.9`
 - `MC_PITCH_P=0.9`
-- `MC_YAW_P=0.75`
+- `MC_YAW_P=0.80`
 - `MC_YAW_WEIGHT=0.35`
-- `MC_YAWRATE_P=0.16`
+- `MC_YAWRATE_P=0.20`
 - `MC_YAWRATE_I=0.015`
-- `MC_YAWRATE_D=0.015`
-- `MC_YAWRATE_K=1.15`
-- `MC_YAWRATE_MAX=60`
+- `MC_YAWRATE_D=0.025`
+- `MC_YAWRATE_K=1.20`
+- `MC_YAWRATE_MAX=65`
 - `MC_ROLLRATE_P=0.10`
 - `MC_PITCHRATE_P=0.10`
 - `MC_ROLLRATE_D=0.0008`
@@ -83,14 +94,14 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_PITCHRATE_MAX=80`
 - `MPC_THR_HOVER=0.27`
 - `MPC_USE_HTE=0`
-- `MPC_XY_P=0.14`
+- `MPC_XY_P=0.15`
 - `MPC_Z_P=1.00`
 - `MPC_Z_VEL_P_ACC=2.0`
 - `MPC_Z_VEL_I_ACC=0.5`
 - `MPC_Z_VEL_D_ACC=0.5`
 - `MPC_XY_CRUISE=5.0`
 - `MPC_XY_VEL_MAX=5.0`
-- `MPC_VEL_MANUAL=4.0`
+- `MPC_VEL_MANUAL=5.0`
 - `MPC_XY_ERR_MAX=10`
 - `MPC_ACC_HOR=2.2`
 - `MPC_ACC_HOR_MAX=2.5`
@@ -102,7 +113,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_ACC_UP_MAX=2.2`
 - `MPC_TKO_SPEED=1.0`
 - `MPC_TKO_RAMP_T=1.5`
-- `MPC_TILTMAX_AIR=32.0`
+- `MPC_MAN_TILT_MAX=35.0`
+- `MPC_TILTMAX_AIR=40.0`
 - `MPC_YAW_MODE=0`
 - `MPC_YAWRAUTO_MAX=35`
 - `MPC_YAWRAUTO_ACC=12`
@@ -110,9 +122,16 @@ Before judging the run, confirm these defaults in the ULog:
 - `MIS_YAW_TMT=5`
 - `MC_ORBIT_YAW_MOD=1`
 - `LNDMC_Z_VEL_MAX=0.25`
-- `FW_USE_AIRSPD=1`
-- `ASPD_DO_CHECKS=1`
+- `FW_USE_AIRSPD=0`
+- `ASPD_DO_CHECKS=0`
 - `SYS_HAS_NUM_ASPD=0`
+- `VT_ARSP_BLEND=0`
+- `VT_ARSP_TRANS=0`
+- `VT_F_TRANS_DUR=6.0`
+- `VT_F_TRANS_THR=0.65`
+- `VT_TRANS_TIMEOUT=20`
+- `VT_FW_MIN_ALT=40`
+- `VT_QC_T_ALT_LOSS=35`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_BARO1_PRIO=0`
 - `IMU_GYRO_RATEMAX=200`
@@ -120,7 +139,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.31`
+- `px4xplane: Version: v3.4.32`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -134,9 +153,15 @@ Save and send:
 - X-Plane `Log.txt`
 - XPlaneTruthCapture folder or zip
 
-The next log should be used to verify that Go-To can reach `4 m/s`, and then
-`5 m/s` if the first leg is clean, without sustained pitch/roll error, motor
-saturation, or altitude loss. Do not treat normal deceleration at the final
-Go-To point as a failure. Orbit entry must not create the qtail8 yaw spin or
-vertical sink. Transition, canted-motor geometry, and any physical rescale work
-come only after this multicopter hover/Go-To/Orbit loop is stable.
+The next log should be used to verify:
+
+- Go-To reaches `4-5 m/s` without sustained pitch/roll error or motor
+  saturation.
+- Normal deceleration at the final Go-To target is not treated as a failure.
+- Orbit entry does not recreate the qtail8 yaw spin or vertical sink.
+- The first transition either reaches FW state cleanly or fails in a way that is
+  explained by altitude, attitude, or actuator evidence instead of zero
+  transition airspeed.
+- X-Plane IAS may be negative during high-AoA tailsitter motion; px4xplane
+  preserves this as signed differential pressure for diagnostics. This is not
+  expected to be a reliable transition gate for this aircraft yet.

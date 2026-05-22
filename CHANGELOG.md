@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.32] - 2026-05-22
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail9.zip`. The long QuadTailsitter run is valid
+  and showed six forward-transition attempts. None reached fixed-wing state.
+- Confirmed the main transition blocker was airspeed gating: PX4 booted with
+  `FW_USE_AIRSPD=1` and `VT_ARSP_TRANS=15`, while validated airspeed stayed
+  around `0.8-2.0 m/s` even though truth groundspeed/true airspeed were high.
+- Confirmed X-Plane indicated airspeed went negative during high-AoA tailsitter
+  motion, while px4xplane v3.4.31 clamped negative IAS to zero before sending
+  `HIL_SENSOR.diff_pressure`.
+- Documented that qtail9 did not use a clean parameter load
+  (`SYS_AUTOCONFIG=0`), so the next test must use `make distclean`, delete the
+  PX4 SITL `parameters*.bson` files, or run `param reset_all` before judging
+  the new defaults.
+
+### Changed
+
+- Preserve signed X-Plane IAS as signed `HIL_SENSOR.diff_pressure` using
+  `q = 0.5 * rho * V * abs(V)`. This keeps reverse-flow/high-AoA evidence
+  visible and matches PX4's signed differential-pressure topic.
+- Updated `tools/replay_truth_capture.py` and its unit tests to match the
+  signed differential-pressure sensor contract.
+- Made QuadTailsitter transition airspeed policy internally consistent for the
+  first transition tests: `FW_USE_AIRSPD=0`, `ASPD_DO_CHECKS=0`,
+  `SYS_HAS_NUM_ASPD=0`, `VT_ARSP_BLEND=0`, and `VT_ARSP_TRANS=0`.
+- Slowed and guarded the first transition candidate:
+  `VT_F_TRANS_DUR=6.0`, `VT_F_TRANS_THR=0.65`,
+  `VT_TRANS_TIMEOUT=20`, `VT_FW_MIN_ALT=40`, and
+  `VT_QC_T_ALT_LOSS=35`.
+- Promoted moderated live MC values from qtail9:
+  `MPC_VEL_MANUAL=5.0`, `MPC_MAN_TILT_MAX=35`,
+  `MPC_TILTMAX_AIR=40`, `MC_YAW_P=0.80`,
+  `MC_YAWRATE_P=0.20`, `MC_YAWRATE_D=0.025`,
+  `MC_YAWRATE_K=1.20`, and `MC_YAWRATE_MAX=65`.
+- Updated the QuadTailsitter test card and added report v44.
+
+---
+
 ## [3.4.31] - 2026-05-22
 
 ### Fixed

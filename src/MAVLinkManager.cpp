@@ -128,6 +128,17 @@ float trueCourseFromLocalVelocityDeg()
 	return wrapDegrees360(std::atan2(ve, vn) * 180.0f / static_cast<float>(M_PI));
 }
 
+float signedDynamicPressureHpaFromIasKnots(float iasKnots)
+{
+	if (!std::isfinite(iasKnots)) {
+		return 0.0f;
+	}
+
+	const float iasMps = iasKnots * KNOT_TO_MPS;
+	const float dynamicPressurePa = 0.5f * DataRefManager::AirDensitySeaLevel * iasMps * std::fabs(iasMps);
+	return dynamicPressurePa * 0.01f;
+}
+
 } // namespace
 
 // Define and initialize the random number generators and distributions
@@ -1435,28 +1446,20 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// Simulates a pitot tube / differential pressure sensor for airspeed measurement.
 	// This is separate from the static barometer and measures dynamic pressure.
 	//
-	// Physics: q = 0.5 × ρ × V²  (Bernoulli's equation for incompressible flow)
+	// Physics: q = 0.5 × ρ × V × |V|  (signed Bernoulli dynamic pressure)
 	// where:
 	//   q   = dynamic pressure (Pa)
 	//   ρ   = air density (kg/m³) - using sea-level standard
 	//   V   = airspeed (m/s) - Indicated Airspeed (IAS) from X-Plane
+	//
+	// PX4's differential_pressure uORB field may be negative. Preserve X-Plane's
+	// signed IAS so high-AoA or reverse-flow cases remain observable instead of
+	// being silently converted to zero pressure.
 
 	// Retrieve Indicated Airspeed from X-Plane
 	// DataRef: "sim/flightmodel/position/indicated_airspeed" (knots)
-	float ias_knots = (std::max)(0.0f, dataRefFloat("sim/flightmodel/position/indicated_airspeed"));
-
-	// Convert IAS from knots to m/s
-	// Conversion factor: 1 knot = 0.514444 m/s (exactly 1852m/3600s)
-	float ias_m_s = ias_knots * 0.514444f;
-
-	// Calculate dynamic pressure using Bernoulli equation
-	// ρ₀ = 1.225 kg/m³ (sea-level standard atmosphere)
-	// Note: Using sea-level density is standard for IAS (indicated airspeed)
-	float dynamicPressure_Pa = 0.5f * DataRefManager::AirDensitySeaLevel * ias_m_s * ias_m_s;
-
-	// Convert dynamic pressure from Pascals to hectopascals
-	// 1 hPa = 100 Pa (hectopascal is the standard unit for aviation pressure)
-	float dynamicPressure_hPa = dynamicPressure_Pa * 0.01f;
+	float ias_knots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
+	float dynamicPressure_hPa = signedDynamicPressureHpaFromIasKnots(ias_knots);
 
 	// Populate differential pressure in HIL_SENSOR
 	// PX4 uses this for airspeed estimation (combined with static pressure)

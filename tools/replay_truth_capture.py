@@ -192,6 +192,12 @@ def pressure_from_altitude(altitude_m: float) -> float:
     return p0 * pow(1.0 - (lapse * altitude_m) / t0, (gravity * molar_mass) / (gas_constant * lapse))
 
 
+def signed_dynamic_pressure_hpa_from_ias_knots(ias_knots: float) -> float:
+    ias_mps = ias_knots * KNOT_TO_MPS
+    dynamic_pressure_pa = 0.5 * AIR_DENSITY_SEA_LEVEL * ias_mps * abs(ias_mps)
+    return dynamic_pressure_pa * 0.01
+
+
 def local_ned_velocity(row: Dict[str, str]) -> tuple[float, float, float]:
     vn = -safe_float(row, "sim/flightmodel/position/local_vz")
     ve = safe_float(row, "sim/flightmodel/position/local_vx")
@@ -214,8 +220,6 @@ def base_row(message: str, row: Dict[str, str], timestamp_usec: int) -> Dict[str
 
 def decode_sensor(row: Dict[str, str], timestamp_usec: int) -> Dict[str, object]:
     decoded = base_row("HIL_SENSOR", row, timestamp_usec)
-    ias_mps = safe_float(row, "sim/flightmodel/position/indicated_airspeed") * KNOT_TO_MPS
-    dynamic_pressure_pa = 0.5 * AIR_DENSITY_SEA_LEVEL * ias_mps * ias_mps
     altitude_m = safe_float(row, "sim/flightmodel/position/elevation")
     decoded.update(
         {
@@ -226,7 +230,9 @@ def decode_sensor(row: Dict[str, str], timestamp_usec: int) -> Dict[str, object]
             "ygyro": safe_float(row, "sim/flightmodel/position/Qrad"),
             "zgyro": safe_float(row, "sim/flightmodel/position/Rrad"),
             "abs_pressure_hpa": pressure_from_altitude(altitude_m),
-            "diff_pressure_hpa": dynamic_pressure_pa * 0.01,
+            "diff_pressure_hpa": signed_dynamic_pressure_hpa_from_ias_knots(
+                safe_float(row, "sim/flightmodel/position/indicated_airspeed")
+            ),
             "pressure_alt": 0.0,
             "temperature_c": safe_float(row, "sim/cockpit2/temperature/outside_air_temp_degc"),
         }

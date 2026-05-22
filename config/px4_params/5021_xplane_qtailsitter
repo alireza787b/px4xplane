@@ -13,14 +13,13 @@
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
 #
-# This is a hover and low-speed navigation recovery configuration. It follows
-# PX4's official quadtailsitter SITL pattern, then applies the px4xplane
-# sensor-fusion lessons learned from Alia and Ehang. qtail9 completed the best
-# multicopter-mode flight so far, but Go-To showed stop/continue behavior when
-# pitch tracking lagged the trajectory setpoint. This file keeps the successful
-# higher-speed direction and adds guarded attitude/rate authority so Position,
-# Go-To, and Orbit can be validated before fixed-wing and transition work
-# resumes.
+# This is a hover, low-speed navigation, and first-transition candidate
+# configuration. It follows PX4's official quadtailsitter SITL pattern, then
+# applies the px4xplane sensor-fusion lessons learned from Alia and Ehang.
+# qtail9 showed that multicopter Go-To/Orbit is close, but transition failed
+# because PX4 was waiting on a finite near-zero airspeed source while X-Plane
+# truth speed was high. The first transition tests therefore use PX4's
+# airspeed-less VTOL workflow until the aircraft has a validated pitot model.
 #
 # USAGE:
 #   make px4_sitl_default xplane_qtailsitter
@@ -154,7 +153,7 @@ param set-default MAN_ARM_GESTURE 0
 
 param set-default MC_ROLL_P 0.9
 param set-default MC_PITCH_P 0.9
-param set-default MC_YAW_P 0.75
+param set-default MC_YAW_P 0.80
 param set-default MC_YAW_WEIGHT 0.35
 
 param set-default MC_ROLLRATE_P 0.10
@@ -171,19 +170,19 @@ param set-default MC_PITCHRATE_FF 0.0
 param set-default MC_PITCHRATE_K 1.00
 param set-default MC_PITCHRATE_MAX 80
 
-param set-default MC_YAWRATE_P 0.16
+param set-default MC_YAWRATE_P 0.20
 param set-default MC_YAWRATE_I 0.015
-param set-default MC_YAWRATE_D 0.015
+param set-default MC_YAWRATE_D 0.025
 param set-default MC_YAWRATE_FF 0.0
-param set-default MC_YAWRATE_K 1.15
-param set-default MC_YAWRATE_MAX 60
+param set-default MC_YAWRATE_K 1.20
+param set-default MC_YAWRATE_MAX 65
 
 
 ################################################################################
 # MULTICOPTER POSITION, TAKEOFF, AND LANDING
 ################################################################################
 
-param set-default MPC_XY_P 0.14
+param set-default MPC_XY_P 0.15
 param set-default MPC_Z_P 1.00
 param set-default MPC_XY_VEL_P_ACC 0.8
 param set-default MPC_XY_VEL_I_ACC 0.1
@@ -194,7 +193,7 @@ param set-default MPC_Z_VEL_D_ACC 0.5
 
 param set-default MPC_XY_VEL_MAX 5.0
 param set-default MPC_XY_CRUISE 5.0
-param set-default MPC_VEL_MANUAL 4.0
+param set-default MPC_VEL_MANUAL 5.0
 param set-default MPC_Z_V_AUTO_UP 1.0
 param set-default MPC_Z_V_AUTO_DN 1.0
 param set-default MPC_Z_VEL_MAX_UP 1.5
@@ -208,8 +207,8 @@ param set-default MPC_ACC_DOWN_MAX 1.5
 param set-default MPC_JERK_AUTO 1.5
 param set-default MPC_JERK_MAX 2.5
 
-param set-default MPC_MAN_TILT_MAX 32
-param set-default MPC_TILTMAX_AIR 32
+param set-default MPC_MAN_TILT_MAX 35
+param set-default MPC_TILTMAX_AIR 40
 param set-default MPC_TILTMAX_LND 8
 
 param set-default MPC_THR_HOVER 0.27
@@ -247,8 +246,11 @@ param set-default MC_ORBIT_YAW_MOD 1
 # FIXED-WING ENVELOPE AND ENERGY CONTROL
 ################################################################################
 
-param set-default FW_USE_AIRSPD 1
-param set-default ASPD_DO_CHECKS 1
+# qtail9 truth showed high groundspeed/TAS while X-Plane IAS went negative and
+# PX4 validated airspeed stayed near zero. Keep the simulated airspeed topic for
+# logging, but do not let it gate the first transition/FW tests.
+param set-default FW_USE_AIRSPD 0
+param set-default ASPD_DO_CHECKS 0
 param set-default ASPD_FALLBACK 1
 param set-default SYS_HAS_NUM_ASPD 0
 
@@ -300,16 +302,18 @@ param set-default FW_YR_FF 0.0
 ################################################################################
 
 param set-default VT_TYPE 0
-param set-default VT_ARSP_BLEND 12
-param set-default VT_ARSP_TRANS 15
-param set-default VT_F_TRANS_DUR 1.5
-param set-default VT_F_TRANS_THR 0.80
-param set-default VT_F_TR_OL_TM 5.0
-param set-default VT_B_TRANS_DUR 5.0
+param set-default VT_ARSP_BLEND 0
+param set-default VT_ARSP_TRANS 0
+param set-default VT_F_TRANS_DUR 6.0
+param set-default VT_F_TRANS_THR 0.65
+param set-default VT_F_TR_OL_TM 8.0
+param set-default VT_TRANS_TIMEOUT 20
+param set-default VT_B_TRANS_DUR 6.0
 param set-default VT_B_DEC_MSS 2.0
 param set-default VT_B_DEC_I 0.1
-param set-default VT_B_TRANS_RAMP 3.0
-param set-default VT_FW_MIN_ALT 20
+param set-default VT_B_TRANS_RAMP 4.0
+param set-default VT_FW_MIN_ALT 40
+param set-default VT_QC_T_ALT_LOSS 35
 param set-default VT_PITCH_MIN -10
 param set-default VT_FWD_THRUST_EN 0
 
