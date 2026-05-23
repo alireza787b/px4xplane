@@ -22,7 +22,7 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.34";
+    constexpr const char* VERSION = "3.4.35";
 
     /** Version phase description */
     constexpr const char* PHASE = "QuadTailsitter body-axis pitot and FW path recovery";

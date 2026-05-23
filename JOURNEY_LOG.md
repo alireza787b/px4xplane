@@ -4,6 +4,29 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-23
 
+### v3.4.35 QuadTailsitter qtail12 FW Orbit and Pitot Density
+
+- Reviewed `/home/alireza/qtail12.zip`: the zip passes integrity checks and
+  TruthCapture recorded `61,908` frames with zero dropped rows, about `80 Hz`
+  mean callback rate, and a `50 ms` worst frame period.
+- Confirmed the run used `SYS_AUTOSTART=5021`,
+  `airspeedSource=body_axis`, `pitotAxisBody=-Z`, `FW_USE_AIRSPD=1`, and
+  `SYS_HAS_NUM_ASPD=1`.
+- Confirmed PX4 used the modeled pitot, not open-loop transition:
+  `airspeed_validated.airspeed_source=1` throughout, and fixed-wing transition
+  completed when calibrated airspeed reached about `20 m/s`.
+- Found the FW orbit/RTL problem was mainly guidance saturation at speed:
+  qtail12 flew about `32 m/s` in FW hold and `37 m/s` during RTL, while
+  lateral acceleration repeatedly hit the `35 deg` roll-limit equivalent.
+  The allocator achieved main torque setpoints; the log does not justify motor
+  cant as the next immediate fix.
+- Corrected body-axis pitot dynamic pressure to use X-Plane local
+  pressure/temperature density. X-Plane IAS mode remains sea-level-equivalent,
+  matching the indicated/equivalent airspeed convention.
+- Prepared v3.4.35 to lower qtailsitter FW trim/throttle, transition at
+  `18 m/s` calibrated airspeed, widen FW/RTL loiter to `500 m`, and soften
+  NPFG (`PERIOD=22`, `DAMPING=0.85`, `ROLL_TC=1.2`).
+
 ### v3.4.34 QuadTailsitter qtail11 Body-Axis Pitot and Path Recovery
 
 - Reviewed `/home/alireza/qtail11.zip`: valid ULog, valid TruthCapture,

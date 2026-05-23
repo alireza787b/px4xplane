@@ -231,7 +231,7 @@
         "body_axis"
       ],
       "reload_policy": "reconnect_before_flight",
-      "description": "Differential-pressure source for HIL_SENSOR. xplane_indicated uses X-Plane IAS, disabled sends zero pressure, body_axis projects velocity onto pitotAxisBody for controlled pitot experiments."
+      "description": "Differential-pressure source for HIL_SENSOR. xplane_indicated converts X-Plane IAS with sea-level-equivalent density, disabled sends zero pressure, body_axis projects local air-relative velocity onto pitotAxisBody and uses local air density."
     },
     "pitotAxisBody": {
       "type": "string",

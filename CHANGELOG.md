@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.35] - 2026-05-23
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail12.zip`. The archive is valid; TruthCapture
+  recorded `61,908` frames with zero dropped rows and about `80 Hz` mean
+  callback rate.
+- Confirmed PX4 used the modeled body-axis pitot: `airspeed_validated` stayed
+  on sensor source `1`, and the tailsitter switched to fixed-wing at about
+  `20 m/s` calibrated airspeed.
+- Confirmed qtail12 FW orbit/RTL trouble was primarily lateral-guidance
+  saturation at the current speed/radius, not a missing pitot or absent bank.
+  FW speed ran about `32 m/s` in hold and `37 m/s` in RTL while NPFG repeatedly
+  requested the `35 deg` roll-limit equivalent.
+- Corrected body-axis pitot dynamic-pressure generation to use local X-Plane
+  pressure/temperature density. Conventional `xplane_indicated` still uses the
+  sea-level-equivalent IAS convention.
+
+### Changed
+
+- Reduced QuadTailsitter FW trim/throttle target for the next validation:
+  `FW_AIRSPD_TRIM=22`, `FW_AIRSPD_MAX=34`, `FW_THR_TRIM=0.08`,
+  `FW_THR_MIN=0.00`, and `FW_THR_MAX=0.35`.
+- Lowered airspeed-gated transition thresholds to
+  `VT_ARSP_BLEND=13` and `VT_ARSP_TRANS=18`.
+- Increased QuadTailsitter FW path radius and softened NPFG:
+  `NAV_LOITER_RAD=500`, `RTL_LOITER_RAD=500`, `NPFG_PERIOD=22`,
+  `NPFG_DAMPING=0.85`, and `NPFG_ROLL_TC=1.2`.
+- Updated the QuadTailsitter test card, custom-airframe config docs, and added
+  report v47.
+
+---
+
 ## [3.4.34] - 2026-05-23
 
 ### Fixed

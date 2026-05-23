@@ -255,12 +255,12 @@ param set-default SYS_HAS_NUM_ASPD 1
 
 param set-default FW_AIRSPD_STALL 12
 param set-default FW_AIRSPD_MIN 16
-param set-default FW_AIRSPD_TRIM 24
-param set-default FW_AIRSPD_MAX 35
+param set-default FW_AIRSPD_TRIM 22
+param set-default FW_AIRSPD_MAX 34
 
-param set-default FW_THR_TRIM 0.12
-param set-default FW_THR_MAX 0.45
-param set-default FW_THR_MIN 0.03
+param set-default FW_THR_TRIM 0.08
+param set-default FW_THR_MAX 0.35
+param set-default FW_THR_MIN 0.00
 param set-default FW_THR_IDLE 0.00
 param set-default FW_THR_SLEW_MAX 0.30
 
@@ -301,8 +301,8 @@ param set-default FW_YR_FF 0.0
 ################################################################################
 
 param set-default VT_TYPE 0
-param set-default VT_ARSP_BLEND 14
-param set-default VT_ARSP_TRANS 20
+param set-default VT_ARSP_BLEND 13
+param set-default VT_ARSP_TRANS 18
 param set-default VT_F_TRANS_DUR 8.0
 param set-default VT_F_TRANS_THR 0.45
 param set-default VT_F_TR_OL_TM 12.0
@@ -327,13 +327,13 @@ param set-default VT_FW_DIFTHR_S_Y 1.0
 # NAVIGATION AND FAILSAFE
 ################################################################################
 
-param set-default NPFG_PERIOD 14.0
-param set-default NPFG_DAMPING 0.75
-param set-default NPFG_ROLL_TC 0.7
+param set-default NPFG_PERIOD 22.0
+param set-default NPFG_DAMPING 0.85
+param set-default NPFG_ROLL_TC 1.2
 param set-default NAV_ACC_RAD 12
 param set-default NAV_MC_ALT_RAD 2
-param set-default NAV_LOITER_RAD 300
-param set-default RTL_LOITER_RAD 300
+param set-default NAV_LOITER_RAD 500
+param set-default RTL_LOITER_RAD 500
 param set-default RTL_RETURN_ALT 80
 param set-default RTL_DESCEND_ALT 60
 param set-default RTL_MIN_DIST 50

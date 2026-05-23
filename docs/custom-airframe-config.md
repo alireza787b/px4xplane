@@ -93,6 +93,12 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
   `body_axis` projects the local air-relative velocity onto `pitotAxisBody`.
   Conventional aircraft normally use `+X`; tailsitters may need a different
   physical probe axis such as `-Z`.
+  PX4 receives pitot data through `HIL_SENSOR.diff_pressure`, not by trusting a
+  direct TAS value. `xplane_indicated` converts X-Plane IAS to equivalent
+  dynamic pressure with sea-level density. `body_axis` treats the body-axis
+  projection as local true air-relative flow and converts it to dynamic pressure
+  with X-Plane local pressure/temperature density, allowing PX4 to derive
+  calibrated and true airspeed through its normal airspeed pipeline.
 - **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
 
 Auto-prop brakes are mode-agnostic. The bridge watches the configured motor

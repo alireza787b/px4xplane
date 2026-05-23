@@ -99,7 +99,7 @@ uint16_t degreesToCentidegrees(float degrees)
 	return value == 36000 ? 0 : value;
 }
 
-float signedDynamicPressureHpaFromMps(float airspeedMps);
+float signedDynamicPressureHpaFromMps(float airspeedMps, float airDensityKgM3 = DataRefManager::AirDensitySeaLevel);
 
 float localVnMps()
 {
@@ -155,19 +155,38 @@ float signedDynamicPressureHpaFromIasKnots(float iasKnots)
 	return signedDynamicPressureHpaFromMps(iasMps);
 }
 
+float localAirDensityKgM3()
+{
+	const float pressurePa = dataRefFloat("sim/weather/aircraft/barometer_current_pas");
+	const float temperatureC = dataRefFloat("sim/weather/aircraft/temperature_ambient_deg_c");
+	const float temperatureK = temperatureC + 273.15f;
+
+	if (std::isfinite(pressurePa) && pressurePa > 10000.0f && pressurePa < 120000.0f &&
+	    std::isfinite(temperatureK) && temperatureK > 170.0f && temperatureK < 340.0f) {
+		constexpr float DryAirGasConstant = 287.05f;
+		return pressurePa / (DryAirGasConstant * temperatureK);
+	}
+
+	return DataRefManager::AirDensitySeaLevel;
+}
+
 float xplaneIndicatedAirspeedMps()
 {
 	const float iasKnots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
 	return std::isfinite(iasKnots) ? iasKnots * KNOT_TO_MPS : 0.0f;
 }
 
-float signedDynamicPressureHpaFromMps(float airspeedMps)
+float signedDynamicPressureHpaFromMps(float airspeedMps, float airDensityKgM3)
 {
 	if (!std::isfinite(airspeedMps)) {
 		return 0.0f;
 	}
 
-	const float dynamicPressurePa = 0.5f * DataRefManager::AirDensitySeaLevel * airspeedMps * std::fabs(airspeedMps);
+	if (!std::isfinite(airDensityKgM3) || airDensityKgM3 <= 0.0f) {
+		airDensityKgM3 = DataRefManager::AirDensitySeaLevel;
+	}
+
+	const float dynamicPressurePa = 0.5f * airDensityKgM3 * airspeedMps * std::fabs(airspeedMps);
 	return dynamicPressurePa * 0.01f;
 }
 
@@ -216,7 +235,26 @@ float configuredSignedAirspeedMps()
 
 float configuredDifferentialPressureHpa()
 {
+	if (ConfigManager::airspeed_source == "body_axis") {
+		return signedDynamicPressureHpaFromMps(configuredSignedAirspeedMps(), localAirDensityKgM3());
+	}
+
 	return signedDynamicPressureHpaFromMps(configuredSignedAirspeedMps());
+}
+
+float configuredHilIndicatedAirspeedMps()
+{
+	const float configuredAirspeedMps = configuredSignedAirspeedMps();
+
+	if (ConfigManager::airspeed_source == "body_axis") {
+		const float densityRatio = localAirDensityKgM3() / DataRefManager::AirDensitySeaLevel;
+
+		if (std::isfinite(densityRatio) && densityRatio > 0.0f) {
+			return configuredAirspeedMps * std::sqrt(densityRatio);
+		}
+	}
+
+	return configuredAirspeedMps;
 }
 
 } // namespace
@@ -918,9 +956,9 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 	// HIL_SENSOR.diff_pressure below intentionally remains signed. Reuse the
 	// configured source here so tailsitter body-axis pitot experiments do not
 	// report zero indicated airspeed in QGC while HIL_SENSOR reports valid flow.
-	const float configuredIasMps = configuredSignedAirspeedMps();
+	const float configuredIasMps = configuredHilIndicatedAirspeedMps();
 	const float tasMps = (ConfigManager::airspeed_source == "body_axis")
-		? std::fabs(configuredIasMps)
+		? std::fabs(configuredSignedAirspeedMps())
 		: dataRefFloat("sim/flightmodel/position/true_airspeed");
 	hil_state.ind_airspeed = clampToUint16(std::max(0.0f, configuredIasMps) * 100.0f);
 	hil_state.true_airspeed = clampToUint16(std::max(0.0f, tasMps) * 100.0f);
@@ -1533,9 +1571,10 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	//
 	// Physics: q = 0.5 × ρ × V × |V|  (signed Bernoulli dynamic pressure)
 	// where:
-	//   q   = dynamic pressure (Pa)
-	//   ρ   = air density (kg/m³) - using sea-level standard
-	//   V   = airspeed (m/s) from the configured airspeed source
+	//   q = dynamic pressure (Pa)
+	//   ρ = air density (kg/m³). X-Plane IAS uses sea-level-equivalent density;
+	//       body-axis pitot uses local X-Plane pressure/temperature density.
+	//   V = airspeed (m/s) from the configured airspeed source
 	//
 	// PX4's differential_pressure uORB field may be negative. The default
 	// X-Plane IAS source preserves signed IAS so high-AoA or reverse-flow cases
