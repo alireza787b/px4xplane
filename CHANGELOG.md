@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.36] - 2026-05-23
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail13.zip`. The archive is valid; TruthCapture
+  recorded `42,479` frames over about `518 s` of sim time with zero dropped
+  rows and about `82 Hz` mean callback rate.
+- Confirmed v3.4.35 was active and PX4 used the modeled body-axis pitot
+  (`airspeed_validated.airspeed_source=1`), so the FW path issue was not stale
+  params or airspeedless transition.
+- Identified the first quad-chute as a minimum fixed-wing altitude breach:
+  transition was commanded with little margin above `VT_FW_MIN_ALT=40 m`, and
+  PX4 triggered once local altitude dipped just below `40 m`.
+- Confirmed FW orbit/RTL remained saturated because actual FW speed still ran
+  about `35-42 m/s` while the vehicle was trying to capture the requested
+  loiter/RTL path. The X-Plane aircraft prop model was still designed for
+  `179 kt`, far above Quantix-class speed.
+
+### Changed
+
+- Retuned the packaged QuadTailsitter ACF prop model toward the Quantix-class
+  envelope: prop design speed `179 kt -> 40 kt`, design RPM
+  `28,916 -> 16,000`, and motor redline/max-power RPM `29,896 -> 22,000`.
+- Retuned QuadTailsitter FW energy control:
+  `FW_AIRSPD_TRIM=20`, `FW_AIRSPD_MAX=28`, `FW_THR_TRIM=0.05`,
+  `FW_THR_MAX=0.25`, `FW_T_SPDWEIGHT=2.0`, `FW_T_RLL2THR=2.0`,
+  `FW_PSP_OFF=4`, and `FW_R_LIM=28`.
+- Widened and softened FW path following for the next test:
+  `NAV_LOITER_RAD=900`, `RTL_LOITER_RAD=900`, `NPFG_PERIOD=34`,
+  `NPFG_DAMPING=1.0`, and `NPFG_ROLL_TC=1.5`.
+- Lowered the SITL fixed-wing minimum-altitude quad-chute gate to
+  `VT_FW_MIN_ALT=30` while retaining transition altitude-loss protection.
+- Updated the QuadTailsitter test card and added report v48.
+
+---
+
 ## [3.4.35] - 2026-05-23
 
 ### Fixed

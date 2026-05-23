@@ -1,10 +1,11 @@
 # QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
 This card is for the next controlled QuadTailsitter validation after the
-`qtail12.zip` run. qtail12 confirmed that PX4 used the body-axis pitot sensor
-source, transitioned on calibrated airspeed, and then saturated FW lateral
-guidance in too-tight loiter/RTL turns. The next run keeps pitot feedback but
-uses a wider FW path and softer NPFG response.
+`qtail13.zip` run. qtail13 confirmed that PX4 used the body-axis pitot sensor
+source and the intended v3.4.35 parameters, then still oversped into the
+`35-42 m/s` range and saturated FW lateral guidance in loiter/RTL. The next run
+keeps pitot feedback, retunes the X-Plane prop model to the Quantix-class speed
+range, and uses a wider FW path with softer NPFG response.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -43,7 +44,7 @@ Use calm weather and model calculations per frame `6`.
 6. If the MC phase is clean, climb to at least `80 m` AGL and command one
    forward transition while pointed into open space.
 7. If it reaches fixed-wing state cleanly, keep it straight and shallow for
-   `10-15 s`; if you test FW loiter, use at least `500 m` radius.
+   `10-15 s`; if you test FW loiter, use at least `900 m` radius.
 8. Back-transition manually before RTL if FW path following looks poor.
 9. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
 
@@ -133,13 +134,16 @@ Before judging the run, confirm these defaults in the ULog:
 - `SYS_HAS_NUM_ASPD=1`
 - `VT_ARSP_BLEND=13`
 - `VT_ARSP_TRANS=18`
-- `FW_AIRSPD_MIN=16`
-- `FW_AIRSPD_TRIM=22`
-- `FW_AIRSPD_MAX=34`
-- `FW_THR_TRIM=0.08`
-- `FW_THR_MAX=0.35`
+- `FW_AIRSPD_MIN=14`
+- `FW_AIRSPD_TRIM=20`
+- `FW_AIRSPD_MAX=28`
+- `FW_THR_TRIM=0.05`
+- `FW_THR_MAX=0.25`
 - `FW_THR_MIN=0.00`
-- `FW_R_LIM=35`
+- `FW_T_SPDWEIGHT=2.0`
+- `FW_T_RLL2THR=2.0`
+- `FW_PSP_OFF=4.0`
+- `FW_R_LIM=28`
 - `VT_F_TRANS_DUR=8.0`
 - `VT_F_TRANS_THR=0.45`
 - `VT_TRANS_MIN_TM=6.0`
@@ -148,15 +152,15 @@ Before judging the run, confirm these defaults in the ULog:
 - `VT_B_TRANS_DUR=8.0`
 - `VT_B_DEC_MSS=1.2`
 - `VT_B_TRANS_RAMP=6.0`
-- `VT_FW_MIN_ALT=40`
+- `VT_FW_MIN_ALT=30`
 - `VT_QC_T_ALT_LOSS=35`
-- `NPFG_PERIOD=22.0`
-- `NPFG_DAMPING=0.85`
-- `NPFG_ROLL_TC=1.2`
-- `NAV_LOITER_RAD=500`
-- `RTL_LOITER_RAD=500`
-- `RTL_RETURN_ALT=80`
-- `RTL_DESCEND_ALT=60`
+- `NPFG_PERIOD=34.0`
+- `NPFG_DAMPING=1.0`
+- `NPFG_ROLL_TC=1.5`
+- `NAV_LOITER_RAD=900`
+- `RTL_LOITER_RAD=900`
+- `RTL_RETURN_ALT=100`
+- `RTL_DESCEND_ALT=75`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_BARO1_PRIO=0`
 - `IMU_GYRO_RATEMAX=200`
@@ -164,7 +168,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.35`
+- `px4xplane: Version: v3.4.36`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -190,6 +194,6 @@ The next log should be used to verify:
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive
   in FW and should broadly match truth true airspeed. QGC should no longer show
   the large negative FW airspeed seen in qtail11.
-- FW path following is judged against the new airspeed target and `500 m`
-  loiter radius. If speed still runs into the `40-50 m/s` range, record it but
+- FW path following is judged against the new airspeed target and `900 m`
+  loiter radius. If speed still runs into the `35-45 m/s` range, record it but
   do not tighten the radius in the same run.
