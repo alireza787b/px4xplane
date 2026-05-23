@@ -13,13 +13,13 @@
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
 #
-# This is a hover, low-speed navigation, and first-transition configuration. It
-# follows PX4's official quadtailsitter SITL pattern, then applies the
-# px4xplane sensor-fusion lessons learned from Alia and Ehang. qtail10 reached
-# fixed-wing state, but oversped badly in FW because this aircraft is still
-# running PX4's airspeedless VTOL workflow. Keep transition tests high and
-# conservative until a validated body-axis pitot model replaces the synthetic
-# FW airspeed assumption.
+# This is a hover, low-speed navigation, and first airspeed-gated transition
+# configuration. It follows PX4's official quadtailsitter SITL pattern, then
+# applies the px4xplane sensor-fusion lessons learned from Alia and Ehang.
+# qtail11 confirmed that X-Plane's conventional IAS dataref is negative in
+# tailsitter fixed-wing attitude while the px4xplane body-axis pitot projection
+# on -Z matches true airspeed. This file therefore enables PX4 airspeed feedback
+# for transition and TECS while keeping checks conservative for SITL.
 #
 # USAGE:
 #   make px4_sitl_default xplane_qtailsitter
@@ -224,7 +224,7 @@ param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_ALT3 1
 param set-default MPC_LAND_SPEED 0.9
-param set-default MPC_LAND_CRWL 0.35
+param set-default MPC_LAND_CRWL 0.36
 param set-default MPC_LAND_RADIUS 30
 
 param set-default LNDMC_ALT_GND 1.5
@@ -246,24 +246,23 @@ param set-default MC_ORBIT_YAW_MOD 1
 # FIXED-WING ENVELOPE AND ENERGY CONTROL
 ################################################################################
 
-# qtail9 truth showed high groundspeed/TAS while X-Plane IAS went negative and
-# PX4 validated airspeed stayed near zero. Keep the simulated airspeed topic for
-# logging, but do not let it gate the first transition/FW tests.
-param set-default FW_USE_AIRSPD 0
+# qtail11 truth showed that px4xplane body-axis pitot (-Z) is positive and close
+# to X-Plane true airspeed in FW mode. Use it for transition gating and TECS.
+param set-default FW_USE_AIRSPD 1
 param set-default ASPD_DO_CHECKS 0
 param set-default ASPD_FALLBACK 1
-param set-default SYS_HAS_NUM_ASPD 0
+param set-default SYS_HAS_NUM_ASPD 1
 
-param set-default FW_AIRSPD_STALL 10
-param set-default FW_AIRSPD_MIN 14
-param set-default FW_AIRSPD_TRIM 18
-param set-default FW_AIRSPD_MAX 24
+param set-default FW_AIRSPD_STALL 12
+param set-default FW_AIRSPD_MIN 16
+param set-default FW_AIRSPD_TRIM 24
+param set-default FW_AIRSPD_MAX 35
 
-param set-default FW_THR_TRIM 0.20
+param set-default FW_THR_TRIM 0.12
 param set-default FW_THR_MAX 0.45
-param set-default FW_THR_MIN 0.05
+param set-default FW_THR_MIN 0.03
 param set-default FW_THR_IDLE 0.00
-param set-default FW_THR_SLEW_MAX 0.35
+param set-default FW_THR_SLEW_MAX 0.30
 
 param set-default FW_T_CLMB_MAX 6
 param set-default FW_T_SINK_MAX 3
@@ -302,17 +301,17 @@ param set-default FW_YR_FF 0.0
 ################################################################################
 
 param set-default VT_TYPE 0
-param set-default VT_ARSP_BLEND 0
-param set-default VT_ARSP_TRANS 0
-param set-default VT_F_TRANS_DUR 7.0
+param set-default VT_ARSP_BLEND 14
+param set-default VT_ARSP_TRANS 20
+param set-default VT_F_TRANS_DUR 8.0
 param set-default VT_F_TRANS_THR 0.45
-param set-default VT_F_TR_OL_TM 10.0
+param set-default VT_F_TR_OL_TM 12.0
 param set-default VT_TRANS_MIN_TM 6.0
-param set-default VT_TRANS_TIMEOUT 25
-param set-default VT_B_TRANS_DUR 7.0
-param set-default VT_B_DEC_MSS 1.5
+param set-default VT_TRANS_TIMEOUT 30
+param set-default VT_B_TRANS_DUR 8.0
+param set-default VT_B_DEC_MSS 1.2
 param set-default VT_B_DEC_I 0.1
-param set-default VT_B_TRANS_RAMP 5.0
+param set-default VT_B_TRANS_RAMP 6.0
 param set-default VT_FW_MIN_ALT 40
 param set-default VT_QC_T_ALT_LOSS 35
 param set-default VT_PITCH_MIN -10
@@ -329,12 +328,12 @@ param set-default VT_FW_DIFTHR_S_Y 1.0
 ################################################################################
 
 param set-default NPFG_PERIOD 14.0
-param set-default NPFG_DAMPING 0.70
-param set-default NPFG_ROLL_TC 0.8
+param set-default NPFG_DAMPING 0.75
+param set-default NPFG_ROLL_TC 0.7
 param set-default NAV_ACC_RAD 12
 param set-default NAV_MC_ALT_RAD 2
-param set-default NAV_LOITER_RAD 250
-param set-default RTL_LOITER_RAD 250
+param set-default NAV_LOITER_RAD 300
+param set-default RTL_LOITER_RAD 300
 param set-default RTL_RETURN_ALT 80
 param set-default RTL_DESCEND_ALT 60
 param set-default RTL_MIN_DIST 50

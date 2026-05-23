@@ -2,6 +2,32 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-23
+
+### v3.4.34 QuadTailsitter qtail11 Body-Axis Pitot and Path Recovery
+
+- Reviewed `/home/alireza/qtail11.zip`: valid ULog, valid TruthCapture,
+  `45,956` truth frames, no dropped rows, about `77 Hz` mean callback rate.
+- Confirmed qtail11 did not use the modeled pitot for PX4 control. The run
+  still had `airspeedSource=xplane_indicated`, `FW_USE_AIRSPD=0`,
+  `SYS_HAS_NUM_ASPD=0`, and `VT_ARSP_TRANS=0`.
+- Validated the physical pitot-axis candidate from truth data: `-Z` body-axis
+  projection is positive in FW and close to X-Plane true airspeed; X-Plane's
+  conventional IAS dataref is negative in this tailsitter attitude.
+- Found FW path following was not mainly a missing-bank problem. In tailsitter
+  FW coordinates, PX4 requested up to `+/-35 deg` roll and actual transformed
+  roll followed reasonably. The main issue was flying about `42 m/s` against a
+  `250 m` loiter radius, which is near the physical limit and uncomfortable if
+  the target bank is only `12-15 deg`.
+- Deferred aircraft mass and motor-cant changes. Current ACF mass is `5 lb`
+  (`2.27 kg`), matching Quantix-class public specs, and the log does not prove
+  torque authority as the FW path root cause. Motor cant would require matching
+  PX4 `CA_ROTOR*_AX/AY/AZ` geometry.
+- Prepared v3.4.34 to enable body-axis pitot feedback, use an airspeed-gated
+  transition at `20 m/s`, target `24 m/s` FW trim speed, widen FW loiter to
+  `300 m`, soften back-transition, and remove the land-detector startup
+  correction.
+
 ## 2026-05-22
 
 ### v3.4.33 QuadTailsitter qtail10 FW Energy Recovery

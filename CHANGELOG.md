@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.34] - 2026-05-23
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail11.zip`. The log is valid and confirms the run
+  still used `airspeedSource=xplane_indicated`, `FW_USE_AIRSPD=0`,
+  `SYS_HAS_NUM_ASPD=0`, and `VT_ARSP_TRANS=0`; it did not use the modeled
+  body-axis pitot for transition or TECS.
+- Validated the QuadTailsitter body-axis pitot candidate from truth data:
+  projecting velocity onto `pitotAxisBody=-Z` gives positive FW airspeed close
+  to true airspeed, while native X-Plane IAS is negative in this attitude.
+- Confirmed FW path error was mainly energy/radius mismatch, not absent bank:
+  PX4 requested up to `+/-35 deg` FW roll and the transformed actual roll
+  followed, but the aircraft flew around `42 m/s` against a `250 m` radius.
+- Removed the startup land-detector correction by making
+  `LNDMC_Z_VEL_MAX=0.30` valid with `MPC_LAND_CRWL=0.36`.
+
+### Changed
+
+- Switched QuadTailsitter to `airspeedSource=body_axis` with
+  `pitotAxisBody=-Z`.
+- Reused the configured airspeed source for `HIL_STATE_QUATERNION` airspeed
+  fields so QGC and HIL_SENSOR use the same pitot basis.
+- Made body-axis pitot projection subtract X-Plane's local wind vector before
+  body-frame projection, with zero-wind fallback if those datarefs are absent.
+- Enabled QuadTailsitter airspeed feedback:
+  `FW_USE_AIRSPD=1`, `SYS_HAS_NUM_ASPD=1`, `VT_ARSP_BLEND=14`,
+  and `VT_ARSP_TRANS=20`.
+- Moved FW speed/energy to a first validated airspeed-controlled target:
+  `FW_AIRSPD_MIN=16`, `FW_AIRSPD_TRIM=24`, `FW_AIRSPD_MAX=35`,
+  `FW_THR_TRIM=0.12`, `FW_THR_MIN=0.03`, and `FW_THR_SLEW_MAX=0.30`.
+- Softened back-transition and widened FW loiter:
+  `VT_B_TRANS_DUR=8.0`, `VT_B_DEC_MSS=1.2`, `VT_B_TRANS_RAMP=6.0`,
+  `NAV_LOITER_RAD=300`, and `RTL_LOITER_RAD=300`.
+- Updated the QuadTailsitter test card and added report v46.
+
+---
+
 ## [3.4.33] - 2026-05-22
 
 ### Fixed

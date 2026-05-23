@@ -54,11 +54,12 @@ This index is the stable entry point for user and developer documentation.
 - [Report v43 - QuadTailsitter qtail9 Go-To Smoothness](reports/report_v43.md)
 - [Report v44 - QuadTailsitter qtail9 Transition Airspeed Recovery](reports/report_v44.md)
 - [Report v45 - QuadTailsitter qtail10 FW Energy Recovery](reports/report_v45.md)
+- [Report v46 - QuadTailsitter qtail11 Body-Axis Pitot and Path Recovery](reports/report_v46.md)
 
 ## Current Policy
 
-- Use the `v3.4.33` package for the next QuadTailsitter Position, Go-To, Orbit,
-  and conservative first-FW validation. Force a PX4 parameter reset before
+- Use the `v3.4.34` package for the next QuadTailsitter Position, Go-To, Orbit,
+  and airspeed-gated first-FW validation. Force a PX4 parameter reset before
   judging the test; stale SITL `parameters.bson` values can override airframe
   `set-default` changes.
 - Alia and Ehang are now milestone airframes, but still require `distclean`

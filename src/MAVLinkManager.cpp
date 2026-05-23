@@ -116,6 +116,21 @@ float localVdMps()
 	return -dataRefFloat("sim/flightmodel/position/local_vy");
 }
 
+float localWindNedXPlaneN()
+{
+	return -dataRefFloat("sim/weather/aircraft/wind_now_z_msc");
+}
+
+float localWindNedXPlaneE()
+{
+	return dataRefFloat("sim/weather/aircraft/wind_now_x_msc");
+}
+
+float localWindNedXPlaneD()
+{
+	return -dataRefFloat("sim/weather/aircraft/wind_now_y_msc");
+}
+
 float localHorizontalSpeedMps()
 {
 	const float vn = localVnMps();
@@ -138,6 +153,12 @@ float signedDynamicPressureHpaFromIasKnots(float iasKnots)
 
 	const float iasMps = iasKnots * KNOT_TO_MPS;
 	return signedDynamicPressureHpaFromMps(iasMps);
+}
+
+float xplaneIndicatedAirspeedMps()
+{
+	const float iasKnots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
+	return std::isfinite(iasKnots) ? iasKnots * KNOT_TO_MPS : 0.0f;
 }
 
 float signedDynamicPressureHpaFromMps(float airspeedMps)
@@ -175,22 +196,27 @@ float bodyAxisPitotAirspeedMps()
 
 	attitude.normalize();
 	const Eigen::Vector3f nedVelocity(localVnMps(), localVeMps(), localVdMps());
-	const Eigen::Vector3f bodyVelocity = attitude.toRotationMatrix().transpose() * nedVelocity;
+	const Eigen::Vector3f windNed(localWindNedXPlaneN(), localWindNedXPlaneE(), localWindNedXPlaneD());
+	const Eigen::Vector3f bodyVelocity = attitude.toRotationMatrix().transpose() * (nedVelocity - windNed);
 	return projectOntoConfiguredPitotAxis(bodyVelocity);
 }
 
-float configuredDifferentialPressureHpa()
+float configuredSignedAirspeedMps()
 {
 	if (ConfigManager::airspeed_source == "disabled") {
 		return 0.0f;
 	}
 
 	if (ConfigManager::airspeed_source == "body_axis") {
-		return signedDynamicPressureHpaFromMps(bodyAxisPitotAirspeedMps());
+		return bodyAxisPitotAirspeedMps();
 	}
 
-	const float iasKnots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
-	return signedDynamicPressureHpaFromIasKnots(iasKnots);
+	return xplaneIndicatedAirspeedMps();
+}
+
+float configuredDifferentialPressureHpa()
+{
+	return signedDynamicPressureHpaFromMps(configuredSignedAirspeedMps());
 }
 
 } // namespace
@@ -888,11 +914,16 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 	hil_state.vy = clampToInt16(localVeMps() * 100.0f);
 	hil_state.vz = clampToInt16(localVdMps() * 100.0f);
 
-	// Airspeed data (indicated and true)
-	const float iasKnots = dataRefFloat("sim/flightmodel/position/indicated_airspeed");
-	const float tasMps = dataRefFloat("sim/flightmodel/position/true_airspeed");
-	hil_state.ind_airspeed = clampToUint16(iasKnots * KNOT_TO_MPS * 100.0f);
-	hil_state.true_airspeed = clampToUint16(tasMps * 100.0f);
+	// Airspeed data. HIL_STATE_QUATERNION uses unsigned cm/s fields, while
+	// HIL_SENSOR.diff_pressure below intentionally remains signed. Reuse the
+	// configured source here so tailsitter body-axis pitot experiments do not
+	// report zero indicated airspeed in QGC while HIL_SENSOR reports valid flow.
+	const float configuredIasMps = configuredSignedAirspeedMps();
+	const float tasMps = (ConfigManager::airspeed_source == "body_axis")
+		? std::fabs(configuredIasMps)
+		: dataRefFloat("sim/flightmodel/position/true_airspeed");
+	hil_state.ind_airspeed = clampToUint16(std::max(0.0f, configuredIasMps) * 100.0f);
+	hil_state.true_airspeed = clampToUint16(std::max(0.0f, tasMps) * 100.0f);
 
 	// HIL_STATE_QUATERNION acceleration fields are int16 milli-g.
 	Eigen::Vector3f accel = computeAcceleration();
