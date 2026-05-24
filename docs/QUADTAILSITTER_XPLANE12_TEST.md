@@ -1,11 +1,13 @@
 # QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
 This card is for the next controlled QuadTailsitter validation after the
-`qtail13.zip` run. qtail13 confirmed that PX4 used the body-axis pitot sensor
-source and the intended v3.4.35 parameters, then still oversped into the
-`35-42 m/s` range and saturated FW lateral guidance in loiter/RTL. The next run
-keeps pitot feedback, retunes the X-Plane prop model to the Quantix-class speed
-range, and uses a wider FW path with softer NPFG response.
+`qtail14.zip` run. qtail14 confirmed that PX4 used the body-axis pitot sensor
+source and the intended v3.4.36 parameters, but the aircraft was still the old
+`5 lb / 2.27 kg` X-Plane model. The result was a persistent climb: minimum/low
+motor output was already near hover thrust for the old mass. v3.4.37 retargets
+the X-Plane aircraft to the intended `5 kg` 6S 3115-class design and removes
+the virtual SITL pitot as a prearm hardware requirement while still using it
+for transition and fixed-wing control.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -41,8 +43,9 @@ Use calm weather and model calculations per frame `6`.
    - If QGC exposes Orbit yaw behavior, use hold initial heading or tangent
      heading for this test. If it does not, use the default center-facing Orbit
      and keep the radius at least `40 m`.
-6. If the MC phase is clean, climb to at least `80 m` AGL and command one
-   forward transition while pointed into open space.
+6. If the MC phase is clean and altitude hold is stable, climb to at least
+   `100 m` AGL and command one forward transition while pointed into open
+   space.
 7. If it reaches fixed-wing state cleanly, keep it straight and shallow for
    `10-15 s`; if you test FW loiter, use at least `900 m` radius.
 8. Back-transition manually before RTL if FW path following looks poor.
@@ -73,6 +76,10 @@ Before judging the run, confirm these defaults in the ULog:
 - `CA_ROTOR1_PX=-0.22`, `CA_ROTOR1_PY=-0.43`
 - `CA_ROTOR2_PX=0.22`, `CA_ROTOR2_PY=-0.43`
 - `CA_ROTOR3_PX=-0.22`, `CA_ROTOR3_PY=0.43`
+- `CA_ROTOR0_AX=-0.078`, `CA_ROTOR0_AY=0.040`, `CA_ROTOR0_AZ=-0.996`
+- `CA_ROTOR1_AX=0.078`, `CA_ROTOR1_AY=-0.040`, `CA_ROTOR1_AZ=-0.996`
+- `CA_ROTOR2_AX=-0.078`, `CA_ROTOR2_AY=-0.040`, `CA_ROTOR2_AZ=-0.996`
+- `CA_ROTOR3_AX=0.078`, `CA_ROTOR3_AY=0.040`, `CA_ROTOR3_AZ=-0.996`
 - `CA_ROTOR0_CT=2.0`, `CA_ROTOR1_CT=2.0`
 - `CA_ROTOR2_CT=2.0`, `CA_ROTOR3_CT=2.0`
 - `CA_ROTOR0_KM=0.04`, `CA_ROTOR1_KM=0.04`
@@ -95,7 +102,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_PITCHRATE_K=1.00`
 - `MC_ROLLRATE_MAX=80`
 - `MC_PITCHRATE_MAX=80`
-- `MPC_THR_HOVER=0.27`
+- `MPC_THR_HOVER=0.30`
+- `MPC_THR_MIN=0.08`
 - `MPC_USE_HTE=0`
 - `MPC_XY_P=0.18`
 - `MPC_Z_P=1.00`
@@ -106,16 +114,16 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_XY_VEL_MAX=5.0`
 - `MPC_VEL_MANUAL=5.0`
 - `MPC_XY_ERR_MAX=10`
-- `MPC_ACC_HOR=1.8`
-- `MPC_ACC_HOR_MAX=2.2`
+- `MPC_ACC_HOR=1.2`
+- `MPC_ACC_HOR_MAX=1.8`
 - `MPC_JERK_AUTO=1.2`
 - `MPC_JERK_MAX=2.0`
 - `MIS_TAKEOFF_ALT=1.5`
 - `MPC_Z_V_AUTO_UP=1.0`
-- `MPC_Z_VEL_MAX_UP=1.5`
-- `MPC_ACC_UP_MAX=2.2`
+- `MPC_Z_VEL_MAX_UP=1.2`
+- `MPC_ACC_UP_MAX=1.6`
 - `MPC_TKO_SPEED=1.0`
-- `MPC_TKO_RAMP_T=1.5`
+- `MPC_TKO_RAMP_T=2.5`
 - `MPC_MAN_TILT_MAX=35.0`
 - `MPC_TILTMAX_AIR=40.0`
 - `MPC_YAW_MODE=0`
@@ -130,22 +138,22 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_LAND_CRWL=0.36`
 - `LNDMC_Z_VEL_MAX=0.30`
 - `FW_USE_AIRSPD=1`
-- `ASPD_DO_CHECKS=0`
-- `SYS_HAS_NUM_ASPD=1`
-- `VT_ARSP_BLEND=13`
-- `VT_ARSP_TRANS=18`
-- `FW_AIRSPD_MIN=14`
-- `FW_AIRSPD_TRIM=20`
-- `FW_AIRSPD_MAX=28`
-- `FW_THR_TRIM=0.05`
-- `FW_THR_MAX=0.25`
+- `ASPD_DO_CHECKS=1`
+- `SYS_HAS_NUM_ASPD=0`
+- `VT_ARSP_BLEND=18`
+- `VT_ARSP_TRANS=24`
+- `FW_AIRSPD_MIN=21`
+- `FW_AIRSPD_TRIM=28`
+- `FW_AIRSPD_MAX=40`
+- `FW_THR_TRIM=0.16`
+- `FW_THR_MAX=0.40`
 - `FW_THR_MIN=0.00`
-- `FW_T_SPDWEIGHT=2.0`
+- `FW_T_SPDWEIGHT=1.5`
 - `FW_T_RLL2THR=2.0`
 - `FW_PSP_OFF=4.0`
 - `FW_R_LIM=28`
 - `VT_F_TRANS_DUR=8.0`
-- `VT_F_TRANS_THR=0.45`
+- `VT_F_TRANS_THR=0.55`
 - `VT_TRANS_MIN_TM=6.0`
 - `VT_F_TR_OL_TM=12.0`
 - `VT_TRANS_TIMEOUT=30`
@@ -168,11 +176,16 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.36`
+- `px4xplane: Version: v3.4.37`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
 - `Airspeed source=body_axis pitotAxisBody=-Z`
+
+In TruthCapture, confirm:
+
+- `sim/flightmodel/weight/m_total` is about `5 kg`
+- `sim/aircraft/weight/acf_m_empty` is about `5 kg`
 
 ## Log Package
 
@@ -190,10 +203,10 @@ The next log should be used to verify:
 - Normal deceleration at the final Go-To target is not treated as a failure.
 - Orbit entry does not recreate the qtail8 yaw spin or vertical sink.
 - The first transition should remain in transition until the body-axis
-  calibrated airspeed reaches roughly `VT_ARSP_TRANS=18 m/s`.
+  calibrated airspeed reaches roughly `VT_ARSP_TRANS=24 m/s`.
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive
   in FW and should broadly match truth true airspeed. QGC should no longer show
   the large negative FW airspeed seen in qtail11.
-- FW path following is judged against the new airspeed target and `900 m`
-  loiter radius. If speed still runs into the `35-45 m/s` range, record it but
-  do not tighten the radius in the same run.
+- FW path following is judged against the new `28 m/s` trim target and `900 m`
+  loiter radius. If speed still runs into the `40+ m/s` range, record it but do
+  not tighten the radius in the same run.

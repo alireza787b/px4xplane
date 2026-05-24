@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.37] - 2026-05-24
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail14.zip`. The run used px4xplane v3.4.36,
+  `Config Name: QuadTailsitter`, body-axis pitot `-Z`, and PX4 fork commit
+  `ad499de`.
+- Confirmed the recurring `Preflight Fail: Airspeed selector module down`
+  warning was a commander prearm hardware-requirement race:
+  `airspeed_selector` and simulator streaming warm up after commander starts,
+  while `SYS_HAS_NUM_ASPD=1` required a fresh `airspeed_validated` message.
+- Confirmed qtail14's uncontrolled climb was not stale params or missing pitot:
+  the X-Plane aircraft still weighed `2.27 kg` (`5 lb`), so low/minimum motor
+  outputs were already near hover thrust and the vehicle climbed far above the
+  requested altitude.
+
+### Changed
+
+- Set X-Plane virtual-pitot airframes to avoid treating the SITL pitot as a
+  prearm hardware requirement: `SYS_HAS_NUM_ASPD=0` for Cessna 172, TB2, and
+  QuadTailsitter. Airspeed remains enabled for control where configured.
+- Retargeted the QuadTailsitter ACF toward the requested 5 kg 6S design:
+  empty mass `5 lb -> 11 lb`, max mass `6 lb -> 12.5 lb`, battery
+  `64 V / 120 Wh / 60 A -> 22.2 V / 244 Wh / 180 A`, motor redline/max RPM
+  `22,000 -> 25,000`, loaded prop design RPM `16,000 -> 17,000`, and prop
+  design speed `40 kt -> 50 kt`.
+- Added the first mirrored 5 degree motor-cant test in the ACF and PX4 rotor
+  axes so the controller and simulated physics remain aligned.
+- Rebased QuadTailsitter hover and transition defaults for the heavier model:
+  `MPC_THR_HOVER=0.30`, `MPC_THR_MIN=0.08`, softer vertical/horizontal
+  acceleration limits, `FW_AIRSPD_TRIM=28`, `FW_AIRSPD_MAX=40`,
+  `VT_ARSP_TRANS=24`, `FW_THR_TRIM=0.16`, and `FW_THR_MAX=0.40`.
+- Updated the QuadTailsitter test card and added report v49.
+
+---
+
 ## [3.4.36] - 2026-05-23
 
 ### Fixed
