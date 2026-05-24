@@ -56,13 +56,20 @@ This index is the stable entry point for user and developer documentation.
 - [Report v45 - QuadTailsitter qtail10 FW Energy Recovery](reports/report_v45.md)
 - [Report v46 - QuadTailsitter qtail11 Body-Axis Pitot and Path Recovery](reports/report_v46.md)
 - [Report v47 - QuadTailsitter qtail12 FW Orbit and Pitot Density](reports/report_v47.md)
+- [Report v48 - QuadTailsitter qtail13 FW Energy Follow-Up](reports/report_v48.md)
+- [Report v49 - QuadTailsitter qtail14 5kg Retarget](reports/report_v49.md)
+- [Report v50 - QuadTailsitter qtail15 Parameter Sync and MC Pitch Fix](reports/report_v50.md)
+- [Report v51 - QuadTailsitter Design Guardrails and Pause-Safe Timestamps](reports/report_v51.md)
 
 ## Current Policy
 
-- Use the `v3.4.35` package for the next QuadTailsitter Position, Go-To, Orbit,
-  and airspeed-gated first-FW validation. Force a PX4 parameter reset before
-  judging the test; stale SITL `parameters.bson` values can override airframe
-  `set-default` changes.
+- Use the `v3.4.39` package for the next QuadTailsitter validation. Force a PX4
+  parameter reset before judging the test; stale SITL `parameters.bson` values
+  can override airframe `set-default` changes.
+- Run `tools/check_px4_airframe_params.py` on the returned ULog before tuning.
+  If the canted `CA_ROTOR*_AX/AY/AZ`, `SYS_HAS_NUM_ASPD`, `MPC_THR_HOVER`,
+  `VT_ARSP_TRANS`, or FW throttle values do not match the current airframe file,
+  the flight is a setup mismatch, not valid tuning evidence.
 - Alia and Ehang are now milestone airframes, but still require `distclean`
   after airframe-file changes before judging regressions.
 - QuadTailsitter aircraft assets are now source-controlled under

@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.38 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.39 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -340,6 +340,18 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying config editor docs to plugin package"
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${OUTPUT_DIR}/../tools
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/tools/check_px4_airframe_params.py
+        ${OUTPUT_DIR}/../tools/check_px4_airframe_params.py
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/tools/analyze_qtailsitter_design.py
+        ${OUTPUT_DIR}/../tools/analyze_qtailsitter_design.py
+    COMMENT "Copying validation tools to plugin package"
+)
+
 # Create px4_airframes directory for organized PX4 parameter files
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -390,6 +402,14 @@ set(PACKAGE_ASSET_COMMANDS
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js
     COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${OUTPUT_DIR}/../tools
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/tools/check_px4_airframe_params.py
+        ${OUTPUT_DIR}/../tools/check_px4_airframe_params.py
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/tools/analyze_qtailsitter_design.py
+        ${OUTPUT_DIR}/../tools/analyze_qtailsitter_design.py
+    COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../px4_airframes
 )
 
@@ -438,6 +458,33 @@ if(PX4XPLANE_BUILD_TESTS)
     )
     add_test(NAME actuator_safety_test COMMAND actuator_safety_test)
 
+    add_executable(timestamp_provider_test
+        tests/timestamp_provider_test.cpp
+        src/TimestampProvider.cpp
+    )
+    target_include_directories(timestamp_provider_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/SDK/CHeaders/XPLM
+        ${CMAKE_SOURCE_DIR}/lib/SDK/CHeaders/Widgets
+        ${CMAKE_SOURCE_DIR}/lib/simpleini
+        ${CMAKE_SOURCE_DIR}/lib/Eigen
+        ${CMAKE_SOURCE_DIR}/config
+    )
+    if(WIN32)
+        target_compile_definitions(timestamp_provider_test PRIVATE
+            IBM=1 XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1 XPLM400=1
+        )
+    elseif(APPLE)
+        target_compile_definitions(timestamp_provider_test PRIVATE
+            APL=1 XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1 XPLM400=1
+        )
+    elseif(UNIX)
+        target_compile_definitions(timestamp_provider_test PRIVATE
+            LIN=1 XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1 XPLM400=1
+        )
+    endif()
+    add_test(NAME timestamp_provider_test COMMAND timestamp_provider_test)
+
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
         add_test(
@@ -446,7 +493,7 @@ if(PX4XPLANE_BUILD_TESTS)
         )
         add_test(
             NAME python_offline_tools
-            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture
+            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
     endif()

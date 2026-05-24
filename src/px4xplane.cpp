@@ -692,6 +692,9 @@ SendTimingDiagnostics gGpsTimingDiagnostics;
 SendTimingDiagnostics gStateTimingDiagnostics;
 SendTimingDiagnostics gRcTimingDiagnostics;
 FrameTimingDiagnostics gFrameTimingDiagnostics;
+bool gWasSimPausedOrStalled = false;
+float gPauseWallElapsed = 0.0f;
+float gLastPauseLogWallElapsed = -1000.0f;
 
 float percentileMs(const std::vector<float>& samples, float percentile)
 {
@@ -806,6 +809,9 @@ void resetDiagnosticCounters()
 	gStateTimingDiagnostics = {};
 	gRcTimingDiagnostics = {};
 	gFrameTimingDiagnostics = {};
+	gWasSimPausedOrStalled = false;
+	gPauseWallElapsed = 0.0f;
+	gLastPauseLogWallElapsed = -1000.0f;
 }
 
 void clearIntervalDiagnosticCounters()
@@ -824,6 +830,58 @@ void clearIntervalDiagnosticCounters()
 	gRcTimingDiagnostics.intervalMissed = 0;
 	gFrameTimingDiagnostics.intervalNonMonotonicSimTime = 0;
 	gFrameTimingDiagnostics.intervalPeriodsMs.clear();
+}
+
+bool isSimPausedOrStalled(float currentSimTime, float callbackDt)
+{
+	const bool simPaused = DataRefManager::getInt("sim/time/paused") != 0;
+	const bool simTimeStalled = lastFlightTime > 0.0f &&
+		std::fabs(currentSimTime - lastFlightTime) < 0.000001f &&
+		callbackDt > 0.05f;
+	return simPaused || simTimeStalled;
+}
+
+void handleSimPausedOrStalled(float currentSimTime, float callbackDt)
+{
+	if (std::isfinite(callbackDt) && callbackDt > 0.0f) {
+		gPauseWallElapsed += callbackDt;
+	}
+
+	if (!gWasSimPausedOrStalled ||
+		(gPauseWallElapsed - gLastPauseLogWallElapsed) >= 2.0f) {
+		char buf[256];
+		snprintf(buf, sizeof(buf),
+			"px4xplane: [BRIDGE_PAUSE] X-Plane sim time paused/stalled at %.3fs for %.1fs wall time; holding HIL sensor stream until sim time resumes\n",
+			currentSimTime, gPauseWallElapsed);
+		XPLMDebugString(buf);
+		gLastPauseLogWallElapsed = gPauseWallElapsed;
+	}
+
+	gWasSimPausedOrStalled = true;
+	lastFlightTime = currentSimTime;
+	DataRefManager::SIM_Timestep = 0.0f;
+}
+
+void resumeAfterSimPause(float currentSimTime)
+{
+	if (!gWasSimPausedOrStalled) {
+		return;
+	}
+
+	char buf[256];
+	snprintf(buf, sizeof(buf),
+		"px4xplane: [BRIDGE_RESUME] X-Plane sim time resumed at %.3fs after %.1fs wall-time pause; resuming HIL stream without timestamp reset\n",
+		currentSimTime, gPauseWallElapsed);
+	XPLMDebugString(buf);
+
+	lastSensorSendTime = currentSimTime - TARGET_SENSOR_PERIOD;
+	lastGpsSendTime = currentSimTime - TARGET_GPS_PERIOD;
+	lastStateQuatSendTime = currentSimTime - TARGET_STATE_QUAT_PERIOD;
+	lastRcSendTime = currentSimTime - TARGET_RC_PERIOD;
+	lastDiagnosticLogTime = 0.0f;
+	gPauseWallElapsed = 0.0f;
+	gLastPauseLogWallElapsed = -1000.0f;
+	gWasSimPausedOrStalled = false;
 }
 
 } // namespace
@@ -1010,6 +1068,13 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Get current simulation time (frame-rate independent!)
 	float currentSimTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 	recordFrameTiming(currentSimTime, inElapsedSinceLastCall);
+
+	if (isSimPausedOrStalled(currentSimTime, inElapsedSinceLastCall)) {
+		handleSimPausedOrStalled(currentSimTime, inElapsedSinceLastCall);
+		ConnectionManager::receiveData();
+		return -1.0f;
+	}
+	resumeAfterSimPause(currentSimTime);
 
 	// Check for simulation restart
 	if (currentSimTime < lastFlightTime) {

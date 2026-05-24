@@ -7,8 +7,9 @@ intended `5 kg` 6S 3115-class design and removed the virtual SITL pitot as a
 prearm hardware requirement while still using it for transition and fixed-wing
 control. qtail15 then confirmed the `5 kg` ACF loaded, but PX4 still used stale
 saved defaults: no canted control-allocation axes, old airspeeds, old hover
-thrust, and the old pitch gains. v3.4.38 keeps the 5 kg ACF, applies the
-qtail15 pitch-gain lesson, and makes the parameter reset check mandatory.
+thrust, and the old pitch gains. v3.4.39 keeps the 5 kg ACF, applies the
+qtail15 pitch-gain lesson, adds a pause-safe timestamp fix, and makes the
+parameter reset/check mandatory.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -34,6 +35,8 @@ of blending separate target clicks as one continuous path.
    below. qtail15 looked like v3.4.37 in X-Plane, but PX4 still used old
    `SYS_HAS_NUM_ASPD=1`, `MPC_THR_HOVER=0.27`, `VT_ARSP_TRANS=18`, and
    uncanted rotor axes.
+   - After the run, use:
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param VT_ARSP_TRANS --param FW_THR_TRIM`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -181,7 +184,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.38`
+- `px4xplane: Version: v3.4.39`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -191,6 +194,22 @@ In TruthCapture, confirm:
 
 - `sim/flightmodel/weight/m_total` is about `5 kg`
 - `sim/aircraft/weight/acf_m_empty` is about `5 kg`
+- Optional design check:
+  `python3 tools/analyze_qtailsitter_design.py aircraft/QuadTailsitter/QuadTailsitter.acf --truth <truth-folder-or-zip>`
+
+## Pause / Dialog Check
+
+v3.4.39 fixes a timestamp fallback that could jump to wall-clock time after an
+X-Plane pause or blocking dialog. For this test, do one short non-flight check
+before the flight sequence:
+
+1. Connect PX4 and wait for Ready for takeoff.
+2. Pause X-Plane or open a small X-Plane aircraft/weight dialog for `5-10 s`.
+3. Close/unpause and verify PX4 continues receiving telemetry.
+4. In X-Plane `Log.txt`, expect `[BRIDGE_PAUSE]` and `[BRIDGE_RESUME]` lines.
+5. If PX4 reports persistent high accelerometer bias, EKF missing data, or
+   vertical velocity instability after unpause, stop and send the logs before
+   flying.
 
 ## Log Package
 

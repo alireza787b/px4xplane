@@ -97,24 +97,16 @@ uint64_t TimestampProvider::getTimestampUsec() {
         deltaSec = MAX_DELTA_SEC;
     }
 
-    // Handle very small deltas (multiple calls within same frame)
-    // Use system clock for sub-frame microsecond precision
+    // Handle very small deltas (multiple calls within the same X-Plane frame).
+    // Do not fall back to absolute wall-clock elapsed time here. During X-Plane
+    // pause/dialog stalls, wall time can advance far beyond simulation time,
+    // and GPS/state/RC messages sent in the same frame would jump ahead of the
+    // HIL_SENSOR timestamp. PX4 lockstep expects monotonic timestamps, not
+    // wall-clock catch-up while the simulator is stopped.
     if (deltaSec < MIN_DELTA_SEC) {
         ++s_subFrameFallbacks;
-        auto now = SteadyClock::now();
-        auto systemElapsed = std::chrono::duration_cast<std::chrono::microseconds>(
-            now - s_baseTimePoint
-        ).count();
-
-        // Use system elapsed time, but ensure it's at least as large as accumulated
-        // This handles the case where we're called multiple times per frame
-        uint64_t timestamp = static_cast<uint64_t>(systemElapsed);
-
-        // Ensure monotonicity - never return a value <= last output
-        if (timestamp <= s_lastOutputUsec) {
-            timestamp = s_lastOutputUsec + 1;
-            ++s_monotonicCorrections;
-        }
+        uint64_t timestamp = s_lastOutputUsec + 1;
+        ++s_monotonicCorrections;
         s_lastOutputUsec = timestamp;
 
         return timestamp;

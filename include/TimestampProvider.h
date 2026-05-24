@@ -44,7 +44,7 @@ public:
      *
      * Returns a monotonically increasing timestamp that progresses at
      * simulation time rate, suitable for PX4 lockstep synchronization.
-     * Starts from 0 on first call after initialization/reset.
+     * Starts from 1,000,000 on first call after initialization/reset.
      *
      * @return uint64_t Timestamp in microseconds since connection start
      */
@@ -54,7 +54,8 @@ public:
      * @brief Reset all timing state.
      *
      * Call this on disconnect/reconnect to ensure clean timestamp
-     * generation on next connection. Next getTimestampUsec() will return 0.
+     * generation on next connection. Next getTimestampUsec() will return
+     * 1,000,000.
      */
     static void reset();
 
@@ -89,7 +90,7 @@ private:
     static uint64_t s_monotonicCorrections;     // Count of enforced monotonic increments
     static uint64_t s_backwardResets;           // Count of X-Plane time regressions
     static uint64_t s_cappedDeltas;             // Count of large deltas capped to MAX_DELTA_SEC
-    static uint64_t s_subFrameFallbacks;        // Count of system-clock sub-frame timestamps
+    static uint64_t s_subFrameFallbacks;        // Count of same-frame monotonic timestamps
 
     // Timing constraints
     static constexpr double MAX_DELTA_SEC = 0.1;        // Max valid delta (100ms) - cap large gaps

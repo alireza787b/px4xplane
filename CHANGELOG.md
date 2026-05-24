@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.39] - 2026-05-24
+
+### Fixed
+
+- Fixed the timestamp provider's same-frame fallback so GPS/state/RC messages
+  cannot jump to wall-clock elapsed time after an X-Plane pause or blocking
+  dialog. Same-frame messages now advance by one microsecond relative to the
+  previous HIL timestamp.
+- Added connected pause/stall logging in the flight loop. The bridge now logs
+  `[BRIDGE_PAUSE]` while X-Plane sim time is paused or stalled and
+  `[BRIDGE_RESUME]` when sim time resumes, without resetting PX4 timestamps.
+
+### Added
+
+- Added `tools/check_px4_airframe_params.py` to compare ULog initial parameters
+  against a PX4 airframe file. This catches stale SITL `parameters.bson` before
+  flight behavior is used for tuning.
+- Added `tools/analyze_qtailsitter_design.py` to summarize the QuadTailsitter
+  ACF mass, battery, wing-loading estimate, prop RPM/tip Mach, hover thrust,
+  and optional TruthCapture thrust/RPM/throttle evidence.
+- Added offline tests for timestamp pause behavior and the new airframe tools.
+
+### Changed
+
+- Updated the QuadTailsitter test card and docs index for the v3.4.39 workflow.
+  The next run must validate PX4 parameter sync before judging aircraft design
+  or tuning.
+
+---
+
 ## [3.4.38] - 2026-05-24
 
 ### Fixed
