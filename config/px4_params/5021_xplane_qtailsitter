@@ -48,9 +48,10 @@ param set-default CA_FAILURE_MODE 0
 # pattern.
 #
 # qtail14 showed the aircraft was still the old 5 lb model, not the intended
-# 5 kg 6S quad tailsitter. The v3.4.37 ACF retargets mass, battery, motor RPM,
-# and a small 5 degree mirrored motor cant. Keep CT/KM conservative for the
-# first 5 kg hover test and use the cant axes below to match the ACF.
+# 5 kg 6S quad tailsitter. The v3.4.37 ACF retargeted mass, battery, motor RPM,
+# and a small 5 degree mirrored motor cant. qtail15 confirmed the ACF loaded at
+# 4.99 kg, but the PX4 parameter store was stale and did not load the canted
+# axes. Keep CT/KM conservative and use the axes below to match the ACF.
 param set-default CA_ROTOR_COUNT 4
 
 param set-default CA_ROTOR0_PX 0.22
@@ -156,7 +157,7 @@ param set-default MC_AIRMODE 2
 param set-default MAN_ARM_GESTURE 0
 
 param set-default MC_ROLL_P 0.9
-param set-default MC_PITCH_P 0.9
+param set-default MC_PITCH_P 0.50
 param set-default MC_YAW_P 0.80
 param set-default MC_YAW_WEIGHT 0.35
 
@@ -171,7 +172,7 @@ param set-default MC_PITCHRATE_P 0.10
 param set-default MC_PITCHRATE_I 0.02
 param set-default MC_PITCHRATE_D 0.0008
 param set-default MC_PITCHRATE_FF 0.0
-param set-default MC_PITCHRATE_K 1.00
+param set-default MC_PITCHRATE_K 0.85
 param set-default MC_PITCHRATE_MAX 80
 
 param set-default MC_YAWRATE_P 0.20
@@ -215,7 +216,7 @@ param set-default MPC_MAN_TILT_MAX 35
 param set-default MPC_TILTMAX_AIR 40
 param set-default MPC_TILTMAX_LND 8
 
-param set-default MPC_THR_HOVER 0.30
+param set-default MPC_THR_HOVER 0.22
 param set-default MPC_THR_MIN 0.08
 param set-default MPC_THR_MAX 1.0
 param set-default MPC_THR_XY_MARG 0.3

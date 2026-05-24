@@ -1,13 +1,14 @@
 # QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
 This card is for the next controlled QuadTailsitter validation after the
-`qtail14.zip` run. qtail14 confirmed that PX4 used the body-axis pitot sensor
-source and the intended v3.4.36 parameters, but the aircraft was still the old
-`5 lb / 2.27 kg` X-Plane model. The result was a persistent climb: minimum/low
-motor output was already near hover thrust for the old mass. v3.4.37 retargets
-the X-Plane aircraft to the intended `5 kg` 6S 3115-class design and removes
-the virtual SITL pitot as a prearm hardware requirement while still using it
-for transition and fixed-wing control.
+`qtail15.zip` run. qtail14 confirmed that the aircraft was still the old
+`5 lb / 2.27 kg` X-Plane model. v3.4.37 retargeted the X-Plane aircraft to the
+intended `5 kg` 6S 3115-class design and removed the virtual SITL pitot as a
+prearm hardware requirement while still using it for transition and fixed-wing
+control. qtail15 then confirmed the `5 kg` ACF loaded, but PX4 still used stale
+saved defaults: no canted control-allocation axes, old airspeeds, old hover
+thrust, and the old pitch gains. v3.4.38 keeps the 5 kg ACF, applies the
+qtail15 pitch-gain lesson, and makes the parameter reset check mandatory.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -22,13 +23,17 @@ of blending separate target clicks as one continuous path.
 4. Run PX4 with:
    - `make px4_sitl_default xplane_qtailsitter`
    - `SYS_AUTOSTART` must be `5021`
-5. Force a clean PX4 parameter load before the test. Use one of:
-   - preferred: `make distclean`, then rebuild/run `xplane_qtailsitter`
-   - targeted: delete `build/px4_sitl_default/rootfs/parameters.bson` and
-     `build/px4_sitl_default/rootfs/parameters_backup.bson`
-   - PX4 shell: `param reset_all`, then stop and restart PX4
-6. Do not judge the test if the ULog shows `SYS_AUTOCONFIG=0` with old/manual
-   values that do not match the sanity-check list below.
+5. Force a clean PX4 parameter load before the test. Do not use only `make
+   clean` for this airframe after a parameter-file change.
+   - preferred: choose `d` / `make distclean`, then rebuild/run
+     `xplane_qtailsitter`
+   - targeted: delete any `parameters.bson` and `parameters_backup.bson` files
+     under the PX4 SITL run directory, then rebuild/run
+   - PX4 shell fallback: `param reset_all`, then stop and restart PX4
+6. Do not judge the test if the ULog values do not match the sanity-check list
+   below. qtail15 looked like v3.4.37 in X-Plane, but PX4 still used old
+   `SYS_HAS_NUM_ASPD=1`, `MPC_THR_HOVER=0.27`, `VT_ARSP_TRANS=18`, and
+   uncanted rotor axes.
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -86,7 +91,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `CA_ROTOR2_KM=-0.04`, `CA_ROTOR3_KM=-0.04`
 - `MC_AIRMODE=2`
 - `MC_ROLL_P=0.9`
-- `MC_PITCH_P=0.9`
+- `MC_PITCH_P=0.50`
 - `MC_YAW_P=0.80`
 - `MC_YAW_WEIGHT=0.35`
 - `MC_YAWRATE_P=0.20`
@@ -99,10 +104,10 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_ROLLRATE_D=0.0008`
 - `MC_PITCHRATE_D=0.0008`
 - `MC_ROLLRATE_K=1.00`
-- `MC_PITCHRATE_K=1.00`
+- `MC_PITCHRATE_K=0.85`
 - `MC_ROLLRATE_MAX=80`
 - `MC_PITCHRATE_MAX=80`
-- `MPC_THR_HOVER=0.30`
+- `MPC_THR_HOVER=0.22`
 - `MPC_THR_MIN=0.08`
 - `MPC_USE_HTE=0`
 - `MPC_XY_P=0.18`
@@ -176,7 +181,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.37`
+- `px4xplane: Version: v3.4.38`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -198,6 +203,9 @@ Save and send:
 
 The next log should be used to verify:
 
+- The ULog initial parameters match this card, especially the canted
+  `CA_ROTOR*_AX/AY/AZ` values. If they are all `AX=0`, `AY=0`, `AZ=-1`, stop:
+  the run is using stale PX4 parameters.
 - Go-To reaches `4-5 m/s` without sustained pitch/roll error or motor
   saturation.
 - Normal deceleration at the final Go-To target is not treated as a failure.

@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.38] - 2026-05-24
+
+### Fixed
+
+- Analyzed `/home/alireza/qtail15.zip`. The X-Plane side was v3.4.37 and the
+  retargeted ACF loaded at `4.99 kg`, but the PX4 ULog still had stale
+  parameters: `SYS_HAS_NUM_ASPD=1`, `MPC_THR_HOVER=0.27`,
+  `VT_ARSP_TRANS=18`, and all `CA_ROTOR*_AX/AY=0`. This means qtail15 did not
+  test the intended canted PX4 control allocation.
+- Confirmed the user's MC tuning observation from the ULog. Changing only
+  pitch-rate D and K did not remove the pitch oscillation; after
+  `MC_PITCH_P` was reduced from `0.9` to `0.5`, pitch-rate RMS dropped from
+  about `0.79 rad/s` to about `0.11 rad/s`, and the MC phase became usable.
+- Confirmed the cockpit/QGC throttle display is not the X-Plane actuator path
+  for this plugin path. TruthCapture showed cockpit throttle datarefs at zero
+  while `throttle_used_ratio`, prop RPM, and PX4 `actuator_motors` were active.
+
+### Changed
+
+- Retuned the QuadTailsitter MC hover defaults for the measured 5 kg plant:
+  `MC_PITCH_P=0.50`, `MC_PITCHRATE_K=0.85`, and `MPC_THR_HOVER=0.22`.
+- Left FW orbit/TECS tuning mostly unchanged because qtail15 used stale PX4
+  airspeed, thrust, and control-allocation defaults. The next FW conclusions
+  must come from a run where the ULog shows the v3.4.38 sanity values.
+- Updated the setup script warning so users choose `distclean` after pulling or
+  copying new airframe parameter files.
+- Updated the QuadTailsitter test card and added report v50.
+
+---
+
 ## [3.4.37] - 2026-05-24
 
 ### Fixed
