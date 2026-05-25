@@ -64,22 +64,24 @@ This index is the stable entry point for user and developer documentation.
 - [Report v53 - Ground-Stationary Kinematics Guard](reports/report_v53.md)
 - [Report v54 - Stationary-Ground Sensor Contract](reports/report_v54.md)
 - [Report v55 - qtail19 Baro Liveness and Landing Contact](reports/report_v55.md)
+- [Report v56 - qtail20 MC Overspeed Recovery and 5kg Design Audit](reports/report_v56.md)
 
 ## Current Policy
 
-- Use the `v3.4.43` package for the next bridge sanity check. First connect PX4
-  while QuadTailsitter is stationary on the ground and confirm there is no
-  baro-stale, vertical-velocity, accelerometer-bias, or compass warning through
-  connect, pause/unpause, and a short arm/disarm cycle.
-- Resume QuadTailsitter in MC-only mode first: takeoff, hover, two Go-To
-  commands, RTL, and landing. Do not test fixed-wing transition again until
-  MC-mode and landing are clean with the updated contact model.
+- Use the `v3.4.44` package for the next QuadTailsitter test. qtail20 proved the
+  v3.4.43 stationary bridge fixes, so the next gate is MC Go-To speed/attitude
+  tracking with the softer PX4 defaults.
+- Run QuadTailsitter in MC-only mode first: stationary/pause sanity, takeoff,
+  hover, two Go-To commands, RTL or Land. Attempt one straight transition only
+  if MC Go-To speed stays controlled and landing remains clean.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
-  `parameters.bson` values can override airframe `set-default` changes.
+  `parameters.bson` values can override airframe `set-default` changes. qtail20
+  did not load the intended v3.4.43 acceleration/jerk defaults.
 - Run `tools/check_px4_airframe_params.py` on the returned ULog before tuning.
   If the canted `CA_ROTOR*_AX/AY/AZ`, `SYS_HAS_NUM_ASPD`, `MPC_THR_HOVER`,
-  `VT_ARSP_TRANS`, or FW throttle values do not match the current airframe file,
-  the flight is a setup mismatch, not valid tuning evidence.
+  `MPC_XY_CRUISE`, `MPC_ACC_HOR`, `MPC_JERK_AUTO`, `VT_ARSP_TRANS`, or FW
+  throttle values do not match the current airframe file, the flight is a setup
+  mismatch, not valid tuning evidence.
 - Alia and Ehang are now milestone airframes, but still require `distclean`
   after airframe-file changes before judging regressions.
 - QuadTailsitter aircraft assets are now source-controlled under

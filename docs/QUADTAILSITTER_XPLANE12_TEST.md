@@ -1,10 +1,11 @@
 # QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
 This card is for the next controlled QuadTailsitter validation after the
-`qtail19.zip` run. v3.4.43 keeps the `5 kg` 6S 3115-class aircraft target,
-keeps the stationary zero-motion sensor contract, restores tiny baro liveness
-so PX4 does not flag a perfectly frozen simulated pressure sensor as stale, and
-stabilizes the QuadTailsitter landing-contact model.
+`qtail20.zip` run. v3.4.44 keeps the `5 kg` 6S 3115-class aircraft target and
+the v3.4.43 stationary sensor/contact fixes, then softens multicopter Go-To
+speed, acceleration, jerk, and tilt limits. qtail20 proved the bridge sanity
+gate but showed a `5 m/s` Go-To command can still produce a much faster actual
+speed burst if PX4 uses old trajectory defaults.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -27,11 +28,10 @@ of blending separate target clicks as one continuous path.
      under the PX4 SITL run directory, then rebuild/run
    - PX4 shell fallback: `param reset_all`, then stop and restart PX4
 6. Do not judge the test if the ULog values do not match the sanity-check list
-   below. qtail15 looked like v3.4.37 in X-Plane, but PX4 still used old
-   `SYS_HAS_NUM_ASPD=1`, `MPC_THR_HOVER=0.27`, `VT_ARSP_TRANS=18`, and
-   uncanted rotor axes.
+   below. qtail20 looked like v3.4.43 in X-Plane, but PX4 still used older
+   qtail acceleration/jerk and land-detector defaults.
    - After the run, use:
-     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param VT_ARSP_TRANS --param FW_THR_TRIM`
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_ACC_HOR --param MPC_JERK_AUTO --param VT_ARSP_TRANS --param FW_THR_TRIM`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -40,15 +40,15 @@ Use calm weather and model calculations per frame `6`.
 
 1. Take off and let PX4 reach QGC's commanded takeoff altitude.
 2. Hold in multicopter mode for `15-20 s`.
-3. Command one modest Go-To movement around `3 m/s`.
-4. Command one faster Go-To around `4-5 m/s`.
+3. Command one modest Go-To movement. The intended cruise is now `3.5 m/s`.
+4. Command one longer Go-To and watch for actual speed overshoot.
 5. At `20 m` AGL or higher, command one `40-50 m` multicopter Orbit.
    - If QGC exposes Orbit yaw behavior, use hold initial heading or tangent
      heading for this test. If it does not, use the default center-facing Orbit
      and keep the radius at least `40 m`.
 6. For the next package, stop here unless MC Go-To, RTL, and landing are clean.
-   Fixed-wing transition should remain deferred until the contact model and
-   MC-mode behavior pass repeatably.
+   If actual horizontal speed stays below about `6 m/s` and attitude tracking
+   is calm, climb high and attempt one straight forward transition.
 7. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
@@ -97,35 +97,36 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_ROLLRATE_P=0.10`
 - `MC_PITCHRATE_P=0.10`
 - `MC_ROLLRATE_D=0.0008`
-- `MC_PITCHRATE_D=0.0008`
+- `MC_PITCHRATE_D=0.0010`
 - `MC_ROLLRATE_K=1.00`
 - `MC_PITCHRATE_K=0.85`
 - `MC_ROLLRATE_MAX=80`
 - `MC_PITCHRATE_MAX=80`
 - `MPC_THR_HOVER=0.22`
 - `MPC_THR_MIN=0.08`
+- `MPC_THR_XY_MARG=0.4`
 - `MPC_USE_HTE=0`
 - `MPC_XY_P=0.18`
 - `MPC_Z_P=1.00`
 - `MPC_Z_VEL_P_ACC=2.0`
 - `MPC_Z_VEL_I_ACC=0.5`
 - `MPC_Z_VEL_D_ACC=0.5`
-- `MPC_XY_CRUISE=5.0`
-- `MPC_XY_VEL_MAX=5.0`
-- `MPC_VEL_MANUAL=5.0`
+- `MPC_XY_CRUISE=3.5`
+- `MPC_XY_VEL_MAX=4.0`
+- `MPC_VEL_MANUAL=4.0`
 - `MPC_XY_ERR_MAX=10`
-- `MPC_ACC_HOR=1.2`
-- `MPC_ACC_HOR_MAX=1.8`
-- `MPC_JERK_AUTO=1.2`
-- `MPC_JERK_MAX=2.0`
+- `MPC_ACC_HOR=0.7`
+- `MPC_ACC_HOR_MAX=1.0`
+- `MPC_JERK_AUTO=0.7`
+- `MPC_JERK_MAX=1.2`
 - `MIS_TAKEOFF_ALT=1.5`
 - `MPC_Z_V_AUTO_UP=1.0`
 - `MPC_Z_VEL_MAX_UP=1.2`
 - `MPC_ACC_UP_MAX=1.6`
 - `MPC_TKO_SPEED=1.0`
 - `MPC_TKO_RAMP_T=2.5`
-- `MPC_MAN_TILT_MAX=35.0`
-- `MPC_TILTMAX_AIR=40.0`
+- `MPC_MAN_TILT_MAX=30.0`
+- `MPC_TILTMAX_AIR=30.0`
 - `MPC_YAW_MODE=0`
 - `MPC_YAWRAUTO_MAX=35`
 - `MPC_YAWRAUTO_ACC=12`
@@ -136,7 +137,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_Z_VEL_MAX_DN=1.4`
 - `MPC_LAND_SPEED=0.9`
 - `MPC_LAND_CRWL=0.36`
-- `LNDMC_Z_VEL_MAX=0.30`
+- `LNDMC_Z_VEL_MAX=0.25`
 - `FW_USE_AIRSPD=1`
 - `ASPD_DO_CHECKS=1`
 - `SYS_HAS_NUM_ASPD=0`
@@ -176,7 +177,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.43`
+- `px4xplane: Version: v3.4.44`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -184,7 +185,7 @@ In X-Plane `Log.txt`, confirm:
 
 In TruthCapture, confirm:
 
-- `sim/flightmodel/weight/m_total` is about `5 kg`
+- `sim/flightmodel/weight/m_total` is about `5.4 kg` loaded
 - `sim/aircraft/weight/acf_m_empty` is about `5 kg`
 - Optional design check:
   `python3 tools/analyze_qtailsitter_design.py aircraft/QuadTailsitter/QuadTailsitter.acf --truth <truth-folder-or-zip>`
@@ -215,10 +216,12 @@ The next log should be used to verify:
 - The ULog initial parameters match this card, especially the canted
   `CA_ROTOR*_AX/AY/AZ` values. If they are all `AX=0`, `AY=0`, `AZ=-1`, stop:
   the run is using stale PX4 parameters.
-- Go-To reaches `4-5 m/s` without sustained pitch/roll error or motor
-  saturation.
+- Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this
+  slice is actual horizontal speed below about `6 m/s`, pitch not running away
+  beyond about `35 deg`, and no sustained pitch/roll error or motor saturation.
 - Normal deceleration at the final Go-To target is not treated as a failure.
-- Orbit entry does not recreate the qtail8 yaw spin or vertical sink.
+- Orbit entry does not recreate the qtail8 yaw spin or vertical sink. Skip
+  orbit if the two Go-To commands are not clean.
 - The first transition should remain in transition until the body-axis
   calibrated airspeed reaches roughly `VT_ARSP_TRANS=24 m/s`.
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive

@@ -170,7 +170,7 @@ param set-default MC_ROLLRATE_MAX 80
 
 param set-default MC_PITCHRATE_P 0.10
 param set-default MC_PITCHRATE_I 0.02
-param set-default MC_PITCHRATE_D 0.0008
+param set-default MC_PITCHRATE_D 0.0010
 param set-default MC_PITCHRATE_FF 0.0
 param set-default MC_PITCHRATE_K 0.85
 param set-default MC_PITCHRATE_MAX 80
@@ -187,6 +187,9 @@ param set-default MC_YAWRATE_MAX 65
 # MULTICOPTER POSITION, TAKEOFF, AND LANDING
 ################################################################################
 
+# qtail20 proved the bridge/contact fixes but showed that a 5 m/s Go-To could
+# overshoot to about 14 m/s while the pitch axis was still recovering. Keep the
+# next MC envelope deliberately conservative before attempting transition.
 param set-default MPC_XY_P 0.18
 param set-default MPC_Z_P 1.00
 param set-default MPC_XY_VEL_P_ACC 0.8
@@ -196,30 +199,30 @@ param set-default MPC_Z_VEL_P_ACC 2.0
 param set-default MPC_Z_VEL_I_ACC 0.5
 param set-default MPC_Z_VEL_D_ACC 0.5
 
-param set-default MPC_XY_VEL_MAX 5.0
-param set-default MPC_XY_CRUISE 5.0
-param set-default MPC_VEL_MANUAL 5.0
+param set-default MPC_XY_VEL_MAX 4.0
+param set-default MPC_XY_CRUISE 3.5
+param set-default MPC_VEL_MANUAL 4.0
 param set-default MPC_Z_V_AUTO_UP 1.0
 param set-default MPC_Z_V_AUTO_DN 1.4
 param set-default MPC_Z_VEL_MAX_UP 1.2
 param set-default MPC_Z_VEL_MAX_DN 1.4
 param set-default MPC_XY_ERR_MAX 10
 
-param set-default MPC_ACC_HOR 1.0
-param set-default MPC_ACC_HOR_MAX 1.5
+param set-default MPC_ACC_HOR 0.7
+param set-default MPC_ACC_HOR_MAX 1.0
 param set-default MPC_ACC_UP_MAX 1.6
 param set-default MPC_ACC_DOWN_MAX 1.5
-param set-default MPC_JERK_AUTO 1.0
-param set-default MPC_JERK_MAX 1.8
+param set-default MPC_JERK_AUTO 0.7
+param set-default MPC_JERK_MAX 1.2
 
-param set-default MPC_MAN_TILT_MAX 35
-param set-default MPC_TILTMAX_AIR 40
+param set-default MPC_MAN_TILT_MAX 30
+param set-default MPC_TILTMAX_AIR 30
 param set-default MPC_TILTMAX_LND 8
 
 param set-default MPC_THR_HOVER 0.22
 param set-default MPC_THR_MIN 0.08
 param set-default MPC_THR_MAX 1.0
-param set-default MPC_THR_XY_MARG 0.3
+param set-default MPC_THR_XY_MARG 0.4
 param set-default MPC_USE_HTE 0
 
 param set-default MPC_TKO_SPEED 1.0

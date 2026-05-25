@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.44] - 2026-05-25
+
+### Changed
+
+- Reduced QuadTailsitter autonomous MC speed, acceleration, jerk, and tilt
+  limits after qtail20 showed a `5 m/s` Go-To command producing a `14 m/s`
+  actual speed burst and large pitch transient.
+- Added a small QuadTailsitter pitch-rate damping increase while preserving the
+  stable v3.4.43 hover/contact baseline.
+- Updated QuadTailsitter documentation and report history for the qtail20
+  evidence and clean-parameter retest workflow.
+
+### Notes
+
+- The qtail20 ULog did not load the v3.4.43 PX4 qtail acceleration/jerk
+  defaults, so v3.4.44 requires a PX4 `make distclean` before judging the next
+  run.
+
+---
+
 ## [3.4.43] - 2026-05-25
 
 ### Fixed

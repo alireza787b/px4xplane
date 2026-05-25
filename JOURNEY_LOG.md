@@ -4,6 +4,25 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-25
 
+### v3.4.44 qtail20 MC Overspeed Recovery
+
+- Reviewed `/home/alireza/qtail20.zip`: v3.4.43 removed the stationary baro,
+  vertical-velocity, accelerometer-bias, compass, and pause/unpause failures.
+- qtail20 remaining issue is MC Go-To tuning. PX4 trajectory speed stayed at or
+  below `5 m/s`, but actual horizontal speed reached about `14 m/s` with a
+  large pitch transient.
+- Found qtail20 did not load the v3.4.43 PX4 qtail softening: ULog still had
+  older acceleration/jerk and land-detector defaults. The next test must force
+  a clean PX4 parameter load before judging behavior.
+- Prepared v3.4.44:
+  - keeps the 5 kg ACF unchanged because sizing, thrust, wing area, and contact
+    model remain plausible from qtail20 evidence
+  - reduces MC auto/manual speed, acceleration, jerk, and tilt limits
+  - increases thrust margin for horizontal control
+  - adds a small pitch-rate damping increase
+- Next action: retest MC only first, then attempt one straight transition only
+  if Go-To, RTL/land, and estimator behavior are clean.
+
 ### v3.4.43 qtail19 Baro Liveness and Contact Cleanup
 
 - Reviewed `/home/alireza/qtail19.zip`: v3.4.42 removed the earlier stationary
