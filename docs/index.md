@@ -61,10 +61,11 @@ This index is the stable entry point for user and developer documentation.
 - [Report v50 - QuadTailsitter qtail15 Parameter Sync and MC Pitch Fix](reports/report_v50.md)
 - [Report v51 - QuadTailsitter Design Guardrails and Pause-Safe Timestamps](reports/report_v51.md)
 - [Report v52 - Ground-Stationary IMU Guard](reports/report_v52.md)
+- [Report v53 - Ground-Stationary Kinematics Guard](reports/report_v53.md)
 
 ## Current Policy
 
-- Use the `v3.4.40` package for the next bridge sanity check before resuming
+- Use the `v3.4.41` package for the next bridge sanity check before resuming
   QuadTailsitter validation. First connect PX4 while stationary on the ground
   and confirm there is no immediate vertical-velocity instability warning.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL

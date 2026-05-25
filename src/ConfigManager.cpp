@@ -126,6 +126,7 @@ float ConfigManager::accel_offset_x = 0.0f;
 float ConfigManager::accel_offset_y = 0.0f;
 float ConfigManager::accel_offset_z = 0.0f;
 bool ConfigManager::ground_stationary_accel_guard_enabled = true;
+bool ConfigManager::ground_stationary_kinematics_guard_enabled = true;
 
 // Debug logging flags
 bool ConfigManager::debug_verbose_logging = false;
@@ -234,6 +235,7 @@ void ConfigManager::loadConfiguration() {
     accel_offset_y = static_cast<float>(ini.GetDoubleValue("", "accel_offset_y", 0.0));
     accel_offset_z = static_cast<float>(ini.GetDoubleValue("", "accel_offset_z", 0.0));
     ground_stationary_accel_guard_enabled = ini.GetBoolValue("", "ground_stationary_accel_guard_enabled", true);
+    ground_stationary_kinematics_guard_enabled = ini.GetBoolValue("", "ground_stationary_kinematics_guard_enabled", true);
 
     if (accel_auto_calibrate) {
         XPLMDebugString("px4xplane: Accelerometer auto-calibration ENABLED\n");
@@ -246,6 +248,9 @@ void ConfigManager::loadConfiguration() {
     }
     if (ground_stationary_accel_guard_enabled) {
         XPLMDebugString("px4xplane: Ground-stationary accelerometer guard enabled\n");
+    }
+    if (ground_stationary_kinematics_guard_enabled) {
+        XPLMDebugString("px4xplane: Ground-stationary kinematics guard enabled\n");
     }
 
     // Load MAVLink message rates

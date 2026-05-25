@@ -135,6 +135,13 @@
       "reload_policy": "reconnect_before_flight",
       "description": "When stationary on the ground, replace X-Plane gear/contact g-load spikes with stable gravity before publishing HIL_SENSOR acceleration."
     },
+    "ground_stationary_kinematics_guard_enabled": {
+      "type": "bool",
+      "default": true,
+      "group": "sensor_contract",
+      "reload_policy": "reconnect_before_flight",
+      "description": "When stationary on the ground, zero X-Plane contact velocity before publishing GPS and HIL_STATE velocity."
+    },
     "mavlink_sensor_rate_hz": {
       "type": "int",
       "default": 200,

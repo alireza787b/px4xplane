@@ -143,27 +143,47 @@ float localHorizontalSpeedMps()
 	return std::sqrt(vn * vn + ve * ve);
 }
 
-bool isGroundStationaryForAccelGuard()
+bool isGroundContactLowSpeed()
 {
-	if (!ConfigManager::ground_stationary_accel_guard_enabled) {
-		return false;
-	}
-
 	const bool onGround = dataRefInt("sim/flightmodel/failures/onground_any") != 0;
 	const float aglM = dataRefFloat("sim/flightmodel/position/y_agl");
-	const float verticalSpeedMps = dataRefFloat("sim/flightmodel/position/local_vy");
 	const float horizontalSpeedMps = localHorizontalSpeedMps();
 
 	return onGround &&
-		std::isfinite(aglM) && aglM >= -0.5f && aglM < 0.35f &&
-		std::isfinite(verticalSpeedMps) && std::fabs(verticalSpeedMps) < 0.5f &&
+		std::isfinite(aglM) && aglM >= -0.5f && aglM < 0.45f &&
 		std::isfinite(horizontalSpeedMps) && horizontalSpeedMps < 0.75f;
+}
+
+bool isGroundStationaryForAccelGuard()
+{
+	return ConfigManager::ground_stationary_accel_guard_enabled && isGroundContactLowSpeed();
+}
+
+bool isGroundStationaryForKinematicsGuard()
+{
+	return ConfigManager::ground_stationary_kinematics_guard_enabled && isGroundContactLowSpeed();
+}
+
+Eigen::Vector3f localVelocityNedMpsForSensors()
+{
+	if (isGroundStationaryForKinematicsGuard()) {
+		static bool guardLogged = false;
+		if (!guardLogged) {
+			XPLMDebugString("px4xplane: [GROUND_KINEMATICS_GUARD] Stationary on ground; zeroing X-Plane contact velocity for GPS/HIL state\n");
+			guardLogged = true;
+		}
+
+		return Eigen::Vector3f::Zero();
+	}
+
+	return Eigen::Vector3f(localVnMps(), localVeMps(), localVdMps());
 }
 
 float trueCourseFromLocalVelocityDeg()
 {
-	const float vn = localVnMps();
-	const float ve = localVeMps();
+	const Eigen::Vector3f nedVelocity = localVelocityNedMpsForSensors();
+	const float vn = nedVelocity.x();
+	const float ve = nedVelocity.y();
 	return wrapDegrees360(std::atan2(ve, vn) * 180.0f / static_cast<float>(M_PI));
 }
 
@@ -236,7 +256,7 @@ float bodyAxisPitotAirspeedMps()
 	}
 
 	attitude.normalize();
-	const Eigen::Vector3f nedVelocity(localVnMps(), localVeMps(), localVdMps());
+	const Eigen::Vector3f nedVelocity = localVelocityNedMpsForSensors();
 	const Eigen::Vector3f windNed(localWindNedXPlaneN(), localWindNedXPlaneE(), localWindNedXPlaneD());
 	const Eigen::Vector3f bodyVelocity = attitude.toRotationMatrix().transpose() * (nedVelocity - windNed);
 	return projectOntoConfiguredPitotAxis(bodyVelocity);
@@ -982,9 +1002,10 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 	hil_state.alt = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/elevation") * 1e3);
 
 	// Convert X-Plane local velocities to NED, in cm/s for MAVLink.
-	hil_state.vx = clampToInt16(localVnMps() * 100.0f);
-	hil_state.vy = clampToInt16(localVeMps() * 100.0f);
-	hil_state.vz = clampToInt16(localVdMps() * 100.0f);
+	const Eigen::Vector3f nedVelocity = localVelocityNedMpsForSensors();
+	hil_state.vx = clampToInt16(nedVelocity.x() * 100.0f);
+	hil_state.vy = clampToInt16(nedVelocity.y() * 100.0f);
+	hil_state.vz = clampToInt16(nedVelocity.z() * 100.0f);
 
 	// Airspeed data. HIL_STATE_QUATERNION uses unsigned cm/s fields, while
 	// HIL_SENSOR.diff_pressure below intentionally remains signed. Reuse the
@@ -1786,9 +1807,10 @@ void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSVelocityDataOGL(mavlink_hil_gps_t& hil_gps) {
-	const float vn = localVnMps();
-	const float ve = localVeMps();
-	const float vd = localVdMps();
+	const Eigen::Vector3f nedVelocity = localVelocityNedMpsForSensors();
+	const float vn = nedVelocity.x();
+	const float ve = nedVelocity.y();
+	const float vd = nedVelocity.z();
 
 	// Coordinate Transformation:
 	// The local OGL (OpenGL) coordinate system in the simulation environment is defined as:
@@ -1920,8 +1942,10 @@ void MAVLinkManager::setGPSVelocityData(mavlink_hil_gps_t& hil_gps) {
  */
 void MAVLinkManager::setGPSHeadingData(mavlink_hil_gps_t& hil_gps) {
 	static uint16_t lastValidCog = 0;
+	const Eigen::Vector3f nedVelocity = localVelocityNedMpsForSensors();
+	const float horizontalSpeedMps = std::sqrt(nedVelocity.x() * nedVelocity.x() + nedVelocity.y() * nedVelocity.y());
 
-	if (localHorizontalSpeedMps() >= 0.5f) {
+	if (horizontalSpeedMps >= 0.5f) {
 		lastValidCog = degreesToCentidegrees(trueCourseFromLocalVelocityDeg());
 	}
 	hil_gps.cog = lastValidCog;

@@ -24,6 +24,26 @@ This log preserves project decisions, evidence, and next actions across the long
 - Next action: install v3.4.40 and do a stationary connect test before resuming
   QuadTailsitter MC/FW tuning.
 
+### v3.4.41 Ground-Stationary Kinematics Guard
+
+- Follow-up feedback: v3.4.40 reduced but did not eliminate the stationary
+  vertical-velocity warning. Alia showed smaller vertical-speed spikes, while
+  QuadTailsitter was worse.
+- Diagnosis: v3.4.40 guarded acceleration only and used vertical speed as part
+  of the guard gate. That means a contact-model vertical-speed spike disabled
+  the guard exactly when needed, and GPS/HIL_STATE velocity still carried the
+  spike into PX4.
+- Prepared v3.4.41:
+  - added `ground_stationary_kinematics_guard_enabled`
+  - zeroes local NED velocity for GPS and HIL_STATE while stationary on ground
+  - uses the same guarded velocity for GPS course-over-ground
+  - applies the same guarded velocity to body-axis pitot projection
+  - removes vertical-speed from the stationary-ground acceleration guard gate
+- Inspected QuadTailsitter ACF landing gear. The aircraft has long angled gear,
+  large strut compression values, and very small tire/contact dimensions, so it
+  likely amplifies X-Plane contact jitter. Deferred ACF gear changes until the
+  reusable bridge contract is re-tested.
+
 ## 2026-05-23
 
 ### v3.4.35 QuadTailsitter qtail12 FW Orbit and Pitot Density

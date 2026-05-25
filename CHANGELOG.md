@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.41] - 2026-05-25
+
+### Fixed
+
+- Extended the stationary-ground guard from acceleration only to the full
+  kinematic sensor contract. While X-Plane reports on-ground, very low AGL, and
+  low horizontal speed, px4xplane now zeroes contact-model velocity before
+  publishing HIL_GPS and HIL_STATE_QUATERNION velocity.
+- Removed the vertical-speed threshold from the stationary-ground acceleration
+  guard. The previous v3.4.40 threshold skipped the guard exactly when a
+  landing-gear contact bounce produced a vertical-speed spike.
+- Applied the same guarded local velocity to the body-axis pitot projection so
+  tailsitter pitot simulation does not convert stationary gear bounce into
+  false differential pressure.
+- Applied the same guarded local velocity to GPS course-over-ground so a
+  stationary contact bounce cannot update COG while GPS ground speed is guarded
+  to zero.
+
+### Added
+
+- Added `ground_stationary_kinematics_guard_enabled` to `config.ini` and the
+  config schema under the sensor-contract group.
+
+---
+
 ## [3.4.40] - 2026-05-25
 
 ### Fixed
