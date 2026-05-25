@@ -93,6 +93,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rc-rate-hz", type=float, default=10.0)
     parser.add_argument("--max-frames", type=int, default=0, help="Stop after N frames")
     parser.add_argument("--max-messages", type=int, default=0, help="Stop after N emitted messages")
+    parser.add_argument(
+        "--disable-ground-stationary-contract",
+        action="store_true",
+        help="Do not apply the stationary-ground sensor contract used by the bridge.",
+    )
     return parser.parse_args()
 
 
@@ -165,6 +170,35 @@ def parse_float_array(value: str) -> List[float]:
     return result
 
 
+def normalize_quaternion(q: List[float]) -> List[float]:
+    q = q[:4]
+    q.extend([0.0] * (4 - len(q)))
+    norm = math.sqrt(sum(item * item for item in q))
+    if not math.isfinite(norm) or norm <= 0.0:
+        return [1.0, 0.0, 0.0, 0.0]
+    return [item / norm for item in q]
+
+
+def rotate_world_to_body(q: List[float], vector: tuple[float, float, float]) -> tuple[float, float, float]:
+    """Apply R(q)^T to a vector, matching the bridge stationary accel path."""
+    w, x, y, z = normalize_quaternion(q)
+    vx, vy, vz = vector
+    r00 = 1.0 - 2.0 * (y * y + z * z)
+    r01 = 2.0 * (x * y - z * w)
+    r02 = 2.0 * (x * z + y * w)
+    r10 = 2.0 * (x * y + z * w)
+    r11 = 1.0 - 2.0 * (x * x + z * z)
+    r12 = 2.0 * (y * z - x * w)
+    r20 = 2.0 * (x * z - y * w)
+    r21 = 2.0 * (y * z + x * w)
+    r22 = 1.0 - 2.0 * (x * x + y * y)
+    return (
+        r00 * vx + r10 * vy + r20 * vz,
+        r01 * vx + r11 * vy + r21 * vz,
+        r02 * vx + r12 * vy + r22 * vz,
+    )
+
+
 def clamp_i16(value: float) -> int:
     return max(-32768, min(32767, int(round(value))))
 
@@ -205,6 +239,95 @@ def local_ned_velocity(row: Dict[str, str]) -> tuple[float, float, float]:
     return vn, ve, vd
 
 
+def horizontal_speed(row: Dict[str, str]) -> float:
+    vn, ve, _ = local_ned_velocity(row)
+    return math.hypot(vn, ve)
+
+
+def mapped_motor_command_active(row: Dict[str, str]) -> bool:
+    commands = parse_float_array(row.get("sim/flightmodel/engine/ENGN_thro_use", ""))
+    return any(command > 0.08 for command in commands)
+
+
+class GroundStationaryContract:
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+        self.active = False
+        self.initialized = False
+        self.last_sim_time_s = 0.0
+        self.latitude_deg = 0.0
+        self.longitude_deg = 0.0
+        self.elevation_m = 0.0
+
+    def update(self, row: Dict[str, str]) -> "GroundStationaryContract":
+        sim_time_s = safe_float(row, "sim/time/total_flight_time_sec")
+        if not self.enabled:
+            self.active = False
+            self.initialized = True
+            self.last_sim_time_s = sim_time_s
+            return self
+
+        if self.initialized and sim_time_s < self.last_sim_time_s - 0.001:
+            self.active = False
+
+        if self.initialized and abs(sim_time_s - self.last_sim_time_s) < 1e-7:
+            return self
+
+        self.initialized = True
+        self.last_sim_time_s = sim_time_s
+
+        motor_active = mapped_motor_command_active(row)
+        if not self.active and self._is_stationary(row, agl_max=0.45, horizontal_max=0.75) and not motor_active:
+            self.active = True
+            self.latitude_deg = safe_float(row, "sim/flightmodel/position/latitude")
+            self.longitude_deg = safe_float(row, "sim/flightmodel/position/longitude")
+            self.elevation_m = safe_float(row, "sim/flightmodel/position/elevation")
+        elif self.active and (not self._is_stationary(row, agl_max=0.70, horizontal_max=1.20) or motor_active):
+            self.active = False
+
+        return self
+
+    @staticmethod
+    def _is_stationary(row: Dict[str, str], agl_max: float, horizontal_max: float) -> bool:
+        agl_m = safe_float(row, "sim/flightmodel/position/y_agl", default=999.0)
+        return (
+            safe_int(row, "sim/flightmodel/failures/onground_any") != 0
+            and -0.75 <= agl_m < agl_max
+            and horizontal_speed(row) < horizontal_max
+        )
+
+
+def sensor_position(row: Dict[str, str], contract: Optional[GroundStationaryContract]) -> tuple[float, float, float]:
+    if contract is not None and contract.active:
+        return contract.latitude_deg, contract.longitude_deg, contract.elevation_m
+    return (
+        safe_float(row, "sim/flightmodel/position/latitude"),
+        safe_float(row, "sim/flightmodel/position/longitude"),
+        safe_float(row, "sim/flightmodel/position/elevation"),
+    )
+
+
+def sensor_ned_velocity(
+    row: Dict[str, str], contract: Optional[GroundStationaryContract]
+) -> tuple[float, float, float]:
+    if contract is not None and contract.active:
+        return 0.0, 0.0, 0.0
+    return local_ned_velocity(row)
+
+
+def sensor_accel(
+    row: Dict[str, str], contract: Optional[GroundStationaryContract]
+) -> tuple[float, float, float]:
+    if contract is not None and contract.active:
+        q = parse_float_array(row.get("sim/flightmodel/position/q", ""))
+        return rotate_world_to_body(q, (0.0, 0.0, -GRAVITY_M_S2))
+    return (
+        -safe_float(row, "sim/flightmodel/forces/g_axil") * GRAVITY_M_S2,
+        safe_float(row, "sim/flightmodel/forces/g_side") * GRAVITY_M_S2,
+        -safe_float(row, "sim/flightmodel/forces/g_nrml") * GRAVITY_M_S2,
+    )
+
+
 def true_course_from_velocity(vn: float, ve: float) -> float:
     return wrap_degrees_360(math.degrees(math.atan2(ve, vn)))
 
@@ -218,17 +341,23 @@ def base_row(message: str, row: Dict[str, str], timestamp_usec: int) -> Dict[str
     }
 
 
-def decode_sensor(row: Dict[str, str], timestamp_usec: int) -> Dict[str, object]:
+def decode_sensor(
+    row: Dict[str, str],
+    timestamp_usec: int,
+    contract: Optional[GroundStationaryContract] = None,
+) -> Dict[str, object]:
     decoded = base_row("HIL_SENSOR", row, timestamp_usec)
-    altitude_m = safe_float(row, "sim/flightmodel/position/elevation")
+    _, _, altitude_m = sensor_position(row, contract)
+    xacc, yacc, zacc = sensor_accel(row, contract)
+    stationary_ground = contract is not None and contract.active
     decoded.update(
         {
-            "xacc": -safe_float(row, "sim/flightmodel/forces/g_axil") * GRAVITY_M_S2,
-            "yacc": safe_float(row, "sim/flightmodel/forces/g_side") * GRAVITY_M_S2,
-            "zacc": -safe_float(row, "sim/flightmodel/forces/g_nrml") * GRAVITY_M_S2,
-            "xgyro": safe_float(row, "sim/flightmodel/position/Prad"),
-            "ygyro": safe_float(row, "sim/flightmodel/position/Qrad"),
-            "zgyro": safe_float(row, "sim/flightmodel/position/Rrad"),
+            "xacc": xacc,
+            "yacc": yacc,
+            "zacc": zacc,
+            "xgyro": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Prad"),
+            "ygyro": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Qrad"),
+            "zgyro": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Rrad"),
             "abs_pressure_hpa": pressure_from_altitude(altitude_m),
             "diff_pressure_hpa": signed_dynamic_pressure_hpa_from_ias_knots(
                 safe_float(row, "sim/flightmodel/position/indicated_airspeed")
@@ -240,20 +369,26 @@ def decode_sensor(row: Dict[str, str], timestamp_usec: int) -> Dict[str, object]
     return decoded
 
 
-def decode_gps(row: Dict[str, str], timestamp_usec: int, last_cog: int) -> tuple[Dict[str, object], int]:
-    vn, ve, vd = local_ned_velocity(row)
+def decode_gps(
+    row: Dict[str, str],
+    timestamp_usec: int,
+    last_cog: int,
+    contract: Optional[GroundStationaryContract] = None,
+) -> tuple[Dict[str, object], int]:
+    vn, ve, vd = sensor_ned_velocity(row, contract)
     horizontal_speed = math.hypot(vn, ve)
     cog = last_cog
     if horizontal_speed >= 0.5:
         cog = degrees_to_centidegrees(true_course_from_velocity(vn, ve))
 
     yaw = degrees_to_centidegrees(safe_float(row, "sim/flightmodel/position/psi"))
+    lat, lon, alt_m = sensor_position(row, contract)
     decoded = base_row("HIL_GPS", row, timestamp_usec)
     decoded.update(
         {
-            "lat": int(safe_float(row, "sim/flightmodel/position/latitude") * 1e7),
-            "lon": int(safe_float(row, "sim/flightmodel/position/longitude") * 1e7),
-            "alt_mm": int(safe_float(row, "sim/flightmodel/position/elevation") * 1000.0),
+            "lat": int(lat * 1e7),
+            "lon": int(lon * 1e7),
+            "alt_mm": int(alt_m * 1000.0),
             "vn_cms": clamp_i16(vn * 100.0),
             "ve_cms": clamp_i16(ve * 100.0),
             "vd_cms": clamp_i16(vd * 100.0),
@@ -270,20 +405,24 @@ def decode_gps(row: Dict[str, str], timestamp_usec: int, last_cog: int) -> tuple
     return decoded, cog
 
 
-def decode_state(row: Dict[str, str], timestamp_usec: int) -> Dict[str, object]:
-    vn, ve, vd = local_ned_velocity(row)
-    accel_x = -safe_float(row, "sim/flightmodel/forces/g_axil") * GRAVITY_M_S2
-    accel_y = safe_float(row, "sim/flightmodel/forces/g_side") * GRAVITY_M_S2
-    accel_z = -safe_float(row, "sim/flightmodel/forces/g_nrml") * GRAVITY_M_S2
+def decode_state(
+    row: Dict[str, str],
+    timestamp_usec: int,
+    contract: Optional[GroundStationaryContract] = None,
+) -> Dict[str, object]:
+    vn, ve, vd = sensor_ned_velocity(row, contract)
+    accel_x, accel_y, accel_z = sensor_accel(row, contract)
     q = parse_float_array(row.get("sim/flightmodel/position/q", ""))[:4]
     q.extend([0.0] * (4 - len(q)))
+    stationary_ground = contract is not None and contract.active
+    lat, lon, alt_m = sensor_position(row, contract)
 
     decoded = base_row("HIL_STATE_QUATERNION", row, timestamp_usec)
     decoded.update(
         {
-            "lat": int(safe_float(row, "sim/flightmodel/position/latitude") * 1e7),
-            "lon": int(safe_float(row, "sim/flightmodel/position/longitude") * 1e7),
-            "alt_mm": int(safe_float(row, "sim/flightmodel/position/elevation") * 1000.0),
+            "lat": int(lat * 1e7),
+            "lon": int(lon * 1e7),
+            "alt_mm": int(alt_m * 1000.0),
             "vn_cms": clamp_i16(vn * 100.0),
             "ve_cms": clamp_i16(ve * 100.0),
             "vd_cms": clamp_i16(vd * 100.0),
@@ -291,9 +430,9 @@ def decode_state(row: Dict[str, str], timestamp_usec: int) -> Dict[str, object]:
             "q1": q[1],
             "q2": q[2],
             "q3": q[3],
-            "rollspeed": safe_float(row, "sim/flightmodel/position/Prad"),
-            "pitchspeed": safe_float(row, "sim/flightmodel/position/Qrad"),
-            "yawspeed": safe_float(row, "sim/flightmodel/position/Rrad"),
+            "rollspeed": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Prad"),
+            "pitchspeed": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Qrad"),
+            "yawspeed": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Rrad"),
             "ind_airspeed_cms": clamp_u16(safe_float(row, "sim/flightmodel/position/indicated_airspeed") * KNOT_TO_MPS * 100.0),
             "true_airspeed_cms": clamp_u16(safe_float(row, "sim/flightmodel/position/true_airspeed") * 100.0),
             "xacc": clamp_i16((accel_x / GRAVITY_M_S2) * 1000.0),
@@ -343,6 +482,9 @@ def iter_decoded_rows(args: argparse.Namespace) -> Iterator[Dict[str, object]]:
     start_sim_time: Optional[float] = None
     last_cog = 0
     emitted = 0
+    ground_contract = GroundStationaryContract(
+        enabled=not getattr(args, "disable_ground_stationary_contract", False)
+    )
 
     with CaptureFrames(Path(args.capture)) as frames:
         reader = csv.DictReader(frames)
@@ -354,16 +496,17 @@ def iter_decoded_rows(args: argparse.Namespace) -> Iterator[Dict[str, object]]:
             if start_sim_time is None:
                 start_sim_time = sim_time
             timestamp_usec = 1_000_000 + int(round(max(0.0, sim_time - start_sim_time) * 1_000_000.0))
+            ground_contract.update(row)
 
             if "sensor" in selected and sim_time - last_send["sensor"] >= periods["sensor"]:
-                yield decode_sensor(row, timestamp_usec)
+                yield decode_sensor(row, timestamp_usec, ground_contract)
                 emitted += 1
                 last_send["sensor"] = sim_time
             if args.max_messages and emitted >= args.max_messages:
                 return
 
             if "gps" in selected and sim_time - last_send["gps"] >= periods["gps"]:
-                decoded, last_cog = decode_gps(row, timestamp_usec, last_cog)
+                decoded, last_cog = decode_gps(row, timestamp_usec, last_cog, ground_contract)
                 yield decoded
                 emitted += 1
                 last_send["gps"] = sim_time
@@ -371,7 +514,7 @@ def iter_decoded_rows(args: argparse.Namespace) -> Iterator[Dict[str, object]]:
                 return
 
             if "state" in selected and sim_time - last_send["state"] >= periods["state"]:
-                yield decode_state(row, timestamp_usec)
+                yield decode_state(row, timestamp_usec, ground_contract)
                 emitted += 1
                 last_send["state"] = sim_time
             if args.max_messages and emitted >= args.max_messages:

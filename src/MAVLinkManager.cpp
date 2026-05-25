@@ -143,40 +143,186 @@ float localHorizontalSpeedMps()
 	return std::sqrt(vn * vn + ve * ve);
 }
 
-bool isGroundContactLowSpeed()
+struct GroundSensorContractState {
+	bool active = false;
+	bool initialized = false;
+	bool loggedActivation = false;
+	double lastSimTimeS = 0.0;
+	double latitudeDeg = 0.0;
+	double longitudeDeg = 0.0;
+	float elevationM = 0.0f;
+};
+
+constexpr float GroundGuardAglMinM = -0.75f;
+constexpr float GroundGuardAglActivateMaxM = 0.45f;
+constexpr float GroundGuardAglReleaseMaxM = 0.70f;
+constexpr float GroundGuardHorizActivateMps = 0.75f;
+constexpr float GroundGuardHorizReleaseMps = 1.20f;
+constexpr float GroundGuardMotorReleaseCommand = 0.08f;
+constexpr uint64_t GroundGuardActuatorFreshUsec = 500000;
+
+Eigen::Quaternionf currentAttitudeQuaternion()
+{
+	const std::vector<float> q = dataRefFloatArray("sim/flightmodel/position/q");
+	if (q.size() < 4) {
+		return Eigen::Quaternionf::Identity();
+	}
+
+	Eigen::Quaternionf attitude(q[0], q[1], q[2], q[3]);
+	if (!std::isfinite(attitude.norm()) || attitude.norm() <= std::numeric_limits<float>::epsilon()) {
+		return Eigen::Quaternionf::Identity();
+	}
+
+	attitude.normalize();
+	return attitude;
+}
+
+bool mappedMotorCommandActive()
+{
+	if (!MAVLinkManager::hasFreshHILActuatorControls(GroundGuardActuatorFreshUsec)) {
+		return false;
+	}
+
+	if (DataRefManager::hasMappedMotorCommands() &&
+		DataRefManager::getMaxMappedMotorCommand() > GroundGuardMotorReleaseCommand) {
+		return true;
+	}
+
+	const std::vector<float> engineCommands = dataRefFloatArray("sim/flightmodel/engine/ENGN_thro_use");
+	return std::any_of(engineCommands.begin(), engineCommands.end(), [](float command) {
+		return std::isfinite(command) && command > GroundGuardMotorReleaseCommand;
+	});
+}
+
+bool isGroundContactLowSpeedRaw(bool useReleaseThresholds)
 {
 	const bool onGround = dataRefInt("sim/flightmodel/failures/onground_any") != 0;
 	const float aglM = dataRefFloat("sim/flightmodel/position/y_agl");
 	const float horizontalSpeedMps = localHorizontalSpeedMps();
+	const float aglMax = useReleaseThresholds ? GroundGuardAglReleaseMaxM : GroundGuardAglActivateMaxM;
+	const float horizontalMax = useReleaseThresholds ? GroundGuardHorizReleaseMps : GroundGuardHorizActivateMps;
 
 	return onGround &&
-		std::isfinite(aglM) && aglM >= -0.5f && aglM < 0.45f &&
-		std::isfinite(horizontalSpeedMps) && horizontalSpeedMps < 0.75f;
+		std::isfinite(aglM) && aglM >= GroundGuardAglMinM && aglM < aglMax &&
+		std::isfinite(horizontalSpeedMps) && horizontalSpeedMps < horizontalMax;
+}
+
+GroundSensorContractState& groundSensorContractState()
+{
+	static GroundSensorContractState state;
+	return state;
+}
+
+GroundSensorContractState& groundSensorContract()
+{
+	GroundSensorContractState& state = groundSensorContractState();
+
+	const bool guardEnabled = ConfigManager::ground_stationary_accel_guard_enabled ||
+		ConfigManager::ground_stationary_kinematics_guard_enabled;
+	const double simTimeS = static_cast<double>(dataRefFloat("sim/time/total_flight_time_sec"));
+
+	if (!guardEnabled) {
+		state.active = false;
+		state.initialized = true;
+		state.lastSimTimeS = simTimeS;
+		return state;
+	}
+
+	if (state.initialized && std::isfinite(simTimeS) && simTimeS < state.lastSimTimeS - 0.001) {
+		state.active = false;
+		state.loggedActivation = false;
+	}
+
+	if (state.initialized && std::fabs(simTimeS - state.lastSimTimeS) < 1e-7) {
+		return state;
+	}
+
+	state.initialized = true;
+	state.lastSimTimeS = simTimeS;
+
+	const bool motorActive = mappedMotorCommandActive();
+	const bool canActivate = isGroundContactLowSpeedRaw(false) && !motorActive;
+	const bool canRemainActive = isGroundContactLowSpeedRaw(true) && !motorActive;
+
+	if (!state.active && canActivate) {
+		state.active = true;
+		state.latitudeDeg = dataRefFloat("sim/flightmodel/position/latitude");
+		state.longitudeDeg = dataRefFloat("sim/flightmodel/position/longitude");
+		state.elevationM = dataRefFloat("sim/flightmodel/position/elevation");
+
+		if (!state.loggedActivation) {
+			XPLMDebugString("px4xplane: [GROUND_SENSOR_CONTRACT] Stationary ground state latched; holding zero-motion sensor contract\n");
+			state.loggedActivation = true;
+		}
+
+	} else if (state.active && !canRemainActive) {
+		state.active = false;
+		XPLMDebugString("px4xplane: [GROUND_SENSOR_CONTRACT] Released stationary ground state\n");
+	}
+
+	return state;
+}
+
+void resetGroundSensorContract()
+{
+	groundSensorContractState() = GroundSensorContractState{};
+}
+
+bool isGroundSensorContractActive()
+{
+	return groundSensorContract().active;
 }
 
 bool isGroundStationaryForAccelGuard()
 {
-	return ConfigManager::ground_stationary_accel_guard_enabled && isGroundContactLowSpeed();
+	return ConfigManager::ground_stationary_accel_guard_enabled && isGroundSensorContractActive();
 }
 
 bool isGroundStationaryForKinematicsGuard()
 {
-	return ConfigManager::ground_stationary_kinematics_guard_enabled && isGroundContactLowSpeed();
+	return ConfigManager::ground_stationary_kinematics_guard_enabled && isGroundSensorContractActive();
 }
 
 Eigen::Vector3f localVelocityNedMpsForSensors()
 {
 	if (isGroundStationaryForKinematicsGuard()) {
-		static bool guardLogged = false;
-		if (!guardLogged) {
-			XPLMDebugString("px4xplane: [GROUND_KINEMATICS_GUARD] Stationary on ground; zeroing X-Plane contact velocity for GPS/HIL state\n");
-			guardLogged = true;
-		}
-
 		return Eigen::Vector3f::Zero();
 	}
 
 	return Eigen::Vector3f(localVnMps(), localVeMps(), localVdMps());
+}
+
+float elevationMForSensors()
+{
+	if (isGroundStationaryForKinematicsGuard()) {
+		return groundSensorContract().elevationM;
+	}
+
+	return dataRefFloat("sim/flightmodel/position/elevation");
+}
+
+double latitudeDegForSensors()
+{
+	if (isGroundStationaryForKinematicsGuard()) {
+		return groundSensorContract().latitudeDeg;
+	}
+
+	return dataRefFloat("sim/flightmodel/position/latitude");
+}
+
+double longitudeDegForSensors()
+{
+	if (isGroundStationaryForKinematicsGuard()) {
+		return groundSensorContract().longitudeDeg;
+	}
+
+	return dataRefFloat("sim/flightmodel/position/longitude");
+}
+
+Eigen::Vector3f stationaryGroundAccelerationFrd()
+{
+	const Eigen::Vector3f gravityNed(0.0f, 0.0f, -GRAVITY);
+	return currentAttitudeQuaternion().toRotationMatrix().transpose() * gravityNed;
 }
 
 float trueCourseFromLocalVelocityDeg()
@@ -185,16 +331,6 @@ float trueCourseFromLocalVelocityDeg()
 	const float vn = nedVelocity.x();
 	const float ve = nedVelocity.y();
 	return wrapDegrees360(std::atan2(ve, vn) * 180.0f / static_cast<float>(M_PI));
-}
-
-float signedDynamicPressureHpaFromIasKnots(float iasKnots)
-{
-	if (!std::isfinite(iasKnots)) {
-		return 0.0f;
-	}
-
-	const float iasMps = iasKnots * KNOT_TO_MPS;
-	return signedDynamicPressureHpaFromMps(iasMps);
 }
 
 float localAirDensityKgM3()
@@ -431,13 +567,14 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	if (isGroundStationaryForAccelGuard()) {
 		static bool guardLogged = false;
 		if (!guardLogged) {
-			XPLMDebugString("px4xplane: [GROUND_ACCEL_GUARD] Stationary on ground; replacing X-Plane contact g-loads with stable gravity\n");
+			XPLMDebugString("px4xplane: [GROUND_ACCEL_GUARD] Stationary on ground; replacing X-Plane contact g-loads with attitude-consistent gravity\n");
 			guardLogged = true;
 		}
 
-		raw_xacc = 0.0f;
-		raw_yacc = 0.0f;
-		raw_zacc = -GRAVITY;
+		const Eigen::Vector3f stableGravity = stationaryGroundAccelerationFrd();
+		raw_xacc = stableGravity.x();
+		raw_yacc = stableGravity.y();
+		raw_zacc = stableGravity.z();
 	}
 
 	// Pipeline Stage 1 Logging: Raw extraction (after sign conversion)
@@ -873,16 +1010,10 @@ void MAVLinkManager::sendHILGPS() {
  * @endcode
  */
 void MAVLinkManager::updateMagneticFieldIfExceededTreshold(const mavlink_hil_gps_t& hil_gps) {
-	/*GeodeticPosition currentPosition = {
-		hil_gps.lat * 1e-7,
-		hil_gps.lon * 1e-7,
-		hil_gps.alt * 1e-3
-	};*/
-
 	GeodeticPosition currentPosition = {
-		dataRefFloat("sim/flightmodel/position/latitude"),
-		dataRefFloat("sim/flightmodel/position/longitude"),
-		dataRefFloat("sim/flightmodel/position/elevation")
+		static_cast<float>(hil_gps.lat * 1e-7),
+		static_cast<float>(hil_gps.lon * 1e-7),
+		static_cast<float>(hil_gps.alt * 1e-3)
 	};
 
 	if (DataRefManager::calculateDistance(currentPosition, DataRefManager::lastPosition) > DataRefManager::UPDATE_THRESHOLD) {
@@ -992,14 +1123,20 @@ void MAVLinkManager::populateHILStateQuaternion(mavlink_hil_state_quaternion_t& 
 	}
 
 	// Angular velocity data (roll, pitch, yaw rates)
-	hil_state.rollspeed = dataRefFloat("sim/flightmodel/position/Prad");
-	hil_state.pitchspeed = dataRefFloat("sim/flightmodel/position/Qrad");
-	hil_state.yawspeed = dataRefFloat("sim/flightmodel/position/Rrad");
+	if (isGroundStationaryForKinematicsGuard()) {
+		hil_state.rollspeed = 0.0f;
+		hil_state.pitchspeed = 0.0f;
+		hil_state.yawspeed = 0.0f;
+	} else {
+		hil_state.rollspeed = dataRefFloat("sim/flightmodel/position/Prad");
+		hil_state.pitchspeed = dataRefFloat("sim/flightmodel/position/Qrad");
+		hil_state.yawspeed = dataRefFloat("sim/flightmodel/position/Rrad");
+	}
 
 	// Position data (latitude, longitude, altitude)
-	hil_state.lat = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/latitude") * 1e7);
-	hil_state.lon = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/longitude") * 1e7);
-	hil_state.alt = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/elevation") * 1e3);
+	hil_state.lat = static_cast<int32_t>(latitudeDegForSensors() * 1e7);
+	hil_state.lon = static_cast<int32_t>(longitudeDegForSensors() * 1e7);
+	hil_state.alt = static_cast<int32_t>(elevationMForSensors() * 1e3);
 
 	// Convert X-Plane local velocities to NED, in cm/s for MAVLink.
 	const Eigen::Vector3f nedVelocity = localVelocityNedMpsForSensors();
@@ -1240,6 +1377,7 @@ void MAVLinkManager::reset() {
 
 	// Reset high-precision timestamp provider for clean start on reconnection
 	TimestampProvider::reset();
+	resetGroundSensorContract();
 
 	// NOTE: Do NOT reset AccelCalibration here!
 	// Calibration should persist across reconnections to avoid recalibrating
@@ -1328,6 +1466,13 @@ void MAVLinkManager::reset() {
  * @param hil_sensor Reference to the HIL_SENSOR message where the gyroscope data will be set.
  */
 void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
+	if (isGroundStationaryForKinematicsGuard()) {
+		hil_sensor.xgyro = 0.0f;
+		hil_sensor.ygyro = 0.0f;
+		hil_sensor.zgyro = 0.0f;
+		return;
+	}
+
 	// Retrieve raw gyro rates from X-Plane (already in rad/s, body frame)
 	float raw_xgyro = dataRefFloat("sim/flightmodel/position/Prad");  // Roll rate
 	float raw_ygyro = dataRefFloat("sim/flightmodel/position/Qrad");  // Pitch rate
@@ -1473,7 +1618,8 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// - "sim/flightmodel2/position/pressure_altitude" was found to return frozen
 	//   values in earlier testing, causing EKF2 vertical velocity instability
 	// - This dataref provides smooth, continuous altitude updates
-	float basePressureAltitude_m = dataRefFloat("sim/flightmodel/position/elevation");
+	const bool stationaryGround = isGroundStationaryForKinematicsGuard();
+	float basePressureAltitude_m = elevationMForSensors();
 
 	// ==================================================================================
 	// STEP 2: Generate Realistic Barometer Noise (DUAL SENSOR SYSTEM)
@@ -1530,7 +1676,7 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	//   - 3-sigma rate returns to ~0.27%
 	//   - Height estimate remains stable
 	std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma - matches EKF2_BARO_NOISE=0.003
-	float altitudeNoise_m = distribution(generator);
+	float altitudeNoise_m = stationaryGround ? 0.0f : distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
 	// ==================================================================================
@@ -1554,20 +1700,22 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// Ensure sensor_id is within valid range (0 or 1)
 	uint8_t sensor_idx = (sensor_id <= 1) ? sensor_id : 0;
 
-	// Accumulate statistics for this sensor (runs every call)
-	noiseSum[sensor_idx] += altitudeNoise_m;
-	noiseSquaredSum[sensor_idx] += altitudeNoise_m * altitudeNoise_m;
-	noiseSampleCount[sensor_idx]++;
+	if (!stationaryGround) {
+		// Accumulate statistics for this sensor (runs every call)
+		noiseSum[sensor_idx] += altitudeNoise_m;
+		noiseSquaredSum[sensor_idx] += altitudeNoise_m * altitudeNoise_m;
+		noiseSampleCount[sensor_idx]++;
 
-	// Track 3-sigma events (should be <0.3% for true Gaussian)
-	// For σ=3mm: 3σ = 9mm threshold
-	if (std::abs(altitudeNoise_m) > 0.009f) {
-		spike3SigmaCount[sensor_idx]++;
+		// Track 3-sigma events (should be <0.3% for true Gaussian)
+		// For σ=3mm: 3σ = 9mm threshold
+		if (std::abs(altitudeNoise_m) > 0.009f) {
+			spike3SigmaCount[sensor_idx]++;
+		}
 	}
 
 	// Smart logging: Only log statistics every 1000 samples (~10s @ 100Hz) AND warn if abnormal
 	baroLogCount[sensor_idx]++;
-	if (ConfigManager::debug_log_sensor_values && (baroLogCount[sensor_idx] % 1000 == 0)) {
+	if (!stationaryGround && ConfigManager::debug_log_sensor_values && (baroLogCount[sensor_idx] % 1000 == 0)) {
 		// Calculate sample statistics using Welford's method for numerical stability
 		float noiseMean = noiseSum[sensor_idx] / noiseSampleCount[sensor_idx];
 		float noiseVariance = (noiseSquaredSum[sensor_idx] / noiseSampleCount[sensor_idx])
@@ -1667,11 +1815,8 @@ void MAVLinkManager::setMagneticFieldData(mavlink_hil_sensor_t& hil_sensor) {
 	// Get Earth's magnetic field in NED coordinates (calculated by WMM2020)
 	Eigen::Vector3f mag_NED = DataRefManager::earthMagneticFieldNED;
 
-	// Get aircraft attitude quaternion from X-Plane
-	// X-Plane quaternion format: [w, x, y, z] (scalar first)
-	// This represents the rotation from NED to body frame
-	std::vector<float> q = dataRefFloatArray("sim/flightmodel/position/q");
-	Eigen::Quaternionf attitude(q[0], q[1], q[2], q[3]); // w, x, y, z
+	// Get aircraft attitude quaternion from X-Plane.
+	Eigen::Quaternionf attitude = currentAttitudeQuaternion();
 
 	// Rotate magnetic field from NED to body frame using full attitude
 	// X-Plane quaternion represents body-to-local rotation (not NED-to-body as commonly assumed)
@@ -1737,8 +1882,9 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
-	hil_gps.lat = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/latitude") * 1e7);
-	hil_gps.lon = static_cast<int32_t>(dataRefFloat("sim/flightmodel/position/longitude") * 1e7);
+	const bool stationaryGround = isGroundStationaryForKinematicsGuard();
+	hil_gps.lat = static_cast<int32_t>(latitudeDegForSensors() * 1e7);
+	hil_gps.lon = static_cast<int32_t>(longitudeDegForSensors() * 1e7);
 
 	// CRITICAL FIX (January 2025): Reduced GPS altitude noise for stability
 	// GPS vertical accuracy (high-quality): σ = 0.15m (was 0.5m)
@@ -1749,12 +1895,12 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	//   → GPS provides long-term reference without causing ±1m jumps
 	//   → Prevents EKF2 confusion: "aircraft climbing" when GPS randomly jumps
 	//   → 95% of GPS readings within ±0.3m → stable height estimate
-	float elevation_m = dataRefFloat("sim/flightmodel/position/elevation");
+	float elevation_m = elevationMForSensors();
 
 	// CRITICAL FIX (January 2025): Create fresh distribution for each sample
 	// Same fix as barometer - static distribution causes non-Gaussian behavior
 	std::normal_distribution<float> gps_alt_distribution(0.0f, 0.15f);  // σ = 0.15m (high-quality GPS)
-	float altitude_noise_m = gps_alt_distribution(gen);
+	float altitude_noise_m = stationaryGround ? 0.0f : gps_alt_distribution(gen);
 	float noisy_elevation_m = elevation_m + altitude_noise_m;
 
 	// Convert to millimeters (MAVLink GPS altitude unit)

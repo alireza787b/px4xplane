@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.42] - 2026-05-25
+
+### Fixed
+
+- Replaced the partial v3.4.41 stationary guards with a coherent
+  stationary-ground sensor contract. While the aircraft is stationary on the
+  ground and mapped motors are not commanding meaningful thrust, px4xplane now
+  publishes attitude-consistent gravity, zero gyro rates, zero GPS/HIL_STATE
+  velocity, and latched GPS/HIL_STATE/baro position/altitude.
+- Suppressed GPS and barometer altitude noise only while the stationary-ground
+  contract is active, preventing PX4 from seeing a climb/descent while the
+  aircraft is sitting on its landing gear.
+- Reset the stationary-ground contract on MAVLink reset so reconnects and
+  aircraft changes cannot reuse a stale latched ground point.
+- Used the guarded HIL_GPS position for magnetic-field update threshold checks.
+
+### Added
+
+- Added replay support for the stationary-ground contract in
+  `tools/replay_truth_capture.py`.
+- Added replay unit coverage for stationary contact acceleration/rate spikes.
+
+---
+
 ## [3.4.41] - 2026-05-25
 
 ### Fixed

@@ -919,6 +919,21 @@ void DataRefManager::overrideActuators() {
 }
 
 
+bool DataRefManager::hasMappedMotorCommands() {
+	return lastMappedMotorCommandValid.any();
+}
+
+float DataRefManager::getMaxMappedMotorCommand() {
+	float maxCommand = 0.0f;
+	for (size_t i = 0; i < lastMappedMotorCommand.size(); ++i) {
+		if (lastMappedMotorCommandValid.test(i)) {
+			maxCommand = std::max(maxCommand, lastMappedMotorCommand[i]);
+		}
+	}
+	return maxCommand;
+}
+
+
 
 /**
  * Scales an actuator command value from its input range to a specified output range.

@@ -123,6 +123,53 @@ class ReplayTruthCaptureTest(unittest.TestCase):
             replay.signed_dynamic_pressure_hpa_from_ias_knots(20),
         )
 
+    def test_stationary_ground_contract_masks_contact_spikes(self):
+        row = {
+            "frame_id": "2",
+            "sim/time/total_flight_time_sec": "2.0",
+            "sim/flightmodel/failures/onground_any": "1",
+            "sim/flightmodel/position/y_agl": "0.1",
+            "sim/flightmodel/forces/g_axil": "3.5",
+            "sim/flightmodel/forces/g_side": "-2.0",
+            "sim/flightmodel/forces/g_nrml": "0.2",
+            "sim/flightmodel/position/Prad": "1.0",
+            "sim/flightmodel/position/Qrad": "-2.0",
+            "sim/flightmodel/position/Rrad": "3.0",
+            "sim/flightmodel/position/indicated_airspeed": "0",
+            "sim/flightmodel/position/elevation": "52.5",
+            "sim/flightmodel/position/latitude": "26.5",
+            "sim/flightmodel/position/longitude": "54.0",
+            "sim/flightmodel/position/local_vx": "0.05",
+            "sim/flightmodel/position/local_vy": "0.0",
+            "sim/flightmodel/position/local_vz": "0.0",
+            "sim/flightmodel/position/psi": "90",
+            "sim/flightmodel/position/q": "1;0;0;0",
+        }
+        contract = replay.GroundStationaryContract()
+        contract.update(row)
+
+        sensor = replay.decode_sensor(row, 1_000_000, contract)
+        self.assertAlmostEqual(sensor["xacc"], 0.0)
+        self.assertAlmostEqual(sensor["yacc"], 0.0)
+        self.assertAlmostEqual(sensor["zacc"], -replay.GRAVITY_M_S2)
+        self.assertEqual(sensor["xgyro"], 0.0)
+        self.assertEqual(sensor["ygyro"], 0.0)
+        self.assertEqual(sensor["zgyro"], 0.0)
+
+        gps, _ = replay.decode_gps(row, 1_000_000, 0, contract)
+        self.assertEqual(gps["vn_cms"], 0)
+        self.assertEqual(gps["ve_cms"], 0)
+        self.assertEqual(gps["vd_cms"], 0)
+        self.assertEqual(gps["alt_mm"], 52500)
+
+        state = replay.decode_state(row, 1_000_000, contract)
+        self.assertEqual(state["rollspeed"], 0.0)
+        self.assertEqual(state["pitchspeed"], 0.0)
+        self.assertEqual(state["yawspeed"], 0.0)
+        self.assertEqual(state["xacc"], 0)
+        self.assertEqual(state["yacc"], 0)
+        self.assertEqual(state["zacc"], -1000)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -44,6 +44,30 @@ This log preserves project decisions, evidence, and next actions across the long
   likely amplifies X-Plane contact jitter. Deferred ACF gear changes until the
   reusable bridge contract is re-tested.
 
+### v3.4.42 Stationary-Ground Sensor Contract
+
+- Reviewed `/home/alireza/qtail17.zip` after v3.4.41 still produced stationary
+  estimator warnings. The remaining evidence showed a mixed stationary sensor
+  story: acceleration and GPS velocity were guarded, but GPS/baro altitude,
+  gyro rates, and some attitude/contact cases were still raw.
+- Root-cause split:
+  - bridge bug: stationary ground contact must be one coherent zero-motion
+    sensor contract, not independent per-topic guards
+  - aircraft amplifier: QuadTailsitter gear/contact geometry likely increases
+    X-Plane jitter, but should be tuned only after the bridge sanity gate is
+    clean
+  - future timing item: EKF time slip still needs dedicated replay/low-FPS work
+    if warnings remain after the sensor contract
+- Prepared v3.4.42:
+  - latched stationary ground state with hysteresis
+  - motor-command release gate to avoid hiding real takeoff/thrust dynamics
+  - attitude-consistent gravity instead of level-only gravity
+  - zero gyro rates, GPS/state velocity, and latched GPS/state/baro altitude
+  - GPS/baro altitude noise suppressed only during stationary ground contract
+  - replay tool and unit test coverage for the contract
+- Next action: perform a stationary connect/pause/arm-disarm sanity test on
+  QuadTailsitter and Alia before any further QuadTailsitter aero or gear tuning.
+
 ## 2026-05-23
 
 ### v3.4.35 QuadTailsitter qtail12 FW Orbit and Pitot Density

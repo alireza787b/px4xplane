@@ -103,6 +103,8 @@ public:
     static std::bitset<8> motorBrakeStates; // Tracks the current brake states
     static void checkAndApplyPropBrakes();
     static void releaseAllPropBrakes();
+    static bool hasMappedMotorCommands();
+    static float getMaxMappedMotorCommand();
 
     static void applyBrake(int motorIndex, bool enable);
 

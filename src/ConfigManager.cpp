@@ -246,12 +246,12 @@ void ConfigManager::loadConfiguration() {
             accel_offset_x, accel_offset_y, accel_offset_z);
         XPLMDebugString(buf);
     }
-    if (ground_stationary_accel_guard_enabled) {
-        XPLMDebugString("px4xplane: Ground-stationary accelerometer guard enabled\n");
-    }
-    if (ground_stationary_kinematics_guard_enabled) {
-        XPLMDebugString("px4xplane: Ground-stationary kinematics guard enabled\n");
-    }
+	if (ground_stationary_accel_guard_enabled) {
+	    XPLMDebugString("px4xplane: Ground-stationary accelerometer contract enabled\n");
+	}
+	if (ground_stationary_kinematics_guard_enabled) {
+	    XPLMDebugString("px4xplane: Ground-stationary kinematics contract enabled\n");
+	}
 
     // Load MAVLink message rates
     mavlink_sensor_rate_hz = (int)ini.GetLongValue("", "mavlink_sensor_rate_hz", 200);

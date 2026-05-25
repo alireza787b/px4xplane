@@ -121,8 +121,8 @@ public:
     static float accel_offset_x;         // Manual X-axis offset (m/s^2)
     static float accel_offset_y;         // Manual Y-axis offset (m/s^2)
     static float accel_offset_z;         // Manual Z-axis offset (m/s^2)
-    static bool ground_stationary_accel_guard_enabled; // Replace ground-contact accel spikes while stationary
-    static bool ground_stationary_kinematics_guard_enabled; // Replace ground-contact velocity spikes while stationary
+    static bool ground_stationary_accel_guard_enabled; // Replace stationary ground-contact accel spikes
+    static bool ground_stationary_kinematics_guard_enabled; // Publish a coherent zero-motion stationary-ground contract
 
     static int MEDIAN_FILTER_WINDOW_SIZE;
 

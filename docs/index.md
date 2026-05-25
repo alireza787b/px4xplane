@@ -62,12 +62,14 @@ This index is the stable entry point for user and developer documentation.
 - [Report v51 - QuadTailsitter Design Guardrails and Pause-Safe Timestamps](reports/report_v51.md)
 - [Report v52 - Ground-Stationary IMU Guard](reports/report_v52.md)
 - [Report v53 - Ground-Stationary Kinematics Guard](reports/report_v53.md)
+- [Report v54 - Stationary-Ground Sensor Contract](reports/report_v54.md)
 
 ## Current Policy
 
-- Use the `v3.4.41` package for the next bridge sanity check before resuming
+- Use the `v3.4.42` package for the next bridge sanity check before resuming
   QuadTailsitter validation. First connect PX4 while stationary on the ground
-  and confirm there is no immediate vertical-velocity instability warning.
+  and confirm there is no vertical-velocity, accelerometer-bias, or compass
+  warning through connect, pause/unpause, and a short arm/disarm cycle.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
   `parameters.bson` values can override airframe `set-default` changes.
 - Run `tools/check_px4_airframe_params.py` on the returned ULog before tuning.
