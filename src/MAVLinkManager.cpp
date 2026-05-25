@@ -66,6 +66,11 @@ float dataRefFloat(const char* dataRefName)
 	return gDataRefProvider->getFloat(dataRefName);
 }
 
+int dataRefInt(const char* dataRefName)
+{
+	return gDataRefProvider->getInt(dataRefName);
+}
+
 std::vector<float> dataRefFloatArray(const char* dataRefName)
 {
 	return gDataRefProvider->getFloatArray(dataRefName);
@@ -136,6 +141,23 @@ float localHorizontalSpeedMps()
 	const float vn = localVnMps();
 	const float ve = localVeMps();
 	return std::sqrt(vn * vn + ve * ve);
+}
+
+bool isGroundStationaryForAccelGuard()
+{
+	if (!ConfigManager::ground_stationary_accel_guard_enabled) {
+		return false;
+	}
+
+	const bool onGround = dataRefInt("sim/flightmodel/failures/onground_any") != 0;
+	const float aglM = dataRefFloat("sim/flightmodel/position/y_agl");
+	const float verticalSpeedMps = dataRefFloat("sim/flightmodel/position/local_vy");
+	const float horizontalSpeedMps = localHorizontalSpeedMps();
+
+	return onGround &&
+		std::isfinite(aglM) && aglM >= -0.5f && aglM < 0.35f &&
+		std::isfinite(verticalSpeedMps) && std::fabs(verticalSpeedMps) < 0.5f &&
+		std::isfinite(horizontalSpeedMps) && horizontalSpeedMps < 0.75f;
 }
 
 float trueCourseFromLocalVelocityDeg()
@@ -385,6 +407,18 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	float raw_xacc = dataRefFloat("sim/flightmodel/forces/g_axil") * DataRefManager::g_earth * -1;
 	float raw_yacc = dataRefFloat("sim/flightmodel/forces/g_side") * DataRefManager::g_earth;
 	float raw_zacc = dataRefFloat("sim/flightmodel/forces/g_nrml") * DataRefManager::g_earth * -1;
+
+	if (isGroundStationaryForAccelGuard()) {
+		static bool guardLogged = false;
+		if (!guardLogged) {
+			XPLMDebugString("px4xplane: [GROUND_ACCEL_GUARD] Stationary on ground; replacing X-Plane contact g-loads with stable gravity\n");
+			guardLogged = true;
+		}
+
+		raw_xacc = 0.0f;
+		raw_yacc = 0.0f;
+		raw_zacc = -GRAVITY;
+	}
 
 	// Pipeline Stage 1 Logging: Raw extraction (after sign conversion)
 	static int pipelineLogCounter1 = 0;

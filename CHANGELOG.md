@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.40] - 2026-05-25
+
+### Fixed
+
+- Added a default-on ground-stationary accelerometer guard. If X-Plane reports
+  gear/contact g-load spikes while the aircraft is stationary on the ground,
+  px4xplane now sends stable gravity to PX4 instead of forwarding the contact
+  impulse as HIL_SENSOR acceleration. This targets the immediate
+  `vertical velocity unstable` regression seen before QuadTailsitter retesting.
+- Reduced repeated `config.ini` path log spam by logging the resolved path only
+  when it changes.
+
+### Added
+
+- Added `ground_stationary_accel_guard_enabled` to `config.ini` and the config
+  schema under the sensor-contract group.
+
+---
+
 ## [3.4.39] - 2026-05-24
 
 ### Fixed

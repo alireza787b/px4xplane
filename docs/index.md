@@ -60,12 +60,15 @@ This index is the stable entry point for user and developer documentation.
 - [Report v49 - QuadTailsitter qtail14 5kg Retarget](reports/report_v49.md)
 - [Report v50 - QuadTailsitter qtail15 Parameter Sync and MC Pitch Fix](reports/report_v50.md)
 - [Report v51 - QuadTailsitter Design Guardrails and Pause-Safe Timestamps](reports/report_v51.md)
+- [Report v52 - Ground-Stationary IMU Guard](reports/report_v52.md)
 
 ## Current Policy
 
-- Use the `v3.4.39` package for the next QuadTailsitter validation. Force a PX4
-  parameter reset before judging the test; stale SITL `parameters.bson` values
-  can override airframe `set-default` changes.
+- Use the `v3.4.40` package for the next bridge sanity check before resuming
+  QuadTailsitter validation. First connect PX4 while stationary on the ground
+  and confirm there is no immediate vertical-velocity instability warning.
+- Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
+  `parameters.bson` values can override airframe `set-default` changes.
 - Run `tools/check_px4_airframe_params.py` on the returned ULog before tuning.
   If the canted `CA_ROTOR*_AX/AY/AZ`, `SYS_HAS_NUM_ASPD`, `MPC_THR_HOVER`,
   `VT_ARSP_TRANS`, or FW throttle values do not match the current airframe file,

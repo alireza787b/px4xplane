@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.39";
+    constexpr const char* VERSION = "3.4.40";
 
     /** Version phase description */
-    constexpr const char* PHASE = "QuadTailsitter design guardrails and pause-safe timestamps";
+    constexpr const char* PHASE = "Ground-stationary IMU guard";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "047";
+    constexpr const char* BUILD = "048";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

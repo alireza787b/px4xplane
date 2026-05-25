@@ -2,6 +2,28 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-25
+
+### v3.4.40 Ground-Stationary IMU Guard
+
+- Paused QuadTailsitter tuning after a stationary-connection regression:
+  PX4 reported vertical velocity instability immediately after SITL connect.
+- Reviewed `/home/alireza/20260525-044651Z`: TruthCapture showed the aircraft
+  remained on the ground, unpaused, with zero throttle, zero prop rotation, and
+  zero prop thrust. X-Plane still reported large ground-contact acceleration
+  spikes, including `g_nrml` up to about `6.29 g` and `local_ay` up to about
+  `51.9 m/s^2`.
+- Root cause: px4xplane forwarded X-Plane gear/contact g-load spikes directly
+  into HIL_SENSOR acceleration while the aircraft was stationary.
+- Prepared v3.4.40:
+  - default-on `ground_stationary_accel_guard_enabled`
+  - stationary-on-ground detection using X-Plane on-ground, AGL, vertical speed,
+    and horizontal speed
+  - replacement acceleration of stable FRD gravity while the guard is active
+  - config path logging throttled to path changes only
+- Next action: install v3.4.40 and do a stationary connect test before resuming
+  QuadTailsitter MC/FW tuning.
+
 ## 2026-05-23
 
 ### v3.4.35 QuadTailsitter qtail12 FW Orbit and Pitot Density
