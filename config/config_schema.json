@@ -140,7 +140,7 @@
       "default": true,
       "group": "sensor_contract",
       "reload_policy": "reconnect_before_flight",
-      "description": "When stationary on the ground, publish a coherent zero-motion contract: zero GPS/HIL_STATE velocity, zero gyro rates, and latched GPS/HIL_STATE/baro position/altitude."
+      "description": "When stationary on the ground, publish a coherent zero-motion contract: zero GPS/HIL_STATE velocity, zero gyro rates, and latched GPS/HIL_STATE position/altitude. Baro pressure remains live with tiny noise to avoid simulated stale-sensor detection."
     },
     "mavlink_sensor_rate_hz": {
       "type": "int",

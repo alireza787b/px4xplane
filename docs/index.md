@@ -63,13 +63,17 @@ This index is the stable entry point for user and developer documentation.
 - [Report v52 - Ground-Stationary IMU Guard](reports/report_v52.md)
 - [Report v53 - Ground-Stationary Kinematics Guard](reports/report_v53.md)
 - [Report v54 - Stationary-Ground Sensor Contract](reports/report_v54.md)
+- [Report v55 - qtail19 Baro Liveness and Landing Contact](reports/report_v55.md)
 
 ## Current Policy
 
-- Use the `v3.4.42` package for the next bridge sanity check before resuming
-  QuadTailsitter validation. First connect PX4 while stationary on the ground
-  and confirm there is no vertical-velocity, accelerometer-bias, or compass
-  warning through connect, pause/unpause, and a short arm/disarm cycle.
+- Use the `v3.4.43` package for the next bridge sanity check. First connect PX4
+  while QuadTailsitter is stationary on the ground and confirm there is no
+  baro-stale, vertical-velocity, accelerometer-bias, or compass warning through
+  connect, pause/unpause, and a short arm/disarm cycle.
+- Resume QuadTailsitter in MC-only mode first: takeoff, hover, two Go-To
+  commands, RTL, and landing. Do not test fixed-wing transition again until
+  MC-mode and landing are clean with the updated contact model.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
   `parameters.bson` values can override airframe `set-default` changes.
 - Run `tools/check_px4_airframe_params.py` on the returned ULog before tuning.

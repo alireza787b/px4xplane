@@ -170,6 +170,30 @@ class ReplayTruthCaptureTest(unittest.TestCase):
         self.assertEqual(state["yacc"], 0)
         self.assertEqual(state["zacc"], -1000)
 
+    def test_stationary_ground_contract_keeps_baro_live(self):
+        row = {
+            "frame_id": "3",
+            "sim/time/total_flight_time_sec": "3.0",
+            "sim/flightmodel/failures/onground_any": "1",
+            "sim/flightmodel/position/y_agl": "0.05",
+            "sim/flightmodel/position/elevation": "52.5",
+            "sim/flightmodel/position/latitude": "26.5",
+            "sim/flightmodel/position/longitude": "54.0",
+            "sim/flightmodel/position/local_vx": "0.0",
+            "sim/flightmodel/position/local_vy": "0.0",
+            "sim/flightmodel/position/local_vz": "0.0",
+            "sim/flightmodel/position/q": "1;0;0;0",
+        }
+        contract = replay.GroundStationaryContract()
+        contract.update(row)
+
+        sensor_a = replay.decode_sensor(row, 1_000_000, contract)
+        sensor_b = replay.decode_sensor(row, 1_005_000, contract)
+        gps, _ = replay.decode_gps(row, 1_005_000, 0, contract)
+
+        self.assertNotEqual(sensor_a["abs_pressure_hpa"], sensor_b["abs_pressure_hpa"])
+        self.assertEqual(gps["alt_mm"], 52500)
+
 
 if __name__ == "__main__":
     unittest.main()

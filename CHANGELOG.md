@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.43] - 2026-05-25
+
+### Fixed
+
+- Kept barometer pressure live during the stationary-ground contract with tiny
+  simulated sensor noise. This prevents PX4 from marking a mathematically frozen
+  stationary pressure stream as `BARO #0 failed: STALE!` while keeping
+  GPS/HIL_STATE position and velocity latched.
+- Stabilized the QuadTailsitter landing-contact model by making the four gear
+  supports fixed, increasing contact pad size, reducing strut travel, and
+  increasing damping/support force.
+- Lowered QuadTailsitter `LNDMC_Z_VEL_MAX` below landing crawl/speed thresholds
+  to avoid PX4 startup correction noise.
+
+### Changed
+
+- Smoothed QuadTailsitter MC lateral commands with slightly lower horizontal
+  acceleration and jerk defaults.
+- Updated TruthCapture replay and tests to verify stationary baro liveness
+  without moving latched GPS altitude.
+
+---
+
 ## [3.4.42] - 2026-05-25
 
 ### Fixed

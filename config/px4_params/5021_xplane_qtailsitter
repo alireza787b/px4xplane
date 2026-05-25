@@ -205,12 +205,12 @@ param set-default MPC_Z_VEL_MAX_UP 1.2
 param set-default MPC_Z_VEL_MAX_DN 1.4
 param set-default MPC_XY_ERR_MAX 10
 
-param set-default MPC_ACC_HOR 1.2
-param set-default MPC_ACC_HOR_MAX 1.8
+param set-default MPC_ACC_HOR 1.0
+param set-default MPC_ACC_HOR_MAX 1.5
 param set-default MPC_ACC_UP_MAX 1.6
 param set-default MPC_ACC_DOWN_MAX 1.5
-param set-default MPC_JERK_AUTO 1.2
-param set-default MPC_JERK_MAX 2.0
+param set-default MPC_JERK_AUTO 1.0
+param set-default MPC_JERK_MAX 1.8
 
 param set-default MPC_MAN_TILT_MAX 35
 param set-default MPC_TILTMAX_AIR 40
@@ -234,7 +234,7 @@ param set-default MPC_LAND_RADIUS 30
 
 param set-default LNDMC_ALT_GND 1.5
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.30
+param set-default LNDMC_Z_VEL_MAX 0.25
 param set-default LNDMC_ROT_MAX 25
 param set-default LNDMC_TRIG_TIME 1
 param set-default COM_DISARM_LAND 1.5

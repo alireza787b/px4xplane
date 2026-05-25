@@ -1618,7 +1618,6 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// - "sim/flightmodel2/position/pressure_altitude" was found to return frozen
 	//   values in earlier testing, causing EKF2 vertical velocity instability
 	// - This dataref provides smooth, continuous altitude updates
-	const bool stationaryGround = isGroundStationaryForKinematicsGuard();
 	float basePressureAltitude_m = elevationMForSensors();
 
 	// ==================================================================================
@@ -1657,9 +1656,6 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// - 10mm (0.01m)  = Standard quality (MS5611 in field conditions)
 	// - 30mm (0.03m)  = Lower quality / high vibration
 	//
-	// PX4 Parameter Configuration (config/px4_params/5020_xplane_alia250 line 262):
-	//   EKF2_BARO_NOISE = 0.003 (3mm) - MUST MATCH THIS VALUE
-	//
 	static std::mt19937 generator0(12345);  // Barometer RNG (fixed seed for repeatability)
 	static std::mt19937 generator1(54321);  // Backup generator (if dual-sensor enabled)
 
@@ -1675,8 +1671,12 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	//   - Each sample is statistically independent
 	//   - 3-sigma rate returns to ~0.27%
 	//   - Height estimate remains stable
-	std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma - matches EKF2_BARO_NOISE=0.003
-	float altitudeNoise_m = stationaryGround ? 0.0f : distribution(generator);
+	std::normal_distribution<float> distribution(0.0f, 0.003f);  // 3mm sigma, enough liveness for PX4 sensor voting.
+	// Do not freeze baro pressure while the stationary-ground contract is active.
+	// PX4's DataValidator treats many identical pressure samples as a stale
+	// sensor, so the vehicle kinematics are latched but the barometer remains
+	// a live noisy pressure sensor.
+	float altitudeNoise_m = distribution(generator);
 	float noisyPressureAltitude_m = basePressureAltitude_m + altitudeNoise_m;
 
 	// ==================================================================================
@@ -1700,22 +1700,20 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// Ensure sensor_id is within valid range (0 or 1)
 	uint8_t sensor_idx = (sensor_id <= 1) ? sensor_id : 0;
 
-	if (!stationaryGround) {
-		// Accumulate statistics for this sensor (runs every call)
-		noiseSum[sensor_idx] += altitudeNoise_m;
-		noiseSquaredSum[sensor_idx] += altitudeNoise_m * altitudeNoise_m;
-		noiseSampleCount[sensor_idx]++;
+	// Accumulate statistics for this sensor (runs every call)
+	noiseSum[sensor_idx] += altitudeNoise_m;
+	noiseSquaredSum[sensor_idx] += altitudeNoise_m * altitudeNoise_m;
+	noiseSampleCount[sensor_idx]++;
 
-		// Track 3-sigma events (should be <0.3% for true Gaussian)
-		// For σ=3mm: 3σ = 9mm threshold
-		if (std::abs(altitudeNoise_m) > 0.009f) {
-			spike3SigmaCount[sensor_idx]++;
-		}
+	// Track 3-sigma events (should be <0.3% for true Gaussian)
+	// For sigma=3mm: 3 sigma = 9mm threshold
+	if (std::abs(altitudeNoise_m) > 0.009f) {
+		spike3SigmaCount[sensor_idx]++;
 	}
 
 	// Smart logging: Only log statistics every 1000 samples (~10s @ 100Hz) AND warn if abnormal
 	baroLogCount[sensor_idx]++;
-	if (!stationaryGround && ConfigManager::debug_log_sensor_values && (baroLogCount[sensor_idx] % 1000 == 0)) {
+	if (ConfigManager::debug_log_sensor_values && (baroLogCount[sensor_idx] % 1000 == 0)) {
 		// Calculate sample statistics using Welford's method for numerical stability
 		float noiseMean = noiseSum[sensor_idx] / noiseSampleCount[sensor_idx];
 		float noiseVariance = (noiseSquaredSum[sensor_idx] / noiseSampleCount[sensor_idx])

@@ -226,6 +226,12 @@ def pressure_from_altitude(altitude_m: float) -> float:
     return p0 * pow(1.0 - (lapse * altitude_m) / t0, (gravity * molar_mass) / (gas_constant * lapse))
 
 
+def stationary_baro_liveness_noise_m(timestamp_usec: int) -> float:
+    # Deterministic replay equivalent of the bridge's tiny live baro noise.
+    # Keeps stationary pressure samples from becoming exactly identical.
+    return 0.003 * math.sin(timestamp_usec * 0.000071)
+
+
 def signed_dynamic_pressure_hpa_from_ias_knots(ias_knots: float) -> float:
     ias_mps = ias_knots * KNOT_TO_MPS
     dynamic_pressure_pa = 0.5 * AIR_DENSITY_SEA_LEVEL * ias_mps * abs(ias_mps)
@@ -350,6 +356,9 @@ def decode_sensor(
     _, _, altitude_m = sensor_position(row, contract)
     xacc, yacc, zacc = sensor_accel(row, contract)
     stationary_ground = contract is not None and contract.active
+    baro_altitude_m = altitude_m
+    if stationary_ground:
+        baro_altitude_m += stationary_baro_liveness_noise_m(timestamp_usec)
     decoded.update(
         {
             "xacc": xacc,
@@ -358,7 +367,7 @@ def decode_sensor(
             "xgyro": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Prad"),
             "ygyro": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Qrad"),
             "zgyro": 0.0 if stationary_ground else safe_float(row, "sim/flightmodel/position/Rrad"),
-            "abs_pressure_hpa": pressure_from_altitude(altitude_m),
+            "abs_pressure_hpa": pressure_from_altitude(baro_altitude_m),
             "diff_pressure_hpa": signed_dynamic_pressure_hpa_from_ias_knots(
                 safe_float(row, "sim/flightmodel/position/indicated_airspeed")
             ),

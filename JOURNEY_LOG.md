@@ -4,6 +4,25 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-25
 
+### v3.4.43 qtail19 Baro Liveness and Contact Cleanup
+
+- Reviewed `/home/alireza/qtail19.zip`: v3.4.42 removed the earlier stationary
+  vertical-velocity, accelerometer-bias, and pause/unpause failures, but
+  QuadTailsitter still logged `BARO #0 failed: STALE!` before arming.
+- Root cause: the stationary-ground contract froze baro pressure exactly. PX4's
+  `DataValidator` treats many identical pressure values as a stuck/stale
+  sensor, even when HIL_SENSOR packets are still arriving.
+- Prepared v3.4.43:
+  - keeps stationary GPS/state velocity, gyro, and acceleration latched/zeroed
+  - keeps baro pressure live with tiny simulated sensor noise while stationary
+  - updates replay coverage to prove baro liveness without moving GPS altitude
+  - stabilizes QuadTailsitter ACF landing contact pads/struts
+  - slightly softens QuadTailsitter MC horizontal acceleration and jerk
+  - lowers `LNDMC_Z_VEL_MAX` below crawl/speed thresholds
+- Next action: repeat the stationary QuadTailsitter and Alia sanity gate, then
+  run QuadTailsitter MC-only takeoff, Go-To, RTL, and landing before returning
+  to fixed-wing transition work.
+
 ### v3.4.40 Ground-Stationary IMU Guard
 
 - Paused QuadTailsitter tuning after a stationary-connection regression:

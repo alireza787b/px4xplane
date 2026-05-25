@@ -1,15 +1,10 @@
 # QuadTailsitter X-Plane 12 Hover, Go-To, Orbit, and First Transition Workflow
 
 This card is for the next controlled QuadTailsitter validation after the
-`qtail15.zip` run. qtail14 confirmed that the aircraft was still the old
-`5 lb / 2.27 kg` X-Plane model. v3.4.37 retargeted the X-Plane aircraft to the
-intended `5 kg` 6S 3115-class design and removed the virtual SITL pitot as a
-prearm hardware requirement while still using it for transition and fixed-wing
-control. qtail15 then confirmed the `5 kg` ACF loaded, but PX4 still used stale
-saved defaults: no canted control-allocation axes, old airspeeds, old hover
-thrust, and the old pitch gains. v3.4.39 keeps the 5 kg ACF, applies the
-qtail15 pitch-gain lesson, adds a pause-safe timestamp fix, and makes the
-parameter reset/check mandatory.
+`qtail19.zip` run. v3.4.43 keeps the `5 kg` 6S 3115-class aircraft target,
+keeps the stationary zero-motion sensor contract, restores tiny baro liveness
+so PX4 does not flag a perfectly frozen simulated pressure sensor as stale, and
+stabilizes the QuadTailsitter landing-contact model.
 
 Go-To is still a point-hold command. It will decelerate near the target instead
 of blending separate target clicks as one continuous path.
@@ -51,13 +46,10 @@ Use calm weather and model calculations per frame `6`.
    - If QGC exposes Orbit yaw behavior, use hold initial heading or tangent
      heading for this test. If it does not, use the default center-facing Orbit
      and keep the radius at least `40 m`.
-6. If the MC phase is clean and altitude hold is stable, climb to at least
-   `100 m` AGL and command one forward transition while pointed into open
-   space.
-7. If it reaches fixed-wing state cleanly, keep it straight and shallow for
-   `10-15 s`; if you test FW loiter, use at least `900 m` radius.
-8. Back-transition manually before RTL if FW path following looks poor.
-9. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
+6. For the next package, stop here unless MC Go-To, RTL, and landing are clean.
+   Fixed-wing transition should remain deferred until the contact model and
+   MC-mode behavior pass repeatably.
+7. RTL or Land and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
 after transition should have stabilized, motors sit at min/max for more than a
@@ -184,7 +176,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.39`
+- `px4xplane: Version: v3.4.43`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -199,17 +191,15 @@ In TruthCapture, confirm:
 
 ## Pause / Dialog Check
 
-v3.4.39 fixes a timestamp fallback that could jump to wall-clock time after an
-X-Plane pause or blocking dialog. For this test, do one short non-flight check
-before the flight sequence:
+For this test, do one short non-flight check before the flight sequence:
 
 1. Connect PX4 and wait for Ready for takeoff.
 2. Pause X-Plane or open a small X-Plane aircraft/weight dialog for `5-10 s`.
 3. Close/unpause and verify PX4 continues receiving telemetry.
 4. In X-Plane `Log.txt`, expect `[BRIDGE_PAUSE]` and `[BRIDGE_RESUME]` lines.
-5. If PX4 reports persistent high accelerometer bias, EKF missing data, or
-   vertical velocity instability after unpause, stop and send the logs before
-   flying.
+5. If PX4 reports persistent baro stale, high accelerometer bias, EKF missing
+   data, or vertical velocity instability after unpause, stop and send the logs
+   before flying.
 
 ## Log Package
 
