@@ -68,12 +68,13 @@ This index is the stable entry point for user and developer documentation.
 - [Report v57 - qtail21 MC Acceptance and First-Transition Gate](reports/report_v57.md)
 - [Report v58 - qtail22 FW Energy and Back-Transition Recovery](reports/report_v58.md)
 - [Report v59 - qtail23 Mission Recovery Root Cause and v3.4.47 Fixes](reports/report_v59.md)
+- [Report v60 - qtail24 Back-Transition Dive and v3.4.48 Fixes](reports/report_v60.md)
 
 ## Current Policy
 
-- Use the `v3.4.47` package for the next QuadTailsitter test. qtail23 proved
-  that v3.4.46 loaded correctly but had FW energy/lateral oscillation and an
-  unsafe VTOL Land back-transition entry.
+- Use the `v3.4.48` package for the next QuadTailsitter test. qtail24 proved
+  that v3.4.47 loaded correctly and improved FW flight, but still had a
+  low-frequency FW wobble and unsafe mission VTOL Land back-transition dive.
 - Keep the qtail21/qtail22 MC lateral params and 5 kg aircraft model unchanged
   unless new evidence points directly at the ACF physics.
 - Use the manual FW/back-transition gate above `150 m AGL` before any full VTOL

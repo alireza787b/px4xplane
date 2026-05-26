@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.48] - 2026-05-26
+
+### Changed
+
+- Retuned QuadTailsitter after qtail24 showed v3.4.47 fixed the large FW path
+  and altitude error but still had a low-frequency yaw/roll wobble and an unsafe
+  mission VTOL Land back-transition dive.
+- Moved QuadTailsitter FW trim from `32` to `29 m/s`, softened NPFG/roll
+  guidance, enlarged loiter radii to `1100 m`, and reduced FW yaw/roll
+  differential-thrust scaling while preserving pitch authority.
+- Shortened QuadTailsitter tailsitter back-transition duration from `6` to
+  `4 s`, lowered the mission deceleration estimate, and added a small MC pitch
+  authority increase so the aircraft can rotate toward hover sooner.
+- Added report v60 and updated the QuadTailsitter test card with qtail24
+  evidence, design sizing, and the v3.4.48 high-margin validation workflow.
+
+### Notes
+
+- No bridge sensor-contract or X-Plane ACF physics changes are included.
+  qtail24 timing, body-axis pitot, mass, wing loading, and front transition were
+  credible; the remaining failure was back-transition control/entry energy.
+
+---
+
 ## [3.4.47] - 2026-05-26
 
 ### Changed
