@@ -2,6 +2,30 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-26
+
+### v3.4.45 qtail21 MC Acceptance and First-Transition Gate
+
+- Reviewed `/home/alireza/qtail21.zip`: px4xplane loaded `v3.4.44`,
+  `Config Name: QuadTailsitter`, body-axis pitot `-Z`, and the packaged
+  QuadTailsitter aircraft.
+- qtail21 loaded the intended v3.4.44 PX4 defaults. Key values matched:
+  `MPC_XY_CRUISE=3.5`, `MPC_XY_VEL_MAX=4.0`, `MPC_ACC_HOR=0.7`,
+  `MPC_ACC_HOR_MAX=1.0`, `MPC_JERK_AUTO=0.7`, `MPC_JERK_MAX=1.2`,
+  `MPC_TILTMAX_AIR=30`, and `MC_PITCHRATE_D=0.0010`.
+- TruthCapture recorded `22,696` rows, `0` dropped rows, `0` sim-time resets,
+  about `80 Hz` mean callback rate, and clean pause/resume handling.
+- MC acceptance result: trajectory horizontal speed max was `3.5 m/s`, ULog
+  actual horizontal speed max was about `4.1 m/s`, motor command peak was about
+  `0.345`, and estimator timeout flags stayed `0`.
+- Prepared v3.4.45 as a documentation/version/test-gate release only:
+  - keep qtail21 MC params and ACF unchanged
+  - move next test to one straight forward transition and short FW segment
+  - defer FW Orbit/RTL and NPFG/TECS tuning until straight-transition evidence
+    is available
+  - document that the large landing legs are fixed for contact stability; a
+    later visual-only gear slice should not make physics contact pads retract
+
 ## 2026-05-25
 
 ### v3.4.44 qtail20 MC Overspeed Recovery

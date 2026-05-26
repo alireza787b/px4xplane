@@ -65,15 +65,21 @@ This index is the stable entry point for user and developer documentation.
 - [Report v54 - Stationary-Ground Sensor Contract](reports/report_v54.md)
 - [Report v55 - qtail19 Baro Liveness and Landing Contact](reports/report_v55.md)
 - [Report v56 - qtail20 MC Overspeed Recovery and 5kg Design Audit](reports/report_v56.md)
+- [Report v57 - qtail21 MC Acceptance and First-Transition Gate](reports/report_v57.md)
 
 ## Current Policy
 
-- Use the `v3.4.44` package for the next QuadTailsitter test. qtail20 proved the
-  v3.4.43 stationary bridge fixes, so the next gate is MC Go-To speed/attitude
-  tracking with the softer PX4 defaults.
-- Run QuadTailsitter in MC-only mode first: stationary/pause sanity, takeoff,
-  hover, two Go-To commands, RTL or Land. Attempt one straight transition only
-  if MC Go-To speed stays controlled and landing remains clean.
+- Use the `v3.4.45` package for the next QuadTailsitter test. qtail21 proved the
+  v3.4.44 MC speed/attitude gate with clean parameters, so the next gate is one
+  straight forward transition and a short fixed-wing stabilization segment.
+- Keep the qtail21-validated MC params and 5 kg aircraft model unchanged until
+  the first clean FW transition evidence is reviewed.
+- Do not start FW Orbit/RTL tuning from the next run unless the straight
+  transition is already clean. Existing large loiter radii and soft NPFG values
+  are intentional first-transition guardrails.
+- The QuadTailsitter landing legs are fixed in this package for contact
+  stability. A later visual slice can add retractable cosmetic legs without
+  making the physics contact pads retractable.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
   `parameters.bson` values can override airframe `set-default` changes. qtail20
   did not load the intended v3.4.43 acceleration/jerk defaults.

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.45] - 2026-05-26
+
+### Changed
+
+- Promoted QuadTailsitter from MC-only recovery to the first straight-transition
+  validation gate after qtail21 confirmed clean v3.4.44 parameter sync, bridge
+  sensor behavior, and MC speed/attitude tracking.
+- Updated the QuadTailsitter test card to preserve the qtail21 MC baseline,
+  skip FW Orbit/RTL tuning until straight-transition evidence exists, and note
+  that the large landing legs are intentionally fixed for ground-contact
+  stability.
+- Added report v57 with qtail21 evidence, acceptance metrics, and the v3.4.45
+  first-transition workflow.
+
+### Notes
+
+- No QuadTailsitter PX4 params or ACF geometry changed in this release. The
+  tiny remaining MC wobble is acceptable for transition gating and should not be
+  over-tuned before FW evidence is collected.
+
+---
+
 ## [3.4.44] - 2026-05-25
 
 ### Changed
