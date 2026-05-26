@@ -4,6 +4,29 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-26
 
+### v3.4.46 qtail22 FW Energy and Back-Transition Recovery
+
+- Reviewed `/home/alireza/qtail22.zip`: TruthCapture recorded `46,913` rows,
+  `0` dropped rows, `0` sim-time resets, and about `86 Hz` mean callback rate.
+  px4xplane loaded `v3.4.45`, `Config Name: QuadTailsitter`, and body-axis pitot
+  `-Z`.
+- qtail22 confirmed MC and front transition are no longer the main blocker.
+  Front transition completed at about `195.5 s` and the bridge diagnostics did
+  not show a sensor-contract regression.
+- The failure split is FW energy/guidance and back-transition entry speed:
+  fixed-wing TAS commonly sat around `35-40 m/s` while TECS targeted `28 m/s`,
+  then back-transition started around `37-55 m/s` and produced a large sink with
+  saturated motors.
+- Prepared v3.4.46:
+  - modestly raises MC climb speed only
+  - lowers FW speed and transition energy targets
+  - tightens NPFG/roll response from the v3.4.45 guardrail values
+  - lengthens/softens back-transition
+  - hides the large rendered QuadTailsitter gear while keeping fixed contact
+    physics active
+- Next action: do a manual FW/back-transition gate only. Do not run full VTOL
+  Land missions until manual back-transition is clean.
+
 ### v3.4.45 qtail21 MC Acceptance and First-Transition Gate
 
 - Reviewed `/home/alireza/qtail21.zip`: px4xplane loaded `v3.4.44`,

@@ -66,20 +66,20 @@ This index is the stable entry point for user and developer documentation.
 - [Report v55 - qtail19 Baro Liveness and Landing Contact](reports/report_v55.md)
 - [Report v56 - qtail20 MC Overspeed Recovery and 5kg Design Audit](reports/report_v56.md)
 - [Report v57 - qtail21 MC Acceptance and First-Transition Gate](reports/report_v57.md)
+- [Report v58 - qtail22 FW Energy and Back-Transition Recovery](reports/report_v58.md)
 
 ## Current Policy
 
-- Use the `v3.4.45` package for the next QuadTailsitter test. qtail21 proved the
-  v3.4.44 MC speed/attitude gate with clean parameters, so the next gate is one
-  straight forward transition and a short fixed-wing stabilization segment.
-- Keep the qtail21-validated MC params and 5 kg aircraft model unchanged until
-  the first clean FW transition evidence is reviewed.
-- Do not start FW Orbit/RTL tuning from the next run unless the straight
-  transition is already clean. Existing large loiter radii and soft NPFG values
-  are intentional first-transition guardrails.
-- The QuadTailsitter landing legs are fixed in this package for contact
-  stability. A later visual slice can add retractable cosmetic legs without
-  making the physics contact pads retractable.
+- Use the `v3.4.46` package for the next QuadTailsitter test. qtail22 proved
+  that MC and front transition are usable, but FW energy/guidance and manual
+  back-transition still need validation.
+- Keep the qtail21/qtail22 MC lateral params and 5 kg aircraft model unchanged
+  unless new evidence points directly at the ACF physics.
+- Do not run a full VTOL Land mission on the next run. Use the manual
+  FW/back-transition gate in the QuadTailsitter test card first.
+- The QuadTailsitter contact gear remains fixed for stability. v3.4.46 hides the
+  large rendered legs; true animated cosmetic retractable legs are a later
+  visual-asset slice.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
   `parameters.bson` values can override airframe `set-default` changes. qtail20
   did not load the intended v3.4.43 acceleration/jerk defaults.

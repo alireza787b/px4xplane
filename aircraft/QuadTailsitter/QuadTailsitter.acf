@@ -16118,7 +16118,7 @@ P _gear/0/_eagle_claw_deg 0.000000000
 P _gear/0/_gear_brakes 0
 P _gear/0/_gear_can_retract 0
 P _gear/0/_gear_castors 0
-P _gear/0/_gear_renders_geo 1
+P _gear/0/_gear_renders_geo 0
 P _gear/0/_gear_type 2
 P _gear/0/_gear_x 0.000000000
 P _gear/0/_gear_y -1.340000033
@@ -16150,7 +16150,7 @@ P _gear/1/_eagle_claw_deg 0.000000000
 P _gear/1/_gear_brakes 0
 P _gear/1/_gear_can_retract 0
 P _gear/1/_gear_castors 0
-P _gear/1/_gear_renders_geo 1
+P _gear/1/_gear_renders_geo 0
 P _gear/1/_gear_type 2
 P _gear/1/_gear_x 0.000000000
 P _gear/1/_gear_y -1.340000033
@@ -16182,7 +16182,7 @@ P _gear/2/_eagle_claw_deg 0.000000000
 P _gear/2/_gear_brakes 0
 P _gear/2/_gear_can_retract 0
 P _gear/2/_gear_castors 0
-P _gear/2/_gear_renders_geo 1
+P _gear/2/_gear_renders_geo 0
 P _gear/2/_gear_type 2
 P _gear/2/_gear_x 0.000000000
 P _gear/2/_gear_y -1.340000033
@@ -16214,7 +16214,7 @@ P _gear/3/_eagle_claw_deg 0.000000000
 P _gear/3/_gear_brakes 0
 P _gear/3/_gear_can_retract 0
 P _gear/3/_gear_castors 0
-P _gear/3/_gear_renders_geo 1
+P _gear/3/_gear_renders_geo 0
 P _gear/3/_gear_type 2
 P _gear/3/_gear_x 0.000000000
 P _gear/3/_gear_y -1.340000033

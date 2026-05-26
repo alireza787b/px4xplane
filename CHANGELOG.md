@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.46] - 2026-05-26
+
+### Changed
+
+- Retuned QuadTailsitter fixed-wing energy and transition defaults after qtail22
+  showed clean MC/front-transition behavior but excessive FW speed and unsafe
+  back-transition entry energy.
+- Raised QuadTailsitter autonomous climb rate modestly while preserving the
+  qtail21/qtail22 lateral MC baseline.
+- Reduced QuadTailsitter FW trim/max airspeed, front-transition throttle, and
+  back-transition aggressiveness; tightened FW guidance from the first-transition
+  guardrail values without enabling full VTOL Land mission testing yet.
+- Hid the large rendered QuadTailsitter landing legs while preserving the fixed
+  non-retractable contact gear physics.
+- Added report v58 and updated the QuadTailsitter test card for the manual
+  FW/back-transition gate.
+
+### Notes
+
+- No bridge sensor-contract changes are included. qtail22 TruthCapture timing
+  and X-Plane diagnostics were clean, so this is a PX4 airframe/ACF visual
+  slice.
+
+---
+
 ## [3.4.45] - 2026-05-26
 
 ### Changed
