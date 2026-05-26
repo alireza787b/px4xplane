@@ -187,7 +187,7 @@ param set-default MPC_XY_VEL_I_ACC 0.1
 param set-default MPC_XY_VEL_D_ACC 0.2
 param set-default MPC_Z_VEL_P_ACC 2.0
 param set-default MPC_Z_VEL_I_ACC 0.5
-param set-default MPC_Z_VEL_D_ACC 0.5
+param set-default MPC_Z_VEL_D_ACC 0.6
 
 param set-default MPC_XY_VEL_MAX 4.0
 param set-default MPC_XY_CRUISE 3.5
@@ -254,10 +254,10 @@ param set-default SYS_HAS_NUM_ASPD 0
 
 param set-default FW_AIRSPD_STALL 16
 param set-default FW_AIRSPD_MIN 19
-param set-default FW_AIRSPD_TRIM 28
-param set-default FW_AIRSPD_MAX 38
+param set-default FW_AIRSPD_TRIM 27
+param set-default FW_AIRSPD_MAX 36
 
-param set-default FW_THR_TRIM 0.15
+param set-default FW_THR_TRIM 0.14
 param set-default FW_THR_MAX 0.50
 param set-default FW_THR_MIN 0.00
 param set-default FW_THR_IDLE 0.00

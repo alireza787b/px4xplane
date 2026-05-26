@@ -1,13 +1,12 @@
 # QuadTailsitter X-Plane 12 Final Polish Workflow
 
-This card is for the next controlled QuadTailsitter validation after the
-`qtail25.zip` mission run. v3.4.49 keeps the `5 kg` 6S 3115-class aircraft
+This card is for the next controlled QuadTailsitter closure validation after the
+`qtail26.zip` mission run. v3.4.50 keeps the `5 kg` 6S 3115-class aircraft
 target, the stationary sensor/contact fixes, and the body-axis `-Z` virtual
-pitot. qtail25 proved that the aircraft can complete a mission, transition to
-fixed-wing, return, back-transition, and land safely. The remaining validation
-targets are fixed-wing yaw/roll damping, reduced back-transition balloon climb,
-and removal of transient attitude-failure warnings during legal tailsitter
-recovery geometry.
+pitot. qtail26 proved that the aircraft can complete a mission, transition to
+fixed-wing, return, back-transition, land, disarm, and close the log without
+bridge or estimator warnings. The only remaining validation target is reducing
+the benign back-transition balloon climb.
 
 The next gate is a high-margin mission validation. Do not use a low-altitude
 VTOL Land approach yet; keep the approach/back-transition altitude high enough
@@ -69,11 +68,11 @@ For continuous path-following, use a mission/path workflow or send the next
 target before the aircraft reaches the current point.
 
 Keep fixed-wing waypoint spacing at least `1300 m`, avoid tight waypoint
-clusters, and do not use a `50 m` VTOL Land approach altitude yet. qtail25
-landed safely, but back-transition converted forward-speed energy into an
-`80-100 m` balloon climb before MC descent. v3.4.49 reduces entry energy,
-softens FW yaw/roll coupling, and extends the tailsitter pitch schedule
-slightly to reduce that recovery transient.
+clusters, and do not use a `50 m` VTOL Land approach altitude for public demos
+until qtail27 confirms the final closure values. qtail26 landed safely, but
+back-transition still converted forward-speed energy into about a `100 m`
+balloon climb before MC descent. v3.4.50 keeps the accepted path-following
+baseline and makes only a small final fixed-wing energy polish.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
 stability. v3.4.46+ hides the large rendered gear geometry while keeping the
@@ -126,7 +125,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_Z_P=1.00`
 - `MPC_Z_VEL_P_ACC=2.0`
 - `MPC_Z_VEL_I_ACC=0.5`
-- `MPC_Z_VEL_D_ACC=0.5`
+- `MPC_Z_VEL_D_ACC=0.6`
 - `MPC_XY_CRUISE=3.5`
 - `MPC_XY_VEL_MAX=4.0`
 - `MPC_VEL_MANUAL=4.0`
@@ -160,9 +159,9 @@ Before judging the run, confirm these defaults in the ULog:
 - `VT_ARSP_BLEND=17`
 - `VT_ARSP_TRANS=22`
 - `FW_AIRSPD_MIN=19`
-- `FW_AIRSPD_TRIM=28`
-- `FW_AIRSPD_MAX=38`
-- `FW_THR_TRIM=0.15`
+- `FW_AIRSPD_TRIM=27`
+- `FW_AIRSPD_MAX=36`
+- `FW_THR_TRIM=0.14`
 - `FW_THR_MAX=0.50`
 - `FW_THR_MIN=0.00`
 - `FW_T_SPDWEIGHT=0.8`
@@ -211,11 +210,24 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.49`
+- `px4xplane: Version: v3.4.50`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
 - `Airspeed source=body_axis pitotAxisBody=-Z`
+
+In the installed aircraft folder, confirm these presentation assets are present:
+
+- `QuadTailsitter_icon11.png`
+- `QuadTailsitter_icon11_thumb.png`
+- `README.md`
+
+The aircraft package also ships quick-look presets in
+`QuadTailsitter_prefs.txt`:
+
+- quick look `#1`: nose/FPV camera
+- quick look `#2`: belly/down-looking camera
+- quick look `#3`: rear engineering chase view
 
 In TruthCapture, confirm:
 
@@ -224,26 +236,23 @@ In TruthCapture, confirm:
 - Optional design check:
   `python3 tools/analyze_qtailsitter_design.py aircraft/QuadTailsitter/QuadTailsitter.acf --truth <truth-folder-or-zip>`
 
-## qtail25 Baseline
+## qtail26 Baseline
 
-The qtail25 mission run loaded the intended v3.4.48 PX4 values and is the
+The qtail26 mission run loaded the intended v3.4.49 PX4 values and is the
 baseline for judging this package:
 
-- TruthCapture: `39,489` rows, `0` dropped rows, `0` sim-time resets, about
-  `82 Hz` mean callback rate.
-- Fixed-wing phase: about `29.5 m/s` TAS/CAS median, altitude held near
-  `100 m`, and TECS throttle p50 about `0.11`.
-- Remaining FW issue: low-frequency yaw/roll wobble with about `+/-8 deg`
-  sideslip and frequent roll-limit demand.
-- Back-transition was safe but ended by timeout with high forward speed, then
-  ballooned about `80-100 m` before MC descent.
+- TruthCapture: `45,723` rows, `0` dropped rows, `0` sim-time resets, about
+  `88 Hz` mean callback rate.
+- Fixed-wing phase: about `28.7 m/s` TAS median, altitude held near `100 m`,
+  and motor mean p50 about `0.10`.
+- Back-transition and landing were safe, with no failure-detector flags.
+- Remaining issue: back-transition exited with high horizontal speed and
+  ballooned to about `202 m AGL` before MC descent.
 - Estimator health was clean: no baro stale, vertical velocity instability,
   accelerometer-bias warning, or pause/FPS sensor regression.
 
-v3.4.49 preserves the qtail25 aircraft/bridge baseline and changes only PX4
-airframe tuning: lower FW entry energy, softer NPFG/roll/yaw coupling, slower
-auto yaw, a `5 s` tailsitter back-transition schedule, and tailsitter-specific
-failure-detector dwell/angle thresholds.
+v3.4.50 preserves the qtail26 bridge/ACF/back-transition baseline and changes
+only small PX4 fixed-wing energy values plus X-Plane presentation assets.
 
 ## Pause / Dialog Check
 
@@ -269,19 +278,20 @@ Save and send:
 The next log should be used to verify:
 
 - The ULog initial parameters match this card, especially the canted
-  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.49 FW/back-transition values. If the
+  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.50 FW/back-transition values. If the
   rotor axes are all `AX=0`, `AY=0`, `AZ=-1`, or if `FW_R_LIM` is still `32`,
   stop: the run is using stale PX4 parameters.
 - Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this
   slice is actual horizontal speed below about `6 m/s`, pitch not running away
   beyond about `35 deg`, and no sustained pitch/roll error or motor saturation.
 - Normal deceleration at the final Go-To target is not treated as a failure.
-- Skip full VTOL Land missions until manual back-transition is clean.
+- Use only high-margin VTOL Land/back-transition altitudes for public-demo
+  validation until qtail27 confirms the remaining recovery-climb polish.
 - The first transition should remain in transition until the body-axis
   calibrated airspeed reaches roughly `VT_ARSP_TRANS=22 m/s`.
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive
   in FW and should broadly match truth true airspeed. QGC should no longer show
   the large negative FW airspeed seen in qtail11.
-- FW energy behavior is judged against the `28 m/s` trim target. If speed still
+- FW energy behavior is judged against the `27 m/s` trim target. If speed still
   runs into the `40+ m/s` range or altitude/throttle oscillates, record it and
   send the logs before continuing to Orbit/RTL/VTOL Land tuning.

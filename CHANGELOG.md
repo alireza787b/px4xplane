@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.50] - 2026-05-26
+
+### Changed
+
+- Closed the QuadTailsitter qtail26 acceptance pass as the new validation
+  baseline: full mission, front transition, fixed-wing return,
+  back-transition, landing, disarm, and log close completed with clean bridge
+  and estimator behavior.
+- Kept the qtail26 X-Plane ACF, sensor contract, body-axis pitot, rotor cant,
+  and back-transition timing unchanged after independent review found no
+  evidence for another aircraft-physics or bridge rewrite.
+- Made a conservative final PX4 airframe polish: `MPC_Z_VEL_D_ACC 0.5 -> 0.6`,
+  `FW_AIRSPD_TRIM 28 -> 27`, `FW_AIRSPD_MAX 38 -> 36`, and
+  `FW_THR_TRIM 0.15 -> 0.14`.
+- Added QuadTailsitter aircraft-selection icons, aircraft-local quick-look
+  presets for nose/FPV, belly/down, and rear engineering views, plus an
+  aircraft README explaining the visual scope.
+- Added report v62 and updated the QuadTailsitter closure test card for the
+  qtail26 evidence package and v3.4.50 sanity checks.
+
+### Notes
+
+- `VT_B_TRANS_DUR` and `VT_B_DEC_MSS` stay at the qtail26-proven values
+  (`5.0 s` and `1.0 m/s/s`). Extending the schedule was deliberately not
+  shipped because qtail26 showed the recovery climb is dominated by stored
+  forward-speed energy after transition, not by a missing timeout increase.
+- The polished eVTOL cockpit/panel remains a separate Plane Maker-authored
+  visual slice; this package only adds safe source-controlled quick-look/icon
+  assets.
+
+---
+
 ## [3.4.49] - 2026-05-26
 
 ### Changed

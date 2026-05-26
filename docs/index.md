@@ -70,20 +70,21 @@ This index is the stable entry point for user and developer documentation.
 - [Report v59 - qtail23 Mission Recovery Root Cause and v3.4.47 Fixes](reports/report_v59.md)
 - [Report v60 - qtail24 Back-Transition Dive and v3.4.48 Fixes](reports/report_v60.md)
 - [Report v61 - qtail25 Acceptance Polish and v3.4.49 Fixes](reports/report_v61.md)
+- [Report v62 - qtail26 Closure Candidate and v3.4.50](reports/report_v62.md)
 
 ## Current Policy
 
-- Use the `v3.4.49` package for the next QuadTailsitter test. qtail25 proved a
-  complete safe mission return, but still had low-frequency FW yaw/roll wobble,
-  a large back-transition recovery climb, and transient attitude-failure
-  warnings during legal tailsitter recovery geometry.
-- Keep the qtail25 bridge/ACF baseline and 5 kg aircraft model unchanged
-  unless new evidence points directly at the ACF physics.
-- Use high-margin mission VTOL Land/back-transition altitudes. Do not use a
-  `50 m` VTOL Land approach altitude yet.
-- The QuadTailsitter contact gear remains fixed for stability. v3.4.46 hides the
-  large rendered legs; true animated cosmetic retractable legs are a later
-  visual-asset slice.
+- Use the `v3.4.50` package for the QuadTailsitter closure test. qtail26 proved
+  a complete safe mission return with clean bridge and estimator behavior; the
+  remaining observation is benign recovery climb after back-transition.
+- Keep the qtail26 bridge/ACF/back-transition baseline and 5 kg aircraft model
+  unchanged unless new evidence points directly at the ACF physics.
+- Use high-margin mission VTOL Land/back-transition altitudes until the qtail27
+  closure run confirms the small energy polish.
+- The QuadTailsitter contact gear remains fixed for stability. v3.4.46 hides
+  the large rendered legs; v3.4.50 adds aircraft-local quick-look camera
+  presets and aircraft-selection icons. A richer operator cockpit/panel remains
+  a later Plane Maker-authored visual slice.
 - Force a PX4 parameter reset before judging any QuadTailsitter test; stale SITL
   `parameters.bson` values can override airframe `set-default` changes. qtail20
   did not load the intended v3.4.43 acceleration/jerk defaults.
