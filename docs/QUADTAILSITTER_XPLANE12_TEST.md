@@ -1,15 +1,17 @@
-# QuadTailsitter X-Plane 12 FW Damping and Back-Transition Workflow
+# QuadTailsitter X-Plane 12 Final Polish Workflow
 
 This card is for the next controlled QuadTailsitter validation after the
-`qtail24.zip` mission run. v3.4.48 keeps the `5 kg` 6S 3115-class aircraft
-target, the v3.4.43 stationary sensor/contact fixes, and the body-axis `-Z`
-virtual pitot. qtail24 proved that v3.4.47 fixed the major FW energy and path
-problem, but still showed a low-frequency FW yaw/roll wobble and an unsafe VTOL
-Land back-transition dive.
+`qtail25.zip` mission run. v3.4.49 keeps the `5 kg` 6S 3115-class aircraft
+target, the stationary sensor/contact fixes, and the body-axis `-Z` virtual
+pitot. qtail25 proved that the aircraft can complete a mission, transition to
+fixed-wing, return, back-transition, and land safely. The remaining validation
+targets are fixed-wing yaw/roll damping, reduced back-transition balloon climb,
+and removal of transient attitude-failure warnings during legal tailsitter
+recovery geometry.
 
-The next gate is fixed-wing stabilization and a high-margin back-transition. A
-full VTOL Land item may be tested only after one clean manual back-transition at
-high altitude in the same run.
+The next gate is a high-margin mission validation. Do not use a low-altitude
+VTOL Land approach yet; keep the approach/back-transition altitude high enough
+that a failed recovery has margin.
 
 ## Setup
 
@@ -32,7 +34,7 @@ high altitude in the same run.
    below. qtail20 proved that stale SITL `parameters.bson` can override the
    airframe `set-default` values even when X-Plane is running the right plugin.
    - After the run, use:
-     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param VT_ARSP_TRANS --param FW_AIRSPD_TRIM --param FW_T_SPDWEIGHT --param FW_R_LIM --param VT_FW_DIFTHR_S_R --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR`
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param VT_ARSP_TRANS --param FW_AIRSPD_TRIM --param FW_R_LIM --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_Y --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -43,14 +45,14 @@ Use calm weather and model calculations per frame `6`.
 2. Hold in multicopter mode for `15-20 s`.
 3. Command one modest Go-To movement. The intended MC cruise is `3.5 m/s`.
 4. Command one longer Go-To and watch for actual speed overshoot.
-5. If MC actual horizontal speed remains below about `6 m/s` and attitude
-   tracking is calm, climb to at least `150 m` AGL before transition.
+5. Climb to at least `150 m` AGL before transition.
 6. Command one straight forward transition. Let it stabilize in fixed-wing mode.
-7. Fly one straight leg or very large-radius loiter. The default FW loiter/RTL
-   radius is now `1100 m`; do not use tight manual orbit radii for this gate.
-8. Manually back-transition while at least `150 m` AGL. If that is clean, a
-   second run may use a VTOL Land item, but keep the approach/back-transition
-   altitude high enough that a failed recovery has margin.
+7. Fly one straight leg or a large-radius mission/loiter. The default FW
+   loiter/RTL radius is now `1300 m`; do not use tight manual orbit radii for
+   this gate.
+8. Use a mission VTOL Land item only with a high approach/back-transition
+   altitude. If you want to reduce the altitude later, do it only after one
+   clean qtail26-style run.
 9. Land in MC and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
@@ -66,11 +68,12 @@ Go-To is a point-hold command. A smooth deceleration near the target is normal.
 For continuous path-following, use a mission/path workflow or send the next
 target before the aircraft reaches the current point.
 
-If you run an exploratory mission after a clean manual transition, keep
-fixed-wing waypoint spacing at least `1100 m`, avoid tight waypoint clusters,
-and do not use a `50 m` VTOL Land approach altitude yet. qtail24 started
-mission back-transition around `100 m` AGL and `31 m/s`, then lost about `75 m`
-before quad-chute because the aircraft did not pitch toward hover fast enough.
+Keep fixed-wing waypoint spacing at least `1300 m`, avoid tight waypoint
+clusters, and do not use a `50 m` VTOL Land approach altitude yet. qtail25
+landed safely, but back-transition converted forward-speed energy into an
+`80-100 m` balloon climb before MC descent. v3.4.49 reduces entry energy,
+softens FW yaw/roll coupling, and extends the tailsitter pitch schedule
+slightly to reduce that recovery transient.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
 stability. v3.4.46+ hides the large rendered gear geometry while keeping the
@@ -100,13 +103,13 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_AIRMODE=2`
 - `MC_ROLL_P=0.9`
 - `MC_PITCH_P=0.58`
-- `MC_YAW_P=0.80`
+- `MC_YAW_P=0.65`
 - `MC_YAW_WEIGHT=0.35`
 - `MC_YAWRATE_P=0.20`
 - `MC_YAWRATE_I=0.015`
 - `MC_YAWRATE_D=0.025`
-- `MC_YAWRATE_K=1.20`
-- `MC_YAWRATE_MAX=65`
+- `MC_YAWRATE_K=1.10`
+- `MC_YAWRATE_MAX=55`
 - `MC_ROLLRATE_P=0.10`
 - `MC_PITCHRATE_P=0.115`
 - `MC_ROLLRATE_D=0.0008`
@@ -141,8 +144,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_MAN_TILT_MAX=30.0`
 - `MPC_TILTMAX_AIR=30.0`
 - `MPC_YAW_MODE=0`
-- `MPC_YAWRAUTO_MAX=35`
-- `MPC_YAWRAUTO_ACC=12`
+- `MPC_YAWRAUTO_MAX=25`
+- `MPC_YAWRAUTO_ACC=8`
 - `MIS_YAW_ERR=30`
 - `MIS_YAW_TMT=5`
 - `MC_ORBIT_YAW_MOD=1`
@@ -154,12 +157,12 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_USE_AIRSPD=1`
 - `ASPD_DO_CHECKS=1`
 - `SYS_HAS_NUM_ASPD=0`
-- `VT_ARSP_BLEND=18`
-- `VT_ARSP_TRANS=23`
-- `FW_AIRSPD_MIN=20`
-- `FW_AIRSPD_TRIM=29`
-- `FW_AIRSPD_MAX=40`
-- `FW_THR_TRIM=0.16`
+- `VT_ARSP_BLEND=17`
+- `VT_ARSP_TRANS=22`
+- `FW_AIRSPD_MIN=19`
+- `FW_AIRSPD_TRIM=28`
+- `FW_AIRSPD_MAX=38`
+- `FW_THR_TRIM=0.15`
 - `FW_THR_MAX=0.50`
 - `FW_THR_MIN=0.00`
 - `FW_T_SPDWEIGHT=0.8`
@@ -167,36 +170,40 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_T_CLMB_R_SP=2.0`
 - `FW_T_SINK_R_SP=2.0`
 - `FW_PSP_OFF=2.0`
-- `FW_R_TC=1.3`
-- `FW_R_LIM=17`
-- `FW_RR_P=0.12`
+- `FW_R_TC=1.5`
+- `FW_R_LIM=16`
+- `FW_RR_P=0.10`
 - `FW_RR_I=0.04`
-- `FW_RR_FF=0.06`
-- `FW_YR_P=0.02`
+- `FW_RR_FF=0.05`
+- `FW_YR_P=0.01`
 - `VT_F_TRANS_DUR=8.0`
 - `VT_F_TRANS_THR=0.36`
 - `VT_TRANS_MIN_TM=6.0`
 - `VT_F_TR_OL_TM=12.0`
 - `VT_TRANS_TIMEOUT=30`
-- `VT_B_TRANS_DUR=4.0`
-- `VT_B_DEC_MSS=1.1`
+- `VT_B_TRANS_DUR=5.0`
+- `VT_B_DEC_MSS=1.0`
 - `VT_B_DEC_I=0.12`
 - `VT_B_TRANS_RAMP=1.5`
-- `VT_FW_DIFTHR_S_R=0.60`
+- `VT_FW_DIFTHR_S_R=0.55`
 - `VT_FW_DIFTHR_S_P=0.90`
-- `VT_FW_DIFTHR_S_Y=0.45`
+- `VT_FW_DIFTHR_S_Y=0.32`
 - `VT_FW_MIN_ALT=30`
 - `VT_QC_T_ALT_LOSS=35`
-- `NPFG_PERIOD=48.0`
+- `NPFG_PERIOD=55.0`
 - `NPFG_DAMPING=1.0`
-- `NPFG_ROLL_TC=2.0`
+- `NPFG_ROLL_TC=2.4`
 - `NPFG_SW_DST_MLT=0.70`
-- `NAV_ACC_RAD=90`
-- `NAV_FW_ALT_RAD=30`
-- `NAV_LOITER_RAD=1100`
-- `RTL_LOITER_RAD=1100`
+- `NAV_ACC_RAD=120`
+- `NAV_FW_ALT_RAD=40`
+- `NAV_LOITER_RAD=1300`
+- `RTL_LOITER_RAD=1300`
 - `RTL_RETURN_ALT=100`
 - `RTL_DESCEND_ALT=75`
+- `FD_FAIL_R=85`
+- `FD_FAIL_P=85`
+- `FD_FAIL_R_TTRI=1.0`
+- `FD_FAIL_P_TTRI=1.0`
 - `EKF2_BARO_NOISE=1.0`
 - `CAL_BARO1_PRIO=0`
 - `IMU_GYRO_RATEMAX=200`
@@ -204,7 +211,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.48`
+- `px4xplane: Version: v3.4.49`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -217,22 +224,26 @@ In TruthCapture, confirm:
 - Optional design check:
   `python3 tools/analyze_qtailsitter_design.py aircraft/QuadTailsitter/QuadTailsitter.acf --truth <truth-folder-or-zip>`
 
-## qtail21 Baseline
+## qtail25 Baseline
 
-The qtail21 acceptance run loaded the intended v3.4.44 PX4 values and is the
+The qtail25 mission run loaded the intended v3.4.48 PX4 values and is the
 baseline for judging this package:
 
-- TruthCapture: `22,696` rows, `0` dropped rows, `0` sim-time resets, about
-  `80 Hz` mean callback rate.
-- PX4 trajectory setpoint max horizontal speed: `3.5 m/s`.
-- ULog actual horizontal speed max: about `4.1 m/s`.
-- TruthCapture true airspeed max during MC: about `4.85 m/s`.
-- Motor command peak: about `0.345`.
-- Estimator timeout flags: `0`.
+- TruthCapture: `39,489` rows, `0` dropped rows, `0` sim-time resets, about
+  `82 Hz` mean callback rate.
+- Fixed-wing phase: about `29.5 m/s` TAS/CAS median, altitude held near
+  `100 m`, and TECS throttle p50 about `0.11`.
+- Remaining FW issue: low-frequency yaw/roll wobble with about `+/-8 deg`
+  sideslip and frequent roll-limit demand.
+- Back-transition was safe but ended by timeout with high forward speed, then
+  ballooned about `80-100 m` before MC descent.
+- Estimator health was clean: no baro stale, vertical velocity instability,
+  accelerometer-bias warning, or pause/FPS sensor regression.
 
-v3.4.48 preserves the qtail24 aircraft/bridge baseline and changes only FW
-speed/guidance damping, FW differential-thrust scaling, and a small amount of MC
-pitch authority needed for tailsitter back-transition.
+v3.4.49 preserves the qtail25 aircraft/bridge baseline and changes only PX4
+airframe tuning: lower FW entry energy, softer NPFG/roll/yaw coupling, slower
+auto yaw, a `5 s` tailsitter back-transition schedule, and tailsitter-specific
+failure-detector dwell/angle thresholds.
 
 ## Pause / Dialog Check
 
@@ -258,7 +269,7 @@ Save and send:
 The next log should be used to verify:
 
 - The ULog initial parameters match this card, especially the canted
-  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.48 FW/back-transition values. If the
+  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.49 FW/back-transition values. If the
   rotor axes are all `AX=0`, `AY=0`, `AZ=-1`, or if `FW_R_LIM` is still `32`,
   stop: the run is using stale PX4 parameters.
 - Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this
@@ -267,10 +278,10 @@ The next log should be used to verify:
 - Normal deceleration at the final Go-To target is not treated as a failure.
 - Skip full VTOL Land missions until manual back-transition is clean.
 - The first transition should remain in transition until the body-axis
-  calibrated airspeed reaches roughly `VT_ARSP_TRANS=23 m/s`.
+  calibrated airspeed reaches roughly `VT_ARSP_TRANS=22 m/s`.
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive
   in FW and should broadly match truth true airspeed. QGC should no longer show
   the large negative FW airspeed seen in qtail11.
-- FW energy behavior is judged against the `29 m/s` trim target. If speed still
+- FW energy behavior is judged against the `28 m/s` trim target. If speed still
   runs into the `40+ m/s` range or altitude/throttle oscillates, record it and
   send the logs before continuing to Orbit/RTL/VTOL Land tuning.

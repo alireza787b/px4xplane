@@ -69,16 +69,18 @@ This index is the stable entry point for user and developer documentation.
 - [Report v58 - qtail22 FW Energy and Back-Transition Recovery](reports/report_v58.md)
 - [Report v59 - qtail23 Mission Recovery Root Cause and v3.4.47 Fixes](reports/report_v59.md)
 - [Report v60 - qtail24 Back-Transition Dive and v3.4.48 Fixes](reports/report_v60.md)
+- [Report v61 - qtail25 Acceptance Polish and v3.4.49 Fixes](reports/report_v61.md)
 
 ## Current Policy
 
-- Use the `v3.4.48` package for the next QuadTailsitter test. qtail24 proved
-  that v3.4.47 loaded correctly and improved FW flight, but still had a
-  low-frequency FW wobble and unsafe mission VTOL Land back-transition dive.
-- Keep the qtail21/qtail22 MC lateral params and 5 kg aircraft model unchanged
+- Use the `v3.4.49` package for the next QuadTailsitter test. qtail25 proved a
+  complete safe mission return, but still had low-frequency FW yaw/roll wobble,
+  a large back-transition recovery climb, and transient attitude-failure
+  warnings during legal tailsitter recovery geometry.
+- Keep the qtail25 bridge/ACF baseline and 5 kg aircraft model unchanged
   unless new evidence points directly at the ACF physics.
-- Use the manual FW/back-transition gate above `150 m AGL` before any full VTOL
-  Land mission. Do not use a `50 m` VTOL Land approach altitude yet.
+- Use high-margin mission VTOL Land/back-transition altitudes. Do not use a
+  `50 m` VTOL Land approach altitude yet.
 - The QuadTailsitter contact gear remains fixed for stability. v3.4.46 hides the
   large rendered legs; true animated cosmetic retractable legs are a later
   visual-asset slice.

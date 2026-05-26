@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.49] - 2026-05-26
+
+### Changed
+
+- Retuned QuadTailsitter after qtail25 completed a full safe mission return but
+  still showed fixed-wing yaw/roll wobble, a large back-transition recovery
+  climb, transient attitude-failure warnings, and early MC yaw oscillation
+  during descent.
+- Reduced QuadTailsitter fixed-wing entry energy from `29` to `28 m/s`, lowered
+  the transition airspeed to `22 m/s`, softened FW roll/yaw differential-thrust
+  coupling, and increased NPFG/loiter spacing for smoother mission turns.
+- Extended the tailsitter back-transition schedule from `4` to `5 s` and
+  reduced the mission deceleration estimate while preserving the successful
+  qtail25 aircraft and bridge baseline.
+- Added tailsitter-specific failure-detector angle/dwell tolerances without
+  disabling failure detection.
+- Sanitized the QuadTailsitter PX4 airframe comments and added report v61 plus
+  an updated qtail25 final-polish test card.
+
+### Notes
+
+- No X-Plane ACF physics or bridge sensor-contract changes are included.
+  qtail25 showed the 5 kg aircraft, body-axis pitot, TruthCapture timing, and
+  front transition were credible; this is a PX4 airframe tuning slice.
+
+---
+
 ## [3.4.48] - 2026-05-26
 
 ### Changed
