@@ -67,16 +67,17 @@ This index is the stable entry point for user and developer documentation.
 - [Report v56 - qtail20 MC Overspeed Recovery and 5kg Design Audit](reports/report_v56.md)
 - [Report v57 - qtail21 MC Acceptance and First-Transition Gate](reports/report_v57.md)
 - [Report v58 - qtail22 FW Energy and Back-Transition Recovery](reports/report_v58.md)
+- [Report v59 - qtail23 Mission Recovery Root Cause and v3.4.47 Fixes](reports/report_v59.md)
 
 ## Current Policy
 
-- Use the `v3.4.46` package for the next QuadTailsitter test. qtail22 proved
-  that MC and front transition are usable, but FW energy/guidance and manual
-  back-transition still need validation.
+- Use the `v3.4.47` package for the next QuadTailsitter test. qtail23 proved
+  that v3.4.46 loaded correctly but had FW energy/lateral oscillation and an
+  unsafe VTOL Land back-transition entry.
 - Keep the qtail21/qtail22 MC lateral params and 5 kg aircraft model unchanged
   unless new evidence points directly at the ACF physics.
-- Do not run a full VTOL Land mission on the next run. Use the manual
-  FW/back-transition gate in the QuadTailsitter test card first.
+- Use the manual FW/back-transition gate above `150 m AGL` before any full VTOL
+  Land mission. Do not use a `50 m` VTOL Land approach altitude yet.
 - The QuadTailsitter contact gear remains fixed for stability. v3.4.46 hides the
   large rendered legs; true animated cosmetic retractable legs are a later
   visual-asset slice.

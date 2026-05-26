@@ -4,6 +4,39 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-26
 
+### v3.4.47 qtail23 Mission Recovery
+
+- Reviewed `/home/alireza/qtail23.zip`: TruthCapture recorded `33,891` frames,
+  `0` dropped rows, `0` sim-time resets, and about `82 Hz` mean callback rate.
+  X-Plane loaded px4xplane `v3.4.46`, `Config Name: QuadTailsitter`, and
+  body-axis pitot `-Z`.
+- Confirmed qtail23 was not stale PX4 parameters. The ULog matched the intended
+  v3.4.46 values including `FW_AIRSPD_TRIM=24`, `FW_R_LIM=32`,
+  `VT_B_TRANS_DUR=14`, `NAV_LOITER_RAD=400`, and canted rotor axes.
+- Root cause split:
+  - MC climb was parameter-limited by `MPC_Z_V_AUTO_UP=1.5`.
+  - The mission altitude setpoint stayed near `100 m AGL`; the climb to about
+    `193 m` was a FW energy/control problem, not a mission altitude-frame bug.
+  - TECS throttle near zero did not mean X-Plane rotors were idle; differential
+    thrust still drove motor output for attitude control.
+  - FW roll/yaw oscillation and saturated roll setpoints invalidated further
+    TECS tuning until lateral control was softened.
+  - `VT_B_TRANS_DUR=14` was wrong for this tailsitter. PX4 rotates by
+    `90 deg / VT_B_TRANS_DUR`, so the aircraft stayed nose-down too long during
+    VTOL Land back-transition and lost about `69 m` before quad-chute.
+- Prepared v3.4.47:
+  - raises MC climb to `2.0 m/s`
+  - moves FW trim to `32 m/s` and biases TECS toward altitude
+  - reduces FW roll limit/rate gains and FW differential-thrust scaling
+  - restores large FW/RTL path radii and adds `NAV_FW_ALT_RAD`
+  - shortens back-transition to `6 s`
+- No ACF physics changes in this slice. The 5 kg / 0.509 m² model remains
+  plausible; qtail23 is too unstable to justify changing wing, CG, prop, or
+  drag yet.
+- Next action: test v3.4.47 with `make distclean`, one MC Go-To, transition
+  above `150 m AGL`, one straight FW leg or large loiter, then manual
+  back-transition before any VTOL Land mission item.
+
 ### v3.4.46 qtail22 FW Energy and Back-Transition Recovery
 
 - Reviewed `/home/alireza/qtail22.zip`: TruthCapture recorded `46,913` rows,

@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.47] - 2026-05-26
+
+### Changed
+
+- Retuned QuadTailsitter after qtail23 showed that v3.4.46 loaded correctly but
+  made FW guidance/back-transition too aggressive for the mission test.
+- Raised QuadTailsitter autonomous MC climb rate from `1.5` to `2.0 m/s`.
+- Moved QuadTailsitter FW trim from `24` to `32 m/s`, biased TECS toward
+  altitude, softened FW roll-rate response, reduced FW differential-thrust
+  scaling, and restored large `900 m` FW/RTL loiter radii.
+- Shortened QuadTailsitter back-transition duration from `14 s` to `6 s` after
+  source review showed PX4 tailsitters rotate by `90 deg / VT_B_TRANS_DUR`.
+- Added report v59 and updated the QuadTailsitter test card for high-margin
+  manual back-transition before any VTOL Land mission attempt.
+
+### Notes
+
+- No X-Plane aircraft physics or bridge sensor-contract changes are included.
+  qtail23 evidence points to FW control/energy tuning, not a mass/wing/prop or
+  pause/FPS sensor regression.
+
+---
+
 ## [3.4.46] - 2026-05-26
 
 ### Changed
