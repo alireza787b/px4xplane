@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.53";
+    constexpr const char* VERSION = "3.4.54";
 
     /** Version phase description */
-    constexpr const char* PHASE = "Config editor UX and Cessna runway baseline";
+    constexpr const char* PHASE = "Cessna runway steering and flare recovery";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "062";
+    constexpr const char* BUILD = "063";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

@@ -2,6 +2,39 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-27
+
+### v3.4.54 Cessna Runway Steering and Flare Recovery
+
+- Reviewed `/home/alireza/cessna1.zip`: TruthCapture recorded `92,435` rows,
+  `0` dropped rows, `0` sim-time resets, and about `92 Hz` mean callback rate.
+  X-Plane loaded px4xplane `v3.4.53`; the bridge was manually switched to
+  `Config Name: Cessna 172 (Cessna172)` before PX4 connected.
+- Found the first structural bug: PX4 published `landing_gear_wheel` with
+  nonzero commands, but the Cessna PX4 airframe had `PWM_MAIN_FUNC6=0` and the
+  bridge had no Cessna channel 5. Nosewheel steering was therefore merged into
+  rudder, so runway takeoff and rollout could not follow the wheel controller.
+- Found the accelerometer-bias cause: the run used a temporary
+  `EKF2_ABL_LIM=2.0`, but PX4 metadata caps that parameter at `0.8`. The log
+  committed accelerometer offsets `[-0.018, -0.139, -0.797]` at disarm, so the
+  Cessna file now seeds those simulated calibration offsets instead of
+  loosening the estimator check.
+- Landing evidence: first touchdown occurred around `46.9 m/s` and bounced;
+  final touchdown occurred around `34.7 m/s`. v3.4.54 keeps the no-flap test
+  baseline but lowers `FW_LND_AIRSPD` to `33 m/s`, starts flare earlier, and
+  enables touchdown timing for tricycle rollout.
+- Prepared v3.4.54:
+  - Cessna channel 5 maps PX4 `Landing_Gear_Wheel` to X-Plane nosewheel
+  - `5001_xplane_cessna172` adds `PWM_MAIN_FUNC6=440` and `CAL_ACC0_*OFF`
+  - roll response is softened for passenger-style fixed-wing inputs
+  - Cessna is the active packaged config for the next Cessna-only validation
+  - config editor uses a non-collapsing airframe list and collapsible middle
+    runtime/setup/actuator/camera groups
+- Next action: run a clean Cessna test with `distclean`, runway takeoff, a
+  first outbound waypoint at least `900 m` from the runway, one broad loiter,
+  and a fixed-wing landing pattern. Confirm the X-Plane log parses Cessna
+  channel 5 and the ULog has `PWM_MAIN_FUNC6=440` before judging steering.
+
 ## 2026-05-26
 
 ### v3.4.47 qtail23 Mission Recovery

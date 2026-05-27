@@ -10,7 +10,7 @@
 #
 # Airframe:          Cessna 172 Skyhawk
 # Type:              Fixed-wing, tricycle landing gear
-# Configuration:     1 propeller motor + ailerons + elevator + rudder
+# Configuration:     1 propeller motor + ailerons + elevator + rudder + nosewheel
 # Compatible Sim:    X-Plane 11/12
 # Date:              May 2026
 #
@@ -64,11 +64,13 @@ param set-default CA_SV_CS3_TYPE 4
 param set-default CA_SV_CS_COUNT 4
 
 # PWM output mapping matched to config.ini Cessna172 channels.
+# Channel 6 uses PX4's Landing_Gear_Wheel output function for runway steering.
 param set-default PWM_MAIN_FUNC1 201
 param set-default PWM_MAIN_FUNC2 202
 param set-default PWM_MAIN_FUNC3 203
 param set-default PWM_MAIN_FUNC4 101
 param set-default PWM_MAIN_FUNC5 204
+param set-default PWM_MAIN_FUNC6 440
 param set-default PWM_MAIN_REV 7
 
 
@@ -91,6 +93,14 @@ param set-default CAL_BARO0_ID 6620172
 param set-default CAL_BARO0_PRIO 100
 param set-default CAL_BARO1_ID 6620428
 param set-default CAL_BARO1_PRIO 0
+
+# Simulated accelerometer calibration. The first Cessna log committed these
+# offsets after disarm; source-controlling them avoids a preflight high-bias
+# warning without raising EKF2_ABL_LIM beyond the PX4 metadata maximum.
+param set-default CAL_ACC0_PRIO 50
+param set-default CAL_ACC0_XOFF -0.018
+param set-default CAL_ACC0_YOFF -0.139
+param set-default CAL_ACC0_ZOFF -0.797
 
 # EKF2 core settings aligned with the current px4xplane sensor contract.
 param set-default EKF2_BARO_CTRL 1
@@ -144,8 +154,8 @@ param set-default FW_RR_P 0.47
 param set-default FW_RR_I 0.13
 param set-default FW_RR_D 0.085
 param set-default FW_RR_FF 4.8
-param set-default FW_R_RMAX 25.0
-param set-default FW_R_TC 0.7
+param set-default FW_R_RMAX 20.0
+param set-default FW_R_TC 0.9
 param set-default FW_R_LIM 35.0
 
 # Pitch.
@@ -156,7 +166,7 @@ param set-default FW_PR_FF 3.4
 param set-default FW_P_LIM_MAX 20.0
 param set-default FW_P_LIM_MIN -12.0
 param set-default FW_P_TC 0.55
-param set-default FW_PN_R_SLEW_MAX 50.0
+param set-default FW_PN_R_SLEW_MAX 35.0
 
 # Ground steering during runway takeoff/landing.
 param set-default FW_W_EN 1
@@ -218,20 +228,22 @@ param set-default RWTO_ROT_TIME 2.0
 param set-default RWTO_NUDGE 1
 param set-default FW_TKO_AIRSPD 38.0
 param set-default FW_TKO_PITCH_MIN 10.0
-param set-default MIS_TAKEOFF_ALT 100.0
+param set-default MIS_TAKEOFF_ALT 120.0
 
-# Auto landing. These are first-pass values for mission testing; refine with
-# touchdown distance, flare, and land-detector evidence from the first Cessna log.
+# Auto landing. The first Cessna log flew the slope well but touched down fast
+# and bounced. Keep the no-flap baseline, lower the landing airspeed toward a
+# realistic Skyhawk approach margin, and start flare slightly earlier.
 param set-default FW_LND_ABORT 0
 param set-default FW_LND_ANG 5.0
-param set-default FW_LND_AIRSPD 36.0
-param set-default FW_LND_FLALT 5.0
-param set-default FW_LND_FL_PMIN 4.0
-param set-default FW_LND_FL_PMAX 18.0
+param set-default FW_LND_AIRSPD 33.0
+param set-default FW_LND_FLALT 6.0
+param set-default FW_LND_FL_TIME 2.0
+param set-default FW_LND_FL_PMIN 5.0
+param set-default FW_LND_FL_PMAX 20.0
 param set-default FW_LND_USETER 1
 param set-default FW_LND_TD_OFF 3.0
-param set-default FW_LND_TD_TIME -1.0
-param set-default LNDFW_AIRSPD_MAX 30.0
+param set-default FW_LND_TD_TIME 3.0
+param set-default LNDFW_AIRSPD_MAX 35.0
 param set-default LNDFW_VEL_XY_MAX 10.0
 param set-default LNDFW_VEL_Z_MAX 1.5
 param set-default LNDFW_TRIG_TIME 1.0

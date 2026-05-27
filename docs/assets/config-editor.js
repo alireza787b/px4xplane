@@ -695,7 +695,7 @@
       state.selectedSection = ensureSelectedSection(state.config, state.selectedSection);
       const active = state.config.globals.config_name || "";
       if (!state.configLoaded) {
-        $("airframes").innerHTML = "<p class=\"muted\">Load config.ini to show airframes.</p>";
+        $("airframes").innerHTML = "<p class=\"muted\">Load px4xplane/64/config.ini to show airframes. JSON is only optional schema metadata.</p>";
         return;
       }
       const orderedSections = [...state.config.sections].sort((a, b) => {
@@ -703,20 +703,14 @@
         if (b.name === active) return 1;
         return a.name.localeCompare(b.name);
       });
-      const activeSections = orderedSections.filter((section) => section.name === active);
-      const inactiveSections = orderedSections.filter((section) => section.name !== active);
       const buttonForSection = (section) => {
         const selected = section.name === state.selectedSection ? "selected" : "";
         const activeClass = section.name === active ? " active" : "";
         return `<button class="airframe ${selected}${activeClass}" data-section="${escapeHtml(section.name)}">${escapeHtml(section.name)}</button>`;
       };
       $("airframes").innerHTML = `
-        <div class="airframeGroupTitle">Active Airframe</div>
-        ${activeSections.map(buttonForSection).join("") || "<p class=\"muted\">No active airframe set.</p>"}
-        <details class="airframeGroup">
-          <summary>Other airframes (${inactiveSections.length})</summary>
-          ${inactiveSections.map(buttonForSection).join("") || "<p class=\"muted\">No other airframes.</p>"}
-        </details>
+        <div class="airframeGroupTitle">Airframes</div>
+        ${orderedSections.map(buttonForSection).join("") || "<p class=\"muted\">No airframes configured.</p>"}
       `;
 
       for (const button of $("airframes").querySelectorAll("button")) {
@@ -760,7 +754,10 @@
 
     function renderGlobals() {
       if (!state.configLoaded) {
-        $("globalFields").innerHTML = "<tr><td colspan=\"3\" class=\"muted\">Load config.ini to edit global runtime settings.</td></tr>";
+        $("globalFields").innerHTML = `<div class="emptyState">
+          <h3>Runtime config not loaded</h3>
+          <p>Load <code>px4xplane/64/config.ini</code> with the main loader. The JSON file is only optional validation metadata and is loaded from the advanced schema control.</p>
+        </div>`;
         return;
       }
       const fields = schemaFields();
@@ -773,7 +770,15 @@
           <td>${helpCell(key, field)}</td>
         </tr>`);
       }
-      $("globalFields").innerHTML = rows.join("");
+      $("globalFields").innerHTML = `<details class="editorGroup" open>
+        <summary>Global Runtime Fields</summary>
+        <div class="editorGroupBody">
+          <table>
+            <thead><tr><th>Setting</th><th>Value</th><th>Help</th></tr></thead>
+            <tbody>${rows.join("")}</tbody>
+          </table>
+        </div>
+      </details>`;
       for (const input of $("globalFields").querySelectorAll("[data-global]")) {
         bindValueEdit(input, () => {
           state.config.globals[input.dataset.global] = input.value;
@@ -842,6 +847,7 @@
       }
 
       const airframeFields = state.schema.airframe_fields || DEFAULT_SCHEMA.airframe_fields || {};
+      const isActive = section.name === state.config.globals.config_name;
       const scalarRows = [];
       for (const [key, field] of Object.entries(airframeFields)) {
         if (key === "autoPropBrakes" || key === "channelN" || key === "cameraViews") continue;
@@ -887,40 +893,51 @@
       }
 
       $("airframeEditor").innerHTML = `
-        <div class="sectionBar">
-          <label>Name <input id="airframeName" value="${escapeHtml(section.name)}"></label>
-          <button id="renameAirframe">Rename</button>
-          <button id="setActiveAirframe">Set Active</button>
-          <button id="removeAirframe">Remove</button>
+        <div class="activeBanner">
+          <div>
+            <h3>Editing ${escapeHtml(section.name)}${isActive ? "<span class=\"activeBadge\">active</span>" : ""}</h3>
+            <p class="muted">Active airframe is written to <code>config_name</code> and is used by px4xplane on reconnect.</p>
+          </div>
+          <div class="activeBannerActions">
+            <button id="setActiveAirframe">${isActive ? "Active" : "Set Active"}</button>
+            <button id="removeAirframe">Remove</button>
+          </div>
         </div>
-        <div class="subsection">
-          <div class="subsectionHeader">
-            <h3>Airframe Setup Fields</h3>
+        <details class="editorGroup" open>
+          <summary>Airframe Setup Fields</summary>
+          <div class="editorGroupBody">
+            <div class="metaGrid">
+              <label>Section key <input id="airframeName" value="${escapeHtml(section.name)}"></label>
+              <button id="renameAirframe">Rename</button>
+            </div>
             <p class="muted">Setup-time fields should be changed before connecting PX4 SITL or before flight.</p>
+            <label class="full">autoPropBrakes
+              <input id="autoPropBrakes" value="${escapeHtml(section.keys.autoPropBrakes || "")}" placeholder="0, 1, 2, 3">
+            </label>
+            <table>
+              <thead><tr><th>Setting</th><th>Value</th><th>Help</th></tr></thead>
+              <tbody>${scalarRows.join("")}</tbody>
+            </table>
           </div>
-          <label class="full">autoPropBrakes
-            <input id="autoPropBrakes" value="${escapeHtml(section.keys.autoPropBrakes || "")}" placeholder="0, 1, 2, 3">
-          </label>
-          <table>
-            <thead><tr><th>Setting</th><th>Value</th><th>Help</th></tr></thead>
-            <tbody>${scalarRows.join("")}</tbody>
-          </table>
-        </div>
-        <div class="subsection">
-          <div class="subsectionHeader">
-            <h3>Actuator Mappings</h3>
+        </details>
+        <details class="editorGroup" open>
+          <summary>Actuator Mappings</summary>
+          <div class="editorGroupBody">
             <p class="muted">Map PX4 output channels to X-Plane datarefs. Multiple mappings per channel are supported.</p>
+            <div class="sectionBar compact">
+              <label>Add channel <input id="newChannel" type="number" min="0" max="15" value="0"></label>
+              <button id="addMapping">Add Mapping</button>
+            </div>
+            <table>
+              <thead><tr><th>Channel</th><th>Dataref</th><th>Type</th><th>Indices</th><th>Output Range</th><th></th></tr></thead>
+              <tbody>${channelRows.join("") || "<tr><td colspan=\"6\" class=\"muted\">No channel mappings configured.</td></tr>"}</tbody>
+            </table>
           </div>
-          <div class="sectionBar compact">
-            <label>Add channel <input id="newChannel" type="number" min="0" max="15" value="0"></label>
-            <button id="addMapping">Add Mapping</button>
-          </div>
-          <table>
-            <thead><tr><th>Channel</th><th>Dataref</th><th>Type</th><th>Indices</th><th>Output Range</th><th></th></tr></thead>
-            <tbody>${channelRows.join("") || "<tr><td colspan=\"6\" class=\"muted\">No channel mappings configured.</td></tr>"}</tbody>
-          </table>
-        </div>
-        ${renderCameraEditor(section)}
+        </details>
+        <details class="editorGroup">
+          <summary>Camera Views</summary>
+          <div class="editorGroupBody">${renderCameraEditor(section)}</div>
+        </details>
       `;
 
       $("autoPropBrakes").addEventListener("input", (event) => {

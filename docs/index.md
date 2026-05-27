@@ -75,15 +75,16 @@ This index is the stable entry point for user and developer documentation.
 - [Report v63 - qtail27 Manual RTL and Config-Driven Camera Controls](reports/report_v63.md)
 - [Report v64 - Config Editor and Camera Workflow Closure](reports/report_v64.md)
 - [Report v65 - Config Editor UX Fixes and Cessna 172 Baseline](reports/report_v65.md)
+- [Report v66 - Cessna 172 Runway Steering and Flare Recovery](reports/report_v66.md)
 
 ## Current Policy
 
-- Use the `v3.4.53` package for the Cessna 172 first runway-mission validation.
-  The package keeps Alia as the default active airframe, so set
-  `config_name = Cessna172` before the Cessna run.
-- Use the Cessna test card for the first auto takeoff/mission/autoland check.
-  It is a clean baseline, not final C172 tuning without returned ULog and
-  truth-capture evidence.
+- Use the `v3.4.54` package for the next Cessna 172 runway-mission validation.
+  This package intentionally makes `Cessna172` the active config so testers do
+  not have to switch away from Alia manually during this slice.
+- Use the Cessna test card for auto runway takeoff, mission, and autoland.
+  Confirm X-Plane parses Cessna channel 5 and the ULog has
+  `PWM_MAIN_FUNC6=440` before judging runway steering or rollout behavior.
 - QuadTailsitter closure remains based on qtail26/qtail27. qtail27 proved the
   v3.4.50 flight tune was loaded, but manual RTL started auto back-transition at
   the old `75 m` descent altitude and consumed that margin.

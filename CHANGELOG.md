@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.54] - 2026-05-27
+
+### Changed
+
+- Analyzed `cessna1.zip`: the run used Cessna in the bridge, but PX4 did not
+  map the `landing_gear_wheel` output to any actuator output and the bridge did
+  not expose a dedicated Cessna nosewheel channel. This explains the runway
+  takeoff and rollout centerline drift.
+- Added Cessna nosewheel steering as `PWM_MAIN_FUNC6=440` and mapped px4xplane
+  Cessna channel 5 to `sim/flightmodel2/gear/tire_steer_command_deg`.
+- Seeded Cessna simulated accelerometer offsets from the values PX4 committed at
+  disarm in `cessna1` instead of raising `EKF2_ABL_LIM` beyond PX4's declared
+  parameter maximum.
+- Softened Cessna roll-rate response and roll slew for a less jerky
+  manned-aircraft feel while leaving the accepted pitch/TECS baseline mostly
+  intact.
+- Updated the no-flap autoland baseline: lower landing airspeed, earlier flare,
+  configured touchdown timing, and a land-detector airspeed threshold consistent
+  with the returned touchdown evidence.
+- Made Cessna the packaged active config for this test slice and updated the
+  Cessna test card, report index, and config editor version text.
+- Adjusted the config editor layout so the left airframe list stays visible
+  while the middle runtime/setup/actuator/camera sections are collapsible.
+
+### Notes
+
+- The `cessna1` ULog does not represent clean v3.4.54 parameters; it contains
+  the temporary user-raised `EKF2_ABL_LIM=2.0` and older Cessna runway/landing
+  values. Use `make px4_sitl_default distclean` before judging the next run.
+
+---
+
 ## [3.4.53] - 2026-05-27
 
 ### Changed

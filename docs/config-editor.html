@@ -208,16 +208,27 @@
       text-transform: uppercase;
       letter-spacing: 0.02em;
     }
-    details.airframeGroup {
-      margin-top: 10px;
-      border-top: 1px solid var(--line);
-      padding-top: 10px;
+    details.editorGroup {
+      margin: 0 0 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel);
+      overflow: hidden;
     }
-    details.airframeGroup summary {
+    details.editorGroup summary {
       cursor: pointer;
-      color: var(--muted);
+      list-style-position: inside;
+      color: var(--text);
       font-weight: 700;
-      margin-bottom: 8px;
+      padding: 10px 12px;
+      background: var(--panel-2);
+      border-bottom: 1px solid var(--line);
+    }
+    details.editorGroup:not([open]) summary {
+      border-bottom: 0;
+    }
+    .editorGroupBody {
+      padding: 12px;
     }
     .status {
       display: inline-flex;
@@ -236,6 +247,40 @@
     .sectionBar {
       display: grid;
       grid-template-columns: minmax(180px, 1fr) auto auto auto;
+      gap: 8px;
+      align-items: end;
+      margin-bottom: 12px;
+    }
+    .activeBanner {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+    }
+    .activeBannerActions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+    .activeBadge {
+      display: inline-block;
+      margin-left: 8px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--ok);
+      background: var(--accent-soft);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .metaGrid {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto;
       gap: 8px;
       align-items: end;
       margin-bottom: 12px;
@@ -333,6 +378,8 @@
     }
     @media (max-width: 720px) {
       .sectionBar, .sectionBar.compact { grid-template-columns: 1fr; }
+      .activeBanner, .metaGrid { grid-template-columns: 1fr; }
+      .activeBannerActions { justify-content: flex-start; }
       .subsectionHeader { display: block; }
       th { width: 120px; }
     }
@@ -343,8 +390,8 @@
     <div>
       <h1><a href="https://github.com/alireza787b/px4xplane" target="_blank" rel="noreferrer">px4xplane Config Editor</a></h1>
       <div class="headerMeta">
-        <span>v3.4.53</span>
-        <span>build 062</span>
+        <span>v3.4.54</span>
+        <span>build 063</span>
         <span>Runtime source: <code>64/config.ini</code></span>
       </div>
     </div>
@@ -381,13 +428,8 @@
         <p class="fileHint">Edit <code>px4xplane/64/config.ini</code>. If auto-load is blocked by your browser, choose that INI file manually. Do not load JSON as the runtime config; JSON is optional validation metadata only.</p>
       </div>
 
-      <div class="panelTitle">Global Fields</div>
-      <div class="panelBody">
-        <table>
-          <thead><tr><th>Setting</th><th>Value</th><th>Help</th></tr></thead>
-          <tbody id="globalFields"></tbody>
-        </table>
-      </div>
+      <div class="panelTitle">Runtime Settings</div>
+      <div class="panelBody" id="globalFields"></div>
 
       <div class="panelTitle">Selected Airframe</div>
       <div class="panelBody" id="airframeEditor"></div>
