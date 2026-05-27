@@ -157,14 +157,16 @@ param set-default IMU_INTEG_RATE 200
 # SECTION 3: FIXED-WING ATTITUDE / RATE CONTROL
 ################################################################################
 
-# Roll. Keep a moderate roll time constant for passenger-style C172 maneuvers.
-param set-default FW_RR_P 0.47
-param set-default FW_RR_I 0.13
-param set-default FW_RR_D 0.085
-param set-default FW_RR_FF 4.8
-param set-default FW_R_RMAX 20.0
-param set-default FW_R_TC 0.9
-param set-default FW_R_LIM 35.0
+# Roll. Keep C172 maneuvers passenger-smooth. The X-Plane C172 uses large
+# aileron authority, so use modest PX4 plane-style feed-forward instead of the
+# earlier TB2-derived value that saturated the surfaces.
+param set-default FW_RR_P 0.30
+param set-default FW_RR_I 0.08
+param set-default FW_RR_D 0.03
+param set-default FW_RR_FF 0.50
+param set-default FW_R_RMAX 15.0
+param set-default FW_R_TC 1.0
+param set-default FW_R_LIM 30.0
 
 # Pitch.
 param set-default FW_PR_P 0.365
@@ -240,20 +242,21 @@ param set-default FW_TKO_PITCH_MIN 10.0
 param set-default MIS_TAKEOFF_ALT 150.0
 
 # Auto landing. Use landing flaps and early landing configuration so the
-# aircraft is slow before final instead of carrying excess energy into flare.
+# aircraft stabilizes before final. Disable touchdown-time clamping because
+# the C172 flare timing varies with X-Plane runway geometry and wind.
 param set-default FW_LND_ABORT 0
 param set-default FW_LND_ANG 5.0
-param set-default FW_LND_AIRSPD 31.0
+param set-default FW_LND_AIRSPD 33.0
 param set-default FW_LND_EARLYCFG 1
 param set-default FW_LND_FLALT 8.0
 param set-default FW_LND_FL_TIME 4.0
-param set-default FW_LND_FL_PMIN 5.0
+param set-default FW_LND_FL_PMIN 8.0
 param set-default FW_LND_FL_PMAX 20.0
-param set-default FW_LND_FL_SINK 0.25
+param set-default FW_LND_FL_SINK 0.30
 param set-default FW_LND_THRTC_SC 0.8
 param set-default FW_LND_USETER 1
 param set-default FW_LND_TD_OFF 3.0
-param set-default FW_LND_TD_TIME 5.0
+param set-default FW_LND_TD_TIME -1.0
 param set-default FW_FLAPS_TO_SCL 0.0
 param set-default FW_FLAPS_LND_SCL 0.65
 param set-default LNDFW_AIRSPD_MAX 32.5

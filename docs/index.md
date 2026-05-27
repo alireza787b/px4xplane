@@ -77,6 +77,7 @@ This index is the stable entry point for user and developer documentation.
 - [Report v65 - Config Editor UX Fixes and Cessna 172 Baseline](reports/report_v65.md)
 - [Report v66 - Cessna 172 Runway Steering and Flare Recovery](reports/report_v66.md)
 - [Report v67 - Cessna2 Steering Evidence and Flap Landing Recovery](reports/report_v67.md)
+- [Report v68 - Cessna3 Surface Smoothing and Flare Recovery](reports/report_v68.md)
 
 ## Current Policy
 

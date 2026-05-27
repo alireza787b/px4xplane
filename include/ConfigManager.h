@@ -165,6 +165,7 @@ public:
     // Airspeed/differential-pressure source policy.
     static std::string airspeed_source;            // xplane_indicated, disabled, or body_axis
     static std::string pitot_axis_body;            // +X, -X, +Y, -Y, +Z, or -Z
+    static float actuator_smoothing_time_constant_s; // Optional low-pass on normalized actuator commands
     static std::vector<CameraViewConfig> cameraViews; // Active airframe camera presets
 
     // MAVLink message rates (Hz)

@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.56] - 2026-05-27
+
+### Changed
+
+- Analyzed `cessna3.zip`: frame timing was clean (`76,302` TruthCapture rows,
+  `0` dropped rows, `0` sim-time resets), so the visible Cessna control-surface
+  stepping was not caused by low FPS or pause/unpause timing.
+- Found the flap root cause: X-Plane rejected the packaged Cessna flap datarefs
+  (`wing1l_flap1def` / `wing1r_flap1def` were not present on the loaded
+  Laminar C172), while PX4 was already producing nonzero flap outputs. Cessna
+  flap channels now drive the shared X-Plane command
+  `sim/cockpit2/controls/flap_ratio`.
+- Reduced the Cessna roll-rate tune from the prior TB2-derived values to a
+  PX4 fixed-wing-style baseline: `FW_RR_FF=0.50`, lower roll P/I/D, lower
+  maximum roll rate, and a slightly slower roll time constant. This addresses
+  the saturated aileron outputs seen in `actuator_outputs[0/1]`.
+- Added opt-in actuator command smoothing through
+  `actuatorSmoothingTimeConstantSec`. The bridge still passes commands through
+  directly by default; Cessna uses a small `0.08 s` time constant to interpolate
+  the 10 Hz HIL actuator stream over X-Plane's higher render frame rate.
+- Adjusted Cessna landing flare behavior: `FW_LND_AIRSPD=33 m/s`,
+  `FW_LND_FL_PMIN=8 deg`, `FW_LND_FL_SINK=0.30 m/s`, and
+  `FW_LND_TD_TIME=-1` so PX4 does not prematurely clamp the flare before the
+  X-Plane runway contact.
+
+### Notes
+
+- The next Cessna test should show `px4xplane: Version: v3.4.56`, no missing
+  Cessna flap dataref validation errors, and a log line that actuator smoothing
+  is enabled for `Cessna172`.
+
 ## [3.4.55] - 2026-05-27
 
 ### Changed

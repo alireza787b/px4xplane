@@ -78,6 +78,10 @@ pitotAxisBody = +X
 ; Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom
 cameraViews = Forward|5.0|0.0|0.7|0.0|0.0|0.0|0.90; Down|1.2|0.0|-0.6|-90.0|0.0|0.0|0.85; Chase|-18.0|0.0|4.0|-8.0|0.0|0.0|0.70
 
+; Optional low-pass smoothing of normalized actuator commands before writing
+; X-Plane datarefs. Use 0.0 for direct pass-through.
+actuatorSmoothingTimeConstantSec = 0.0
+
 ; Quadcopter Motors (1-4)
 channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
 channel1 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [1], [-1 1]
@@ -117,6 +121,12 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
   `-90` for down-looking views. Tailsitters can use different offsets because
   their multicopter hover attitude is not the same as conventional fixed-wing
   level attitude.
+- **Actuator Smoothing**: Optional first-order smoothing for actuator commands
+  between PX4's HIL actuator packets and X-Plane's frame loop. Keep
+  `actuatorSmoothingTimeConstantSec = 0.0` for direct pass-through. Use small
+  values such as `0.05` to `0.10` only when a fixed-wing aircraft has visibly
+  stepped surfaces because the simulator renders much faster than the actuator
+  stream arrives. Do not use smoothing to hide an unstable tune.
 - **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
 
 Auto-prop brakes are mode-agnostic. The bridge watches the configured motor

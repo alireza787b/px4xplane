@@ -4,6 +4,32 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-27
 
+### v3.4.56 Cessna3 Surface Saturation and Flare Recovery
+
+- Reviewed `/home/alireza/cessna3.zip`. TruthCapture had `76,302` rows,
+  `0` dropped rows, `0` sim-time resets, and about `96 Hz` mean callback rate,
+  so the Cessna control-surface stepping was not a low-FPS artifact.
+- X-Plane loaded px4xplane `v3.4.55` and parsed Cessna channels 5, 6, and 7,
+  but validation reported both flap datarefs missing on the loaded aircraft.
+  PX4 did command landing flaps in the ULog; X-Plane never received them.
+- ULog actuator evidence showed Cessna aileron outputs repeatedly saturating
+  to min/max PWM even in cruise and landing. The root cause is a real tuning
+  issue, not only visual stepping: the Cessna was still using the older
+  TB2-derived `FW_RR_FF=4.8`. v3.4.56 changes roll-rate tuning toward PX4's
+  fixed-wing guide baseline and limits roll rate for passenger-style behavior.
+- Added generic, opt-in actuator smoothing to the bridge because PX4 HIL
+  actuator packets arrived around `10 Hz` while X-Plane rendered near `96 Hz`.
+  Cessna enables `actuatorSmoothingTimeConstantSec=0.08`; other airframes keep
+  direct pass-through unless they explicitly opt in.
+- Landing evidence showed PX4 entered flare, but the missing flaps and
+  `FW_LND_TD_TIME=5` clamping produced a flat/no-roundout touchdown impression.
+  v3.4.56 maps flaps to `sim/cockpit2/controls/flap_ratio`, raises landing
+  airspeed modestly to `33 m/s`, increases flare minimum pitch, and disables
+  touchdown-time clamping.
+- Next action: run one clean Cessna test with `make px4_sitl_default
+  distclean`; verify `Version: v3.4.56`, no missing flap datarefs, smooth
+  ailerons, visible flap deployment, and a real flare/roundout.
+
 ### v3.4.55 Cessna2 Steering Evidence and Flap Landing Recovery
 
 - Reviewed `/home/alireza/cessna2.zip`. TruthCapture had `61,264` rows,

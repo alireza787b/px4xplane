@@ -16,6 +16,8 @@ or aircraft behavior.
 - prop-brake policy fields: apply/release thresholds, dwell, optional
   true-airspeed gate, mode, and experimental failure-dataref use
 - optional airframe camera presets in `cameraViews`
+- optional per-airframe actuator smoothing in
+  `actuatorSmoothingTimeConstantSec`
 - config reload policy for user-facing tools and docs
 
 Run the validator before packaging:
@@ -45,6 +47,7 @@ diagnostic use:
 
 - active airframe name
 - actuator channel mappings
+- actuator smoothing time constant
 - prop-brake motor list
 - prop-brake policy fields
 - accelerometer calibration/offset fields

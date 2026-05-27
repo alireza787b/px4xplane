@@ -155,6 +155,7 @@ bool ConfigManager::prop_brake_use_failure = false;
 
 std::string ConfigManager::airspeed_source = "xplane_indicated";
 std::string ConfigManager::pitot_axis_body = "+X";
+float ConfigManager::actuator_smoothing_time_constant_s = 0.0f;
 
 // MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
 int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
@@ -317,6 +318,8 @@ void ConfigManager::loadConfiguration() {
 
     airspeed_source = ini.GetValue(configName.c_str(), "airspeedSource", "xplane_indicated");
     pitot_axis_body = ini.GetValue(configName.c_str(), "pitotAxisBody", "+X");
+    actuator_smoothing_time_constant_s =
+        static_cast<float>(ini.GetDoubleValue(configName.c_str(), "actuatorSmoothingTimeConstantSec", 0.0));
 
     if (airspeed_source != "xplane_indicated" && airspeed_source != "disabled" && airspeed_source != "body_axis") {
         XPLMDebugString("px4xplane: [WARNING] Invalid airspeedSource, using xplane_indicated\n");
@@ -328,9 +331,22 @@ void ConfigManager::loadConfiguration() {
         XPLMDebugString("px4xplane: [WARNING] Invalid pitotAxisBody, using +X\n");
         pitot_axis_body = "+X";
     }
+    if (!std::isfinite(actuator_smoothing_time_constant_s) ||
+        actuator_smoothing_time_constant_s < 0.0f ||
+        actuator_smoothing_time_constant_s > 1.0f) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid actuatorSmoothingTimeConstantSec, using 0.0\n");
+        actuator_smoothing_time_constant_s = 0.0f;
+    }
 
     XPLMDebugString(("px4xplane: Airspeed source=" + airspeed_source +
         " pitotAxisBody=" + pitot_axis_body + "\n").c_str());
+    if (actuator_smoothing_time_constant_s > 0.0f) {
+        char smoothingBuf[128];
+        snprintf(smoothingBuf, sizeof(smoothingBuf),
+            "px4xplane: Actuator command smoothing enabled (tau %.3fs)\n",
+            actuator_smoothing_time_constant_s);
+        XPLMDebugString(smoothingBuf);
+    }
 
     configureCameraViews(ini);
 

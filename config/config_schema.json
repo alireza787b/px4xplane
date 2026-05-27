@@ -261,6 +261,14 @@
       "reload_policy": "reconnect_before_flight",
       "description": "Physical pitot probe axis in PX4 body frame. Used only when airspeedSource is body_axis."
     },
+    "actuatorSmoothingTimeConstantSec": {
+      "type": "float",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 1.0,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Optional first-order smoothing time constant for normalized actuator commands before writing X-Plane datarefs. Use sparingly for low-rate HIL actuator streams and set 0 to disable."
+    },
     "cameraViews": {
       "type": "camera_views",
       "default": "",

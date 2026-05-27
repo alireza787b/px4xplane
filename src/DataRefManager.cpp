@@ -53,7 +53,29 @@ std::bitset<8> propBrakeSnapshotValid;
 std::bitset<8> propBrakeWarningLogged;
 std::array<float, 8> lastMappedMotorCommand{};
 std::bitset<8> lastMappedMotorCommandValid;
+std::array<float, 16> smoothedActuatorControls{};
+std::bitset<16> smoothedActuatorControlsValid;
 float propBrakeLowCommandSinceS = -1.0f;
+
+float smoothActuatorControl(int channel, float command)
+{
+	const float tau = ConfigManager::actuator_smoothing_time_constant_s;
+	if (tau <= 0.0f || channel < 0 || channel >= static_cast<int>(smoothedActuatorControls.size())) {
+		return command;
+	}
+
+	const float dt = DataRefManager::SIM_Timestep;
+	if (!std::isfinite(dt) || dt <= 0.0f || dt > 0.5f || !smoothedActuatorControlsValid.test(channel)) {
+		smoothedActuatorControls[static_cast<size_t>(channel)] = command;
+		smoothedActuatorControlsValid.set(channel);
+		return command;
+	}
+
+	const float alpha = std::clamp(1.0f - std::exp(-dt / tau), 0.0f, 1.0f);
+	float& state = smoothedActuatorControls[static_cast<size_t>(channel)];
+	state += alpha * (command - state);
+	return state;
+}
 
 bool getFloatArrayElement(const char* dataRefName, int index, float& value)
 {
@@ -751,6 +773,8 @@ void DataRefManager::enableOverride() {
 void DataRefManager::resetActuatorValues() {
 	releaseAllPropBrakes();
 	lastMappedMotorCommandValid.reset();
+	smoothedActuatorControls.fill(0.0f);
+	smoothedActuatorControlsValid.reset();
 	propBrakeLowCommandSinceS = -1.0f;
 
 	// Zero common throttle datarefs (covers most aircraft)
@@ -869,6 +893,7 @@ void DataRefManager::overrideActuators() {
 
 	for (const auto& [channel, actuatorConfig] : ConfigManager::actuatorConfigs) {
 		float originalValue = ActuatorSafety::clampFinite(hilControls.controls[channel], -1.0f, 1.0f, 0.0f);
+		float commandedValue = smoothActuatorControl(channel, originalValue);
 
 		for (const auto& datarefConfig : actuatorConfig.getDatarefConfigs()) {
 			if (!ActuatorSafety::isFiniteRange(datarefConfig.range.first, datarefConfig.range.second)) {
@@ -877,7 +902,7 @@ void DataRefManager::overrideActuators() {
 			}
 
 			// Scale the value to the datarefConfig's range
-			float scaledValue = ActuatorSafety::scaleActuatorCommand(originalValue, -1.0f, +1.0f, datarefConfig.range.first, datarefConfig.range.second);
+			float scaledValue = ActuatorSafety::scaleActuatorCommand(commandedValue, -1.0f, +1.0f, datarefConfig.range.first, datarefConfig.range.second);
 
 			// Set the dataref based on the data type
 			switch (datarefConfig.dataType) {

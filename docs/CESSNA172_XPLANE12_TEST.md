@@ -73,12 +73,17 @@ FW_W_EN = 1
 PWM_MAIN_FUNC6 = 440
 PWM_MAIN_FUNC7 = 205
 PWM_MAIN_FUNC8 = 206
-FW_LND_AIRSPD = 31
+FW_RR_FF = 0.5
+FW_RR_P = 0.3
+FW_RR_D = 0.03
+FW_R_RMAX = 15
+FW_LND_AIRSPD = 33
 FW_LND_EARLYCFG = 1
 FW_LND_ANG = 5
 FW_LND_FLALT = 8
 FW_LND_FL_TIME = 4
-FW_LND_TD_TIME = 5
+FW_LND_FL_PMIN = 8
+FW_LND_TD_TIME = -1
 FW_FLAPS_LND_SCL = 0.65
 NAV_ACC_RAD = 180
 NAV_LOITER_RAD = 600
@@ -91,6 +96,7 @@ Config Name: Cessna172
 Active Airframe: Cessna172
 Airspeed source: xplane_indicated
 Camera Views: Forward, Down, Chase
+Actuator command smoothing enabled
 Parsed channel 5
 Parsed channel 6
 Parsed channel 7
@@ -111,6 +117,9 @@ Parsed channel 7
   `600 m` loiter.
 - Mission landing follows the final approach path, slows before final, flares
   near the runway, and disarms after rollout.
+- X-Plane `Log.txt` should not report Cessna flap datarefs missing. v3.4.56
+  maps PX4 flap channels to the Laminar C172 shared
+  `sim/cockpit2/controls/flap_ratio` command.
 
 ## Log Bundle
 
