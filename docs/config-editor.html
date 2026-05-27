@@ -200,6 +200,25 @@
       font-weight: 700;
       float: right;
     }
+    .airframeGroupTitle {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    details.airframeGroup {
+      margin-top: 10px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+    details.airframeGroup summary {
+      cursor: pointer;
+      color: var(--muted);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
     .status {
       display: inline-flex;
       align-items: center;
@@ -267,6 +286,25 @@
     .cameraTable td {
       min-width: 95px;
     }
+    .emptyState {
+      max-width: 680px;
+      padding: 14px;
+      border: 1px dashed var(--line);
+      border-radius: 6px;
+      background: var(--panel-2);
+    }
+    .emptyState h3 {
+      margin-bottom: 6px;
+    }
+    .inlineGrid {
+      display: grid;
+      grid-template-columns: minmax(92px, 1fr) 70px minmax(90px, 1fr);
+      gap: 4px;
+      align-items: center;
+    }
+    .inlineGrid.two {
+      grid-template-columns: repeat(2, minmax(70px, 1fr));
+    }
     #issues {
       margin: 0;
       padding-left: 18px;
@@ -305,13 +343,13 @@
     <div>
       <h1><a href="https://github.com/alireza787b/px4xplane" target="_blank" rel="noreferrer">px4xplane Config Editor</a></h1>
       <div class="headerMeta">
-        <span>v3.4.52</span>
-        <span>build 061</span>
+        <span>v3.4.53</span>
+        <span>build 062</span>
         <span>Runtime source: <code>64/config.ini</code></span>
       </div>
     </div>
     <div class="headerActions">
-      <button id="autoloadConfig">Auto Load Package</button>
+      <button id="autoloadConfig">Try Auto Load</button>
       <button id="themeToggle">Toggle Theme</button>
       <a href="https://github.com/alireza787b/px4xplane/tree/master/docs" target="_blank" rel="noreferrer">Docs</a>
       <div id="statusLine" class="status">Config not loaded</div>
@@ -335,18 +373,18 @@
       <div class="panelTitle">Config Files</div>
       <div class="panelBody">
         <div class="toolbar">
-          <label>config.ini <input id="configFile" type="file" accept=".ini,text/plain"></label>
-          <label>schema JSON <input id="schemaFile" type="file" accept=".json,application/json"></label>
+          <label>Load config.ini <input id="configFile" type="file" accept=".ini,text/plain"></label>
+          <label>Advanced: load schema JSON <input id="schemaFile" type="file" accept=".json,application/json"></label>
           <button id="exportConfig">Export config.ini</button>
           <button id="copyPreview">Copy Preview</button>
         </div>
-        <p class="fileHint">The plugin reads only <code>px4xplane/64/config.ini</code>. The schema is bundled for validation and field help.</p>
+        <p class="fileHint">Edit <code>px4xplane/64/config.ini</code>. If auto-load is blocked by your browser, choose that INI file manually. Do not load JSON as the runtime config; JSON is optional validation metadata only.</p>
       </div>
 
       <div class="panelTitle">Global Fields</div>
       <div class="panelBody">
         <table>
-          <thead><tr><th>Setting</th><th>Value</th><th>Help</th><th>Description</th></tr></thead>
+          <thead><tr><th>Setting</th><th>Value</th><th>Help</th></tr></thead>
           <tbody id="globalFields"></tbody>
         </table>
       </div>

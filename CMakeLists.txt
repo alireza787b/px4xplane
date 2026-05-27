@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.52 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.53 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -312,6 +312,13 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying QuadTailsitter X-Plane test card to plugin root directory"
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../CESSNA172_XPLANE12_TEST.md
+    COMMENT "Copying Cessna 172 X-Plane test card to plugin root directory"
+)
+
 if(EXISTS "${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -390,6 +397,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
         ${OUTPUT_DIR}/../QUADTAILSITTER_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../CESSNA172_XPLANE12_TEST.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

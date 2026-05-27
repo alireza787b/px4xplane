@@ -102,6 +102,7 @@ px4xplane/
 ├── ALIA_XPLANE12_TEST.md
 ├── EHANG184_XPLANE12_TEST.md
 ├── QUADTAILSITTER_XPLANE12_TEST.md
+├── CESSNA172_XPLANE12_TEST.md
 ├── px4_airframes/                ← Reference/install copies, not read by plugin
 │   ├── 5001_xplane_cessna172
 │   ├── 5002_xplane_tb2
@@ -122,7 +123,7 @@ Config tooling:
   It is metadata for tools, not a second runtime configuration file.
 - `docs/config-editor.html` opens from the px4xplane Advanced menu and can
   review/edit/export `config.ini` without writing directly into X-Plane or PX4.
-- The packaged Alia, Ehang, and QuadTailsitter test cards describe the
+- The packaged Alia, Ehang, QuadTailsitter, and Cessna 172 test cards describe the
   expected PX4 airframe, plugin config, sanity values, and log bundle for
   validation runs.
 

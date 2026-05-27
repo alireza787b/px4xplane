@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.53] - 2026-05-27
+
+### Changed
+
+- Tightened the config editor empty state and file-loading copy so users are
+  directed to load `px4xplane/64/config.ini`; schema JSON is now clearly labeled
+  as optional metadata and is rejected from the runtime-config picker.
+- Reordered the editor workflow: active airframe first, inactive airframes in a
+  collapsed group, global fields above the selected airframe, actuator mappings
+  before camera presets, and no redundant description column.
+- Kept per-field documentation links only where they are specific enough to be
+  useful: actuator channel mappings and camera views. Generic field help stays
+  in the `?` tooltip/reload-policy badge.
+- Added a structured Cessna 172 runway-mission test card and packaged it with
+  the plugin.
+- Refreshed `5001_xplane_cessna172` as a clean first-pass runway takeoff,
+  mission, and autoland baseline: current sensor contract, virtual pitot policy,
+  current PX4 parameter bounds, runway takeoff, wheel controller, TECS/NPFG
+  cleanup, and Cessna reference mass/speed values.
+- Added report v65 and updated docs/index/custom-airframe guidance for the
+  single runtime config source and current actuator dataref type support.
+
+### Notes
+
+- Alia remains the packaged default active airframe. Set
+  `config_name = Cessna172` only when preparing the Cessna validation run.
+- The Cessna defaults are an evidence-based initial baseline. Final C172 tuning
+  still depends on returned ULog, X-Plane Log.txt, and XPlaneTruthCapture data.
+
+---
+
 ## [3.4.52] - 2026-05-27
 
 ### Changed

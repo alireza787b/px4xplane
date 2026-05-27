@@ -36,6 +36,10 @@ assert.strictEqual(editor.parseMappings(config.sections[0].keys.channel4).length
 assert(editor.DEFAULT_SCHEMA.airframe_fields.airspeedSource.enum.includes("body_axis"));
 assert.strictEqual(editor.parseCameras("Forward|1|0|0|0|0|0|0.9; Down|0|0|-1|-90|0|0|0.8").length, 2);
 assert(editor.serializeCameras([{ label: "Chase", forward: "-8", right: "0", up: "2", pitch: "-8", heading: "0", roll: "0", zoom: "0.7" }]).includes("Chase|-8"));
+assert.deepStrictEqual(editor.parseIndices("[0 2 3]"), [0, 2, 3]);
+assert.strictEqual(editor.serializeIndices([0, 2, 3]), "[0 2 3]");
+assert.deepStrictEqual(editor.parseRangeValue("[-1 1]"), { min: "-1", max: "1" });
+assert.strictEqual(editor.serializeRange("-0.5", "0.75"), "[-0.5 0.75]");
 
 const serialized = editor.serializeIni(config);
 assert(serialized.includes("[Alia250]"));
@@ -71,6 +75,7 @@ assert(messages.some((message) => message.includes("floatArray requires")));
 assert(messages.some((message) => message.includes("output range endpoints are equal")));
 
 const repoConfig = editor.parseIni(fs.readFileSync(path.join(__dirname, "..", "config", "config.ini"), "utf8"));
+assert.strictEqual(repoConfig.globals.config_name, "Alia250");
 const repoIssues = editor.validateConfig(repoConfig, editor.DEFAULT_SCHEMA);
 assert.deepStrictEqual(repoIssues, []);
 

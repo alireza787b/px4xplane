@@ -274,6 +274,7 @@
     ["roll", "Roll deg"],
     ["zoom", "Zoom"]
   ];
+  const DEFAULT_CONFIG_STATUS = "Load px4xplane/64/config.ini to edit the runtime configuration.";
 
   function createEmptyConfig() {
     return { globals: { config_name: "" }, sections: [] };
@@ -369,6 +370,45 @@
     return mappings
       .map((mapping) => `${mapping.dataref}, ${mapping.type}, ${mapping.indices}, ${mapping.range}`)
       .join(" | ");
+  }
+
+  function parseIndices(value) {
+    const trimmed = String(value || "").trim();
+    if (!trimmed || trimmed === "0") return [];
+    const match = INDEX_RE.exec(trimmed);
+    if (!match) return null;
+    return match[1].split(/\s+/).map((item) => Number.parseInt(item, 10));
+  }
+
+  function serializeIndices(indices) {
+    if (!Array.isArray(indices) || indices.length === 0) return "0";
+    return `[${indices.map((index) => Number.parseInt(index, 10)).join(" ")}]`;
+  }
+
+  function parseRangeValue(value) {
+    const match = RANGE_RE.exec(String(value || "").trim());
+    if (!match) return { min: "", max: "" };
+    return { min: match[1], max: match[2] };
+  }
+
+  function serializeRange(minValue, maxValue) {
+    return `[${String(minValue ?? "").trim()} ${String(maxValue ?? "").trim()}]`;
+  }
+
+  function looksLikeSchemaJson(text) {
+    const trimmed = String(text || "").trim();
+    if (!trimmed.startsWith("{")) return false;
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Boolean(parsed && (parsed.global_fields || parsed.airframe_fields || parsed.runtime_supported_channel_types));
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function isLikelyIniConfig(text) {
+    const parsed = parseIni(text);
+    return Boolean(parsed.globals.config_name || parsed.sections.length);
   }
 
   function parseCameras(value) {
@@ -595,8 +635,8 @@
   function docsUrl(fieldName) {
     const base = "https://github.com/alireza787b/px4xplane/blob/master/docs/custom-airframe-config.md";
     if (fieldName === "cameraViews") return `${base}#key-sections-explained`;
-    if (/^channel/.test(fieldName)) return `${base}#channel-mappings`;
-    return base;
+    if (/^channel/.test(fieldName) || fieldName === "channelN") return `${base}#channel-mappings`;
+    return null;
   }
 
   function initEditor(documentRef) {
@@ -604,7 +644,9 @@
       schema: clone(DEFAULT_SCHEMA),
       config: createEmptyConfig(),
       selectedSection: "",
-      autoStatus: "Runtime source: 64/config.ini. Schema JSON is editor metadata, not a second runtime config."
+      configLoaded: false,
+      configSource: "",
+      autoStatus: DEFAULT_CONFIG_STATUS
     };
 
     const $ = (id) => documentRef.getElementById(id);
@@ -615,11 +657,23 @@
       if (source) source.textContent = message;
     }
 
+    function bindValueEdit(element, handler) {
+      element.addEventListener(element.tagName === "SELECT" ? "change" : "input", handler);
+    }
+
     function schemaFields() {
       return state.schema.global_fields || {};
     }
 
     function refreshValidationAndPreview() {
+      if (!state.configLoaded) {
+        $("statusLine").textContent = "Config not loaded";
+        $("statusLine").className = "status warn";
+        $("issues").innerHTML = "<li class=\"ok\">No config loaded yet. Use Load config.ini to begin.</li>";
+        $("preview").value = "";
+        setStatus(state.autoStatus);
+        return;
+      }
       const issues = validateConfig(state.config, state.schema);
       const errorCount = issues.filter((issue) => issue.level === "error").length;
       const warningCount = issues.filter((issue) => issue.level === "warning").length;
@@ -640,11 +694,30 @@
     function renderAirframes() {
       state.selectedSection = ensureSelectedSection(state.config, state.selectedSection);
       const active = state.config.globals.config_name || "";
-      $("airframes").innerHTML = state.config.sections.map((section) => {
+      if (!state.configLoaded) {
+        $("airframes").innerHTML = "<p class=\"muted\">Load config.ini to show airframes.</p>";
+        return;
+      }
+      const orderedSections = [...state.config.sections].sort((a, b) => {
+        if (a.name === active) return -1;
+        if (b.name === active) return 1;
+        return a.name.localeCompare(b.name);
+      });
+      const activeSections = orderedSections.filter((section) => section.name === active);
+      const inactiveSections = orderedSections.filter((section) => section.name !== active);
+      const buttonForSection = (section) => {
         const selected = section.name === state.selectedSection ? "selected" : "";
         const activeClass = section.name === active ? " active" : "";
         return `<button class="airframe ${selected}${activeClass}" data-section="${escapeHtml(section.name)}">${escapeHtml(section.name)}</button>`;
-      }).join("");
+      };
+      $("airframes").innerHTML = `
+        <div class="airframeGroupTitle">Active Airframe</div>
+        ${activeSections.map(buttonForSection).join("") || "<p class=\"muted\">No active airframe set.</p>"}
+        <details class="airframeGroup">
+          <summary>Other airframes (${inactiveSections.length})</summary>
+          ${inactiveSections.map(buttonForSection).join("") || "<p class=\"muted\">No other airframes.</p>"}
+        </details>
+      `;
 
       for (const button of $("airframes").querySelectorAll("button")) {
         button.addEventListener("click", () => {
@@ -657,9 +730,10 @@
     function helpCell(key, field) {
       const description = field.description || "";
       const reload = field.reload_policy || "";
+      const url = docsUrl(key);
       return `<div class="helpCell">
         <button class="helpButton" title="${escapeHtml(description)}" aria-label="Help for ${escapeHtml(key)}">?</button>
-        <a href="${docsUrl(key)}" target="_blank" rel="noreferrer">Docs</a>
+        ${url ? `<a href="${url}" target="_blank" rel="noreferrer">Docs</a>` : ""}
         <span class="policy">${escapeHtml(reload)}</span>
       </div>`;
     }
@@ -685,6 +759,10 @@
     }
 
     function renderGlobals() {
+      if (!state.configLoaded) {
+        $("globalFields").innerHTML = "<tr><td colspan=\"3\" class=\"muted\">Load config.ini to edit global runtime settings.</td></tr>";
+        return;
+      }
       const fields = schemaFields();
       const rows = [];
       for (const [key, field] of Object.entries(fields)) {
@@ -693,12 +771,11 @@
           <th>${escapeHtml(key)}</th>
           <td>${inputForField(key, field, value)}</td>
           <td>${helpCell(key, field)}</td>
-          <td>${escapeHtml(field.description || "")}</td>
         </tr>`);
       }
       $("globalFields").innerHTML = rows.join("");
       for (const input of $("globalFields").querySelectorAll("[data-global]")) {
-        input.addEventListener("input", () => {
+        bindValueEdit(input, () => {
           state.config.globals[input.dataset.global] = input.value;
           renderAirframes();
           refreshValidationAndPreview();
@@ -752,6 +829,13 @@
 
     function renderSelectedAirframe() {
       const section = findSection(state.config, state.selectedSection);
+      if (!state.configLoaded) {
+        $("airframeEditor").innerHTML = `<div class="emptyState">
+          <h3>Load config.ini</h3>
+          <p>The plugin runtime file is <code>px4xplane/64/config.ini</code>. If your browser blocks automatic local-file loading, choose that INI file manually. JSON is only optional validation metadata.</p>
+        </div>`;
+        return;
+      }
       if (!section) {
         $("airframeEditor").innerHTML = "<p class=\"muted\">No airframe selected. Load config.ini or add an airframe.</p>";
         return;
@@ -766,7 +850,6 @@
           <th>${escapeHtml(key)}</th>
           <td>${inputForField(key, field, value, "airframe")}</td>
           <td>${helpCell(key, field)}</td>
-          <td>${escapeHtml(field.description || "")}</td>
         </tr>`);
       }
 
@@ -774,12 +857,30 @@
       for (const key of sortedChannelKeys(section.keys)) {
         const channel = Number.parseInt(key.slice(7), 10);
         parseMappings(section.keys[key]).forEach((mapping, index) => {
+          const range = parseRangeValue(mapping.range);
+          const indices = parseIndices(mapping.indices);
+          const firstIndex = Array.isArray(indices) && indices.length ? indices[0] : "0";
+          const indexRaw = Array.isArray(indices) ? indices.join(" ") : mapping.indices;
           channelRows.push(`<tr data-channel="${channel}" data-index="${index}">
             <td>channel${channel}</td>
             <td><input data-map-field="dataref" value="${escapeHtml(mapping.dataref)}" placeholder="sim/flightmodel/..."></td>
             <td>${typeSelect(mapping.type)}</td>
-            <td><input data-map-field="indices" value="${escapeHtml(mapping.indices)}" placeholder="0 or [0 1]"></td>
-            <td><input data-map-field="range" value="${escapeHtml(mapping.range)}" placeholder="[-1 1]"></td>
+            <td>
+              <div class="inlineGrid">
+                <select data-map-field="indexMode">
+                  <option value="single" ${mapping.indices === "0" ? "selected" : ""}>single value</option>
+                  <option value="array" ${mapping.indices !== "0" ? "selected" : ""}>array index</option>
+                </select>
+                <input data-map-field="indexValue" type="number" min="0" step="1" value="${escapeHtml(firstIndex)}">
+                <input data-map-field="indicesRaw" value="${escapeHtml(indexRaw)}" placeholder="0 1" title="Advanced: space-separated indices">
+              </div>
+            </td>
+            <td>
+              <div class="inlineGrid two">
+                <input data-map-field="rangeMin" type="number" step="any" value="${escapeHtml(range.min)}" placeholder="min">
+                <input data-map-field="rangeMax" type="number" step="any" value="${escapeHtml(range.max)}" placeholder="max">
+              </div>
+            </td>
             <td><button data-remove-map="1">Remove</button></td>
           </tr>`);
         });
@@ -801,11 +902,10 @@
             <input id="autoPropBrakes" value="${escapeHtml(section.keys.autoPropBrakes || "")}" placeholder="0, 1, 2, 3">
           </label>
           <table>
-            <thead><tr><th>Setting</th><th>Value</th><th>Help</th><th>Description</th></tr></thead>
+            <thead><tr><th>Setting</th><th>Value</th><th>Help</th></tr></thead>
             <tbody>${scalarRows.join("")}</tbody>
           </table>
         </div>
-        ${renderCameraEditor(section)}
         <div class="subsection">
           <div class="subsectionHeader">
             <h3>Actuator Mappings</h3>
@@ -820,6 +920,7 @@
             <tbody>${channelRows.join("") || "<tr><td colspan=\"6\" class=\"muted\">No channel mappings configured.</td></tr>"}</tbody>
           </table>
         </div>
+        ${renderCameraEditor(section)}
       `;
 
       $("autoPropBrakes").addEventListener("input", (event) => {
@@ -827,7 +928,7 @@
         refreshValidationAndPreview();
       });
       for (const input of $("airframeEditor").querySelectorAll("[data-airframe-field]")) {
-        input.addEventListener("input", () => {
+        bindValueEdit(input, () => {
           section.keys[input.dataset.airframeField] = input.value;
           refreshValidationAndPreview();
         });
@@ -881,9 +982,25 @@
         const channel = Number.parseInt(row.dataset.channel, 10);
         const index = Number.parseInt(row.dataset.index, 10);
         for (const input of row.querySelectorAll("[data-map-field]")) {
-          input.addEventListener("input", () => {
+          bindValueEdit(input, () => {
             const mappings = parseMappings(section.keys[`channel${channel}`]);
-            mappings[index][input.dataset.mapField] = input.value;
+            const mapping = mappings[index];
+            if (input.dataset.mapField === "indexMode" || input.dataset.mapField === "indexValue" || input.dataset.mapField === "indicesRaw") {
+              const mode = row.querySelector('[data-map-field="indexMode"]').value;
+              if (mode === "single") {
+                mapping.indices = "0";
+              } else {
+                const raw = row.querySelector('[data-map-field="indicesRaw"]').value.trim();
+                const indexValue = row.querySelector('[data-map-field="indexValue"]').value.trim();
+                mapping.indices = serializeIndices(raw ? raw.split(/\s+/).map((item) => Number.parseInt(item, 10)).filter(Number.isFinite) : [Number.parseInt(indexValue || "0", 10)]);
+              }
+            } else if (input.dataset.mapField === "rangeMin" || input.dataset.mapField === "rangeMax") {
+              const minValue = row.querySelector('[data-map-field="rangeMin"]').value;
+              const maxValue = row.querySelector('[data-map-field="rangeMax"]').value;
+              mapping.range = serializeRange(minValue, maxValue);
+            } else {
+              mapping[input.dataset.mapField] = input.value;
+            }
             setChannelMapping(section, channel, mappings);
             refreshValidationAndPreview();
           });
@@ -931,6 +1048,8 @@
         const configText = await loadText("../64/config.ini");
         state.config = parseIni(configText);
         state.selectedSection = state.config.globals.config_name || "";
+        state.configLoaded = true;
+        state.configSource = "auto";
         messages.push("config.ini loaded");
       } catch (error) {
         messages.push("load config.ini manually if your browser blocks local file reads");
@@ -944,9 +1063,17 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        state.config = parseIni(String(reader.result || ""));
+        const text = String(reader.result || "");
+        if (looksLikeSchemaJson(text) || !isLikelyIniConfig(text)) {
+          setStatus(`${file.name} is not a px4xplane runtime INI. Load px4xplane/64/config.ini here; schema JSON is optional metadata only.`);
+          refreshValidationAndPreview();
+          return;
+        }
+        state.config = parseIni(text);
         state.selectedSection = state.config.globals.config_name || "";
-        setStatus(`Loaded ${file.name}. Runtime source remains px4xplane/64/config.ini after you replace it.`);
+        state.configLoaded = true;
+        state.configSource = file.name;
+        setStatus(`Loaded runtime config from ${file.name}. Exported edits should replace px4xplane/64/config.ini.`);
         render();
       };
       reader.readAsText(file);
@@ -957,9 +1084,20 @@
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        state.schema = JSON.parse(String(reader.result || "{}"));
-        setStatus(`Loaded schema metadata from ${file.name}.`);
-        render();
+        try {
+          const parsed = JSON.parse(String(reader.result || "{}"));
+          if (!parsed.global_fields || !parsed.airframe_fields) {
+            setStatus(`${file.name} is JSON, but not px4xplane schema metadata. Load config.ini in the main config loader.`);
+            refreshValidationAndPreview();
+            return;
+          }
+          state.schema = parsed;
+          setStatus(`Loaded validation metadata from ${file.name}. Runtime config is still ${state.configSource || "not loaded"}.`);
+          render();
+        } catch (error) {
+          setStatus(`${file.name} is not valid schema JSON. Runtime config is loaded from config.ini only.`);
+          refreshValidationAndPreview();
+        }
       };
       reader.readAsText(file);
     });
@@ -1025,6 +1163,10 @@
     serializeIni,
     parseMappings,
     serializeMappings,
+    parseIndices,
+    serializeIndices,
+    parseRangeValue,
+    serializeRange,
     parseCameras,
     serializeCameras,
     validateConfig

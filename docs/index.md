@@ -9,6 +9,7 @@ This index is the stable entry point for user and developer documentation.
 - [Alia X-Plane 12 Test Card](ALIA_XPLANE12_TEST.md)
 - [Ehang 184 X-Plane 12 Test Card](EHANG184_XPLANE12_TEST.md)
 - [QuadTailsitter X-Plane 12 Test Card](QUADTAILSITTER_XPLANE12_TEST.md)
+- [Cessna 172 X-Plane 12 Test Card](CESSNA172_XPLANE12_TEST.md)
 - [Custom Airframe Config](custom-airframe-config.md)
 - [Config Editor](config-editor.html)
 
@@ -73,12 +74,19 @@ This index is the stable entry point for user and developer documentation.
 - [Report v62 - qtail26 Closure Candidate and v3.4.50](reports/report_v62.md)
 - [Report v63 - qtail27 Manual RTL and Config-Driven Camera Controls](reports/report_v63.md)
 - [Report v64 - Config Editor and Camera Workflow Closure](reports/report_v64.md)
+- [Report v65 - Config Editor UX Fixes and Cessna 172 Baseline](reports/report_v65.md)
 
 ## Current Policy
 
-- Use the `v3.4.52` package for the QuadTailsitter closure test. qtail27 proved
-  the v3.4.50 flight tune was loaded, but manual RTL started auto
-  back-transition at the old `75 m` descent altitude and consumed that margin.
+- Use the `v3.4.53` package for the Cessna 172 first runway-mission validation.
+  The package keeps Alia as the default active airframe, so set
+  `config_name = Cessna172` before the Cessna run.
+- Use the Cessna test card for the first auto takeoff/mission/autoland check.
+  It is a clean baseline, not final C172 tuning without returned ULog and
+  truth-capture evidence.
+- QuadTailsitter closure remains based on qtail26/qtail27. qtail27 proved the
+  v3.4.50 flight tune was loaded, but manual RTL started auto back-transition at
+  the old `75 m` descent altitude and consumed that margin.
 - Keep the qtail26/qtail27 bridge, ACF, back-transition timing, and 5 kg
   aircraft model unchanged unless new evidence points directly at the ACF
   physics.

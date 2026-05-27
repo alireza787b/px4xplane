@@ -37,6 +37,11 @@ To define a custom airframe configuration, follow these steps:
 ## Step 3: Configuring the `config.ini` File
 
 The `config.ini` file defines how PX4’s outputs (e.g., motors, control surfaces) map to X-Plane’s inputs.
+It is the runtime source of truth for the plugin. `config_schema.json` is
+metadata for the validator and editor, not a second runtime configuration file.
+If the editor cannot auto-load because your browser blocks local file reads,
+manually load `px4xplane/64/config.ini`; do not load the JSON file as the
+runtime config.
 
 ### Example Configuration for Alia 250 eVTOL
 
@@ -129,9 +134,12 @@ back-transition, and assisted recovery.
 - **`float`**: Single floating-point value, typically used for control surfaces like ailerons or rudders.
 - **`floatArray`**: An array of floating-point values, often used for multi-engine aircraft or multiple control surfaces.
 
-Only `float` and `floatArray` are supported by the current runtime parser. Use
-external plugin/dataref logic for integer-only systems until the typed config
-schema adds explicit integer support.
+Only `float` and `floatArray` are supported by the current runtime parser. The
+X-Plane SDK exposes other dataref types, but px4xplane actuator outputs
+currently write float scalar and float-array values because PX4 actuator
+commands are normalized floating-point setpoints. Use aircraft-local plugin or
+dataref logic for integer-only systems until the typed config schema adds
+explicit integer support.
 
 ### Selecting Datarefs
 
