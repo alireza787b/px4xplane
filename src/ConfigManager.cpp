@@ -10,6 +10,7 @@
 #include <regex>
 #include <cmath>
 #include <algorithm>
+#include <exception>
 
 
 // Maps PX4 motor numbers to X-Plane motor numbers. Used in multirotor configurations.
@@ -103,6 +104,7 @@ float ConfigManager::barometer_filter_alpha = 0.90f;
 // Stores configurations for actuators, indexed by their channel number.
 std::map<int, ActuatorConfig> ConfigManager::actuatorConfigs;
 ConfigValidationSummary ConfigManager::validationSummary;
+std::vector<CameraViewConfig> ConfigManager::cameraViews;
 
 /**
  * @brief Static member to track motor equipped with prop brakes.
@@ -179,6 +181,7 @@ int ConfigManager::mavlink_rc_rate_hz = 50;         // HIL_RC_INPUTS
  */
 void ConfigManager::loadConfiguration() {
     actuatorConfigs.clear();
+    cameraViews.clear();
 
     // Initialize the SimpleIni object and set it to handle Unicode
     CSimpleIniA ini;
@@ -193,6 +196,7 @@ void ConfigManager::loadConfiguration() {
         XPLMDebugString(("px4xplane: Unable to open config file: " + configFilePath + "\n").c_str());
         configName.clear();
         motorsWithBrakes.reset();
+        cameraViews.clear();
         validationSummary = {};
         validationSummary.errors = 1;
         validationSummary.headline = "Config: 1 error(s)";
@@ -327,6 +331,8 @@ void ConfigManager::loadConfiguration() {
 
     XPLMDebugString(("px4xplane: Airspeed source=" + airspeed_source +
         " pitotAxisBody=" + pitot_axis_body + "\n").c_str());
+
+    configureCameraViews(ini);
 
     parseConfig(ini);
 
@@ -579,6 +585,91 @@ void ConfigManager::parseConfig(CSimpleIniA& ini) {
     }
 
     XPLMDebugString(("px4xplane: Finished parsing configuration for: " + selectedConfig + "\n").c_str());
+}
+
+void ConfigManager::configureCameraViews(const CSimpleIniA& ini) {
+    cameraViews.clear();
+
+    if (configName.empty()) {
+        return;
+    }
+
+    std::string raw = ini.GetValue(configName.c_str(), "cameraViews", "");
+    trimWhitespace(raw);
+    if (raw.empty()) {
+        return;
+    }
+
+    std::istringstream entries(raw);
+    std::string entry;
+    int parsedCount = 0;
+
+    while (std::getline(entries, entry, ';')) {
+        trimWhitespace(entry);
+        if (entry.empty()) {
+            continue;
+        }
+
+        if (cameraViews.size() >= MAX_CAMERA_VIEWS) {
+            XPLMDebugString("px4xplane: [WARNING] Too many cameraViews entries; ignoring extras after 8\n");
+            break;
+        }
+
+        std::istringstream tokenStream(entry);
+        std::string token;
+        std::vector<std::string> tokens;
+        while (std::getline(tokenStream, token, '|')) {
+            trimWhitespace(token);
+            tokens.push_back(token);
+        }
+
+        if (tokens.size() != 8) {
+            XPLMDebugString(("px4xplane: [WARNING] Invalid cameraViews entry, expected 8 pipe-separated fields: " + entry + "\n").c_str());
+            continue;
+        }
+
+        CameraViewConfig view;
+        view.label = tokens[0];
+        if (view.label.empty()) {
+            XPLMDebugString("px4xplane: [WARNING] cameraViews entry has empty label; skipping\n");
+            continue;
+        }
+
+        try {
+            view.forwardOffsetM = std::stof(tokens[1]);
+            view.rightOffsetM = std::stof(tokens[2]);
+            view.upOffsetM = std::stof(tokens[3]);
+            view.pitchOffsetDeg = std::stof(tokens[4]);
+            view.headingOffsetDeg = std::stof(tokens[5]);
+            view.rollOffsetDeg = std::stof(tokens[6]);
+            view.zoom = std::stof(tokens[7]);
+        }
+        catch (const std::exception& e) {
+            XPLMDebugString(("px4xplane: [WARNING] Invalid numeric cameraViews entry '" + entry + "': " + e.what() + "\n").c_str());
+            continue;
+        }
+
+        const bool finite =
+            std::isfinite(view.forwardOffsetM) &&
+            std::isfinite(view.rightOffsetM) &&
+            std::isfinite(view.upOffsetM) &&
+            std::isfinite(view.pitchOffsetDeg) &&
+            std::isfinite(view.headingOffsetDeg) &&
+            std::isfinite(view.rollOffsetDeg) &&
+            std::isfinite(view.zoom);
+
+        if (!finite || view.zoom <= 0.0f || view.zoom > 4.0f) {
+            XPLMDebugString(("px4xplane: [WARNING] cameraViews entry has non-finite values or invalid zoom: " + entry + "\n").c_str());
+            continue;
+        }
+
+        cameraViews.push_back(view);
+        ++parsedCount;
+    }
+
+    if (parsedCount > 0) {
+        XPLMDebugString(("px4xplane: Loaded " + std::to_string(parsedCount) + " camera view(s) for " + configName + "\n").c_str());
+    }
 }
 
 

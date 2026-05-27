@@ -19,12 +19,13 @@
       autoPropBrakeDwellSec: { type: "float", min: 0, max: 30 },
       autoPropBrakeMinAirspeedMps: { type: "float", min: 0, max: 200 },
       autoPropBrakeMode: { type: "string", enum: ["feather", "hard_lock", "prop_separate"] },
-      autoPropBrakeUseFailure: { type: "bool" },
-      airspeedSource: { type: "string", enum: ["xplane_indicated", "disabled", "body_axis"] },
-      pitotAxisBody: { type: "string", enum: ["+X", "-X", "+Y", "-Y", "+Z", "-Z"] },
-      channelN: { type: "actuator_mapping", min_channel: 0, max_channel: 15 }
-    }
-  };
+	      autoPropBrakeUseFailure: { type: "bool" },
+	      airspeedSource: { type: "string", enum: ["xplane_indicated", "disabled", "body_axis"] },
+	      pitotAxisBody: { type: "string", enum: ["+X", "-X", "+Y", "-Y", "+Z", "-Z"] },
+	      cameraViews: { type: "camera_views" },
+	      channelN: { type: "actuator_mapping", min_channel: 0, max_channel: 15 }
+	    }
+	  };
 
   const RANGE_RE = /^\[\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*\]$/;
   const INDEX_RE = /^\[\s*(\d+(?:\s+\d+)*)\s*\]$/;
@@ -143,12 +144,34 @@
       return;
     }
 
-    if (field.type === "string") {
-      if (Array.isArray(field.enum) && !field.enum.includes(trimmed)) {
-        addIssue(issues, "error", location, `expected one of: ${field.enum.join(", ")}`);
-      }
-      return;
-    }
+	    if (field.type === "string") {
+	      if (Array.isArray(field.enum) && !field.enum.includes(trimmed)) {
+	        addIssue(issues, "error", location, `expected one of: ${field.enum.join(", ")}`);
+	      }
+	      return;
+	    }
+
+	    if (field.type === "camera_views") {
+	      if (!trimmed) return;
+	      const entries = trimmed.split(";").map((entry) => entry.trim()).filter(Boolean);
+	      if (entries.length > 8) {
+	        addIssue(issues, "error", location, "supports at most 8 camera views");
+	      }
+	      for (const [index, entry] of entries.entries()) {
+	        const parts = entry.split("|").map((part) => part.trim());
+	        if (parts.length !== 8) {
+	          addIssue(issues, "error", location, `camera ${index + 1} must have 8 pipe-separated fields`);
+	          continue;
+	        }
+	        if (!parts[0]) addIssue(issues, "error", location, `camera ${index + 1} label is empty`);
+	        for (const part of parts.slice(1)) {
+	          if (!Number.isFinite(Number.parseFloat(part))) {
+	            addIssue(issues, "error", location, `camera ${index + 1} has non-numeric field '${part}'`);
+	          }
+	        }
+	      }
+	      return;
+	    }
 
     if (field.type === "bool") {
       if (parseBool(trimmed) === null) addIssue(issues, "error", location, "expected boolean");
@@ -343,10 +366,13 @@
         });
         return `<select ${dataAttr}="${key}">${options.join("")}</select>`;
       }
-      const type = field.type === "int" || field.type === "float" ? "number" : "text";
-      const step = field.type === "int" ? "1" : "any";
-      return `<input ${dataAttr}="${key}" type="${type}" step="${step}" value="${escapeHtml(value)}">`;
-    }
+	      const type = field.type === "int" || field.type === "float" ? "number" : "text";
+	      const step = field.type === "int" ? "1" : "any";
+	      if (field.type === "camera_views") {
+	        return `<textarea ${dataAttr}="${key}" rows="3">${escapeHtml(value)}</textarea>`;
+	      }
+	      return `<input ${dataAttr}="${key}" type="${type}" step="${step}" value="${escapeHtml(value)}">`;
+	    }
 
     function renderGlobals() {
       const fields = schemaFields();

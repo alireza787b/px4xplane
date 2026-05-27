@@ -15,6 +15,7 @@ or aircraft behavior.
 - X-Plane motor index range for `autoPropBrakes`: `0` through `7`
 - prop-brake policy fields: apply/release thresholds, dwell, optional
   true-airspeed gate, mode, and experimental failure-dataref use
+- optional airframe camera presets in `cameraViews`
 - config reload policy for user-facing tools and docs
 
 Run the validator before packaging:
@@ -38,6 +39,7 @@ diagnostic use:
 - diagnostic interval
 - connection HUD
 - FPS warning settings
+- airframe camera preset definitions
 
 `reconnect_before_flight` fields must be treated as setup-time fields:
 

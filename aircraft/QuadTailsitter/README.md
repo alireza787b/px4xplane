@@ -2,6 +2,28 @@
 
 This aircraft is paired with PX4 airframe `5021_xplane_qtailsitter`.
 
+## Camera Views
+
+px4xplane v3.4.51 and newer adds config-driven camera views under
+`PX4 X-Plane > Camera Views`. The views are not hardcoded to this aircraft;
+they are read from the active airframe's `cameraViews` line in `config.ini`.
+
+QuadTailsitter ships:
+
+- `Nose / FPV`: in hover it points upward; in fixed-wing it points forward along
+  the virtual pitot axis.
+- `Belly / Down`: in fixed-wing it looks down toward the ground.
+- `Chase`: rear engineering chase view.
+
+Bindable commands are generic: `px4xplane/camera/view_1`,
+`px4xplane/camera/view_2`, `px4xplane/camera/view_3`, and
+`px4xplane/camera/release`. Bind them in X-Plane's keyboard settings if the
+default quick-look keys are inconvenient or unavailable.
+
+The config format is:
+
+`Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom`
+
 ## Quick-Look Views
 
 `QuadTailsitter_prefs.txt` ships three X-Plane quick-look presets:

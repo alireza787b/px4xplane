@@ -1,16 +1,16 @@
 # QuadTailsitter X-Plane 12 Final Polish Workflow
 
-This card is for the next controlled QuadTailsitter closure validation after the
-`qtail26.zip` mission run. v3.4.50 keeps the `5 kg` 6S 3115-class aircraft
-target, the stationary sensor/contact fixes, and the body-axis `-Z` virtual
-pitot. qtail26 proved that the aircraft can complete a mission, transition to
-fixed-wing, return, back-transition, land, disarm, and close the log without
-bridge or estimator warnings. The only remaining validation target is reducing
-the benign back-transition balloon climb.
+This card is for the next controlled QuadTailsitter closure validation after
+`qtail27.zip`. v3.4.51 keeps the accepted `5 kg` 6S 3115-class aircraft target,
+the stationary sensor/contact fixes, and the body-axis `-Z` virtual pitot.
+qtail27 showed that manual RTL can trigger auto back-transition too low when
+`RTL_DESCEND_ALT=75 m`, so this package raises the RTL altitude margin and adds
+config-driven plugin camera views that do not depend on numpad quick-look
+bindings.
 
-The next gate is a high-margin mission validation. Do not use a low-altitude
-VTOL Land approach yet; keep the approach/back-transition altitude high enough
-that a failed recovery has margin.
+The next gate is a high-margin manual RTL plus mission validation. Do not use a
+low-altitude VTOL Land approach yet; keep the approach/back-transition altitude
+high enough that a failed recovery has margin.
 
 ## Setup
 
@@ -44,7 +44,7 @@ Use calm weather and model calculations per frame `6`.
 2. Hold in multicopter mode for `15-20 s`.
 3. Command one modest Go-To movement. The intended MC cruise is `3.5 m/s`.
 4. Command one longer Go-To and watch for actual speed overshoot.
-5. Climb to at least `150 m` AGL before transition.
+5. Climb to at least `180 m` AGL before transition.
 6. Command one straight forward transition. Let it stabilize in fixed-wing mode.
 7. Fly one straight leg or a large-radius mission/loiter. The default FW
    loiter/RTL radius is now `1300 m`; do not use tight manual orbit radii for
@@ -68,11 +68,12 @@ For continuous path-following, use a mission/path workflow or send the next
 target before the aircraft reaches the current point.
 
 Keep fixed-wing waypoint spacing at least `1300 m`, avoid tight waypoint
-clusters, and do not use a `50 m` VTOL Land approach altitude for public demos
-until qtail27 confirms the final closure values. qtail26 landed safely, but
-back-transition still converted forward-speed energy into about a `100 m`
-balloon climb before MC descent. v3.4.50 keeps the accepted path-following
-baseline and makes only a small final fixed-wing energy polish.
+clusters, and do not use a `50 m` VTOL Land approach altitude for public demos.
+qtail27 proved that `75 m` RTL descent altitude is not enough margin for this
+tailsitter if auto RTL starts back-transition from fixed-wing energy. v3.4.51
+uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150` so manual RTL starts the
+recovery higher while preserving the qtail26/qtail27 accepted flight-control
+baseline.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
 stability. v3.4.46+ hides the large rendered gear geometry while keeping the
@@ -197,8 +198,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `NAV_FW_ALT_RAD=40`
 - `NAV_LOITER_RAD=1300`
 - `RTL_LOITER_RAD=1300`
-- `RTL_RETURN_ALT=100`
-- `RTL_DESCEND_ALT=75`
+- `RTL_RETURN_ALT=180`
+- `RTL_DESCEND_ALT=150`
 - `FD_FAIL_R=85`
 - `FD_FAIL_P=85`
 - `FD_FAIL_R_TTRI=1.0`
@@ -210,11 +211,12 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.50`
+- `px4xplane: Version: v3.4.51`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
 - `Airspeed source=body_axis pitotAxisBody=-Z`
+- `Loaded 3 camera view(s) for QuadTailsitter`
 
 In the installed aircraft folder, confirm these presentation assets are present:
 
@@ -222,8 +224,29 @@ In the installed aircraft folder, confirm these presentation assets are present:
 - `QuadTailsitter_icon11_thumb.png`
 - `README.md`
 
-The aircraft package also ships quick-look presets in
-`QuadTailsitter_prefs.txt`:
+The plugin now provides a generic `PX4 X-Plane > Camera Views` menu. Camera
+presets are read from the active airframe's optional `cameraViews` config value:
+
+`Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom`
+
+QuadTailsitter ships three configured views:
+
+- `Nose / FPV`: in MC hover it points upward; in fixed-wing it points forward
+  along the virtual pitot axis.
+- `Belly / Down`: in fixed-wing it looks down toward the ground.
+- `Chase`: rear engineering chase view.
+
+These bindable X-Plane commands are generic and reusable for any configured
+airframe:
+
+- `px4xplane/camera/view_1`
+- `px4xplane/camera/view_2`
+- `px4xplane/camera/view_3`
+- `px4xplane/camera/release`: return camera control to X-Plane.
+
+Bind these commands to your preferred keys in X-Plane's keyboard settings if
+your keyboard does not have a numpad. The aircraft package also keeps
+quick-look presets in `QuadTailsitter_prefs.txt` as a fallback:
 
 - quick look `#1`: nose/FPV camera
 - quick look `#2`: belly/down-looking camera
@@ -251,8 +274,9 @@ baseline for judging this package:
 - Estimator health was clean: no baro stale, vertical velocity instability,
   accelerometer-bias warning, or pause/FPS sensor regression.
 
-v3.4.50 preserves the qtail26 bridge/ACF/back-transition baseline and changes
-only small PX4 fixed-wing energy values plus X-Plane presentation assets.
+v3.4.51 preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
+The only flight-param change is the RTL return/descent altitude margin for
+manual RTL from fixed-wing mode.
 
 ## Pause / Dialog Check
 
@@ -278,15 +302,16 @@ Save and send:
 The next log should be used to verify:
 
 - The ULog initial parameters match this card, especially the canted
-  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.50 FW/back-transition values. If the
+  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.51 RTL/FW/back-transition values. If the
   rotor axes are all `AX=0`, `AY=0`, `AZ=-1`, or if `FW_R_LIM` is still `32`,
   stop: the run is using stale PX4 parameters.
 - Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this
   slice is actual horizontal speed below about `6 m/s`, pitch not running away
   beyond about `35 deg`, and no sustained pitch/roll error or motor saturation.
 - Normal deceleration at the final Go-To target is not treated as a failure.
-- Use only high-margin VTOL Land/back-transition altitudes for public-demo
-  validation until qtail27 confirms the remaining recovery-climb polish.
+- Manual RTL should not descend below the raised `RTL_DESCEND_ALT=150` before
+  auto back-transition. If it starts back-transition near `75 m AGL`, stop and
+  check for stale PX4 parameters.
 - The first transition should remain in transition until the body-axis
   calibrated airspeed reaches roughly `VT_ARSP_TRANS=22 m/s`.
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive

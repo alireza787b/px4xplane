@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.51] - 2026-05-27
+
+### Changed
+
+- Analyzed `qtail27.zip`: the run loaded the intended v3.4.50 QuadTailsitter
+  params, flew cleanly until manual RTL, then descended to the configured
+  `RTL_DESCEND_ALT=75 m` before auto back-transition. The high-energy recovery
+  consumed that margin and caused roll failure/crash after MC handoff.
+- Raised QuadTailsitter manual-RTL margins to `RTL_RETURN_ALT=180` and
+  `RTL_DESCEND_ALT=150` while leaving the accepted qtail26/qtail27 bridge, ACF,
+  forward transition, FW guidance, and back-transition timing unchanged.
+- Added config-driven camera views and a `Camera Views` menu. QuadTailsitter now
+  defines nose/FPV, belly/down, and chase views in `config.ini`; the commands are
+  generic (`px4xplane/camera/view_1..view_8`) so future airframes can add views
+  without C++ hardcoding or numpad quick-look shortcuts.
+- Added report v63 and updated the QuadTailsitter test card/aircraft README for
+  v3.4.51 validation.
+
+### Notes
+
+- This release does not retune `VT_B_TRANS_DUR`, `VT_B_DEC_MSS`, or the ACF.
+  qtail27 points at insufficient RTL altitude margin for manual RTL, not a
+  broad aircraft-physics regression.
+
+---
+
 ## [3.4.50] - 2026-05-26
 
 ### Changed

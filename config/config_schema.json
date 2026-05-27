@@ -261,6 +261,12 @@
       "reload_policy": "reconnect_before_flight",
       "description": "Physical pitot probe axis in PX4 body frame. Used only when airspeedSource is body_axis."
     },
+    "cameraViews": {
+      "type": "camera_views",
+      "default": "",
+      "reload_policy": "live_reload",
+      "description": "Optional camera presets for the active airframe. Format: Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom; repeat entries with semicolons."
+    },
     "channelN": {
       "type": "actuator_mapping",
       "min_channel": 0,

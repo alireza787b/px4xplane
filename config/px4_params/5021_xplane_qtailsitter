@@ -338,8 +338,8 @@ param set-default NAV_FW_ALT_RAD 40
 param set-default NAV_MC_ALT_RAD 2
 param set-default NAV_LOITER_RAD 1300
 param set-default RTL_LOITER_RAD 1300
-param set-default RTL_RETURN_ALT 100
-param set-default RTL_DESCEND_ALT 75
+param set-default RTL_RETURN_ALT 180
+param set-default RTL_DESCEND_ALT 150
 param set-default RTL_MIN_DIST 50
 
 param set-default FD_FAIL_R 85

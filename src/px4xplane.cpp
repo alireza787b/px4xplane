@@ -4,6 +4,8 @@
 #include "XPLMMenus.h"
 #include "XPLMPlugin.h"
 #include "XPLMProcessing.h"
+#include "XPLMCamera.h"
+#include "XPLMUtilities.h"
 #include <string>
 #include <stdio.h>
 #include <vector>
@@ -46,14 +48,17 @@ static XPLMWindowID g_window = nullptr;
 static XPLMMenuID g_menu_id = nullptr;
 static XPLMMenuID airframesMenu = nullptr; // Global variable for the airframes submenu
 static XPLMMenuID advancedMenu = nullptr; // Global variable for advanced tools submenu
+static XPLMMenuID cameraMenu = nullptr; // Global variable for camera submenu
 static int g_airframesMenuItemIndex = -1; // Global variable to store the index of the airframes submenu
 static int g_advancedMenuItemIndex = -1; // Global variable to store the index of the advanced submenu
+static int g_cameraMenuItemIndex = -1; // Global variable to store the index of the camera submenu
 
 // Menu reference constants for menu_handler callback
 // Using distinct non-zero values to avoid confusion with NULL
 #define MENU_REF_MAIN ((void*)100)
 #define MENU_REF_AIRFRAMES ((void*)200)
 #define MENU_REF_ADVANCED ((void*)300)
+#define MENU_REF_CAMERA ((void*)400)
 #define MENU_ITEM_SHOW_DATA ((void*)101)
 #define MENU_ITEM_RELOAD_CONFIG ((void*)102)
 #define MENU_ITEM_TOGGLE_DIAGNOSTICS ((void*)103)
@@ -64,7 +69,10 @@ static int g_advancedMenuItemIndex = -1; // Global variable to store the index o
 
 
 // Global variable to hold our command reference
-static XPLMCommandRef toggleEnableCmd;
+static XPLMCommandRef toggleEnableCmd = nullptr;
+static constexpr int MAX_CAMERA_COMMANDS = ConfigManager::MAX_CAMERA_VIEWS;
+static XPLMCommandRef cameraViewCmds[MAX_CAMERA_COMMANDS] = {};
+static XPLMCommandRef releaseCameraCmd = nullptr;
 
 static int g_enabled = 0; // Used to toggle connection state
 
@@ -77,6 +85,8 @@ int toggleEnableHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void
 void create_menu();
 void toggleEnable();
 void updateMenuItems();
+void createCameraMenuItems();
+void releaseCustomCamera();
 void initializeMessagePeriods();  // Initialize MAVLink message periods from config
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
 
@@ -128,6 +138,201 @@ void showConfigEditorLocation() {
 	ConnectionManager::setLastMessage("Config editor path written to X-Plane Log.txt");
 }
 
+struct Vec3f {
+	float x;
+	float y;
+	float z;
+};
+
+struct CameraDataRefs {
+	XPLMDataRef localX = nullptr;
+	XPLMDataRef localY = nullptr;
+	XPLMDataRef localZ = nullptr;
+	XPLMDataRef heading = nullptr;
+	XPLMDataRef pitch = nullptr;
+	XPLMDataRef roll = nullptr;
+	bool initialized = false;
+};
+
+static int g_activeCameraIndex = -1;
+static CameraDataRefs g_cameraRefs;
+static XPLMCommandRef g_externalViewCommand = nullptr;
+
+constexpr float degToRad(float degrees) {
+	return degrees * 0.01745329251994329577f;
+}
+
+float normalizeHeading(float degrees) {
+	while (degrees < 0.0f) {
+		degrees += 360.0f;
+	}
+	while (degrees >= 360.0f) {
+		degrees -= 360.0f;
+	}
+	return degrees;
+}
+
+Vec3f addVec(const Vec3f& a, const Vec3f& b) {
+	return { a.x + b.x, a.y + b.y, a.z + b.z };
+}
+
+Vec3f scaleVec(const Vec3f& v, float scale) {
+	return { v.x * scale, v.y * scale, v.z * scale };
+}
+
+Vec3f cameraLookVector(float headingDeg, float pitchDeg) {
+	const float headingRad = degToRad(headingDeg);
+	const float pitchRad = degToRad(pitchDeg);
+	const float cp = std::cos(pitchRad);
+	return {
+		std::sin(headingRad) * cp,
+		std::sin(pitchRad),
+		-std::cos(headingRad) * cp,
+	};
+}
+
+void initializeCameraDataRefs() {
+	if (g_cameraRefs.initialized) {
+		return;
+	}
+
+	g_externalViewCommand = XPLMFindCommand("sim/view/chase");
+	g_cameraRefs.localX = XPLMFindDataRef("sim/flightmodel/position/local_x");
+	g_cameraRefs.localY = XPLMFindDataRef("sim/flightmodel/position/local_y");
+	g_cameraRefs.localZ = XPLMFindDataRef("sim/flightmodel/position/local_z");
+	g_cameraRefs.heading = XPLMFindDataRef("sim/flightmodel/position/psi");
+	g_cameraRefs.pitch = XPLMFindDataRef("sim/flightmodel/position/theta");
+	g_cameraRefs.roll = XPLMFindDataRef("sim/flightmodel/position/phi");
+	g_cameraRefs.initialized = true;
+}
+
+bool hasCameraDataRefs() {
+	initializeCameraDataRefs();
+	return g_cameraRefs.localX && g_cameraRefs.localY && g_cameraRefs.localZ &&
+		g_cameraRefs.heading && g_cameraRefs.pitch && g_cameraRefs.roll;
+}
+
+int customCameraCallback(XPLMCameraPosition_t* outCameraPosition, int inIsLosingControl, void*) {
+	if (inIsLosingControl) {
+		g_activeCameraIndex = -1;
+		return 0;
+	}
+
+	if (!outCameraPosition || g_activeCameraIndex < 0 || !hasCameraDataRefs()) {
+		return 0;
+	}
+
+	if (g_activeCameraIndex >= static_cast<int>(ConfigManager::cameraViews.size())) {
+		g_activeCameraIndex = -1;
+		return 0;
+	}
+
+	const CameraViewConfig& view = ConfigManager::cameraViews[static_cast<size_t>(g_activeCameraIndex)];
+	const double aircraftX = XPLMGetDatad(g_cameraRefs.localX);
+	const double aircraftY = XPLMGetDatad(g_cameraRefs.localY);
+	const double aircraftZ = XPLMGetDatad(g_cameraRefs.localZ);
+	const float psi = XPLMGetDataf(g_cameraRefs.heading);
+	const float theta = XPLMGetDataf(g_cameraRefs.pitch);
+	const float phi = XPLMGetDataf(g_cameraRefs.roll);
+
+	const float cameraPitch = theta + view.pitchOffsetDeg;
+	const float cameraHeading = normalizeHeading(psi + view.headingOffsetDeg);
+	const float cameraRoll = phi + view.rollOffsetDeg;
+	const Vec3f forward = cameraLookVector(cameraHeading, cameraPitch);
+	const Vec3f right = cameraLookVector(cameraHeading + 90.0f, 0.0f);
+	const Vec3f up = { 0.0f, 1.0f, 0.0f };
+	const Vec3f offset = addVec(
+		addVec(scaleVec(forward, view.forwardOffsetM), scaleVec(right, view.rightOffsetM)),
+		scaleVec(up, view.upOffsetM));
+
+	outCameraPosition->x = static_cast<float>(aircraftX + offset.x);
+	outCameraPosition->y = static_cast<float>(aircraftY + offset.y);
+	outCameraPosition->z = static_cast<float>(aircraftZ + offset.z);
+	outCameraPosition->pitch = cameraPitch;
+	outCameraPosition->heading = cameraHeading;
+	outCameraPosition->roll = cameraRoll;
+	outCameraPosition->zoom = view.zoom;
+	return 1;
+}
+
+void activateCustomCamera(int cameraIndex) {
+	if (cameraIndex < 0 || cameraIndex >= static_cast<int>(ConfigManager::cameraViews.size())) {
+		releaseCustomCamera();
+		return;
+	}
+
+	if (!hasCameraDataRefs()) {
+		ConnectionManager::setLastMessage("Camera datarefs unavailable");
+		debugLog("Camera command failed because required X-Plane position datarefs are unavailable");
+		return;
+	}
+
+	const CameraViewConfig& view = ConfigManager::cameraViews[static_cast<size_t>(cameraIndex)];
+	if (g_externalViewCommand) {
+		XPLMCommandOnce(g_externalViewCommand);
+	}
+	g_activeCameraIndex = cameraIndex;
+	XPLMControlCamera(xplm_ControlCameraUntilViewChanges, customCameraCallback, nullptr);
+	ConnectionManager::setLastMessage(view.label + " camera active");
+	debugLog((std::string("Activated camera view: ") + view.label).c_str());
+}
+
+void releaseCustomCamera() {
+	if (g_activeCameraIndex < 0) {
+		return;
+	}
+
+	XPLMDontControlCamera();
+	g_activeCameraIndex = -1;
+	ConnectionManager::setLastMessage("Camera released to X-Plane");
+	debugLog("Released custom camera control");
+}
+
+int cameraCommandHandler(XPLMCommandRef inCommand, XPLMCommandPhase inPhase, void*) {
+	if (inPhase != xplm_CommandBegin) {
+		return 1;
+	}
+
+	for (int i = 0; i < MAX_CAMERA_COMMANDS; ++i) {
+		if (inCommand == cameraViewCmds[i]) {
+			activateCustomCamera(i);
+			return 1;
+		}
+	}
+
+	if (inCommand == releaseCameraCmd) {
+		releaseCustomCamera();
+	}
+
+	return 1;
+}
+
+void registerCameraCommands() {
+	for (int i = 0; i < MAX_CAMERA_COMMANDS; ++i) {
+		char commandName[64];
+		char commandDesc[96];
+		snprintf(commandName, sizeof(commandName), "px4xplane/camera/view_%d", i + 1);
+		snprintf(commandDesc, sizeof(commandDesc), "Activate px4xplane configured camera view %d", i + 1);
+		cameraViewCmds[i] = XPLMCreateCommand(commandName, commandDesc);
+		XPLMRegisterCommandHandler(cameraViewCmds[i], cameraCommandHandler, 1, nullptr);
+	}
+	releaseCameraCmd = XPLMCreateCommand("px4xplane/camera/release", "Release px4xplane custom camera");
+	XPLMRegisterCommandHandler(releaseCameraCmd, cameraCommandHandler, 1, nullptr);
+}
+
+void unregisterCameraCommands() {
+	for (int i = 0; i < MAX_CAMERA_COMMANDS; ++i) {
+		if (cameraViewCmds[i]) {
+			XPLMUnregisterCommandHandler(cameraViewCmds[i], cameraCommandHandler, 1, nullptr);
+			cameraViewCmds[i] = nullptr;
+		}
+	}
+	if (releaseCameraCmd) {
+		XPLMUnregisterCommandHandler(releaseCameraCmd, cameraCommandHandler, 1, nullptr);
+		releaseCameraCmd = nullptr;
+	}
+}
+
 void destroySubmenu(XPLMMenuID& menu) {
 	if (menu) {
 		XPLMDestroyMenu(menu);
@@ -136,6 +341,7 @@ void destroySubmenu(XPLMMenuID& menu) {
 }
 
 void destroyChildMenus() {
+	destroySubmenu(cameraMenu);
 	destroySubmenu(advancedMenu);
 	destroySubmenu(airframesMenu);
 }
@@ -332,9 +538,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 	snprintf(debugBuf, sizeof(debugBuf), "Menu handler called - menu_ref: %p, item_ref: %p", in_menu_ref, in_item_ref);
 	debugLog(debugBuf);
 
-	// Check which menu triggered this callback using explicit menu ref comparison
 	if (in_menu_ref == MENU_REF_MAIN) {
-		// Main menu item clicked
 		debugLog("Main menu item clicked");
 
 		if (in_item_ref == MENU_ITEM_SHOW_DATA) {
@@ -359,7 +563,6 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 		}
 	}
 	else if (in_menu_ref == MENU_REF_AIRFRAMES) {
-		// Airframe submenu item clicked
 		debugLog("Airframe submenu item clicked");
 
 		int index = (int)(intptr_t)in_item_ref;
@@ -371,8 +574,6 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 
 			ConfigManager::setActiveAirframeName(selectedAirframe);
 			ConfigManager::loadConfiguration();
-
-			// Reinitialize message periods after config reload
 			initializeMessagePeriods();
 
 			refreshAirframesMenu();
@@ -414,12 +615,13 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			debugLog(debugBuf);
 		}
 	}
+	else if (in_menu_ref == MENU_REF_CAMERA) {
+		debugLog("Camera submenu item clicked");
+	}
 	else {
-		// Unknown menu ref - should never happen
 		snprintf(debugBuf, sizeof(debugBuf), "Unknown menu ref: %p", in_menu_ref);
 		debugLog(debugBuf);
 	}
-
 }
 
 void createAdvancedMenuItems() {
@@ -448,6 +650,33 @@ void createAdvancedMenuItems() {
 	XPLMAppendMenuSeparator(advancedMenu);
 	XPLMAppendMenuItem(advancedMenu, "Show Config Editor Location", MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION, 1);
 	XPLMAppendMenuItem(advancedMenu, "Show Docs Location", MENU_ITEM_SHOW_DOCS_REFERENCE, 1);
+}
+
+void createCameraMenuItems() {
+	if (!g_menu_id) {
+		return;
+	}
+
+	g_cameraMenuItemIndex = XPLMAppendMenuItem(g_menu_id, "Camera Views", nullptr, 1);
+	if (g_cameraMenuItemIndex < 0) {
+		return;
+	}
+
+	cameraMenu = XPLMCreateMenu("Camera Views", g_menu_id, g_cameraMenuItemIndex, menu_handler, MENU_REF_CAMERA);
+	if (!cameraMenu) {
+		return;
+	}
+
+	if (ConfigManager::cameraViews.empty()) {
+		XPLMAppendMenuItem(cameraMenu, "No configured camera views", nullptr, 1);
+	}
+	else {
+		for (size_t i = 0; i < ConfigManager::cameraViews.size() && i < static_cast<size_t>(MAX_CAMERA_COMMANDS); ++i) {
+			XPLMAppendMenuItemWithCommand(cameraMenu, ConfigManager::cameraViews[i].label.c_str(), cameraViewCmds[i]);
+		}
+		XPLMAppendMenuSeparator(cameraMenu);
+		XPLMAppendMenuItemWithCommand(cameraMenu, "Release px4xplane Camera", releaseCameraCmd);
+	}
 }
 
 
@@ -557,6 +786,8 @@ void create_menu() {
 	createAdvancedMenuItems();
 	toggleEnableCmd = XPLMCreateCommand("px4xplane/toggleEnable", "Toggle enable/disable state");
 	XPLMRegisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
+	registerCameraCommands();
+	createCameraMenuItems();
 	XPLMAppendMenuSeparator(g_menu_id);
 	XPLMAppendMenuItemWithCommand(g_menu_id, "Connect to SITL", toggleEnableCmd);
 	XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
@@ -570,6 +801,10 @@ void create_menu() {
 void updateMenuItems() {
 	if (!g_menu_id) {
 		return;
+	}
+
+	if (g_activeCameraIndex >= static_cast<int>(ConfigManager::cameraViews.size())) {
+		releaseCustomCamera();
 	}
 
 	destroyChildMenus();
@@ -596,6 +831,7 @@ void updateMenuItems() {
 	XPLMAppendMenuItem(g_menu_id, "Show Data", MENU_ITEM_SHOW_DATA, 1);
 	XPLMAppendMenuItem(g_menu_id, "Reload Config", MENU_ITEM_RELOAD_CONFIG, 1);
 	createAdvancedMenuItems();
+	createCameraMenuItems();
 	XPLMAppendMenuSeparator(g_menu_id);
 	if (ConnectionManager::isConnected()) {
 		XPLMAppendMenuItemWithCommand(g_menu_id, "Disconnect from SITL", toggleEnableCmd);
@@ -1181,6 +1417,13 @@ PLUGIN_API void XPluginStop(void) {
 		toggleEnable();
 	}
 
+	releaseCustomCamera();
+	unregisterCameraCommands();
+	if (toggleEnableCmd) {
+		XPLMUnregisterCommandHandler(toggleEnableCmd, toggleEnableHandler, 1, (void*)0);
+		toggleEnableCmd = nullptr;
+	}
+
 	XPLMUnregisterFlightLoopCallback(MyFlightLoopCallback, NULL);
 
 	// Cleanup UI systems
@@ -1216,6 +1459,7 @@ PLUGIN_API void XPluginDisable(void) {
 		resetFlightLoopTimers();
 		ConnectionManager::disconnect();
 	}
+	releaseCustomCamera();
 	ConnectionStatusHUD::updateStatus(ConnectionStatusHUD::Status::DISCONNECTED);
 	updateMenuItems();
 	XPLMDebugString("px4xplane: Plugin disabled\n");

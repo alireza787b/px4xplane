@@ -86,6 +86,27 @@ def validate_scalar_field(section: str, key: str, value: str, field_schema: dict
             yield Issue("error", section, key, f"expected one of: {joined}")
         return
 
+    if field_type == "camera_views":
+        entries = [entry.strip() for entry in value.split(";") if entry.strip()]
+        if len(entries) > 8:
+            yield Issue("error", section, key, "supports at most 8 camera views")
+        for entry_index, entry in enumerate(entries, start=1):
+            parts = [part.strip() for part in entry.split("|")]
+            if len(parts) != 8:
+                yield Issue("error", section, key, f"camera {entry_index} must have 8 pipe-separated fields")
+                continue
+            if not parts[0]:
+                yield Issue("error", section, key, f"camera {entry_index} label is empty")
+            for number_token in parts[1:]:
+                try:
+                    parsed = float(number_token)
+                except ValueError:
+                    yield Issue("error", section, key, f"camera {entry_index} has non-numeric field '{number_token}'")
+                    continue
+                if not math.isfinite(parsed):
+                    yield Issue("error", section, key, f"camera {entry_index} has non-finite field '{number_token}'")
+        return
+
     if field_type == "bool":
         if parse_bool(value) is None:
             yield Issue("error", section, key, f"expected boolean, got '{value}'")

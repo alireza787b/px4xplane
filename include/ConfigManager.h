@@ -72,6 +72,17 @@ struct ConfigValidationSummary {
     std::vector<std::string> messages;
 };
 
+struct CameraViewConfig {
+    std::string label;
+    float forwardOffsetM = 0.0f;
+    float rightOffsetM = 0.0f;
+    float upOffsetM = 0.0f;
+    float pitchOffsetDeg = 0.0f;
+    float headingOffsetDeg = 0.0f;
+    float rollOffsetDeg = 0.0f;
+    float zoom = 1.0f;
+};
+
 
 
 class ConfigManager {
@@ -85,7 +96,9 @@ public:
     static std::string selectedConfig;
     static bool hasPropBrake(int motorIndex);
     static const int MAX_MOTORS = 8;  // Maximum possible motors in X-Plane
+    static const int MAX_CAMERA_VIEWS = 8; // Maximum configurable camera presets
     static void configureMotorBrakes(const CSimpleIniA& ini);
+    static void configureCameraViews(const CSimpleIniA& ini);
     static std::vector<std::string> getAirframeLists();
     static std::string getActiveAirframeName();
     static std::string getAirframeDisplayName(const std::string& airframeName);
@@ -152,6 +165,7 @@ public:
     // Airspeed/differential-pressure source policy.
     static std::string airspeed_source;            // xplane_indicated, disabled, or body_axis
     static std::string pitot_axis_body;            // +X, -X, +Y, -Y, +Z, or -Z
+    static std::vector<CameraViewConfig> cameraViews; // Active airframe camera presets
 
     // MAVLink message rates (Hz)
     static int mavlink_sensor_rate_hz;       // HIL_SENSOR rate (IMU + barometer)

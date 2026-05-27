@@ -68,6 +68,11 @@ autoPropBrakeUseFailure = false
 airspeedSource = xplane_indicated
 pitotAxisBody = +X
 
+; Optional camera presets shown in PX4 X-Plane > Camera Views.
+; Format:
+; Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom
+cameraViews = Nose / FPV|0.85|0.0|0.0|0.0|0.0|0.0|0.90; Chase|-8.0|0.0|2.0|0.0|0.0|0.0|0.70
+
 ; Quadcopter Motors (1-4)
 channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
 channel1 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [1], [-1 1]
@@ -99,6 +104,10 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
   projection as local true air-relative flow and converts it to dynamic pressure
   with X-Plane local pressure/temperature density, allowing PX4 to derive
   calibrated and true airspeed through its normal airspeed pipeline.
+- **Camera Views**: Optional plugin-owned views for the active airframe. They
+  appear under `PX4 X-Plane > Camera Views` and can be bound to
+  `px4xplane/camera/view_1` through `px4xplane/camera/view_8`. Leave
+  `cameraViews` empty or omit it if the aircraft does not need custom views.
 - **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
 
 Auto-prop brakes are mode-agnostic. The bridge watches the configured motor
