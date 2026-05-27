@@ -269,6 +269,13 @@
       "reload_policy": "reconnect_before_flight",
       "description": "Optional first-order smoothing time constant for normalized actuator commands before writing X-Plane datarefs. Use sparingly for low-rate HIL actuator streams and set 0 to disable."
     },
+    "actuatorSmoothingChannels": {
+      "type": "index_list",
+      "min": 0,
+      "max": 15,
+      "reload_policy": "reconnect_before_flight",
+      "description": "Optional comma-separated PX4 actuator channel list for actuator smoothing. Omit to smooth all channels when smoothing is enabled; set only surface channels to avoid delaying wheel steering, throttle, or flaps."
+    },
     "cameraViews": {
       "type": "camera_views",
       "default": "",

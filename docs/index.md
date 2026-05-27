@@ -78,16 +78,18 @@ This index is the stable entry point for user and developer documentation.
 - [Report v66 - Cessna 172 Runway Steering and Flare Recovery](reports/report_v66.md)
 - [Report v67 - Cessna2 Steering Evidence and Flap Landing Recovery](reports/report_v67.md)
 - [Report v68 - Cessna3 Surface Smoothing and Flare Recovery](reports/report_v68.md)
+- [Report v69 - Cessna4 Path Authority, Flaps, and Brake Review](reports/report_v69.md)
 
 ## Current Policy
 
-- Use the `v3.4.55` package for the next Cessna 172 runway-mission validation.
+- Use the `v3.4.57` package for the next Cessna 172 runway-mission validation.
   This package intentionally makes `Cessna172` the active config so testers do
   not have to switch away from Alia manually during this slice.
 - Use the Cessna test card for auto runway takeoff, mission, and autoland.
   Confirm X-Plane parses Cessna channels 5, 6, and 7 and the ULog has
   `PWM_MAIN_FUNC6=440`, `PWM_MAIN_FUNC7=205`, and `PWM_MAIN_FUNC8=206` before
-  judging runway steering, flap deployment, or rollout behavior.
+  judging runway steering, flap deployment, or rollout behavior. v3.4.57 should
+  also log `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,4)`.
 - QuadTailsitter closure remains based on qtail26/qtail27. qtail27 proved the
   v3.4.50 flight tune was loaded, but manual RTL started auto back-transition at
   the old `75 m` descent altitude and consumed that margin.

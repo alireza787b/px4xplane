@@ -254,6 +254,13 @@
         reload_policy: "reconnect_before_flight",
         description: "Optional first-order smoothing time constant for normalized actuator commands before writing X-Plane datarefs. Use sparingly for low-rate HIL actuator streams and set 0 to disable."
       },
+      actuatorSmoothingChannels: {
+        type: "index_list",
+        min: 0,
+        max: 15,
+        reload_policy: "reconnect_before_flight",
+        description: "Optional comma-separated PX4 actuator channel list for actuator smoothing. Omit to smooth all channels when smoothing is enabled; set only surface channels to avoid delaying wheel steering, throttle, or flaps."
+      },
       cameraViews: {
         type: "camera_views",
         default: "",
@@ -502,6 +509,22 @@
         const zoom = Number.parseFloat(parts[7]);
         if (Number.isFinite(zoom) && (zoom <= 0 || zoom > 4)) {
           addIssue(issues, "error", location, `camera ${index + 1} zoom must be > 0 and <= 4`);
+        }
+      }
+      return;
+    }
+
+    if (field.type === "index_list") {
+      const min = Number(field.min ?? 0);
+      const max = Number(field.max ?? 15);
+      if (!trimmed) return;
+      for (const token of trimmed.split(",")) {
+        const part = token.trim();
+        if (!part) continue;
+        const parsed = Number.parseInt(part, 10);
+        if (!Number.isInteger(parsed) || String(parsed) !== part || parsed < min || parsed > max) {
+          addIssue(issues, "error", location, `expected comma-separated indices ${min}..${max}`);
+          return;
         }
       }
       return;

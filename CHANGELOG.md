@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.57] - 2026-05-27
+
+### Changed
+
+- Analyzed `cessna4.zip`: frame timing was clean and PX4 was commanding strong
+  wheel steering, but v3.4.56 smoothed every actuator channel and softened the
+  Cessna roll loop too far. The result was delayed nosewheel response on the
+  runway and late, low-frequency lateral path capture in flight.
+- Added `actuatorSmoothingChannels`, a generic per-airframe selector for the
+  existing actuator smoothing. Cessna now smooths only aileron/elevator/rudder
+  channels (`0,1,2,4`) with `0.04 s`; throttle, nosewheel, and flaps pass
+  through directly. Other airframes keep direct pass-through unless they opt in.
+- Restored most of the accepted v3.4.55 Cessna roll authority while staying
+  below the older saturated TB2-derived tune: `FW_RR_FF=3.2`, `FW_RR_P=0.42`,
+  `FW_RR_D=0.08`, `FW_R_RMAX=20`, `FW_R_TC=0.9`, `FW_R_LIM=35`.
+- Replaced X-Plane 12 Cessna flap writes to the deprecated shared
+  `sim/cockpit2/controls/flap_ratio` with current handle and physical surface
+  datarefs: `sim/cockpit2/controls/flap_handle_request_ratio` and
+  `sim/flightmodel/controls/wing1*_fla1def`. TB2 flap spelling was corrected
+  to the same current `fla1def` form.
+- Increased Cessna landing flap scale to `0.85` and allowed a slightly wider
+  landing airspeed gate (`LNDFW_AIRSPD_MAX=34`) so the visible X-Plane flaps
+  can slow the aircraft without forcing a marginal no-flap approach.
+
+### Notes
+
+- PX4 currently provides the Cessna runway steering output through
+  `Landing_Gear_Wheel`, but this branch has no native fixed-wing wheel-brake
+  output function. X-Plane toe-brake datarefs exist, but automatic wheel braking
+  is intentionally left out of this release instead of adding a hidden,
+  simulator-only brake policy.
+- The next Cessna test must be run after `make px4_sitl_default distclean`.
+  `cessna4` still contained saved parameter overrides, so any ULog used for
+  tuning must be checked with `tools/check_px4_airframe_params.py` first.
+
 ## [3.4.56] - 2026-05-27
 
 ### Changed

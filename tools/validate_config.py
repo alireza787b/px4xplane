@@ -109,6 +109,21 @@ def validate_scalar_field(section: str, key: str, value: str, field_schema: dict
                     yield Issue("error", section, key, f"camera {entry_index} zoom must be > 0 and <= 4")
         return
 
+    if field_type == "index_list":
+        minimum = int(field_schema.get("min", 0))
+        maximum = int(field_schema.get("max", 15))
+        for token in value.split(","):
+            token = token.strip()
+            if not token:
+                continue
+            if not token.isdigit():
+                yield Issue("error", section, key, f"invalid index '{token}'")
+                continue
+            parsed = int(token)
+            if parsed < minimum or parsed > maximum:
+                yield Issue("error", section, key, f"index {parsed} outside {minimum}..{maximum}")
+        return
+
     if field_type == "bool":
         if parse_bool(value) is None:
             yield Issue("error", section, key, f"expected boolean, got '{value}'")

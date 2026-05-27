@@ -63,6 +63,12 @@ float smoothActuatorControl(int channel, float command)
 	if (tau <= 0.0f || channel < 0 || channel >= static_cast<int>(smoothedActuatorControls.size())) {
 		return command;
 	}
+	if (ConfigManager::actuator_smoothing_channels_configured
+		&& !ConfigManager::actuator_smoothing_channels.test(static_cast<size_t>(channel))) {
+		smoothedActuatorControls[static_cast<size_t>(channel)] = command;
+		smoothedActuatorControlsValid.reset(static_cast<size_t>(channel));
+		return command;
+	}
 
 	const float dt = DataRefManager::SIM_Timestep;
 	if (!std::isfinite(dt) || dt <= 0.0f || dt > 0.5f || !smoothedActuatorControlsValid.test(channel)) {

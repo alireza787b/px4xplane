@@ -4,6 +4,38 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-27
 
+### v3.4.57 Cessna4 Path Authority and Flap Dataref Recovery
+
+- Reviewed `/home/alireza/cessna4.zip`. TruthCapture had `72,145` rows,
+  `0` dropped rows, `0` sim-time resets, and about `95 Hz` mean callback rate,
+  so the path regression was not a low-FPS or pause/unpause artifact.
+- PX4 commanded nosewheel steering during takeoff (`actuator_outputs[5]`
+  approached full authority), but v3.4.56 applied actuator smoothing to every
+  channel. Smoothing the wheel channel delayed centerline correction. v3.4.57
+  keeps actuator smoothing generic but lets each airframe select channels; the
+  Cessna smooths only surfaces `0,1,2,4`.
+- ULog comparison showed v3.4.56 reduced Cessna roll activity too far:
+  aileron commands were smoother but roll response lagged, producing large
+  low-frequency lateral oscillation around the path. v3.4.57 restores much of
+  the accepted v3.4.55 roll authority without returning to the earlier
+  saturation-heavy feed-forward.
+- X-Plane 12 and TruthCapture both warned that the shared flap datarefs were
+  replaced. v3.4.57 now writes `flap_handle_request_ratio` for the cockpit
+  handle and `wing1l_fla1def` / `wing1r_fla1def` for physical flap deflection.
+  This is a bridge/config mismatch fix, not a PX4 flap-generation issue.
+- Confirmed takeoff flaps were not expected in the tested Cessna airframe:
+  `FW_FLAPS_TO_SCL=0.0`. Landing flaps are now commanded with
+  `FW_FLAPS_LND_SCL=0.85`.
+- Reviewed PX4 actuator functions: runway steering is represented by
+  `Landing_Gear_Wheel`, while a fixed-wing wheel-brake output is not present in
+  this branch. Do not add hidden automatic braking to px4xplane in this slice;
+  use runway steering plus X-Plane drag/rolling friction for now.
+- Next action: package v3.4.57 and run a clean Cessna test after
+  `make px4_sitl_default distclean`; verify the log line
+  `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,4)`, visible
+  landing flaps, no replaced flap warnings, centerline takeoff, and recovered
+  lateral path capture.
+
 ### v3.4.56 Cessna3 Surface Saturation and Flare Recovery
 
 - Reviewed `/home/alireza/cessna3.zip`. TruthCapture had `76,302` rows,

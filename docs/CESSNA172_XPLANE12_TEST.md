@@ -73,10 +73,12 @@ FW_W_EN = 1
 PWM_MAIN_FUNC6 = 440
 PWM_MAIN_FUNC7 = 205
 PWM_MAIN_FUNC8 = 206
-FW_RR_FF = 0.5
-FW_RR_P = 0.3
-FW_RR_D = 0.03
-FW_R_RMAX = 15
+FW_RR_FF = 3.2
+FW_RR_P = 0.42
+FW_RR_D = 0.08
+FW_R_RMAX = 20
+FW_R_TC = 0.9
+FW_R_LIM = 35
 FW_LND_AIRSPD = 33
 FW_LND_EARLYCFG = 1
 FW_LND_ANG = 5
@@ -84,7 +86,9 @@ FW_LND_FLALT = 8
 FW_LND_FL_TIME = 4
 FW_LND_FL_PMIN = 8
 FW_LND_TD_TIME = -1
-FW_FLAPS_LND_SCL = 0.65
+FW_FLAPS_TO_SCL = 0.0
+FW_FLAPS_LND_SCL = 0.85
+LNDFW_AIRSPD_MAX = 34
 NAV_ACC_RAD = 180
 NAV_LOITER_RAD = 600
 ```
@@ -96,7 +100,7 @@ Config Name: Cessna172
 Active Airframe: Cessna172
 Airspeed source: xplane_indicated
 Camera Views: Forward, Down, Chase
-Actuator command smoothing enabled
+Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,4)
 Parsed channel 5
 Parsed channel 6
 Parsed channel 7
@@ -115,11 +119,15 @@ Parsed channel 7
   cruise.
 - NPFG turns are broad and coordinated; no repeated path overshoot around the
   `600 m` loiter.
-- Mission landing follows the final approach path, slows before final, flares
-  near the runway, and disarms after rollout.
-- X-Plane `Log.txt` should not report Cessna flap datarefs missing. v3.4.56
-  maps PX4 flap channels to the Laminar C172 shared
-  `sim/cockpit2/controls/flap_ratio` command.
+- Mission landing follows the final approach path, slows before final, visibly
+  deploys landing flaps, flares near the runway, and disarms after rollout.
+- X-Plane `Log.txt` should not report replaced or missing Cessna flap
+  datarefs. v3.4.57 writes `sim/cockpit2/controls/flap_handle_request_ratio`
+  and the physical `sim/flightmodel/controls/wing1l_fla1def` /
+  `sim/flightmodel/controls/wing1r_fla1def` datarefs.
+- Takeoff flaps are intentionally disabled in this package
+  (`FW_FLAPS_TO_SCL = 0.0`). If flap movement is seen during takeoff, treat it
+  as stale PX4 parameters or an aircraft-side override.
 
 ## Log Bundle
 
@@ -140,3 +148,8 @@ python3 tools/check_px4_airframe_params.py /path/to/cessna.ulg \
 
 If the ULog does not contain the values above, reset PX4 SITL parameters and
 rerun before tuning.
+
+For the Cessna phase, do not skip the reset. `cessna4` contained saved
+parameter overrides from manual tuning, including old roll and EKF values, so
+the static parameter check is part of the test procedure, not an optional
+cleanup step.

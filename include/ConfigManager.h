@@ -96,6 +96,7 @@ public:
     static std::string selectedConfig;
     static bool hasPropBrake(int motorIndex);
     static const int MAX_MOTORS = 8;  // Maximum possible motors in X-Plane
+    static const int MAX_ACTUATOR_CHANNELS = 16; // HIL_ACTUATOR_CONTROLS channels 0..15
     static const int MAX_CAMERA_VIEWS = 8; // Maximum configurable camera presets
     static void configureMotorBrakes(const CSimpleIniA& ini);
     static void configureCameraViews(const CSimpleIniA& ini);
@@ -166,6 +167,8 @@ public:
     static std::string airspeed_source;            // xplane_indicated, disabled, or body_axis
     static std::string pitot_axis_body;            // +X, -X, +Y, -Y, +Z, or -Z
     static float actuator_smoothing_time_constant_s; // Optional low-pass on normalized actuator commands
+    static bool actuator_smoothing_channels_configured; // True when smoothing is limited to explicit channels
+    static std::bitset<MAX_ACTUATOR_CHANNELS> actuator_smoothing_channels; // HIL channels eligible for smoothing
     static std::vector<CameraViewConfig> cameraViews; // Active airframe camera presets
 
     // MAVLink message rates (Hz)

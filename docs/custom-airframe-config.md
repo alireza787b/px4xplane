@@ -81,6 +81,9 @@ cameraViews = Forward|5.0|0.0|0.7|0.0|0.0|0.0|0.90; Down|1.2|0.0|-0.6|-90.0|0.0|
 ; Optional low-pass smoothing of normalized actuator commands before writing
 ; X-Plane datarefs. Use 0.0 for direct pass-through.
 actuatorSmoothingTimeConstantSec = 0.0
+; Optional comma-separated channel allow-list for smoothing. Omit this key to
+; smooth all channels when smoothing is enabled.
+actuatorSmoothingChannels =
 
 ; Quadcopter Motors (1-4)
 channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
@@ -124,9 +127,12 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
 - **Actuator Smoothing**: Optional first-order smoothing for actuator commands
   between PX4's HIL actuator packets and X-Plane's frame loop. Keep
   `actuatorSmoothingTimeConstantSec = 0.0` for direct pass-through. Use small
-  values such as `0.05` to `0.10` only when a fixed-wing aircraft has visibly
+  values such as `0.02` to `0.05` only when a fixed-wing aircraft has visibly
   stepped surfaces because the simulator renders much faster than the actuator
-  stream arrives. Do not use smoothing to hide an unstable tune.
+  stream arrives. Use `actuatorSmoothingChannels` to restrict smoothing to
+  surface channels, for example `0, 1, 2, 4`. Do not smooth wheel steering,
+  throttle, or flap channels unless there is direct evidence that those channels
+  need interpolation. Do not use smoothing to hide an unstable tune.
 - **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
 
 Auto-prop brakes are mode-agnostic. The bridge watches the configured motor

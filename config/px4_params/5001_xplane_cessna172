@@ -157,16 +157,16 @@ param set-default IMU_INTEG_RATE 200
 # SECTION 3: FIXED-WING ATTITUDE / RATE CONTROL
 ################################################################################
 
-# Roll. Keep C172 maneuvers passenger-smooth. The X-Plane C172 uses large
-# aileron authority, so use modest PX4 plane-style feed-forward instead of the
-# earlier TB2-derived value that saturated the surfaces.
-param set-default FW_RR_P 0.30
-param set-default FW_RR_I 0.08
-param set-default FW_RR_D 0.03
-param set-default FW_RR_FF 0.50
-param set-default FW_R_RMAX 15.0
-param set-default FW_R_TC 1.0
-param set-default FW_R_LIM 30.0
+# Roll. v3.4.56 over-softened this axis and caused late path capture. Restore
+# most of the accepted v3.4.55 authority while leaving margin below the previous
+# saturated feed-forward baseline.
+param set-default FW_RR_P 0.42
+param set-default FW_RR_I 0.11
+param set-default FW_RR_D 0.08
+param set-default FW_RR_FF 3.2
+param set-default FW_R_RMAX 20.0
+param set-default FW_R_TC 0.9
+param set-default FW_R_LIM 35.0
 
 # Pitch.
 param set-default FW_PR_P 0.365
@@ -258,8 +258,8 @@ param set-default FW_LND_USETER 1
 param set-default FW_LND_TD_OFF 3.0
 param set-default FW_LND_TD_TIME -1.0
 param set-default FW_FLAPS_TO_SCL 0.0
-param set-default FW_FLAPS_LND_SCL 0.65
-param set-default LNDFW_AIRSPD_MAX 32.5
+param set-default FW_FLAPS_LND_SCL 0.85
+param set-default LNDFW_AIRSPD_MAX 34.0
 param set-default LNDFW_VEL_XY_MAX 10.0
 param set-default LNDFW_VEL_Z_MAX 1.5
 param set-default LNDFW_TRIG_TIME 1.0

@@ -18,6 +18,8 @@ or aircraft behavior.
 - optional airframe camera presets in `cameraViews`
 - optional per-airframe actuator smoothing in
   `actuatorSmoothingTimeConstantSec`
+- optional per-airframe actuator smoothing allow-list in
+  `actuatorSmoothingChannels`
 - config reload policy for user-facing tools and docs
 
 Run the validator before packaging:
@@ -48,6 +50,7 @@ diagnostic use:
 - active airframe name
 - actuator channel mappings
 - actuator smoothing time constant
+- actuator smoothing channel allow-list
 - prop-brake motor list
 - prop-brake policy fields
 - accelerometer calibration/offset fields

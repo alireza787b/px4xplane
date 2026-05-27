@@ -156,6 +156,8 @@ bool ConfigManager::prop_brake_use_failure = false;
 std::string ConfigManager::airspeed_source = "xplane_indicated";
 std::string ConfigManager::pitot_axis_body = "+X";
 float ConfigManager::actuator_smoothing_time_constant_s = 0.0f;
+bool ConfigManager::actuator_smoothing_channels_configured = false;
+std::bitset<ConfigManager::MAX_ACTUATOR_CHANNELS> ConfigManager::actuator_smoothing_channels;
 
 // MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
 int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
@@ -320,6 +322,10 @@ void ConfigManager::loadConfiguration() {
     pitot_axis_body = ini.GetValue(configName.c_str(), "pitotAxisBody", "+X");
     actuator_smoothing_time_constant_s =
         static_cast<float>(ini.GetDoubleValue(configName.c_str(), "actuatorSmoothingTimeConstantSec", 0.0));
+    const std::string actuatorSmoothingChannelsConfig =
+        ini.GetValue(configName.c_str(), "actuatorSmoothingChannels", "");
+    actuator_smoothing_channels.reset();
+    actuator_smoothing_channels_configured = false;
 
     if (airspeed_source != "xplane_indicated" && airspeed_source != "disabled" && airspeed_source != "body_axis") {
         XPLMDebugString("px4xplane: [WARNING] Invalid airspeedSource, using xplane_indicated\n");
@@ -337,14 +343,49 @@ void ConfigManager::loadConfiguration() {
         XPLMDebugString("px4xplane: [WARNING] Invalid actuatorSmoothingTimeConstantSec, using 0.0\n");
         actuator_smoothing_time_constant_s = 0.0f;
     }
+    if (!actuatorSmoothingChannelsConfig.empty()) {
+        std::istringstream stream(actuatorSmoothingChannelsConfig);
+        std::string token;
+        bool hasValidChannel = false;
+        while (std::getline(stream, token, ',')) {
+            trimWhitespace(token);
+            if (token.empty()) {
+                continue;
+            }
+            try {
+                const int channel = std::stoi(token);
+                if (channel >= 0 && channel < MAX_ACTUATOR_CHANNELS) {
+                    actuator_smoothing_channels.set(static_cast<size_t>(channel));
+                    hasValidChannel = true;
+                } else {
+                    XPLMDebugString(("px4xplane: [WARNING] Actuator smoothing channel out of range: " + token + "\n").c_str());
+                }
+            } catch (const std::exception&) {
+                XPLMDebugString(("px4xplane: [WARNING] Invalid actuator smoothing channel: " + token + "\n").c_str());
+            }
+        }
+        actuator_smoothing_channels_configured = hasValidChannel;
+    }
 
     XPLMDebugString(("px4xplane: Airspeed source=" + airspeed_source +
         " pitotAxisBody=" + pitot_axis_body + "\n").c_str());
     if (actuator_smoothing_time_constant_s > 0.0f) {
-        char smoothingBuf[128];
+        char smoothingBuf[256];
+        std::string channelSummary = "all channels";
+        if (actuator_smoothing_channels_configured) {
+            channelSummary.clear();
+            for (size_t channel = 0; channel < actuator_smoothing_channels.size(); ++channel) {
+                if (actuator_smoothing_channels.test(channel)) {
+                    if (!channelSummary.empty()) {
+                        channelSummary += ",";
+                    }
+                    channelSummary += std::to_string(channel);
+                }
+            }
+        }
         snprintf(smoothingBuf, sizeof(smoothingBuf),
-            "px4xplane: Actuator command smoothing enabled (tau %.3fs)\n",
-            actuator_smoothing_time_constant_s);
+            "px4xplane: Actuator command smoothing enabled (tau %.3fs, channels %s)\n",
+            actuator_smoothing_time_constant_s, channelSummary.c_str());
         XPLMDebugString(smoothingBuf);
     }
 
