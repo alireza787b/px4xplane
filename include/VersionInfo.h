@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.51";
+    constexpr const char* VERSION = "3.4.52";
 
     /** Version phase description */
-    constexpr const char* PHASE = "QuadTailsitter RTL camera config polish";
+    constexpr const char* PHASE = "Config editor and camera workflow polish";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "060";
+    constexpr const char* BUILD = "061";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

@@ -1,12 +1,12 @@
 # QuadTailsitter X-Plane 12 Final Polish Workflow
 
 This card is for the next controlled QuadTailsitter closure validation after
-`qtail27.zip`. v3.4.51 keeps the accepted `5 kg` 6S 3115-class aircraft target,
+`qtail27.zip`. v3.4.52 keeps the accepted `5 kg` 6S 3115-class aircraft target,
 the stationary sensor/contact fixes, and the body-axis `-Z` virtual pitot.
 qtail27 showed that manual RTL can trigger auto back-transition too low when
 `RTL_DESCEND_ALT=75 m`, so this package raises the RTL altitude margin and adds
-config-driven plugin camera views that do not depend on numpad quick-look
-bindings.
+config-driven plugin camera views plus the upgraded editor/menu workflow that
+does not depend on numpad quick-look bindings.
 
 The next gate is a high-margin manual RTL plus mission validation. Do not use a
 low-altitude VTOL Land approach yet; keep the approach/back-transition altitude
@@ -70,7 +70,7 @@ target before the aircraft reaches the current point.
 Keep fixed-wing waypoint spacing at least `1300 m`, avoid tight waypoint
 clusters, and do not use a `50 m` VTOL Land approach altitude for public demos.
 qtail27 proved that `75 m` RTL descent altitude is not enough margin for this
-tailsitter if auto RTL starts back-transition from fixed-wing energy. v3.4.51
+tailsitter if auto RTL starts back-transition from fixed-wing energy. v3.4.51+
 uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150` so manual RTL starts the
 recovery higher while preserving the qtail26/qtail27 accepted flight-control
 baseline.
@@ -211,7 +211,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.51`
+- `px4xplane: Version: v3.4.52`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -229,7 +229,8 @@ presets are read from the active airframe's optional `cameraViews` config value:
 
 `Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom`
 
-QuadTailsitter ships three configured views:
+Every packaged airframe now ships forward, down, and chase camera presets.
+QuadTailsitter uses tailsitter-specific offsets:
 
 - `Nose / FPV`: in MC hover it points upward; in fixed-wing it points forward
   along the virtual pitot axis.
@@ -274,7 +275,7 @@ baseline for judging this package:
 - Estimator health was clean: no baro stale, vertical velocity instability,
   accelerometer-bias warning, or pause/FPS sensor regression.
 
-v3.4.51 preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
+v3.4.52 preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
 The only flight-param change is the RTL return/descent altitude margin for
 manual RTL from fixed-wing mode.
 
@@ -302,7 +303,7 @@ Save and send:
 The next log should be used to verify:
 
 - The ULog initial parameters match this card, especially the canted
-  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.51 RTL/FW/back-transition values. If the
+  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.52 RTL/FW/back-transition values. If the
   rotor axes are all `AX=0`, `AY=0`, `AZ=-1`, or if `FW_R_LIM` is still `32`,
   stop: the run is using stale PX4 parameters.
 - Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this

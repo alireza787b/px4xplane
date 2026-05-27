@@ -109,7 +109,8 @@ px4xplane/
 │   ├── 5020_xplane_alia250
 │   └── 5021_xplane_qtailsitter
 ├── docs/
-│   └── config-editor.html        ← Local schema-backed config editor
+│   ├── config-editor.html        ← Local schema-backed config editor
+│   └── config_schema.json        ← Editor/validator metadata, not runtime config
 └── README.md
 ```
 
@@ -117,9 +118,10 @@ Config tooling:
 - Runtime remains `64/config.ini`.
 - PX4 SITL reads airframes from the PX4 repository, not from the plugin folder;
   packaged `px4_airframes` files are reference copies for manual install/sync.
-- `64/config_schema.json` documents valid fields, ranges, and reload policy.
-- `docs/config-editor.html` can import/review/edit/export `config.ini` without
-  writing directly into X-Plane or PX4.
+- `docs/config_schema.json` documents valid fields, ranges, and reload policy.
+  It is metadata for tools, not a second runtime configuration file.
+- `docs/config-editor.html` opens from the px4xplane Advanced menu and can
+  review/edit/export `config.ini` without writing directly into X-Plane or PX4.
 - The packaged Alia, Ehang, and QuadTailsitter test cards describe the
   expected PX4 airframe, plugin config, sanity values, and log bundle for
   validation runs.

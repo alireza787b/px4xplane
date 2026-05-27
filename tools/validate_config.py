@@ -97,7 +97,7 @@ def validate_scalar_field(section: str, key: str, value: str, field_schema: dict
                 continue
             if not parts[0]:
                 yield Issue("error", section, key, f"camera {entry_index} label is empty")
-            for number_token in parts[1:]:
+            for token_index, number_token in enumerate(parts[1:], start=1):
                 try:
                     parsed = float(number_token)
                 except ValueError:
@@ -105,6 +105,8 @@ def validate_scalar_field(section: str, key: str, value: str, field_schema: dict
                     continue
                 if not math.isfinite(parsed):
                     yield Issue("error", section, key, f"camera {entry_index} has non-finite field '{number_token}'")
+                if token_index == 7 and (parsed <= 0 or parsed > 4):
+                    yield Issue("error", section, key, f"camera {entry_index} zoom must be > 0 and <= 4")
         return
 
     if field_type == "bool":

@@ -66,6 +66,7 @@ static int g_cameraMenuItemIndex = -1; // Global variable to store the index of 
 #define MENU_ITEM_RELOAD_VALIDATE_CONFIG ((void*)105)
 #define MENU_ITEM_SHOW_DOCS_REFERENCE ((void*)106)
 #define MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION ((void*)107)
+#define MENU_ITEM_SHOW_REPOSITORY ((void*)108)
 
 
 // Global variable to hold our command reference
@@ -109,8 +110,24 @@ void logConfigValidationSummary() {
 
 void showDocsReference() {
 	const std::string docsUrl = std::string(PX4XPlaneVersion::REPOSITORY_URL) + "/tree/master/docs";
-	XPLMDebugString(("px4xplane: Documentation: " + docsUrl + "\n").c_str());
-	ConnectionManager::setLastMessage("Docs URL written to X-Plane Log.txt");
+	if (UIHandler::openURL(docsUrl.c_str())) {
+		ConnectionManager::setLastMessage("Documentation opened in browser");
+	}
+	else {
+		XPLMDebugString(("px4xplane: Documentation: " + docsUrl + "\n").c_str());
+		ConnectionManager::setLastMessage("Docs URL written to X-Plane Log.txt");
+	}
+}
+
+void showRepositoryReference() {
+	const std::string repoUrl = PX4XPlaneVersion::REPOSITORY_URL;
+	if (UIHandler::openURL(repoUrl.c_str())) {
+		ConnectionManager::setLastMessage("Repository opened in browser");
+	}
+	else {
+		XPLMDebugString(("px4xplane: Repository: " + repoUrl + "\n").c_str());
+		ConnectionManager::setLastMessage("Repository URL written to X-Plane Log.txt");
+	}
 }
 
 std::string dirnameOf(const std::string& path) {
@@ -125,6 +142,28 @@ std::string pathSeparatorFor(const std::string& path) {
 	return path.find('\\') != std::string::npos ? "\\" : "/";
 }
 
+std::string fileUrlFromPath(const std::string& path) {
+	std::string normalized = path;
+	std::replace(normalized.begin(), normalized.end(), '\\', '/');
+
+	std::string encoded;
+	encoded.reserve(normalized.size());
+	for (char c : normalized) {
+		switch (c) {
+		case ' ': encoded += "%20"; break;
+		case '#': encoded += "%23"; break;
+		case '%': encoded += "%25"; break;
+		case '?': encoded += "%3F"; break;
+		default: encoded += c; break;
+		}
+	}
+
+	if (encoded.size() >= 2 && encoded[1] == ':') {
+		return "file:///" + encoded;
+	}
+	return "file://" + encoded;
+}
+
 void showConfigEditorLocation() {
 	char pluginPath[512];
 	XPLMGetPluginInfo(XPLMGetMyID(), nullptr, pluginPath, nullptr, nullptr);
@@ -134,8 +173,21 @@ void showConfigEditorLocation() {
 	const std::string sep = pathSeparatorFor(pluginPath);
 	const std::string editorPath = pluginRoot + sep + "docs" + sep + "config-editor.html";
 
-	XPLMDebugString(("px4xplane: Config editor: " + editorPath + "\n").c_str());
-	ConnectionManager::setLastMessage("Config editor path written to X-Plane Log.txt");
+	std::ifstream editorFile(editorPath.c_str());
+	if (!editorFile.good()) {
+		XPLMDebugString(("px4xplane: Config editor not found: " + editorPath + "\n").c_str());
+		ConnectionManager::setLastMessage("Config editor not found; path written to Log.txt");
+		return;
+	}
+
+	const std::string editorUrl = fileUrlFromPath(editorPath);
+	if (UIHandler::openURL(editorUrl.c_str())) {
+		ConnectionManager::setLastMessage("Config editor opened in browser");
+	}
+	else {
+		XPLMDebugString(("px4xplane: Config editor: " + editorPath + "\n").c_str());
+		ConnectionManager::setLastMessage("Config editor path written to X-Plane Log.txt");
+	}
 }
 
 struct Vec3f {
@@ -576,7 +628,8 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			ConfigManager::loadConfiguration();
 			initializeMessagePeriods();
 
-			refreshAirframesMenu();
+			releaseCustomCamera();
+			updateMenuItems();
 			XPLMDebugString(("px4xplane: Configuration reloaded for: " + ConfigManager::getAirframeDisplayName(selectedAirframe) + " (" + selectedAirframe + ")\n").c_str());
 		}
 		else {
@@ -609,6 +662,9 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 		}
 		else if (in_item_ref == MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION) {
 			showConfigEditorLocation();
+		}
+		else if (in_item_ref == MENU_ITEM_SHOW_REPOSITORY) {
+			showRepositoryReference();
 		}
 		else {
 			snprintf(debugBuf, sizeof(debugBuf), "Unknown advanced menu item: %p", in_item_ref);
@@ -648,8 +704,9 @@ void createAdvancedMenuItems() {
 		ConfigManager::diagnostic_log_enabled ? "Bridge Diagnostics: On" : "Bridge Diagnostics: Off",
 		MENU_ITEM_TOGGLE_DIAGNOSTICS, 1);
 	XPLMAppendMenuSeparator(advancedMenu);
-	XPLMAppendMenuItem(advancedMenu, "Show Config Editor Location", MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION, 1);
-	XPLMAppendMenuItem(advancedMenu, "Show Docs Location", MENU_ITEM_SHOW_DOCS_REFERENCE, 1);
+	XPLMAppendMenuItem(advancedMenu, "Open Config Editor", MENU_ITEM_SHOW_CONFIG_EDITOR_LOCATION, 1);
+	XPLMAppendMenuItem(advancedMenu, "Open Documentation", MENU_ITEM_SHOW_DOCS_REFERENCE, 1);
+	XPLMAppendMenuItem(advancedMenu, "Open GitHub Repository", MENU_ITEM_SHOW_REPOSITORY, 1);
 }
 
 void createCameraMenuItems() {

@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.50 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.52 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -279,14 +279,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config/config.ini
         ${OUTPUT_DIR}/config.ini
-    COMMENT "Copying config.ini to 64/ directory (with plugin binary)"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/config/config_schema.json
+    COMMAND ${CMAKE_COMMAND} -E remove -f
         ${OUTPUT_DIR}/config_schema.json
-    COMMENT "Copying config_schema.json to 64/ directory"
+    COMMENT "Copying config.ini to 64/ directory (with plugin binary)"
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -335,6 +330,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         ${CMAKE_SOURCE_DIR}/docs/config-editor.html
         ${OUTPUT_DIR}/../docs/config-editor.html
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/config/config_schema.json
+        ${OUTPUT_DIR}/../docs/config_schema.json
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js
     COMMENT "Copying config editor docs to plugin package"
@@ -378,8 +376,7 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config/config.ini
         ${OUTPUT_DIR}/config.ini
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/config/config_schema.json
+    COMMAND ${CMAKE_COMMAND} -E remove -f
         ${OUTPUT_DIR}/config_schema.json
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/README.md
@@ -398,6 +395,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/config-editor.html
         ${OUTPUT_DIR}/../docs/config-editor.html
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/config/config_schema.json
+        ${OUTPUT_DIR}/../docs/config_schema.json
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="system">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,71 +7,134 @@
   <style>
     :root {
       color-scheme: light;
-      --bg: #f5f7fa;
+      --bg: #f4f6f8;
       --panel: #ffffff;
+      --panel-2: #f8fafc;
       --line: #c8d0da;
       --text: #17202a;
       --muted: #5c6978;
       --accent: #1463a5;
+      --accent-soft: #e7f1fb;
       --ok: #157347;
       --warn: #9a6700;
       --bad: #b42318;
-      --soft: #eef3f8;
+      --input: #ffffff;
+      --shadow: 0 1px 2px rgb(16 24 40 / 0.06);
+    }
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #111418;
+      --panel: #181d23;
+      --panel-2: #20262d;
+      --line: #343d49;
+      --text: #e6edf3;
+      --muted: #9aa7b4;
+      --accent: #66b3ff;
+      --accent-soft: #1c3148;
+      --ok: #56d18f;
+      --warn: #e1b84d;
+      --bad: #ff867f;
+      --input: #101419;
+      --shadow: none;
+    }
+    @media (prefers-color-scheme: dark) {
+      html[data-theme="system"] {
+        color-scheme: dark;
+        --bg: #111418;
+        --panel: #181d23;
+        --panel-2: #20262d;
+        --line: #343d49;
+        --text: #e6edf3;
+        --muted: #9aa7b4;
+        --accent: #66b3ff;
+        --accent-soft: #1c3148;
+        --ok: #56d18f;
+        --warn: #e1b84d;
+        --bad: #ff867f;
+        --input: #101419;
+        --shadow: none;
+      }
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font: 14px/1.4 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font: 14px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
     header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) auto;
       gap: 16px;
-      padding: 12px 18px;
+      align-items: center;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--line);
       background: var(--panel);
+      box-shadow: var(--shadow);
     }
-    h1 {
-      margin: 0;
-      font-size: 18px;
-      font-weight: 650;
+    h1, h2, h3 { margin: 0; }
+    h1 { font-size: 18px; font-weight: 700; }
+    h2, h3 { font-size: 14px; font-weight: 700; }
+    .headerMeta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .headerActions, .toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
     }
     main {
       display: grid;
-      grid-template-columns: 260px minmax(520px, 1fr) 340px;
+      grid-template-columns: 260px minmax(560px, 1fr) 360px;
       gap: 12px;
       padding: 12px;
-      min-height: calc(100vh - 58px);
+      min-height: calc(100vh - 120px);
     }
     section, aside {
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: 6px;
       min-width: 0;
+      box-shadow: var(--shadow);
+    }
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: space-between;
+      padding: 10px 14px 16px;
+      color: var(--muted);
+      font-size: 12px;
     }
     .panelTitle {
       padding: 10px 12px;
       border-bottom: 1px solid var(--line);
-      font-weight: 650;
+      background: var(--panel-2);
+      font-weight: 700;
     }
     .panelBody { padding: 12px; }
-    .toolbar {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
+    .sourceLine {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      font-size: 12px;
+      padding-top: 2px;
     }
     button, input, select, textarea {
       font: inherit;
     }
     button {
       min-height: 30px;
-      border: 1px solid #91a4b8;
+      border: 1px solid var(--line);
       border-radius: 5px;
-      background: var(--soft);
+      background: var(--panel-2);
       color: var(--text);
       cursor: pointer;
       padding: 4px 10px;
@@ -80,9 +143,9 @@
     input, select, textarea {
       width: 100%;
       min-height: 30px;
-      border: 1px solid #aeb9c6;
+      border: 1px solid var(--line);
       border-radius: 5px;
-      background: #fff;
+      background: var(--input);
       color: var(--text);
       padding: 4px 7px;
     }
@@ -97,16 +160,16 @@
       gap: 4px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 600;
+      font-weight: 650;
     }
-    label.full { margin: 12px 0; }
+    label.full { margin: 10px 0 12px; }
     table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
     }
     th, td {
-      border-bottom: 1px solid #e2e7ed;
+      border-bottom: 1px solid var(--line);
       padding: 7px 6px;
       vertical-align: top;
       overflow-wrap: anywhere;
@@ -115,11 +178,11 @@
       width: 170px;
       text-align: left;
       color: var(--muted);
-      font-weight: 650;
+      font-weight: 700;
     }
     thead th {
       width: auto;
-      background: #f8fafc;
+      background: var(--panel-2);
     }
     .airframe {
       display: block;
@@ -129,7 +192,7 @@
     }
     .airframe.selected {
       border-color: var(--accent);
-      background: #e7f1fb;
+      background: var(--accent-soft);
     }
     .airframe.active::after {
       content: " active";
@@ -143,9 +206,10 @@
       min-height: 28px;
       padding: 3px 9px;
       border-radius: 5px;
-      font-weight: 650;
+      font-weight: 700;
       border: 1px solid var(--line);
-      background: var(--soft);
+      background: var(--panel-2);
+      white-space: nowrap;
     }
     .status.ok { color: var(--ok); }
     .status.warn { color: var(--warn); }
@@ -157,17 +221,51 @@
       align-items: end;
       margin-bottom: 12px;
     }
-    .sectionBar + .sectionBar {
+    .sectionBar.compact {
       grid-template-columns: 170px auto;
+      justify-content: start;
+    }
+    .subsection {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+    .subsection:first-child {
+      border-top: 0;
+      padding-top: 0;
+      margin-top: 0;
+    }
+    .subsectionHeader {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 8px;
     }
     .policy {
       display: inline-block;
       padding: 2px 6px;
       border-radius: 4px;
-      background: #eef3f8;
-      color: #34465a;
+      background: var(--accent-soft);
+      color: var(--text);
       font-size: 12px;
       white-space: nowrap;
+    }
+    .helpCell {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .helpButton {
+      width: 24px;
+      min-height: 24px;
+      padding: 0;
+      border-radius: 50%;
+      font-weight: 700;
+    }
+    .cameraTable th,
+    .cameraTable td {
+      min-width: 95px;
     }
     #issues {
       margin: 0;
@@ -184,16 +282,41 @@
       resize: vertical;
     }
     .muted { color: var(--muted); }
-    @media (max-width: 1120px) {
+    .fileHint {
+      color: var(--muted);
+      font-size: 12px;
+      margin: 8px 0 0;
+    }
+    @media (max-width: 1180px) {
       main { grid-template-columns: 1fr; }
       input[type="file"] { width: 100%; }
+      header { grid-template-columns: 1fr; }
+      .headerActions { justify-content: flex-start; }
+    }
+    @media (max-width: 720px) {
+      .sectionBar, .sectionBar.compact { grid-template-columns: 1fr; }
+      .subsectionHeader { display: block; }
+      th { width: 120px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>px4xplane Config Editor</h1>
-    <div id="statusLine" class="status">Config not loaded</div>
+    <div>
+      <h1><a href="https://github.com/alireza787b/px4xplane" target="_blank" rel="noreferrer">px4xplane Config Editor</a></h1>
+      <div class="headerMeta">
+        <span>v3.4.52</span>
+        <span>build 061</span>
+        <span>Runtime source: <code>64/config.ini</code></span>
+      </div>
+    </div>
+    <div class="headerActions">
+      <button id="autoloadConfig">Auto Load Package</button>
+      <button id="themeToggle">Toggle Theme</button>
+      <a href="https://github.com/alireza787b/px4xplane/tree/master/docs" target="_blank" rel="noreferrer">Docs</a>
+      <div id="statusLine" class="status">Config not loaded</div>
+    </div>
+    <div id="sourceLine" class="sourceLine">Runtime source: 64/config.ini. Schema JSON is editor metadata, not a second runtime config.</div>
   </header>
 
   <main>
@@ -209,7 +332,7 @@
     </aside>
 
     <section>
-      <div class="panelTitle">Config</div>
+      <div class="panelTitle">Config Files</div>
       <div class="panelBody">
         <div class="toolbar">
           <label>config.ini <input id="configFile" type="file" accept=".ini,text/plain"></label>
@@ -217,11 +340,13 @@
           <button id="exportConfig">Export config.ini</button>
           <button id="copyPreview">Copy Preview</button>
         </div>
+        <p class="fileHint">The plugin reads only <code>px4xplane/64/config.ini</code>. The schema is bundled for validation and field help.</p>
       </div>
 
       <div class="panelTitle">Global Fields</div>
       <div class="panelBody">
         <table>
+          <thead><tr><th>Setting</th><th>Value</th><th>Help</th><th>Description</th></tr></thead>
           <tbody id="globalFields"></tbody>
         </table>
       </div>
@@ -242,6 +367,15 @@
       </div>
     </aside>
   </main>
+
+  <footer>
+    <span>Copyright (c) 2026 Alireza Ghaderi.</span>
+    <span>
+      <a href="https://github.com/alireza787b/px4xplane" target="_blank" rel="noreferrer">px4xplane</a>
+      ·
+      <a href="https://www.linkedin.com/in/alireza787b/" target="_blank" rel="noreferrer">alireza787b</a>
+    </span>
+  </footer>
 
   <script src="assets/config-editor.js"></script>
 </body>

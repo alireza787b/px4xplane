@@ -34,7 +34,9 @@
 #include <sstream>
 #include <algorithm>
 #include <cstring>
+#include <cstdint>
 #include <iomanip>
+#include <string>
 
  // Platform-specific includes for URL opening
 #ifdef _WIN32
@@ -43,12 +45,34 @@
 #elif defined(__APPLE__)
 #include <CoreFoundation/CFBundle.h>
 #include <ApplicationServices/ApplicationServices.h>
+#include <unistd.h>
 #else
 #include <cstdlib>
+#include <unistd.h>
 #endif
 
 using namespace UIConstants;
 using namespace UIHandler;
+
+namespace {
+#if !defined(_WIN32)
+bool launchDetached(const char* executable, const char* target) {
+    if (!executable || !target || !*target) {
+        return false;
+    }
+
+    const pid_t pid = fork();
+    if (pid < 0) {
+        return false;
+    }
+    if (pid == 0) {
+        execlp(executable, executable, target, static_cast<char*>(nullptr));
+        _exit(127);
+    }
+    return true;
+}
+#endif
+}
 
 // =================================================================
 // STATIC MEMBER VARIABLES
@@ -277,9 +301,23 @@ int UIHandler::drawSmartText(int x, int y, const char* text, float color[3], int
 }
 
 bool UIHandler::openURL(const char* url) {
-    // DISABLED: URL opening functionality to prevent X-Plane stability issues
-    debugLog("URL opening is disabled for stability - copy URL manually from about dialog");
-    return false;
+    if (!url || !*url) {
+        debugLog("openURL called with empty target");
+        return false;
+    }
+
+#ifdef _WIN32
+    const auto result = reinterpret_cast<intptr_t>(
+        ShellExecuteA(nullptr, "open", url, nullptr, nullptr, SW_SHOWNORMAL));
+    const bool ok = result > 32;
+#elif defined(__APPLE__)
+    const bool ok = launchDetached("open", url);
+#else
+    const bool ok = launchDetached("xdg-open", url);
+#endif
+
+    debugLog((std::string(ok ? "Opened external target: " : "Failed to open external target: ") + url).c_str());
+    return ok;
 }
 void UIHandler::debugLog(const char* message) {
     XPLMDebugString("px4xplane UI: ");

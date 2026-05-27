@@ -69,9 +69,9 @@ airspeedSource = xplane_indicated
 pitotAxisBody = +X
 
 ; Optional camera presets shown in PX4 X-Plane > Camera Views.
-; Format:
+; The packaged config editor presents these as rows, but the runtime INI format is:
 ; Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom
-cameraViews = Nose / FPV|0.85|0.0|0.0|0.0|0.0|0.0|0.90; Chase|-8.0|0.0|2.0|0.0|0.0|0.0|0.70
+cameraViews = Forward|5.0|0.0|0.7|0.0|0.0|0.0|0.90; Down|1.2|0.0|-0.6|-90.0|0.0|0.0|0.85; Chase|-18.0|0.0|4.0|-8.0|0.0|0.0|0.70
 
 ; Quadcopter Motors (1-4)
 channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
@@ -108,6 +108,10 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
   appear under `PX4 X-Plane > Camera Views` and can be bound to
   `px4xplane/camera/view_1` through `px4xplane/camera/view_8`. Leave
   `cameraViews` empty or omit it if the aircraft does not need custom views.
+  Conventional aircraft normally use `pitch_offset_deg=0` for forward views and
+  `-90` for down-looking views. Tailsitters can use different offsets because
+  their multicopter hover attitude is not the same as conventional fixed-wing
+  level attitude.
 - **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
 
 Auto-prop brakes are mode-agnostic. The bridge watches the configured motor
@@ -159,8 +163,11 @@ Run this before packaging or sharing a custom airframe:
 python3 tools/validate_config.py config/config.ini
 ```
 
-The validator uses `config/config_schema.json` for global field types, ranges,
-and reload policy. To see which fields are safe to reload live and which require
+The validator uses `config/config_schema.json` in the source tree for global
+field types, ranges, and reload policy. Packaged releases also include
+`docs/config_schema.json` for the local editor. This schema is tooling metadata;
+the plugin reads `64/config.ini` as the only runtime source. To see which fields
+are safe to reload live and which require
 disconnect/reconnect before flight:
 
 ```bash

@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.52] - 2026-05-27
+
+### Changed
+
+- Added config-driven forward/down/chase camera presets for all packaged
+  airframes while preserving the accepted QuadTailsitter camera offsets.
+- Rebuilt the camera menu after airframe changes and released active custom
+  camera control during airframe switches to avoid stale menu/index behavior.
+- Replaced Advanced menu path logging with `Open Config Editor`,
+  `Open Documentation`, and `Open GitHub Repository`; each uses OS-native
+  opening with a Log.txt fallback if the platform blocks it.
+- Clarified the config source of truth: the plugin reads only `64/config.ini`.
+  `config_schema.json` is editor/validator metadata and is now packaged under
+  `docs/` rather than next to the runtime INI.
+- Upgraded the static config editor with automatic package loading when browser
+  local-file policy allows it, dark mode, version metadata, footer links,
+  inline field help, and structured camera-view editing.
+- Expanded editor fallback validation so release configs no longer show false
+  unknown-global-key warnings when the schema file is not manually imported.
+- Matched JS/Python camera validation to runtime zoom bounds (`0 < zoom <= 4`).
+- Added report v64 and refreshed docs/index/test card guidance for v3.4.52.
+
+### Notes
+
+- No PX4 airframe parameters, QuadTailsitter ACF geometry, sensor contract, or
+  accepted qtail26/qtail27 flight-control tuning changed in this slice.
+
+---
+
 ## [3.4.51] - 2026-05-27
 
 ### Changed

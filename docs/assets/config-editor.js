@@ -2,33 +2,278 @@
   "use strict";
 
   const DEFAULT_SCHEMA = {
+    schema_version: 1,
+    format: "px4xplane config.ini",
     runtime_supported_channel_types: ["float", "floatArray"],
+    reload_policies: {
+      live_reload: "Safe to change with Reload Config while PX4 is disconnected or connected. Do not change during an armed flight unless diagnosing.",
+      reconnect_before_flight: "Change before connecting PX4 SITL, or disconnect/reconnect before flying. Reload may parse it, but in-flight changes are not supported.",
+      px4_sitl_restart: "Requires changing PX4 airframe parameters or restarting PX4 SITL; not a px4xplane config.ini live setting.",
+      development_only: "For controlled debugging only. Keep disabled for normal releases and demo flights."
+    },
     global_fields: {
       config_name: {
         type: "string",
         required: true,
         group: "airframe",
         reload_policy: "reconnect_before_flight",
-        description: "Name of the active airframe section."
+        description: "Name of the active airframe section in this config file."
+      },
+      debug_verbose_logging: {
+        type: "bool",
+        default: false,
+        group: "diagnostics",
+        reload_policy: "live_reload",
+        description: "Enable verbose plugin status logging."
+      },
+      debug_log_sensor_timing: {
+        type: "bool",
+        default: false,
+        group: "diagnostics",
+        reload_policy: "development_only",
+        description: "Log high-volume HIL_SENSOR timing details."
+      },
+      debug_log_sensor_values: {
+        type: "bool",
+        default: false,
+        group: "diagnostics",
+        reload_policy: "development_only",
+        description: "Log high-volume sensor values and noise diagnostics."
+      },
+      debug_log_ekf_innovations: {
+        type: "bool",
+        default: false,
+        group: "diagnostics",
+        reload_policy: "development_only",
+        description: "Log estimator-oriented diagnostics when available."
+      },
+      debug_log_accel_pipeline: {
+        type: "bool",
+        default: false,
+        group: "diagnostics",
+        reload_policy: "development_only",
+        description: "Log accelerometer pipeline stages."
+      },
+      debug_accel_bypass_calibration: {
+        type: "bool",
+        default: false,
+        group: "sensor_contract",
+        reload_policy: "development_only",
+        description: "Bypass accelerometer calibration for controlled debugging."
+      },
+      diagnostic_log_enabled: {
+        type: "bool",
+        default: false,
+        group: "diagnostics",
+        reload_policy: "live_reload",
+        description: "Emit compact bridge health lines to X-Plane Log.txt."
+      },
+      diagnostic_log_interval_s: {
+        type: "float",
+        default: 2.0,
+        min: 0.25,
+        max: 60.0,
+        group: "diagnostics",
+        reload_policy: "live_reload",
+        description: "Seconds between compact bridge health log lines."
+      },
+      show_connection_status_hud: {
+        type: "bool",
+        default: true,
+        group: "ui",
+        reload_policy: "live_reload",
+        description: "Show the compact connection/status HUD overlay."
+      },
+      fps_warning_enabled: {
+        type: "bool",
+        default: true,
+        group: "ui",
+        reload_policy: "live_reload",
+        description: "Show a low-FPS warning when X-Plane frame rate drops below the configured threshold."
+      },
+      fps_warning_threshold: {
+        type: "int",
+        default: 50,
+        min: 20,
+        max: 120,
+        group: "ui",
+        reload_policy: "live_reload",
+        description: "FPS threshold below which the low-FPS warning is shown."
+      },
+      accel_auto_calibrate: {
+        type: "bool",
+        default: false,
+        group: "sensor_contract",
+        reload_policy: "reconnect_before_flight",
+        description: "Enable startup accelerometer gravity calibration."
+      },
+      accel_offset_x: {
+        type: "float",
+        default: 0.0,
+        group: "sensor_contract",
+        reload_policy: "reconnect_before_flight",
+        description: "Manual accelerometer X-axis offset in m/s^2."
+      },
+      accel_offset_y: {
+        type: "float",
+        default: 0.0,
+        group: "sensor_contract",
+        reload_policy: "reconnect_before_flight",
+        description: "Manual accelerometer Y-axis offset in m/s^2."
+      },
+      accel_offset_z: {
+        type: "float",
+        default: 0.0,
+        group: "sensor_contract",
+        reload_policy: "reconnect_before_flight",
+        description: "Manual accelerometer Z-axis offset in m/s^2."
+      },
+      ground_stationary_accel_guard_enabled: {
+        type: "bool",
+        default: true,
+        group: "sensor_contract",
+        reload_policy: "reconnect_before_flight",
+        description: "When stationary on the ground, replace X-Plane gear/contact g-load spikes with attitude-consistent gravity before publishing HIL_SENSOR acceleration."
+      },
+      ground_stationary_kinematics_guard_enabled: {
+        type: "bool",
+        default: true,
+        group: "sensor_contract",
+        reload_policy: "reconnect_before_flight",
+        description: "When stationary on the ground, publish a coherent zero-motion contract: zero GPS/HIL_STATE velocity, zero gyro rates, and latched GPS/HIL_STATE position/altitude. Baro pressure remains live with tiny noise to avoid simulated stale-sensor detection."
+      },
+      mavlink_sensor_rate_hz: {
+        type: "int",
+        default: 200,
+        min: 1,
+        max: 500,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Target HIL_SENSOR rate. Actual rate is bounded by X-Plane callback rate."
+      },
+      mavlink_gps_rate_hz: {
+        type: "int",
+        default: 10,
+        min: 1,
+        max: 100,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Target HIL_GPS rate."
+      },
+      mavlink_state_rate_hz: {
+        type: "int",
+        default: 50,
+        min: 1,
+        max: 200,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Target HIL_STATE_QUATERNION rate."
+      },
+      mavlink_rc_rate_hz: {
+        type: "int",
+        default: 50,
+        min: 1,
+        max: 200,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Target HIL_RC_INPUTS rate."
       }
     },
     airframe_fields: {
-      autoPropBrakes: { type: "motor_index_list", min: 0, max: 7 },
-      autoPropBrakeApplyThreshold: { type: "float", min: 0, max: 1 },
-      autoPropBrakeReleaseThreshold: { type: "float", min: 0, max: 1 },
-      autoPropBrakeDwellSec: { type: "float", min: 0, max: 30 },
-      autoPropBrakeMinAirspeedMps: { type: "float", min: 0, max: 200 },
-      autoPropBrakeMode: { type: "string", enum: ["feather", "hard_lock", "prop_separate"] },
-	      autoPropBrakeUseFailure: { type: "bool" },
-	      airspeedSource: { type: "string", enum: ["xplane_indicated", "disabled", "body_axis"] },
-	      pitotAxisBody: { type: "string", enum: ["+X", "-X", "+Y", "-Y", "+Z", "-Z"] },
-	      cameraViews: { type: "camera_views" },
-	      channelN: { type: "actuator_mapping", min_channel: 0, max_channel: 15 }
-	    }
-	  };
+      autoPropBrakes: {
+        type: "motor_index_list",
+        min: 0,
+        max: 7,
+        reload_policy: "reconnect_before_flight",
+        description: "X-Plane engine indices that use the current configurable prop-brake behavior."
+      },
+      autoPropBrakeApplyThreshold: {
+        type: "float",
+        default: 0.01,
+        min: 0,
+        max: 1,
+        reload_policy: "reconnect_before_flight",
+        description: "Apply prop brakes only after every configured brake motor command stays at or below this normalized command."
+      },
+      autoPropBrakeReleaseThreshold: {
+        type: "float",
+        default: 0.12,
+        min: 0,
+        max: 1,
+        reload_policy: "reconnect_before_flight",
+        description: "Release all prop brakes immediately when any configured brake motor command reaches or exceeds this normalized command."
+      },
+      autoPropBrakeDwellSec: {
+        type: "float",
+        default: 2.0,
+        min: 0,
+        max: 30,
+        reload_policy: "reconnect_before_flight",
+        description: "Continuous low-command dwell time before configured prop brakes may apply."
+      },
+      autoPropBrakeMinAirspeedMps: {
+        type: "float",
+        default: 0,
+        min: 0,
+        max: 200,
+        reload_policy: "reconnect_before_flight",
+        description: "Optional true-airspeed gate for applying prop brakes. Zero disables the airspeed gate."
+      },
+      autoPropBrakeMode: {
+        type: "string",
+        default: "feather",
+        enum: ["feather", "hard_lock", "prop_separate"],
+        reload_policy: "reconnect_before_flight",
+        description: "X-Plane prop-brake mechanism. feather writes normal prop actuator requests; hard_lock also writes low-level flightmodel prop geometry; prop_separate uses X-Plane prop-separation failures."
+      },
+      autoPropBrakeUseFailure: {
+        type: "bool",
+        default: false,
+        reload_policy: "reconnect_before_flight",
+        description: "Experimental. Also use X-Plane engine-seizure failure while prop brakes are active."
+      },
+      airspeedSource: {
+        type: "string",
+        default: "xplane_indicated",
+        enum: ["xplane_indicated", "disabled", "body_axis"],
+        reload_policy: "reconnect_before_flight",
+        description: "Differential-pressure source for HIL_SENSOR. xplane_indicated converts X-Plane IAS with sea-level-equivalent density, disabled sends zero pressure, body_axis projects local air-relative velocity onto pitotAxisBody and uses local air density."
+      },
+      pitotAxisBody: {
+        type: "string",
+        default: "+X",
+        enum: ["+X", "-X", "+Y", "-Y", "+Z", "-Z"],
+        reload_policy: "reconnect_before_flight",
+        description: "Physical pitot probe axis in PX4 body frame. Used only when airspeedSource is body_axis."
+      },
+      cameraViews: {
+        type: "camera_views",
+        default: "",
+        reload_policy: "live_reload",
+        description: "Optional camera presets for the active airframe. Format: Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom; repeat entries with semicolons."
+      },
+      channelN: {
+        type: "actuator_mapping",
+        min_channel: 0,
+        max_channel: 15,
+        reload_policy: "reconnect_before_flight",
+        description: "PX4 actuator channel mapping to one or more X-Plane datarefs."
+      }
+    }
+  };
 
   const RANGE_RE = /^\[\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s+([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*\]$/;
   const INDEX_RE = /^\[\s*(\d+(?:\s+\d+)*)\s*\]$/;
+  const CAMERA_FIELDS = [
+    ["label", "Label"],
+    ["forward", "Forward m"],
+    ["right", "Right m"],
+    ["up", "Up m"],
+    ["pitch", "Pitch deg"],
+    ["heading", "Heading deg"],
+    ["roll", "Roll deg"],
+    ["zoom", "Zoom"]
+  ];
 
   function createEmptyConfig() {
     return { globals: { config_name: "" }, sections: [] };
@@ -92,6 +337,7 @@
 
       for (const key of Object.keys(section.keys)) {
         if (key === "autoPropBrakes" || /^channel\d+$/.test(key)) continue;
+        if (key === "cameraViews" && !String(section.keys[key] || "").trim()) continue;
         lines.push(`${key} = ${section.keys[key]}`);
       }
 
@@ -125,6 +371,42 @@
       .join(" | ");
   }
 
+  function parseCameras(value) {
+    return String(value || "")
+      .split(";")
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+      .map((entry) => {
+        const parts = entry.split("|").map((part) => part.trim());
+        return {
+          label: parts[0] || "",
+          forward: parts[1] || "0.0",
+          right: parts[2] || "0.0",
+          up: parts[3] || "0.0",
+          pitch: parts[4] || "0.0",
+          heading: parts[5] || "0.0",
+          roll: parts[6] || "0.0",
+          zoom: parts[7] || "1.0"
+        };
+      });
+  }
+
+  function serializeCameras(cameras) {
+    return cameras
+      .filter((camera) => Object.values(camera).some((value) => String(value || "").trim()))
+      .map((camera) => [
+        camera.label,
+        camera.forward,
+        camera.right,
+        camera.up,
+        camera.pitch,
+        camera.heading,
+        camera.roll,
+        camera.zoom
+      ].map((part) => String(part ?? "").trim()).join("|"))
+      .join("; ");
+  }
+
   function parseBool(value) {
     const normalized = String(value).trim().toLowerCase();
     if (["true", "1", "yes", "on"].includes(normalized)) return true;
@@ -144,34 +426,38 @@
       return;
     }
 
-	    if (field.type === "string") {
-	      if (Array.isArray(field.enum) && !field.enum.includes(trimmed)) {
-	        addIssue(issues, "error", location, `expected one of: ${field.enum.join(", ")}`);
-	      }
-	      return;
-	    }
+    if (field.type === "string") {
+      if (Array.isArray(field.enum) && !field.enum.includes(trimmed)) {
+        addIssue(issues, "error", location, `expected one of: ${field.enum.join(", ")}`);
+      }
+      return;
+    }
 
-	    if (field.type === "camera_views") {
-	      if (!trimmed) return;
-	      const entries = trimmed.split(";").map((entry) => entry.trim()).filter(Boolean);
-	      if (entries.length > 8) {
-	        addIssue(issues, "error", location, "supports at most 8 camera views");
-	      }
-	      for (const [index, entry] of entries.entries()) {
-	        const parts = entry.split("|").map((part) => part.trim());
-	        if (parts.length !== 8) {
-	          addIssue(issues, "error", location, `camera ${index + 1} must have 8 pipe-separated fields`);
-	          continue;
-	        }
-	        if (!parts[0]) addIssue(issues, "error", location, `camera ${index + 1} label is empty`);
-	        for (const part of parts.slice(1)) {
-	          if (!Number.isFinite(Number.parseFloat(part))) {
-	            addIssue(issues, "error", location, `camera ${index + 1} has non-numeric field '${part}'`);
-	          }
-	        }
-	      }
-	      return;
-	    }
+    if (field.type === "camera_views") {
+      if (!trimmed) return;
+      const entries = trimmed.split(";").map((entry) => entry.trim()).filter(Boolean);
+      if (entries.length > 8) {
+        addIssue(issues, "error", location, "supports at most 8 camera views");
+      }
+      for (const [index, entry] of entries.entries()) {
+        const parts = entry.split("|").map((part) => part.trim());
+        if (parts.length !== 8) {
+          addIssue(issues, "error", location, `camera ${index + 1} must have 8 pipe-separated fields`);
+          continue;
+        }
+        if (!parts[0]) addIssue(issues, "error", location, `camera ${index + 1} label is empty`);
+        for (const part of parts.slice(1)) {
+          if (!Number.isFinite(Number.parseFloat(part))) {
+            addIssue(issues, "error", location, `camera ${index + 1} has non-numeric field '${part}'`);
+          }
+        }
+        const zoom = Number.parseFloat(parts[7]);
+        if (Number.isFinite(zoom) && (zoom <= 0 || zoom > 4)) {
+          addIssue(issues, "error", location, `camera ${index + 1} zoom must be > 0 and <= 4`);
+        }
+      }
+      return;
+    }
 
     if (field.type === "bool") {
       if (parseBool(trimmed) === null) addIssue(issues, "error", location, "expected boolean");
@@ -306,20 +592,34 @@
     else section.keys[key] = serializeMappings(mappings);
   }
 
+  function docsUrl(fieldName) {
+    const base = "https://github.com/alireza787b/px4xplane/blob/master/docs/custom-airframe-config.md";
+    if (fieldName === "cameraViews") return `${base}#key-sections-explained`;
+    if (/^channel/.test(fieldName)) return `${base}#channel-mappings`;
+    return base;
+  }
+
   function initEditor(documentRef) {
     const state = {
       schema: clone(DEFAULT_SCHEMA),
       config: createEmptyConfig(),
-      selectedSection: ""
+      selectedSection: "",
+      autoStatus: "Runtime source: 64/config.ini. Schema JSON is editor metadata, not a second runtime config."
     };
 
     const $ = (id) => documentRef.getElementById(id);
+
+    function setStatus(message) {
+      state.autoStatus = message;
+      const source = $("sourceLine");
+      if (source) source.textContent = message;
+    }
 
     function schemaFields() {
       return state.schema.global_fields || {};
     }
 
-    function renderIssues() {
+    function refreshValidationAndPreview() {
       const issues = validateConfig(state.config, state.schema);
       const errorCount = issues.filter((issue) => issue.level === "error").length;
       const warningCount = issues.filter((issue) => issue.level === "warning").length;
@@ -331,8 +631,10 @@
       $("statusLine").className = errorCount ? "status bad" : warningCount ? "status warn" : "status ok";
 
       $("issues").innerHTML = issues.length
-        ? issues.map((issue) => `<li class="${issue.level}"><b>${issue.level}</b> ${issue.location}: ${issue.message}</li>`).join("")
+        ? issues.map((issue) => `<li class="${issue.level}"><b>${escapeHtml(issue.level)}</b> ${escapeHtml(issue.location)}: ${escapeHtml(issue.message)}</li>`).join("")
         : "<li class=\"ok\">No validation issues.</li>";
+      $("preview").value = serializeIni(state.config);
+      setStatus(state.autoStatus);
     }
 
     function renderAirframes() {
@@ -341,7 +643,7 @@
       $("airframes").innerHTML = state.config.sections.map((section) => {
         const selected = section.name === state.selectedSection ? "selected" : "";
         const activeClass = section.name === active ? " active" : "";
-        return `<button class="airframe ${selected}${activeClass}" data-section="${section.name}">${section.name}</button>`;
+        return `<button class="airframe ${selected}${activeClass}" data-section="${escapeHtml(section.name)}">${escapeHtml(section.name)}</button>`;
       }).join("");
 
       for (const button of $("airframes").querySelectorAll("button")) {
@@ -352,27 +654,35 @@
       }
     }
 
+    function helpCell(key, field) {
+      const description = field.description || "";
+      const reload = field.reload_policy || "";
+      return `<div class="helpCell">
+        <button class="helpButton" title="${escapeHtml(description)}" aria-label="Help for ${escapeHtml(key)}">?</button>
+        <a href="${docsUrl(key)}" target="_blank" rel="noreferrer">Docs</a>
+        <span class="policy">${escapeHtml(reload)}</span>
+      </div>`;
+    }
+
     function inputForField(key, field, value, datasetName = "global") {
       const dataAttr = datasetName === "global" ? "data-global" : "data-airframe-field";
       if (field.type === "bool") {
         const selectedTrue = String(value).toLowerCase() === "true" ? "selected" : "";
         const selectedFalse = String(value).toLowerCase() === "false" ? "selected" : "";
-        return `<select ${dataAttr}="${key}"><option value="true" ${selectedTrue}>true</option><option value="false" ${selectedFalse}>false</option></select>`;
+        return `<select ${dataAttr}="${escapeHtml(key)}"><option value="true" ${selectedTrue}>true</option><option value="false" ${selectedFalse}>false</option></select>`;
       }
       if (Array.isArray(field.enum)) {
         const options = field.enum.map((item) => {
           const selected = String(item) === String(value) ? "selected" : "";
           return `<option value="${escapeHtml(item)}" ${selected}>${escapeHtml(item)}</option>`;
         });
-        return `<select ${dataAttr}="${key}">${options.join("")}</select>`;
+        return `<select ${dataAttr}="${escapeHtml(key)}">${options.join("")}</select>`;
       }
-	      const type = field.type === "int" || field.type === "float" ? "number" : "text";
-	      const step = field.type === "int" ? "1" : "any";
-	      if (field.type === "camera_views") {
-	        return `<textarea ${dataAttr}="${key}" rows="3">${escapeHtml(value)}</textarea>`;
-	      }
-	      return `<input ${dataAttr}="${key}" type="${type}" step="${step}" value="${escapeHtml(value)}">`;
-	    }
+      const type = field.type === "int" || field.type === "float" ? "number" : "text";
+      const step = field.type === "int" ? "1" : "any";
+      const bounds = `${field.min !== undefined ? ` min="${field.min}"` : ""}${field.max !== undefined ? ` max="${field.max}"` : ""}`;
+      return `<input ${dataAttr}="${escapeHtml(key)}" type="${type}" step="${step}"${bounds} value="${escapeHtml(value)}">`;
+    }
 
     function renderGlobals() {
       const fields = schemaFields();
@@ -380,39 +690,83 @@
       for (const [key, field] of Object.entries(fields)) {
         const value = state.config.globals[key] ?? field.default ?? "";
         rows.push(`<tr>
-          <th>${key}</th>
+          <th>${escapeHtml(key)}</th>
           <td>${inputForField(key, field, value)}</td>
-          <td><span class="policy">${field.reload_policy || ""}</span></td>
-          <td>${field.description || ""}</td>
+          <td>${helpCell(key, field)}</td>
+          <td>${escapeHtml(field.description || "")}</td>
         </tr>`);
       }
       $("globalFields").innerHTML = rows.join("");
       for (const input of $("globalFields").querySelectorAll("[data-global]")) {
         input.addEventListener("input", () => {
           state.config.globals[input.dataset.global] = input.value;
-          renderIssues();
           renderAirframes();
+          refreshValidationAndPreview();
         });
       }
+    }
+
+    function renderCameraEditor(section) {
+      const field = (state.schema.airframe_fields || DEFAULT_SCHEMA.airframe_fields).cameraViews || DEFAULT_SCHEMA.airframe_fields.cameraViews;
+      const cameras = parseCameras(section.keys.cameraViews || "");
+      const rows = cameras.map((camera, index) => `<tr data-camera-index="${index}">
+        ${CAMERA_FIELDS.map(([key, label]) => `<td><label>${label}<input data-camera-field="${key}" value="${escapeHtml(camera[key])}"></label></td>`).join("")}
+        <td><button data-remove-camera="1">Remove</button></td>
+      </tr>`).join("");
+
+      return `<div class="subsection">
+        <div class="subsectionHeader">
+          <div>
+            <h3>Camera Views</h3>
+            <p class="muted">Plugin-owned camera presets shown in X-Plane under PX4 X-Plane &gt; Camera Views. Up to 8 views are supported.</p>
+          </div>
+          ${helpCell("cameraViews", field)}
+        </div>
+        <table class="cameraTable">
+          <thead><tr>${CAMERA_FIELDS.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join("")}<th></th></tr></thead>
+          <tbody>${rows || "<tr><td colspan=\"9\" class=\"muted\">No camera presets configured.</td></tr>"}</tbody>
+        </table>
+        <p><button id="addCamera">Add Camera</button></p>
+      </div>`;
+    }
+
+    function readCameraRows() {
+      const cameras = [];
+      for (const row of $("airframeEditor").querySelectorAll("tr[data-camera-index]")) {
+        const camera = {};
+        for (const [key] of CAMERA_FIELDS) {
+          const input = row.querySelector(`[data-camera-field="${key}"]`);
+          camera[key] = input ? input.value : "";
+        }
+        cameras.push(camera);
+      }
+      return cameras;
+    }
+
+    function saveCameraRows(section) {
+      const serialized = serializeCameras(readCameraRows());
+      if (serialized) section.keys.cameraViews = serialized;
+      else delete section.keys.cameraViews;
+      refreshValidationAndPreview();
     }
 
     function renderSelectedAirframe() {
       const section = findSection(state.config, state.selectedSection);
       if (!section) {
-        $("airframeEditor").innerHTML = "<p class=\"muted\">No airframe selected.</p>";
+        $("airframeEditor").innerHTML = "<p class=\"muted\">No airframe selected. Load config.ini or add an airframe.</p>";
         return;
       }
 
       const airframeFields = state.schema.airframe_fields || DEFAULT_SCHEMA.airframe_fields || {};
       const scalarRows = [];
       for (const [key, field] of Object.entries(airframeFields)) {
-        if (key === "autoPropBrakes" || key === "channelN") continue;
+        if (key === "autoPropBrakes" || key === "channelN" || key === "cameraViews") continue;
         const value = section.keys[key] ?? field.default ?? "";
         scalarRows.push(`<tr>
-          <th>${key}</th>
+          <th>${escapeHtml(key)}</th>
           <td>${inputForField(key, field, value, "airframe")}</td>
-          <td><span class="policy">${field.reload_policy || ""}</span></td>
-          <td>${field.description || ""}</td>
+          <td>${helpCell(key, field)}</td>
+          <td>${escapeHtml(field.description || "")}</td>
         </tr>`);
       }
 
@@ -422,10 +776,10 @@
         parseMappings(section.keys[key]).forEach((mapping, index) => {
           channelRows.push(`<tr data-channel="${channel}" data-index="${index}">
             <td>channel${channel}</td>
-            <td><input data-map-field="dataref" value="${escapeHtml(mapping.dataref)}"></td>
+            <td><input data-map-field="dataref" value="${escapeHtml(mapping.dataref)}" placeholder="sim/flightmodel/..."></td>
             <td>${typeSelect(mapping.type)}</td>
-            <td><input data-map-field="indices" value="${escapeHtml(mapping.indices)}"></td>
-            <td><input data-map-field="range" value="${escapeHtml(mapping.range)}"></td>
+            <td><input data-map-field="indices" value="${escapeHtml(mapping.indices)}" placeholder="0 or [0 1]"></td>
+            <td><input data-map-field="range" value="${escapeHtml(mapping.range)}" placeholder="[-1 1]"></td>
             <td><button data-remove-map="1">Remove</button></td>
           </tr>`);
         });
@@ -438,29 +792,44 @@
           <button id="setActiveAirframe">Set Active</button>
           <button id="removeAirframe">Remove</button>
         </div>
-        <label class="full">autoPropBrakes <input id="autoPropBrakes" value="${escapeHtml(section.keys.autoPropBrakes || "")}"></label>
-        <table>
-          <thead><tr><th>Setting</th><th>Value</th><th>Reload</th><th>Description</th></tr></thead>
-          <tbody>${scalarRows.join("")}</tbody>
-        </table>
-        <div class="sectionBar">
-          <label>Add channel <input id="newChannel" type="number" min="0" max="15" value="0"></label>
-          <button id="addMapping">Add Mapping</button>
+        <div class="subsection">
+          <div class="subsectionHeader">
+            <h3>Airframe Setup Fields</h3>
+            <p class="muted">Setup-time fields should be changed before connecting PX4 SITL or before flight.</p>
+          </div>
+          <label class="full">autoPropBrakes
+            <input id="autoPropBrakes" value="${escapeHtml(section.keys.autoPropBrakes || "")}" placeholder="0, 1, 2, 3">
+          </label>
+          <table>
+            <thead><tr><th>Setting</th><th>Value</th><th>Help</th><th>Description</th></tr></thead>
+            <tbody>${scalarRows.join("")}</tbody>
+          </table>
         </div>
-        <table>
-          <thead><tr><th>Channel</th><th>Dataref</th><th>Type</th><th>Indices</th><th>Output Range</th><th></th></tr></thead>
-          <tbody>${channelRows.join("")}</tbody>
-        </table>
+        ${renderCameraEditor(section)}
+        <div class="subsection">
+          <div class="subsectionHeader">
+            <h3>Actuator Mappings</h3>
+            <p class="muted">Map PX4 output channels to X-Plane datarefs. Multiple mappings per channel are supported.</p>
+          </div>
+          <div class="sectionBar compact">
+            <label>Add channel <input id="newChannel" type="number" min="0" max="15" value="0"></label>
+            <button id="addMapping">Add Mapping</button>
+          </div>
+          <table>
+            <thead><tr><th>Channel</th><th>Dataref</th><th>Type</th><th>Indices</th><th>Output Range</th><th></th></tr></thead>
+            <tbody>${channelRows.join("") || "<tr><td colspan=\"6\" class=\"muted\">No channel mappings configured.</td></tr>"}</tbody>
+          </table>
+        </div>
       `;
 
       $("autoPropBrakes").addEventListener("input", (event) => {
         section.keys.autoPropBrakes = event.target.value;
-        renderIssues();
+        refreshValidationAndPreview();
       });
       for (const input of $("airframeEditor").querySelectorAll("[data-airframe-field]")) {
         input.addEventListener("input", () => {
           section.keys[input.dataset.airframeField] = input.value;
-          renderIssues();
+          refreshValidationAndPreview();
         });
       }
       $("renameAirframe").addEventListener("click", () => {
@@ -481,6 +850,24 @@
         state.selectedSection = "";
         render();
       });
+      $("addCamera").addEventListener("click", () => {
+        const cameras = parseCameras(section.keys.cameraViews || "");
+        if (cameras.length >= 8) return;
+        cameras.push({ label: "New View", forward: "0.0", right: "0.0", up: "0.0", pitch: "0.0", heading: "0.0", roll: "0.0", zoom: "0.90" });
+        section.keys.cameraViews = serializeCameras(cameras);
+        render();
+      });
+      for (const input of $("airframeEditor").querySelectorAll("[data-camera-field]")) {
+        input.addEventListener("input", () => saveCameraRows(section));
+      }
+      for (const button of $("airframeEditor").querySelectorAll("[data-remove-camera]")) {
+        button.addEventListener("click", () => {
+          const row = button.closest("tr[data-camera-index]");
+          if (row) row.remove();
+          saveCameraRows(section);
+          render();
+        });
+      }
       $("addMapping").addEventListener("click", () => {
         const channel = Math.max(0, Math.min(15, Number.parseInt($("newChannel").value, 10) || 0));
         const key = `channel${channel}`;
@@ -498,7 +885,7 @@
             const mappings = parseMappings(section.keys[`channel${channel}`]);
             mappings[index][input.dataset.mapField] = input.value;
             setChannelMapping(section, channel, mappings);
-            renderIssues();
+            refreshValidationAndPreview();
           });
         }
         row.querySelector("[data-remove-map]").addEventListener("click", () => {
@@ -522,8 +909,34 @@
       renderAirframes();
       renderGlobals();
       renderSelectedAirframe();
-      renderIssues();
-      $("preview").value = serializeIni(state.config);
+      refreshValidationAndPreview();
+    }
+
+    async function loadText(url) {
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+      return response.text();
+    }
+
+    async function autoloadPackagedFiles() {
+      const messages = [];
+      try {
+        const schemaText = await loadText("config_schema.json");
+        state.schema = JSON.parse(schemaText);
+        messages.push("schema loaded");
+      } catch (error) {
+        messages.push("using embedded schema");
+      }
+      try {
+        const configText = await loadText("../64/config.ini");
+        state.config = parseIni(configText);
+        state.selectedSection = state.config.globals.config_name || "";
+        messages.push("config.ini loaded");
+      } catch (error) {
+        messages.push("load config.ini manually if your browser blocks local file reads");
+      }
+      setStatus(`Auto-load: ${messages.join(", ")}.`);
+      render();
     }
 
     $("configFile").addEventListener("change", (event) => {
@@ -533,6 +946,7 @@
       reader.onload = () => {
         state.config = parseIni(String(reader.result || ""));
         state.selectedSection = state.config.globals.config_name || "";
+        setStatus(`Loaded ${file.name}. Runtime source remains px4xplane/64/config.ini after you replace it.`);
         render();
       };
       reader.readAsText(file);
@@ -544,9 +958,14 @@
       const reader = new FileReader();
       reader.onload = () => {
         state.schema = JSON.parse(String(reader.result || "{}"));
+        setStatus(`Loaded schema metadata from ${file.name}.`);
         render();
       };
       reader.readAsText(file);
+    });
+
+    $("autoloadConfig").addEventListener("click", () => {
+      autoloadPackagedFiles();
     });
 
     $("addAirframe").addEventListener("click", () => {
@@ -576,7 +995,19 @@
       if (navigator.clipboard) await navigator.clipboard.writeText($("preview").value);
     });
 
+    $("themeToggle").addEventListener("click", () => {
+      const current = documentRef.documentElement.dataset.theme || "system";
+      const next = current === "dark" ? "light" : "dark";
+      documentRef.documentElement.dataset.theme = next;
+      localStorage.setItem("px4xplaneEditorTheme", next);
+    });
+
+    const storedTheme = localStorage.getItem("px4xplaneEditorTheme");
+    if (storedTheme) documentRef.documentElement.dataset.theme = storedTheme;
+    else documentRef.documentElement.dataset.theme = "system";
+
     render();
+    autoloadPackagedFiles();
   }
 
   function escapeHtml(value) {
@@ -594,6 +1025,8 @@
     serializeIni,
     parseMappings,
     serializeMappings,
+    parseCameras,
+    serializeCameras,
     validateConfig
   };
 

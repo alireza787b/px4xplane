@@ -1,4 +1,6 @@
 const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
 const editor = require("../docs/assets/config-editor.js");
 
 const schema = {
@@ -32,6 +34,8 @@ assert.strictEqual(config.globals.config_name, "Alia250");
 assert.strictEqual(config.sections.length, 1);
 assert.strictEqual(editor.parseMappings(config.sections[0].keys.channel4).length, 2);
 assert(editor.DEFAULT_SCHEMA.airframe_fields.airspeedSource.enum.includes("body_axis"));
+assert.strictEqual(editor.parseCameras("Forward|1|0|0|0|0|0|0.9; Down|0|0|-1|-90|0|0|0.8").length, 2);
+assert(editor.serializeCameras([{ label: "Chase", forward: "-8", right: "0", up: "2", pitch: "-8", heading: "0", roll: "0", zoom: "0.7" }]).includes("Chase|-8"));
 
 const serialized = editor.serializeIni(config);
 assert(serialized.includes("[Alia250]"));
@@ -65,5 +69,19 @@ assert(messages.some((message) => message.includes("expected one of: feather, ha
 assert(messages.some((message) => message.includes("empty dataref")));
 assert(messages.some((message) => message.includes("floatArray requires")));
 assert(messages.some((message) => message.includes("output range endpoints are equal")));
+
+const repoConfig = editor.parseIni(fs.readFileSync(path.join(__dirname, "..", "config", "config.ini"), "utf8"));
+const repoIssues = editor.validateConfig(repoConfig, editor.DEFAULT_SCHEMA);
+assert.deepStrictEqual(repoIssues, []);
+
+const repoSchema = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "config_schema.json"), "utf8"));
+assert.deepStrictEqual(
+  Object.keys(editor.DEFAULT_SCHEMA.global_fields).sort(),
+  Object.keys(repoSchema.global_fields).sort()
+);
+assert.deepStrictEqual(
+  Object.keys(editor.DEFAULT_SCHEMA.airframe_fields).sort(),
+  Object.keys(repoSchema.airframe_fields).sort()
+);
 
 console.log("config editor tests passed");
