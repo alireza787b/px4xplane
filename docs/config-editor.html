@@ -350,6 +350,33 @@
     .inlineGrid.two {
       grid-template-columns: repeat(2, minmax(70px, 1fr));
     }
+    .bracketInput {
+      display: grid;
+      grid-template-columns: auto minmax(64px, 1fr) auto;
+      gap: 4px;
+      align-items: center;
+    }
+    .rangeInput {
+      display: grid;
+      grid-template-columns: auto minmax(58px, 1fr) minmax(58px, 1fr) auto;
+      gap: 4px;
+      align-items: center;
+    }
+    .bracketToken,
+    .singleToken {
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .channelTable th:nth-child(1),
+    .channelTable td:nth-child(1) {
+      width: 86px;
+    }
+    .channelTable th:nth-child(3),
+    .channelTable td:nth-child(3) {
+      width: 120px;
+    }
     #issues {
       margin: 0;
       padding-left: 18px;
@@ -390,8 +417,8 @@
     <div>
       <h1><a href="https://github.com/alireza787b/px4xplane" target="_blank" rel="noreferrer">px4xplane Config Editor</a></h1>
       <div class="headerMeta">
-        <span>v3.4.54</span>
-        <span>build 063</span>
+        <span>v3.4.55</span>
+        <span>build 064</span>
         <span>Runtime source: <code>64/config.ini</code></span>
       </div>
     </div>

@@ -562,6 +562,8 @@ std::string ConfigManager::getSelectedAirframeName(CSimpleIniA& ini) {
  * @param ini Reference to CSimpleIniA object representing the loaded ini file.
  */
 void ConfigManager::parseConfig(CSimpleIniA& ini) {
+    actuatorConfigs.clear();
+
     std::string selectedConfig = getSelectedAirframeName(ini);
     if (selectedConfig.empty()) {
         return; // No configuration name specified, or an error occurred.

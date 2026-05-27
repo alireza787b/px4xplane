@@ -4,6 +4,38 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-27
 
+### v3.4.55 Cessna2 Steering Evidence and Flap Landing Recovery
+
+- Reviewed `/home/alireza/cessna2.zip`. TruthCapture had `61,264` rows,
+  `0` dropped rows, `0` sim-time resets, and roughly `88 Hz` mean callback
+  rate, so frame timing was not the runway-steering root cause.
+- Found that the X-Plane side still loaded px4xplane `v3.4.53`, while PX4 had
+  the v3.4.54 Cessna params. The ULog showed PX4 produced
+  `landing_gear_wheel.normalized_wheel_setpoint` and `actuator_outputs[5]`;
+  the bridge package being tested did not yet have the Cessna channel 5 mapping.
+- The X-Plane steering trace only reached about `3.5 deg`, consistent with
+  default/coupled behavior, not the dedicated wheel-controller output. v3.4.55
+  maps channel 5 to both the modern `flightmodel2` tire-steer command and the
+  older `flightmodel/parts/tire_steer_cmd` array while the bridge enables
+  X-Plane wheel-steer override.
+- Landing remained too energetic in `cessna2`: first touchdown was about
+  `46.8 m/s` / `91 kt IAS`. v3.4.55 therefore adds real landing-flap outputs
+  instead of only lowering no-flap landing speed.
+- Prepared v3.4.55:
+  - Cessna control allocation now has left/right flap surfaces and
+    `PWM_MAIN_FUNC7/8=205/206`
+  - Cessna config channels 6/7 drive X-Plane left/right flap deflections
+  - landing flaps deploy early, landing airspeed drops to `31 m/s`, flare time
+    rises to `4 s`, touchdown timing to `5 s`
+  - takeoff mission altitude rises to `150 m`
+  - config editor channel indices/ranges are simplified and the airframe list
+    stays visible
+  - XPlaneTruthCapture v0.1.8 captures wheel-steer override and the legacy
+    tire-steer command dataref
+- Next action: run a clean Cessna test with the v3.4.55 package. Verify
+  X-Plane `Log.txt` says `Version: v3.4.55` and parses channels 5, 6, and 7
+  before judging takeoff steering, flap slowdown, or landing rollout.
+
 ### v3.4.54 Cessna Runway Steering and Flare Recovery
 
 - Reviewed `/home/alireza/cessna1.zip`: TruthCapture recorded `92,435` rows,

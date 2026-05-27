@@ -865,26 +865,20 @@
         parseMappings(section.keys[key]).forEach((mapping, index) => {
           const range = parseRangeValue(mapping.range);
           const indices = parseIndices(mapping.indices);
-          const firstIndex = Array.isArray(indices) && indices.length ? indices[0] : "0";
-          const indexRaw = Array.isArray(indices) ? indices.join(" ") : mapping.indices;
+          const indicesValue = Array.isArray(indices) ? indices.join(" ") : "";
           channelRows.push(`<tr data-channel="${channel}" data-index="${index}">
             <td>channel${channel}</td>
             <td><input data-map-field="dataref" value="${escapeHtml(mapping.dataref)}" placeholder="sim/flightmodel/..."></td>
             <td>${typeSelect(mapping.type)}</td>
             <td>
-              <div class="inlineGrid">
-                <select data-map-field="indexMode">
-                  <option value="single" ${mapping.indices === "0" ? "selected" : ""}>single value</option>
-                  <option value="array" ${mapping.indices !== "0" ? "selected" : ""}>array index</option>
-                </select>
-                <input data-map-field="indexValue" type="number" min="0" step="1" value="${escapeHtml(firstIndex)}">
-                <input data-map-field="indicesRaw" value="${escapeHtml(indexRaw)}" placeholder="0 1" title="Advanced: space-separated indices">
-              </div>
+              ${indexInput(mapping.type, indicesValue)}
             </td>
             <td>
-              <div class="inlineGrid two">
+              <div class="rangeInput">
+                <span class="bracketToken">[</span>
                 <input data-map-field="rangeMin" type="number" step="any" value="${escapeHtml(range.min)}" placeholder="min">
                 <input data-map-field="rangeMax" type="number" step="any" value="${escapeHtml(range.max)}" placeholder="max">
+                <span class="bracketToken">]</span>
               </div>
             </td>
             <td><button data-remove-map="1">Remove</button></td>
@@ -928,7 +922,7 @@
               <label>Add channel <input id="newChannel" type="number" min="0" max="15" value="0"></label>
               <button id="addMapping">Add Mapping</button>
             </div>
-            <table>
+            <table class="channelTable">
               <thead><tr><th>Channel</th><th>Dataref</th><th>Type</th><th>Indices</th><th>Output Range</th><th></th></tr></thead>
               <tbody>${channelRows.join("") || "<tr><td colspan=\"6\" class=\"muted\">No channel mappings configured.</td></tr>"}</tbody>
             </table>
@@ -1002,19 +996,23 @@
           bindValueEdit(input, () => {
             const mappings = parseMappings(section.keys[`channel${channel}`]);
             const mapping = mappings[index];
-            if (input.dataset.mapField === "indexMode" || input.dataset.mapField === "indexValue" || input.dataset.mapField === "indicesRaw") {
-              const mode = row.querySelector('[data-map-field="indexMode"]').value;
-              if (mode === "single") {
-                mapping.indices = "0";
-              } else {
-                const raw = row.querySelector('[data-map-field="indicesRaw"]').value.trim();
-                const indexValue = row.querySelector('[data-map-field="indexValue"]').value.trim();
-                mapping.indices = serializeIndices(raw ? raw.split(/\s+/).map((item) => Number.parseInt(item, 10)).filter(Number.isFinite) : [Number.parseInt(indexValue || "0", 10)]);
-              }
+            if (input.dataset.mapField === "indices") {
+              const raw = input.value.trim();
+              mapping.indices = serializeIndices(raw ? raw.split(/\s+/).map((item) => Number.parseInt(item, 10)).filter(Number.isFinite) : [0]);
             } else if (input.dataset.mapField === "rangeMin" || input.dataset.mapField === "rangeMax") {
               const minValue = row.querySelector('[data-map-field="rangeMin"]').value;
               const maxValue = row.querySelector('[data-map-field="rangeMax"]').value;
               mapping.range = serializeRange(minValue, maxValue);
+            } else if (input.dataset.mapField === "type") {
+              mapping.type = input.value;
+              if (mapping.type === "float") {
+                mapping.indices = "0";
+              } else if (mapping.indices === "0") {
+                mapping.indices = "[0]";
+              }
+              setChannelMapping(section, channel, mappings);
+              render();
+              return;
             } else {
               mapping[input.dataset.mapField] = input.value;
             }
@@ -1037,6 +1035,18 @@
         const selected = type === value ? "selected" : "";
         return `<option value="${type}" ${selected}>${type}</option>`;
       }).join("")}</select>`;
+    }
+
+    function indexInput(type, value) {
+      if (type === "floatArray") {
+        return `<div class="bracketInput">
+          <span class="bracketToken">[</span>
+          <input data-map-field="indices" value="${escapeHtml(value || "0")}" placeholder="0">
+          <span class="bracketToken">]</span>
+        </div>`;
+      }
+
+      return `<span class="singleToken">scalar</span>`;
     }
 
     function render() {

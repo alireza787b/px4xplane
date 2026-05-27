@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.55] - 2026-05-27
+
+### Changed
+
+- Analyzed `cessna2.zip`: PX4 loaded the v3.4.54 Cessna params and produced
+  nonzero `landing_gear_wheel` commands, but X-Plane loaded px4xplane
+  `v3.4.53`, which did not include the Cessna channel 5 mapping. The runway
+  steering failure was therefore a tested-package mismatch plus insufficient
+  physical wheel path coverage, not proof that PX4 never commanded steering.
+- Kept the Cessna wheel-controller output on `PWM_MAIN_FUNC6=440`, increased
+  wheel-controller authority, and mapped Cessna channel 5 to both
+  `sim/flightmodel2/gear/tire_steer_command_deg[0]` and
+  `sim/flightmodel/parts/tire_steer_cmd[0]` while the bridge enables
+  `override_wheel_steer`.
+- Added Cessna landing flaps: PX4 control surfaces 4/5, `PWM_MAIN_FUNC7=205`,
+  `PWM_MAIN_FUNC8=206`, and X-Plane flap mappings on channels 6/7. Landing
+  configuration now deploys early, lowers landing airspeed, and extends flare
+  timing to reduce the high-energy 90 kt touchdown seen in `cessna2`.
+- Raised Cessna mission takeoff altitude to reduce immediate low-altitude
+  turns after rotation.
+- Simplified config-editor actuator mapping fields: scalar mappings show
+  `scalar`; array mappings show bracket tokens outside a numeric-only index
+  field; output ranges show brackets outside min/max fields. The left airframe
+  list remains visible and only marks the active airframe.
+- Made `ConfigManager::parseConfig()` clear prior actuator mappings itself, so
+  future direct parser calls cannot leave stale channels even outside the normal
+  `loadConfiguration()` path.
+- Updated XPlaneTruthCapture to v0.1.8 with wheel-steering override and
+  `sim/flightmodel/parts/tire_steer_cmd` capture coverage for runway debugging.
+
+### Notes
+
+- The next Cessna test must show `px4xplane: Version: v3.4.55` in X-Plane
+  `Log.txt`; otherwise the bridge-side steering/flap changes are not installed.
+
 ## [3.4.54] - 2026-05-27
 
 ### Changed
