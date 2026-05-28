@@ -609,6 +609,12 @@ bool ConfigManager::aircraftMatchesLoadedModel(const std::string& tokens, std::s
     std::transform(haystack.begin(), haystack.end(), haystack.begin(),
         [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
+    if (haystack.find(".acf") == std::string::npos) {
+        XPLMDebugString(
+            "px4xplane: [CONFIG_VALIDATION] Aircraft model path is not ready; aircraftMatch check deferred\n");
+        return true;
+    }
+
     std::string normalizedTokens = tokens;
     std::replace(normalizedTokens.begin(), normalizedTokens.end(), ';', ',');
     std::istringstream stream(normalizedTokens);

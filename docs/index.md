@@ -82,17 +82,20 @@ This index is the stable entry point for user and developer documentation.
 - [Report v69 - Cessna4 Path Authority, Flaps, and Brake Review](reports/report_v69.md)
 - [Report v70 - TB2 Baseline and Cessna Closure Polish](reports/report_v70.md)
 - [Report v71 - TB2 First-Test Triage and Config Guard](reports/report_v71.md)
+- [Report v72 - TB2 Estimator and Landing Closure](reports/report_v72.md)
 
 ## Current Policy
 
-- Use the `v3.4.59` package for the next TB2 validation. This package
+- Use the `v3.4.60` package for the next TB2 validation. This package
   intentionally makes `TB2` the active config so testers do not have to switch
-  manually during this slice and warns if the loaded X-Plane aircraft does not
-  appear to match the active bridge config.
+  manually during this slice, defers aircraft-match checks until X-Plane reports
+  an actual `.acf` path, and keeps the ground sensor contract latched during
+  uncommanded idle creep.
 - Use the TB2 test card for runway takeoff, mission, loiter, and autoland.
   Confirm X-Plane parses TB2 channels 5, 6, and 7 and the ULog has
-  `PWM_MAIN_FUNC6=440`, `PWM_MAIN_FUNC7=205`, and `PWM_MAIN_FUNC8=206` before
-  judging runway steering, flap deployment, or rollout behavior. v3.4.59 should
+  `PWM_MAIN_FUNC6=440`, `PWM_MAIN_FUNC7=205`, `PWM_MAIN_FUNC8=206`, and the
+  TB2 `CAL_ACC0_*OFF` offsets before judging estimator, steering, flap
+  deployment, or rollout behavior. v3.4.60 should
   also log `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)`.
 - Cessna is closed at the accepted v3.4.57 behavior with v3.4.58 landing polish:
   `FW_LND_AIRSPD=32.5` and `FW_LND_FL_PMIN=9.0`.

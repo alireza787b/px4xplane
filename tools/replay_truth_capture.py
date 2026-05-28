@@ -283,12 +283,12 @@ class GroundStationaryContract:
         self.last_sim_time_s = sim_time_s
 
         motor_active = mapped_motor_command_active(row)
-        if not self.active and self._is_stationary(row, agl_max=0.45, horizontal_max=0.75) and not motor_active:
+        if not self.active and self._is_stationary(row, agl_max=0.45, horizontal_max=6.0) and not motor_active:
             self.active = True
             self.latitude_deg = safe_float(row, "sim/flightmodel/position/latitude")
             self.longitude_deg = safe_float(row, "sim/flightmodel/position/longitude")
             self.elevation_m = safe_float(row, "sim/flightmodel/position/elevation")
-        elif self.active and (not self._is_stationary(row, agl_max=0.70, horizontal_max=1.20) or motor_active):
+        elif self.active and (not self._is_stationary(row, agl_max=0.70, horizontal_max=8.0) or motor_active):
             self.active = False
 
         return self

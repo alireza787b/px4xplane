@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.59 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.60 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -360,6 +360,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/reports/report_v71.md
         ${OUTPUT_DIR}/../docs/reports/report_v71.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/reports/report_v72.md
+        ${OUTPUT_DIR}/../docs/reports/report_v72.md
     COMMENT "Copying config editor docs to plugin package"
 )
 
@@ -445,6 +448,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/reports/report_v71.md
         ${OUTPUT_DIR}/../docs/reports/report_v71.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/reports/report_v72.md
+        ${OUTPUT_DIR}/../docs/reports/report_v72.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../tools
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

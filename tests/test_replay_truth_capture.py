@@ -194,6 +194,32 @@ class ReplayTruthCaptureTest(unittest.TestCase):
         self.assertNotEqual(sensor_a["abs_pressure_hpa"], sensor_b["abs_pressure_hpa"])
         self.assertEqual(gps["alt_mm"], 52500)
 
+    def test_stationary_ground_contract_masks_uncommanded_idle_creep(self):
+        row = {
+            "frame_id": "4",
+            "sim/time/total_flight_time_sec": "4.0",
+            "sim/flightmodel/failures/onground_any": "1",
+            "sim/flightmodel/position/y_agl": "0.10",
+            "sim/flightmodel/position/elevation": "52.5",
+            "sim/flightmodel/position/latitude": "26.5",
+            "sim/flightmodel/position/longitude": "54.0",
+            "sim/flightmodel/position/local_vx": "5.0",
+            "sim/flightmodel/position/local_vy": "0.0",
+            "sim/flightmodel/position/local_vz": "0.0",
+            "sim/flightmodel/position/q": "1;0;0;0",
+            "sim/flightmodel/engine/ENGN_thro_use": "0;0;0;0",
+        }
+        contract = replay.GroundStationaryContract()
+        contract.update(row)
+
+        self.assertTrue(contract.active)
+
+        row["sim/time/total_flight_time_sec"] = "4.1"
+        row["sim/flightmodel/engine/ENGN_thro_use"] = "0.20;0;0;0"
+        contract.update(row)
+
+        self.assertFalse(contract.active)
+
 
 if __name__ == "__main__":
     unittest.main()

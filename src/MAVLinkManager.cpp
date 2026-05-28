@@ -156,8 +156,12 @@ struct GroundSensorContractState {
 constexpr float GroundGuardAglMinM = -0.75f;
 constexpr float GroundGuardAglActivateMaxM = 0.45f;
 constexpr float GroundGuardAglReleaseMaxM = 0.70f;
-constexpr float GroundGuardHorizActivateMps = 0.75f;
-constexpr float GroundGuardHorizReleaseMps = 1.20f;
+// Some X-Plane aircraft can creep or briefly roll from idle/contact physics before
+// PX4 commands any motor output. Keep the zero-motion sensor contract latched for
+// that uncommanded ground motion, but release immediately on a real PX4 motor
+// command through mappedMotorCommandActive().
+constexpr float GroundGuardHorizActivateMps = 6.00f;
+constexpr float GroundGuardHorizReleaseMps = 8.00f;
 constexpr float GroundGuardMotorReleaseCommand = 0.08f;
 constexpr uint64_t GroundGuardActuatorFreshUsec = 500000;
 

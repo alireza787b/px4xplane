@@ -1,6 +1,6 @@
 # TB2 X-Plane 12 Test Card
 
-Use this card for the first refreshed Bayraktar TB2-style fixed-wing validation.
+Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 
 ## Package Check
 
@@ -9,14 +9,14 @@ Use this card for the first refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v3.4.59
+px4xplane: Version: v3.4.60
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
 
-4. Confirm the HUD or `Log.txt` does not show a config warning. If X-Plane
-   starts with another active config, select `TB2` before connecting PX4 and
-   reload/connect again.
+4. Confirm the HUD or `Log.txt` does not show a config warning after the
+   Bayraktar `.acf` is loaded. v3.4.60 defers the match check while X-Plane is
+   still reporting only the simulator root path during startup.
 5. Confirm the config editor shows `TB2` as the selected airframe.
 
 ## PX4 Check
@@ -52,6 +52,9 @@ ASPD_DO_CHECKS=1
 ASPD_FALLBACK=1
 SYS_HAS_NUM_ASPD=0
 EKF2_ABL_LIM=0.8
+CAL_ACC0_XOFF=-0.030
+CAL_ACC0_YOFF=0.010
+CAL_ACC0_ZOFF=-0.770
 IMU_GYRO_RATEMAX=200
 IMU_INTEG_RATE=200
 EKF2_GPS_DELAY=0.0
@@ -60,8 +63,16 @@ EKF2_MULTI_IMU=1
 
 Abort the test if the ULog still shows stale values such as
 `EKF2_ABL_LIM=2.0`, `EKF2_GPS_DELAY=10.0`, `EKF2_MULTI_IMU=3`, or
-`IMU_INTEG_RATE=250`. Run `make px4_sitl_default distclean` and clear saved
-SITL parameters before judging the TB2 tune.
+`IMU_INTEG_RATE=250`. Run `make px4_sitl_default distclean`, then delete any
+saved SITL parameter store if stale values remain:
+
+```bash
+rm -f build/px4_sitl_default/rootfs/parameters.bson \
+      build/px4_sitl_default/rootfs/parameters_backup.bson
+```
+
+Do not judge estimator warnings or landing behavior until these values match the
+airframe defaults.
 
 ## Flight Script
 
@@ -73,7 +84,9 @@ SITL parameters before judging the TB2 tune.
    - first waypoint straight ahead at least 1.5 km from runway end,
    - cruise waypoints at 150 m AGL or higher,
    - a loiter radius around 700 m,
-   - runway or fixed-wing landing.
+   - a runway or fixed-wing landing with a long final approach. If QGC/PX4
+     reports an infeasible landing slope, increase approach distance or lower
+     the landing entrance altitude instead of making the slope steeper.
 5. Run the mission without joystick intervention unless safety requires aborting.
 6. After landing/disarm, wait 10 seconds before stopping PX4.
 
@@ -93,8 +106,9 @@ Send back:
   - loiter/orbit capture,
   - flare and rollout.
 
-## Expected First-Pass Behavior
+## Expected Closure Behavior
 
-This is a first refreshed TB2 baseline, not yet a closed airframe. The target is
-safe autonomous runway takeoff, cruise, loiter, and landing with no EKF warnings.
-Fine tuning should be based on returned ULog evidence.
+The target is safe autonomous runway takeoff, cruise, loiter, and landing with
+no EKF warnings, controlled centerline tracking, stable flap deployment, and a
+landing approach that tracks the configured `28 m/s` airspeed without the
+previous `45-48 m/s` overspeed.
