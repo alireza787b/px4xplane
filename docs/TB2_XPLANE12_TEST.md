@@ -9,13 +9,13 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v3.4.60
+px4xplane: Version: v3.4.61
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
 
 4. Confirm the HUD or `Log.txt` does not show a config warning after the
-   Bayraktar `.acf` is loaded. v3.4.60 defers the match check while X-Plane is
+   Bayraktar `.acf` is loaded. v3.4.61 defers the match check while X-Plane is
    still reporting only the simulator root path during startup.
 5. Confirm the config editor shows `TB2` as the selected airframe.
 
@@ -27,7 +27,12 @@ Use the PX4 fork branch with `5002_xplane_tb2` installed in:
 ROMFS/px4fmu_common/init.d-posix/airframes/5002_xplane_tb2
 ```
 
-Run a clean build after airframe changes:
+The setup script now resets the saved PX4 SITL parameter store automatically
+when the selected X-Plane airframe or its default airframe file fingerprint
+changes. That keeps stale `parameters.bson` values from masking the current
+defaults.
+
+For a fully manual run, still use a clean build after airframe changes:
 
 ```bash
 make px4_sitl_default distclean
@@ -59,6 +64,18 @@ IMU_GYRO_RATEMAX=200
 IMU_INTEG_RATE=200
 EKF2_GPS_DELAY=0.0
 EKF2_MULTI_IMU=1
+FW_AIRSPD_TRIM=36.0
+FW_LND_AIRSPD=28.0
+FW_T_ALT_TC=8.0
+FW_T_HRATE_FF=0.15
+FW_T_SPDWEIGHT=1.0
+FW_THR_TRIM=0.32
+FW_LND_THRTC_SC=0.7
+FW_FLAPS_LND_SCL=1.0
+LNDFW_AIRSPD_MAX=12.0
+LNDFW_VEL_XY_MAX=6.0
+LNDFW_TRIG_TIME=2.0
+COM_DISARM_LAND=4.0
 ```
 
 Abort the test if the ULog still shows stale values such as
@@ -110,5 +127,6 @@ Send back:
 
 The target is safe autonomous runway takeoff, cruise, loiter, and landing with
 no EKF warnings, controlled centerline tracking, stable flap deployment, and a
-landing approach that tracks the configured `28 m/s` airspeed without the
-previous `45-48 m/s` overspeed.
+landing approach that converges toward the configured `28 m/s` airspeed without
+the previous high-energy final. Rollout should stay armed and steered longer
+than v3.4.60, then disarm after the aircraft has slowed to a low taxi speed.

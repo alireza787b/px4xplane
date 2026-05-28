@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.60";
+    constexpr const char* VERSION = "3.4.61";
 
     /** Version phase description */
-    constexpr const char* PHASE = "TB2 estimator and landing closure";
+    constexpr const char* PHASE = "TB2 autoland energy closure";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "069";
+    constexpr const char* BUILD = "070";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

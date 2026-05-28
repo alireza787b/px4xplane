@@ -186,6 +186,79 @@ progress() {
     echo -e "\033[1;34m[PROGRESS]\033[0m $1"  # Blue progress messages
 }
 
+last_config_value() {
+    local key="$1"
+    if [ -f "$CONFIG_FILE" ]; then
+        grep -E "^${key}=" "$CONFIG_FILE" | tail -n 1 | cut -d= -f2-
+    fi
+}
+
+airframe_file_for_platform() {
+    case "$1" in
+        xplane_ehang184) echo "ROMFS/px4fmu_common/init.d-posix/airframes/5010_xplane_ehang184" ;;
+        xplane_alia250) echo "ROMFS/px4fmu_common/init.d-posix/airframes/5020_xplane_alia250" ;;
+        xplane_cessna172) echo "ROMFS/px4fmu_common/init.d-posix/airframes/5001_xplane_cessna172" ;;
+        xplane_tb2) echo "ROMFS/px4fmu_common/init.d-posix/airframes/5002_xplane_tb2" ;;
+        xplane_qtailsitter) echo "ROMFS/px4fmu_common/init.d-posix/airframes/5021_xplane_qtailsitter" ;;
+        *) echo "" ;;
+    esac
+}
+
+airframe_hash_for_platform() {
+    local relative_path
+    relative_path="$(airframe_file_for_platform "$1")"
+
+    if [ -z "$relative_path" ] || [ ! -f "$CLONE_PATH/$relative_path" ]; then
+        echo ""
+        return
+    fi
+
+    if command -v sha256sum &> /dev/null; then
+        sha256sum "$CLONE_PATH/$relative_path" | awk '{print $1}'
+    else
+        cksum "$CLONE_PATH/$relative_path" | awk '{print $1 "-" $2}'
+    fi
+}
+
+reset_saved_sitl_parameters() {
+    local rootfs="$CLONE_PATH/build/px4_sitl_default/rootfs"
+    local removed=false
+
+    for param_file in "$rootfs/parameters.bson" "$rootfs/parameters_backup.bson"; do
+        if [ -f "$param_file" ]; then
+            rm -f "$param_file"
+            removed=true
+        fi
+    done
+
+    if [ "$removed" = true ]; then
+        success "Saved PX4 SITL parameters reset so airframe defaults reload."
+    else
+        info "No saved PX4 SITL parameter store found to reset."
+    fi
+}
+
+reset_params_if_airframe_changed() {
+    local platform="$1"
+    local current_hash
+    current_hash="$(airframe_hash_for_platform "$platform")"
+    SELECTED_AIRFRAME_HASH=""
+
+    if [ -z "$current_hash" ]; then
+        warning "Could not fingerprint the PX4 airframe file for $platform."
+        return
+    fi
+
+    SELECTED_AIRFRAME_HASH="$current_hash"
+
+    if [ "$PREVIOUS_PLATFORM" != "$platform" ] || [ "$PREVIOUS_AIRFRAME_HASH" != "$current_hash" ]; then
+        info "Selected airframe/defaults changed since the previous run."
+        reset_saved_sitl_parameters
+    else
+        info "Selected airframe/defaults unchanged; keeping saved SITL parameters."
+    fi
+}
+
 # === Trap for Cleanup ===
 cleanup() {
     if [[ -n "$MAVLINK_ROUTER_PID" ]]; then
@@ -452,6 +525,7 @@ elif [[ "$CLEAN_OPTION" =~ ^[Dd]$ ]]; then
     progress "Running 'make distclean'..."
     make distclean
     success "Build directory fully reset."
+    reset_saved_sitl_parameters
 else
     info "Skipping clean. Using existing build cache."
 fi
@@ -538,7 +612,11 @@ if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR"
 fi
 
-# Save both the IP and the last selected platform in the config file
+# Preserve the previous airframe fingerprint before rewriting the config file.
+PREVIOUS_PLATFORM="$(last_config_value LAST_PLATFORM)"
+PREVIOUS_AIRFRAME_HASH="$(last_config_value LAST_AIRFRAME_HASH)"
+
+# Save the IP; the selected platform and airframe fingerprint are appended after selection.
 echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
 export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
 success "IP address configured: $PX4_SIM_HOSTNAME"
@@ -629,9 +707,17 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
     elif [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
         highlight "Building: $PLATFORM"
         LAST_PLATFORM="$PLATFORM"
-        echo "LAST_PLATFORM=$LAST_PLATFORM" >> "$CONFIG_FILE"
 
         cd "$CLONE_PATH" || exit
+        reset_params_if_airframe_changed "$PLATFORM"
+        CURRENT_AIRFRAME_HASH="$SELECTED_AIRFRAME_HASH"
+
+        {
+            echo "LAST_PLATFORM=$LAST_PLATFORM"
+            if [ -n "$CURRENT_AIRFRAME_HASH" ]; then
+                echo "LAST_AIRFRAME_HASH=$CURRENT_AIRFRAME_HASH"
+            fi
+        } >> "$CONFIG_FILE"
 
         progress "Running: make px4_sitl_default $PLATFORM"
         echo ""
