@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.58] - 2026-05-28
+
+### Changed
+
+- Closed the accepted Cessna runway-mission slice with a small landing polish:
+  `FW_LND_AIRSPD=32.5` and `FW_LND_FL_PMIN=9.0`. `LNDFW_AIRSPD_MAX` is back
+  inside PX4 metadata at `30.0`. Elevator smoothing was already included in the
+  v3.4.57 scoped surface smoothing channels.
+- Made `TB2` the packaged active config for the next validation slice.
+- Refreshed the TB2 bridge mapping with conventional indicated-airspeed input,
+  surface-only smoothing on channels `0,1,2,3`, Cessna-proven XP12 nosewheel
+  steering datarefs, and left/right flap mapping plus
+  `flap_handle_request_ratio`.
+- Rewrote `5002_xplane_tb2` into the current clean PX4 airframe structure:
+  metadata-safe EKF bounds, 200 Hz IMU rate caps, missing-data-only airspeed
+  checks, `Landing_Gear_Wheel` runway steering, flaps, runway takeoff, and
+  first-pass TB2 speeds/TECS/NPFG values.
+- Added `docs/TB2_XPLANE12_TEST.md` and `docs/reports/report_v70.md`.
+
+### Notes
+
+- The uploaded TB2 X-Plane ACF appears lighter and slightly smaller than the
+  official TB2 reference values, so v3.4.58 matches the simulator model for the
+  first test. Returned ULog/truth data should drive the final TB2 tuning.
+
 ## [3.4.57] - 2026-05-27
 
 ### Changed

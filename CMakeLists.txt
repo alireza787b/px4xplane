@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.57 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.58 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -319,6 +319,13 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying Cessna 172 X-Plane test card to plugin root directory"
 )
 
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/TB2_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../TB2_XPLANE12_TEST.md
+    COMMENT "Copying TB2 X-Plane test card to plugin root directory"
+)
+
 if(EXISTS "${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter")
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -347,6 +354,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/reports/report_v69.md
         ${OUTPUT_DIR}/../docs/reports/report_v69.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/reports/report_v70.md
+        ${OUTPUT_DIR}/../docs/reports/report_v70.md
     COMMENT "Copying config editor docs to plugin package"
 )
 
@@ -405,6 +415,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
         ${OUTPUT_DIR}/../CESSNA172_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/TB2_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../TB2_XPLANE12_TEST.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E remove_directory
@@ -423,6 +436,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/reports/report_v69.md
         ${OUTPUT_DIR}/../docs/reports/report_v69.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/reports/report_v70.md
+        ${OUTPUT_DIR}/../docs/reports/report_v70.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../tools
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

@@ -75,7 +75,7 @@ assert(messages.some((message) => message.includes("floatArray requires")));
 assert(messages.some((message) => message.includes("output range endpoints are equal")));
 
 const repoConfig = editor.parseIni(fs.readFileSync(path.join(__dirname, "..", "config", "config.ini"), "utf8"));
-assert.strictEqual(repoConfig.globals.config_name, "Cessna172");
+assert(repoConfig.sections.some((section) => section.name === repoConfig.globals.config_name));
 const repoIssues = editor.validateConfig(repoConfig, editor.DEFAULT_SCHEMA);
 assert.deepStrictEqual(repoIssues, []);
 

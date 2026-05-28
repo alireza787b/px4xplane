@@ -10,6 +10,7 @@ This index is the stable entry point for user and developer documentation.
 - [Ehang 184 X-Plane 12 Test Card](EHANG184_XPLANE12_TEST.md)
 - [QuadTailsitter X-Plane 12 Test Card](QUADTAILSITTER_XPLANE12_TEST.md)
 - [Cessna 172 X-Plane 12 Test Card](CESSNA172_XPLANE12_TEST.md)
+- [TB2 X-Plane 12 Test Card](TB2_XPLANE12_TEST.md)
 - [Custom Airframe Config](custom-airframe-config.md)
 - [Config Editor](config-editor.html)
 
@@ -79,17 +80,20 @@ This index is the stable entry point for user and developer documentation.
 - [Report v67 - Cessna2 Steering Evidence and Flap Landing Recovery](reports/report_v67.md)
 - [Report v68 - Cessna3 Surface Smoothing and Flare Recovery](reports/report_v68.md)
 - [Report v69 - Cessna4 Path Authority, Flaps, and Brake Review](reports/report_v69.md)
+- [Report v70 - TB2 Baseline and Cessna Closure Polish](reports/report_v70.md)
 
 ## Current Policy
 
-- Use the `v3.4.57` package for the next Cessna 172 runway-mission validation.
-  This package intentionally makes `Cessna172` the active config so testers do
-  not have to switch away from Alia manually during this slice.
-- Use the Cessna test card for auto runway takeoff, mission, and autoland.
-  Confirm X-Plane parses Cessna channels 5, 6, and 7 and the ULog has
+- Use the `v3.4.58` package for the first refreshed TB2 validation. This package
+  intentionally makes `TB2` the active config so testers do not have to switch
+  manually during this slice.
+- Use the TB2 test card for runway takeoff, mission, loiter, and autoland.
+  Confirm X-Plane parses TB2 channels 5, 6, and 7 and the ULog has
   `PWM_MAIN_FUNC6=440`, `PWM_MAIN_FUNC7=205`, and `PWM_MAIN_FUNC8=206` before
-  judging runway steering, flap deployment, or rollout behavior. v3.4.57 should
-  also log `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,4)`.
+  judging runway steering, flap deployment, or rollout behavior. v3.4.58 should
+  also log `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)`.
+- Cessna is closed at the accepted v3.4.57 behavior with v3.4.58 landing polish:
+  `FW_LND_AIRSPD=32.5` and `FW_LND_FL_PMIN=9.0`.
 - QuadTailsitter closure remains based on qtail26/qtail27. qtail27 proved the
   v3.4.50 flight tune was loaded, but manual RTL started auto back-transition at
   the old `75 m` descent altitude and consumed that margin.

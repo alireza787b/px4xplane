@@ -103,6 +103,7 @@ px4xplane/
 ├── EHANG184_XPLANE12_TEST.md
 ├── QUADTAILSITTER_XPLANE12_TEST.md
 ├── CESSNA172_XPLANE12_TEST.md
+├── TB2_XPLANE12_TEST.md
 ├── px4_airframes/                ← Reference/install copies, not read by plugin
 │   ├── 5001_xplane_cessna172
 │   ├── 5002_xplane_tb2

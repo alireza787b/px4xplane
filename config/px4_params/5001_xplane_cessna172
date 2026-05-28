@@ -246,11 +246,11 @@ param set-default MIS_TAKEOFF_ALT 150.0
 # the C172 flare timing varies with X-Plane runway geometry and wind.
 param set-default FW_LND_ABORT 0
 param set-default FW_LND_ANG 5.0
-param set-default FW_LND_AIRSPD 33.0
+param set-default FW_LND_AIRSPD 32.5
 param set-default FW_LND_EARLYCFG 1
 param set-default FW_LND_FLALT 8.0
 param set-default FW_LND_FL_TIME 4.0
-param set-default FW_LND_FL_PMIN 8.0
+param set-default FW_LND_FL_PMIN 9.0
 param set-default FW_LND_FL_PMAX 20.0
 param set-default FW_LND_FL_SINK 0.30
 param set-default FW_LND_THRTC_SC 0.8
@@ -259,7 +259,7 @@ param set-default FW_LND_TD_OFF 3.0
 param set-default FW_LND_TD_TIME -1.0
 param set-default FW_FLAPS_TO_SCL 0.0
 param set-default FW_FLAPS_LND_SCL 0.85
-param set-default LNDFW_AIRSPD_MAX 34.0
+param set-default LNDFW_AIRSPD_MAX 30.0
 param set-default LNDFW_VEL_XY_MAX 10.0
 param set-default LNDFW_VEL_Z_MAX 1.5
 param set-default LNDFW_TRIG_TIME 1.0

@@ -2,6 +2,32 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-28
+
+### v3.4.58 TB2 Baseline and Cessna Closure Polish
+
+- Confirmed the accepted Cessna smoothing includes the elevator: Cessna
+  smoothing channels are `0,1,2,4`, covering both ailerons, elevator, and
+  rudder while leaving throttle, nosewheel, and flaps direct.
+- Applied only a small Cessna landing polish because the last test was accepted:
+  `FW_LND_AIRSPD=32.5` and `FW_LND_FL_PMIN=9.0`. Also restored
+  `LNDFW_AIRSPD_MAX=30.0` to stay inside current PX4 metadata.
+- Reviewed `/home/alireza/Bayraktar_tb2.zip`. The active ACF is
+  `Bayraktar_tb2.acf`, X-Plane 12 format, with A-tail elevator surfaces,
+  20 deg nosewheel steering, left/right flaps, one 100 hp engine, about
+  10.8 m modeled span, and a lighter loaded model than the published 700 kg
+  TB2 MTOW.
+- Made `TB2` the active packaged config and migrated it to current bridge
+  practice: conventional indicated airspeed, surface-only smoothing, XP12
+  nosewheel array datarefs, flap handle plus physical flap writes, and corrected
+  left/right flap order.
+- Rewrote `5002_xplane_tb2` to match the current PX4 SITL airframe structure:
+  200 Hz IMU caps, metadata-safe `EKF2_ABL_LIM=0.8`, `ASPD_DO_CHECKS=1`,
+  `ASPD_FALLBACK=1`, `SYS_HAS_NUM_ASPD=0`, `PWM_MAIN_FUNC6=440`, runway takeoff,
+  and first-pass TB2 TECS/NPFG/speed limits.
+- Next action: run the TB2 test card after `make px4_sitl_default distclean`,
+  then tune from ULog/truth evidence.
+
 ## 2026-05-27
 
 ### v3.4.57 Cessna4 Path Authority and Flap Dataref Recovery
