@@ -169,6 +169,7 @@ public:
     static float actuator_smoothing_time_constant_s; // Optional low-pass on normalized actuator commands
     static bool actuator_smoothing_channels_configured; // True when smoothing is limited to explicit channels
     static std::bitset<MAX_ACTUATOR_CHANNELS> actuator_smoothing_channels; // HIL channels eligible for smoothing
+    static std::string aircraft_match_tokens;        // Optional comma/semicolon-separated aircraft filename/path match hints
     static std::vector<CameraViewConfig> cameraViews; // Active airframe camera presets
 
     // MAVLink message rates (Hz)
@@ -191,6 +192,7 @@ private:
     static std::pair<float, float> parseRange(const std::string& token);
     static void parseChannelValue(const std::string& value, ActuatorConfig& config);
     static void trimWhitespace(std::string& str);
+    static bool aircraftMatchesLoadedModel(const std::string& tokens, std::string& loadedAircraftText);
     static ConfigValidationSummary validationSummary;
 
 

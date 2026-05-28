@@ -4,6 +4,27 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-28
 
+### v3.4.59 TB2 First-Test Triage and Config Guard
+
+- Reviewed `tb1.zip`. The flight was not a clean v3.4.58 TB2 validation:
+  X-Plane loaded `px4xplane` v3.4.57, initially parsed `Cessna172`, then the
+  menu changed to `TB2` before the PX4 connection. PX4 ran `SYS_AUTOSTART=5002`,
+  but the ULog also showed stale/manual parameter values such as
+  `EKF2_ABL_LIM=2.0` and `IMU_INTEG_RATE=250`.
+- Added `aircraftMatch`, a generic per-airframe config warning guard. It checks
+  the loaded user aircraft filename/path through X-Plane and warns in `Log.txt`
+  and the connection HUD if the active bridge config appears mismatched.
+- Added match tokens for Ehang, Cessna, Alia, TB2, and QuadTailsitter. This is a
+  warning guard only; it does not hardcode actuator behavior or auto-switch
+  configs.
+- Kept the TB2 bridge mappings as the current baseline and made conservative
+  param-only improvements: stronger runway steering controller defaults, slower
+  TECS vertical response, lower roll-to-throttle coupling, shallower landing
+  slope, and earlier/more visible flare.
+- Next action: install v3.4.59, confirm X-Plane `Log.txt` says `v3.4.59`,
+  active `TB2`, and no config warning, then run PX4 `distclean` before judging
+  the new TB2 log.
+
 ### v3.4.58 TB2 Baseline and Cessna Closure Polish
 
 - Confirmed the accepted Cessna smoothing includes the elevator: Cessna

@@ -66,6 +66,9 @@ autoPropBrakeMinAirspeedMps = 55.0
 autoPropBrakeMode = feather
 autoPropBrakeUseFailure = false
 
+; Optional warning guard for wrong-aircraft/wrong-config mistakes.
+aircraftMatch = Alia,250
+
 ; Pitot / differential-pressure source.
 ; Use xplane_indicated for conventional aircraft when X-Plane IAS has the
 ; correct sign. Use body_axis for tailsitters or custom pitot placement, then
@@ -105,6 +108,10 @@ channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
 
 - **Configuration Name**: Displayed in the PX4-XPlane UI; this helps you identify the active configuration.
 - **Auto-Prop Brakes**: Reduces drag by braking configured X-Plane engine indices when they are not commanded. Use `feather` first; `hard_lock`, `prop_separate`, and `autoPropBrakeUseFailure` are experimental recovery-test options.
+- **Aircraft Match**: Optional comma-separated tokens checked against the loaded
+  X-Plane aircraft file/path. This is only a warning guard; it does not select
+  or change the airframe. It catches setup mistakes such as a TB2 aircraft
+  loaded while `config_name` still points at Cessna.
 - **Airspeed Source**: Selects the simulated pitot source. `xplane_indicated`
   uses X-Plane's IAS dataref, `disabled` sends zero differential pressure, and
   `body_axis` projects the local air-relative velocity onto `pitotAxisBody`.

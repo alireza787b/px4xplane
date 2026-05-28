@@ -221,6 +221,9 @@ int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, 
 
     subText[0] = '\0'; // Default: no subtitle
     const std::string airframeText = getHUDAirframeText();
+    const ConfigValidationSummary& validation = ConfigManager::getValidationSummary();
+    const char* configHealthText = validation.errors > 0 ? " | Config error" :
+        (validation.warnings > 0 ? " | Config warning" : "");
 
     switch (currentStatus) {
         case ConnectionStatusHUD::Status::WAITING: {
@@ -234,17 +237,17 @@ int ConnectionStatusHUD::drawCallback(XPLMDrawingPhase inPhase, int inIsBefore, 
             // Subtitle: Show elapsed time and hint
             if (elapsedTime > 20.0f) {
                 // Warning after 20s
-                snprintf(subText, sizeof(subText), "Airframe: %s | Waiting %ds - check PX4 SITL", airframeText.c_str(), (int)elapsedTime);
+                snprintf(subText, sizeof(subText), "Airframe: %s%s | Waiting %ds - check PX4 SITL", airframeText.c_str(), configHealthText, (int)elapsedTime);
                 subColor[0] = 1.0f; subColor[1] = 0.6f; subColor[2] = 0.2f; // Orange warning
             } else {
-                snprintf(subText, sizeof(subText), "Airframe: %s | Waiting for PX4 (%ds)", airframeText.c_str(), (int)elapsedTime);
+                snprintf(subText, sizeof(subText), "Airframe: %s%s | Waiting for PX4 (%ds)", airframeText.c_str(), configHealthText, (int)elapsedTime);
             }
             break;
         }
         case ConnectionStatusHUD::Status::CONNECTED:
             snprintf(mainText, sizeof(mainText), "PX4 SITL CONNECTED");
             mainColor[0] = 0.2f; mainColor[1] = 1.0f; mainColor[2] = 0.2f; // Bright green
-            snprintf(subText, sizeof(subText), "Airframe: %s | Ready for flight", airframeText.c_str());
+            snprintf(subText, sizeof(subText), "Airframe: %s%s | Ready for flight", airframeText.c_str(), configHealthText);
             break;
         case ConnectionStatusHUD::Status::TIMEOUT:
             snprintf(mainText, sizeof(mainText), "PX4 CONNECTION TIMEOUT");

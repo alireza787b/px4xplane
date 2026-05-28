@@ -180,6 +180,12 @@
       }
     },
     airframe_fields: {
+      aircraftMatch: {
+        type: "string",
+        default: "",
+        reload_policy: "reconnect_before_flight",
+        description: "Optional comma-separated tokens expected in the loaded X-Plane aircraft file/path. Used only for warnings so the active config is not accidentally used with the wrong aircraft."
+      },
       autoPropBrakes: {
         type: "motor_index_list",
         min: 0,

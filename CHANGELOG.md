@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.59] - 2026-05-28
+
+### Changed
+
+- Added a generic `aircraftMatch` airframe config key. The bridge now checks the
+  loaded X-Plane aircraft file/path and warns in `Log.txt` and the connection
+  HUD when the active config appears to belong to another aircraft.
+- Added `aircraftMatch` metadata to the schema, static config editor, validator
+  path, and config docs.
+- Updated every packaged airframe with match tokens so wrong-aircraft/wrong-config
+  setup mistakes are visible before a flight is judged.
+- Tuned the refreshed TB2 baseline conservatively after `tb1.zip`: stronger
+  runway steering controller values, slower TECS climb/sink response, reduced
+  roll-to-throttle coupling, earlier/stronger flare, and a shallower landing
+  slope.
+- Updated the TB2 test card to require `v3.4.59`, active `TB2`, no config
+  mismatch warning, and a clean PX4 parameter state before judging the flight.
+
+### Notes
+
+- `tb1.zip` was useful, but not a clean v3.4.58 TB2 validation. X-Plane started
+  with `v3.4.57` and Cessna active, then switched to TB2 before SITL connect;
+  the ULog also showed stale/manual PX4 parameters. v3.4.59 is therefore a
+  setup-guard and conservative tuning slice, not a broad TB2 rewrite.
+
 ## [3.4.58] - 2026-05-28
 
 ### Changed

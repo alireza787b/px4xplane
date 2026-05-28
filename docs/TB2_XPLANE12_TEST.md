@@ -9,12 +9,15 @@ Use this card for the first refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v3.4.58
+px4xplane: Version: v3.4.59
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
 
-4. Confirm the config editor shows `TB2` as the selected airframe.
+4. Confirm the HUD or `Log.txt` does not show a config warning. If X-Plane
+   starts with another active config, select `TB2` before connecting PX4 and
+   reload/connect again.
+5. Confirm the config editor shows `TB2` as the selected airframe.
 
 ## PX4 Check
 
@@ -51,7 +54,14 @@ SYS_HAS_NUM_ASPD=0
 EKF2_ABL_LIM=0.8
 IMU_GYRO_RATEMAX=200
 IMU_INTEG_RATE=200
+EKF2_GPS_DELAY=0.0
+EKF2_MULTI_IMU=1
 ```
+
+Abort the test if the ULog still shows stale values such as
+`EKF2_ABL_LIM=2.0`, `EKF2_GPS_DELAY=10.0`, `EKF2_MULTI_IMU=3`, or
+`IMU_INTEG_RATE=250`. Run `make px4_sitl_default distclean` and clear saved
+SITL parameters before judging the TB2 tune.
 
 ## Flight Script
 

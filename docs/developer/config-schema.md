@@ -12,6 +12,8 @@ or aircraft behavior.
 - global config fields before the first airframe section
 - supported actuator mapping types: `float` and `floatArray`
 - channel range: `channel0` through `channel15`
+- optional `aircraftMatch` setup guard for warning when the active config does
+  not appear to match the loaded X-Plane aircraft file/path
 - X-Plane motor index range for `autoPropBrakes`: `0` through `7`
 - prop-brake policy fields: apply/release thresholds, dwell, optional
   true-airspeed gate, mode, and experimental failure-dataref use
@@ -48,6 +50,7 @@ diagnostic use:
 `reconnect_before_flight` fields must be treated as setup-time fields:
 
 - active airframe name
+- aircraft match guard tokens
 - actuator channel mappings
 - actuator smoothing time constant
 - actuator smoothing channel allow-list

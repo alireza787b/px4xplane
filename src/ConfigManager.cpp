@@ -4,12 +4,14 @@
 #include "XPLMUtilities.h"
 #include "XPLMDataAccess.h"
 #include "XPLMPlugin.h"
+#include "XPLMPlanes.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <regex>
 #include <cmath>
 #include <algorithm>
+#include <cctype>
 #include <exception>
 
 
@@ -158,6 +160,7 @@ std::string ConfigManager::pitot_axis_body = "+X";
 float ConfigManager::actuator_smoothing_time_constant_s = 0.0f;
 bool ConfigManager::actuator_smoothing_channels_configured = false;
 std::bitset<ConfigManager::MAX_ACTUATOR_CHANNELS> ConfigManager::actuator_smoothing_channels;
+std::string ConfigManager::aircraft_match_tokens;
 
 // MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
 int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
@@ -185,6 +188,7 @@ int ConfigManager::mavlink_rc_rate_hz = 50;         // HIL_RC_INPUTS
 void ConfigManager::loadConfiguration() {
     actuatorConfigs.clear();
     cameraViews.clear();
+    aircraft_match_tokens.clear();
 
     // Initialize the SimpleIni object and set it to handle Unicode
     CSimpleIniA ini;
@@ -200,6 +204,7 @@ void ConfigManager::loadConfiguration() {
         configName.clear();
         motorsWithBrakes.reset();
         cameraViews.clear();
+        aircraft_match_tokens.clear();
         validationSummary = {};
         validationSummary.errors = 1;
         validationSummary.headline = "Config: 1 error(s)";
@@ -320,6 +325,8 @@ void ConfigManager::loadConfiguration() {
 
     airspeed_source = ini.GetValue(configName.c_str(), "airspeedSource", "xplane_indicated");
     pitot_axis_body = ini.GetValue(configName.c_str(), "pitotAxisBody", "+X");
+    aircraft_match_tokens = ini.GetValue(configName.c_str(), "aircraftMatch", "");
+    trimWhitespace(aircraft_match_tokens);
     actuator_smoothing_time_constant_s =
         static_cast<float>(ini.GetDoubleValue(configName.c_str(), "actuatorSmoothingTimeConstantSec", 0.0));
     const std::string actuatorSmoothingChannelsConfig =
@@ -504,6 +511,15 @@ void ConfigManager::validateLoadedConfiguration() {
         addMessage(false, "no actuator channels parsed for active config");
     }
 
+    if (!aircraft_match_tokens.empty()) {
+        std::string loadedAircraftText;
+        if (!aircraftMatchesLoadedModel(aircraft_match_tokens, loadedAircraftText)) {
+            addMessage(false,
+                "active config '" + configName + "' may not match loaded X-Plane aircraft '" +
+                loadedAircraftText + "'; expected aircraftMatch token(s): " + aircraft_match_tokens);
+        }
+    }
+
     for (const auto& [channel, actuatorConfig] : actuatorConfigs) {
         if (channel < 0 || channel > 15) {
             addMessage(true, "channel" + std::to_string(channel) + " is outside supported range 0..15");
@@ -573,6 +589,45 @@ const ConfigValidationSummary& ConfigManager::getValidationSummary() {
 
 bool ConfigManager::hasValidationErrors() {
     return validationSummary.errors > 0;
+}
+
+bool ConfigManager::aircraftMatchesLoadedModel(const std::string& tokens, std::string& loadedAircraftText) {
+    char aircraftFile[256] = {};
+    char aircraftPath[512] = {};
+    XPLMGetNthAircraftModel(0, aircraftFile, aircraftPath);
+
+    loadedAircraftText = std::string(aircraftFile);
+    if (aircraftPath[0] != '\0') {
+        loadedAircraftText += " (" + std::string(aircraftPath) + ")";
+    }
+    if (loadedAircraftText.empty()) {
+        loadedAircraftText = "unknown";
+        return true;
+    }
+
+    std::string haystack = loadedAircraftText;
+    std::transform(haystack.begin(), haystack.end(), haystack.begin(),
+        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+    std::string normalizedTokens = tokens;
+    std::replace(normalizedTokens.begin(), normalizedTokens.end(), ';', ',');
+    std::istringstream stream(normalizedTokens);
+    std::string token;
+    bool sawToken = false;
+    while (std::getline(stream, token, ',')) {
+        trimWhitespace(token);
+        if (token.empty()) {
+            continue;
+        }
+        sawToken = true;
+        std::transform(token.begin(), token.end(), token.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        if (haystack.find(token) != std::string::npos) {
+            return true;
+        }
+    }
+
+    return !sawToken;
 }
 
 
