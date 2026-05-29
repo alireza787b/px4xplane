@@ -9,13 +9,13 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v3.4.63
+px4xplane: Version: v3.4.64
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
 
 4. Confirm the HUD or `Log.txt` does not show a config warning after the
-   Bayraktar `.acf` is loaded. v3.4.63 defers the match check while X-Plane is
+   Bayraktar `.acf` is loaded. v3.4.64 defers the match check while X-Plane is
    still reporting only the simulator root path during startup.
 5. Confirm the config editor shows `TB2` as the selected airframe.
 
@@ -65,6 +65,7 @@ IMU_INTEG_RATE=200
 SENS_GPS0_DELAY=0
 SENS_GPS1_DELAY=0
 EKF2_MULTI_IMU=1
+SENS_IMU_MODE=0
 FW_AIRSPD_TRIM=36.0
 FW_LND_AIRSPD=28.0
 FW_T_ALT_TC=8.0

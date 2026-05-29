@@ -124,6 +124,7 @@ param set-default EKF2_ACC_B_NOISE 0.001
 param set-default EKF2_GYR_NOISE 0.015
 param set-default EKF2_GYR_B_NOISE 0.001
 param set-default EKF2_MULTI_IMU 1
+param set-default SENS_IMU_MODE 0
 param set-default EKF2_ASP_DELAY 0.0
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_TAS_GATE 5.0

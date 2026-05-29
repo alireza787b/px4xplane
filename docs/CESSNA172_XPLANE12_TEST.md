@@ -53,6 +53,8 @@ PX4 airframe sanity values:
 
 ```text
 SYS_AUTOSTART = 5001
+EKF2_MULTI_IMU = 1
+SENS_IMU_MODE = 0
 CAL_ACC0_PRIO = 50
 CAL_ACC0_XOFF = -0.018
 CAL_ACC0_YOFF = -0.139

@@ -142,6 +142,7 @@ param set-default CAL_BARO1_PRIO 0        # Backup disabled (prevents mid-missio
 # EKF2 core configuration
 param set-default EKF2_BARO_CTRL 1
 param set-default EKF2_MULTI_IMU 1
+param set-default SENS_IMU_MODE 0
 
 # Accelerometer bias estimation for X-Plane SITL.
 param set-default EKF2_ABIAS_INIT 0.2     # Tighter starting bias estimate

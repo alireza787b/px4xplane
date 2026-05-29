@@ -105,6 +105,7 @@ param set-default CAL_ACC0_ZOFF -0.797
 # EKF2 core settings aligned with the current px4xplane sensor contract.
 param set-default EKF2_BARO_CTRL 1
 param set-default EKF2_MULTI_IMU 1
+param set-default SENS_IMU_MODE 0
 param set-default EKF2_ABIAS_INIT 0.2
 param set-default EKF2_ABL_LIM 0.8
 param set-default EKF2_ABL_TAU 0.5

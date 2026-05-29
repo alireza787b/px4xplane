@@ -86,13 +86,16 @@ This index is the stable entry point for user and developer documentation.
 - [Report v73 - TB3 Autoland Energy and Rollout Closure](reports/report_v73.md)
 - [Report v74 - PX4 Main Param Compatibility and Alia Startup Triage](reports/report_v74.md)
 - [Report v75 - PX4 Main Startup Cleanup and Alia Mission Review](reports/report_v75.md)
+- [Report v76 - X-Plane IMU Selection Recovery](reports/report_v76.md)
 
 ## Current Policy
 
-- Use the `v3.4.63` package with the refreshed PX4 `px4xplane-sitl` branch.
+- Use the `v3.4.64` package with the refreshed PX4 `px4xplane-sitl` branch.
   This package keeps the accepted airframe flight behavior, updates the
   packaged reference PX4 airframes for current PX4 main, and keeps X-Plane
   sensor timing from being overwritten by common mavlinksim startup defaults.
+  It also explicitly keeps `SENS_IMU_MODE=0` in all X-Plane airframes so
+  `EKF2_MULTI_IMU=1` starts without accel timeout errors on current PX4 main.
 - The next Alia retest must show `SYS_AUTOSTART=5020`. If startup prints
   `SYS_AUTOSTART=5001`, stop the run; that is the Cessna PX4 target, not Alia.
 - The active plugin config can still be changed from the X-Plane menu or config
@@ -102,10 +105,10 @@ This index is the stable entry point for user and developer documentation.
   Confirm X-Plane parses TB2 channels 5, 6, and 7 and the ULog has
   `PWM_MAIN_FUNC6=440`, `PWM_MAIN_FUNC7=205`, `PWM_MAIN_FUNC8=206`, and the
   TB2 `CAL_ACC0_*OFF` offsets before judging estimator, steering, flap
-  deployment, or rollout behavior. v3.4.63 should also log
+  deployment, or rollout behavior. v3.4.64 should also log
   `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)`.
 - TB2 cruise remains at `FW_AIRSPD_TRIM=36 m/s`; the TB3 issue was final
-  energy management, not an intentionally high approach target. v3.4.63 keeps
+  energy management, not an intentionally high approach target. v3.4.64 keeps
   `FW_LND_AIRSPD=28 m/s`, deploys full landing flaps, softens low-height TECS
   tracking, and delays fixed-wing land detection/disarm until rollout is slower.
 - Cessna is closed at the accepted v3.4.57 behavior with v3.4.58 landing polish:

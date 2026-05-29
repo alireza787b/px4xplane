@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.64] - 2026-05-29
+
+### Fixed
+
+- Restored the X-Plane SITL IMU selection contract explicitly in every PX4
+  X-Plane airframe by pairing `EKF2_MULTI_IMU=1` with `SENS_IMU_MODE=0`.
+- Synchronized packaged px4xplane parameter references with the PX4 PR branch.
+- Returned the packaged runtime config default to `Alia250` after closing the
+  TB2 validation slice.
+
+### Notes
+
+- v3.4.63 correctly stopped common mavlinksim startup defaults from overwriting
+  X-Plane GPS delay, IMU count, logger, and integration-rate settings, but that
+  also removed the old implicit `SENS_IMU_MODE=0` default. Current PX4 defaults
+  `SENS_IMU_MODE=1`, while EKF2 multi-instance requires `SENS_IMU_MODE=0`.
+  Without the explicit airframe default, X-Plane runs could report
+  `Accel #0 fail: TIMEOUT!` and `ekf2 missing data` during preflight.
+
 ## [3.4.63] - 2026-05-29
 
 ### Fixed

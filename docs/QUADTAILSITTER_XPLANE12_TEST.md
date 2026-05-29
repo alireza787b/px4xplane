@@ -207,6 +207,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `CAL_BARO1_PRIO=0`
 - `IMU_GYRO_RATEMAX=200`
 - `IMU_INTEG_RATE=200`
+- `SENS_IMU_MODE=0`
 
 In X-Plane `Log.txt`, confirm:
 

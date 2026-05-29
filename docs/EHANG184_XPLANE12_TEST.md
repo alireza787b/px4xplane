@@ -70,6 +70,7 @@ Confirm these values in the ULog before judging the result:
 - `EKF2_BARO_NOISE=1.0`
 - `IMU_GYRO_RATEMAX=200`
 - `IMU_INTEG_RATE=200`
+- `SENS_IMU_MODE=0`
 
 In X-Plane `Log.txt`, confirm:
 
