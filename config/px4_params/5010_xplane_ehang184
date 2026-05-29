@@ -3,11 +3,6 @@
 # PX4 SITL Configuration for Ehang 184 Airtaxi (Quadcopter) in X-Plane
 ################################################################################
 #
-# @name              Ehang 184 X-Plane SITL
-# @type              Quadrotor Wide
-# @maintainer        Alireza Ghaderi <p30planets@gmail.com>
-# @url               https://github.com/alireza787b/px4xplane/
-#
 # Aircraft:          Ehang 184 Electric Airtaxi
 # Type:              Quadrotor Wide (X configuration)
 # Compatible Sim:    X-Plane 11/12
@@ -15,12 +10,12 @@
 # MTOW:              ~600kg (2 passengers + batteries)
 #
 # USAGE:
-#   make px4_sitl xplane_ehang184
+#   make px4_sitl_default xplane_ehang184
 #
 # CONFIGURATION NOTES:
 # This airframe starts from conservative large-multicopter SITL values focused on:
 # - Smooth flight and gentle commanded accelerations
-# - Urban air mobility style margins for demonstration work
+# - Passenger-scale multicopter margins
 # - Robust sensor fusion for variable X-Plane FPS
 #
 # Key values:
@@ -30,8 +25,11 @@
 # - Cruise speed: 6 m/s (~22 km/h)
 # - Jerk/acceleration limits kept near PX4-valid comfort-oriented minimums
 #
-################################################################################
-
+# @name              Ehang 184 X-Plane SITL
+# @type              Quadrotor Wide
+# @class             Copter
+# @maintainer        Alireza Ghaderi <p30planets@gmail.com>
+# @url               https://github.com/alireza787b/px4xplane/
 . ${R}etc/init.d/rc.mc_defaults
 
 
@@ -145,8 +143,8 @@ param set-default CAL_BARO1_PRIO 0        # Backup disabled (prevents mid-missio
 param set-default EKF2_BARO_CTRL 1
 param set-default EKF2_MULTI_IMU 1
 
-# Accelerometer bias estimation (v3.3.3 - X-Plane SITL optimized)
-param set-default EKF2_ABIAS_INIT 0.2     # Tighter initial bias estimate
+# Accelerometer bias estimation for X-Plane SITL.
+param set-default EKF2_ABIAS_INIT 0.2     # Tighter starting bias estimate
 param set-default EKF2_ABL_LIM 2.5        # X-Plane SITL requires higher tolerance (see note below)
 param set-default EKF2_ABL_TAU 0.5        # Slower bias adaptation (stability)
 param set-default EKF2_ABL_ACCLIM 35.0
@@ -158,18 +156,16 @@ param set-default EKF2_ACC_B_NOISE 0.001  # Accel bias noise - enables bias lear
 # rendering load, which can make EKF2 estimate higher acceleration bias.
 # This does NOT affect flight performance - only the preflight arming check.
 
-# Gyroscope Noise (v3.2.0 - added for bias estimation stability)
+# Gyroscope noise.
 param set-default EKF2_GYR_NOISE 0.015    # Gyro measurement noise (rad/s)
 param set-default EKF2_GYR_B_NOISE 0.001  # Gyro bias process noise (rad/s)
 
-# Barometer parameters (v3.2.0 - CRITICAL)
+# Barometer parameters.
 param set-default EKF2_BARO_NOISE 1.0     # Baro height noise in m; avoids overconfident fusion during X-Plane transients
 param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0     # Increased for FPS variability tolerance
 
-# Simulated accelerometer calibration. Seed the fresh-SITL offsets from the
-# successful Ehang X-Plane log so low-FPS startup does not begin from stale Alia
-# calibration values.
+# Simulated accelerometer calibration for the packaged X-Plane aircraft model.
 param set-default CAL_ACC0_PRIO 50
 param set-default CAL_ACC0_XOFF -0.084
 param set-default CAL_ACC0_YOFF 0.112
@@ -391,7 +387,7 @@ param set-default MC_AT_SYSID_AMP 0.7
 # LARGE MULTICOPTER CONFIGURATION
 #
 # Design philosophy: this X-Plane Ehang-style multicopter is not a small racing
-# drone. Parameters prioritize smooth motion and stable demonstration behavior
+# drone. Parameters prioritize smooth motion and stable commanded response
 # over aggressive point capture.
 #
 # TUNING BY AIRCRAFT SIZE:
@@ -406,8 +402,7 @@ param set-default MIS_YAW_TMT 5
 param set-default MIS_TAKEOFF_ALT 2.5     # Default takeoff alt (m)
 
 # Navigation acceptance radii
-# Large enough for smooth waypoint capture, but tighter than the early
-# conservative file so final Ehang validation can judge tracking quality.
+# Large enough for smooth waypoint capture while preserving useful tracking.
 param set-default NAV_ACC_RAD 12          # Horizontal acceptance radius (m)
 param set-default NAV_MC_ALT_RAD 2        # Vertical acceptance radius (m)
 
@@ -455,6 +450,9 @@ param set-default SYS_VEHICLE_RESP -0.4
 
 # Battery compensation
 param set-default MC_BAT_SCALE_EN 0
+
+# Use the default logging topic profile for normal X-Plane SITL runs.
+param set-default SDLOG_PROFILE 1
 
 
 ################################################################################

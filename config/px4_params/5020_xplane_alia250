@@ -3,18 +3,12 @@
 # PX4 SITL Configuration for Alia-250 eVTOL (VTOL Quadplane) in X-Plane
 ################################################################################
 #
-# @name              Alia-250 eVTOL X-Plane SITL
-# @type              VTOL Quadplane
-# @maintainer        alireza787b <p30planets@gmail.com>
-# @url               https://github.com/alireza787b/px4xplane/
-#
 # Airframe:          Beta Technologies Alia-250
 # Type:              VTOL Quadplane / lift-plus-cruise style
 # Configuration:     4 Hover Motors + 1 Pusher Motor + Control Surfaces
 # Compatible Sim:    X-Plane 11/12
-# Date:              May 2026
 #
-# AIRCRAFT REFERENCE VALUES USED FOR INITIAL TUNING:
+# AIRCRAFT REFERENCE VALUES:
 # - Active SITL mass model: 3,120 kg, matching the tested X-Plane aircraft
 # - Public Alia reference MTOW: about 6,000 lb (2,721 kg)
 # - Wingspan: 50 ft (15 m) - Fixed-wing design
@@ -25,12 +19,13 @@
 # - Flight Modes: Multicopter hover, fixed-wing cruise, transition
 #
 # USAGE:
-# 1. Place this file in: PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes/
-# 2. Run: make px4_sitl xplane_alia250
-# 3. Launch X-Plane with Alia-250 aircraft model
+#   make px4_sitl_default xplane_alia250
 #
-################################################################################
-
+# @name              Alia-250 eVTOL X-Plane SITL
+# @type              Standard VTOL
+# @class             VTOL
+# @maintainer        Alireza Ghaderi <p30planets@gmail.com>
+# @url               https://github.com/alireza787b/px4xplane/
 . ${R}etc/init.d/rc.vtol_defaults
 
 
@@ -118,7 +113,7 @@ param set-default PWM_MAIN_REV 112
 ################################################################################
 # SECTION 2: EKF2 SENSOR FUSION - PX4XPLANE SITL BASELINE
 ################################################################################
-# Baseline estimator settings for the current px4xplane v3.4.3 sensor contract.
+# Estimator settings for the px4xplane simulator sensor contract.
 
 # Sensor Simulation Enables
 param set-default SENS_EN_GPSSIM 1       # GPS simulation
@@ -377,9 +372,6 @@ param set-default MC_AT_SYSID_AMP 0.7
 ################################################################################
 # SECTION 10: VTOL TRANSITION PARAMETERS
 ################################################################################
-# The latest X-Plane 12 Alia run completed front transition, RTL, back
-# transition, landing, disarm, and log close with these broad transition
-# settings. Treat them as a test baseline, not final aircraft tuning.
 
 # Core Configuration
 param set-default VT_TYPE 2              # Current PX4 airframe type used by this SITL config
@@ -418,11 +410,8 @@ param set-default VT_PITCH_MIN -5.0
 ################################################################################
 # SECTION 11: FIXED-WING FLIGHT PARAMETERS (CRUISE MODE)
 ################################################################################
-# v3.4.19 recovery baseline: keep the accepted v3.4.13 no-brake transition and
-# fixed-wing bank envelope, while retaining the v3.4.17 validated virtual-pitot
-# fix. Later brake modes must be tested as explicit A/B cases, not defaults.
-# The v3.4.14 PX4-metadata-valid 35 deg bank limit produced sustained high-bank
-# capture, throttle/elevator saturation, and altitude loss in X-Plane Alia logs.
+# The fixed-wing envelope uses moderate bank authority and a large orbit radius
+# to keep the heavy eVTOL model inside the tested X-Plane handling envelope.
 
 # Rate Control
 param set-default FW_RR_P 0.47
@@ -504,8 +493,7 @@ param set-default MC_ORBIT_RAD_MAX 2000
 # SECTION 12: NPFG GUIDANCE (Modern PX4 v1.14+)
 ################################################################################
 # Formula: L1_distance = (1/pi) * NPFG_DAMPING * NPFG_PERIOD * groundspeed.
-# Test7 showed NPFG_PERIOD=70 was too lazy for loiter capture. This baseline
-# returns to a shorter look-ahead with lower bank demand for a large eVTOL.
+# The values below keep loiter capture smooth without sustained high-bank flight.
 
 param set-default NPFG_PERIOD 35.0
 param set-default NPFG_DAMPING 0.80
@@ -576,56 +564,10 @@ param set-default SYS_VEHICLE_RESP -0.4  # Smooth for passengers
 # Battery Compensation
 param set-default MC_BAT_SCALE_EN 0
 
+# Use the default logging topic profile for normal X-Plane SITL runs.
+param set-default SDLOG_PROFILE 1
+
 
 ################################################################################
-# TROUBLESHOOTING GUIDE
-################################################################################
-#
-# EKF2 WARNINGS:
-#   "High accelerometer bias":
-#     - Verify IMU_INTEG_RATE matches mavlink_sensor_rate_hz (200Hz)
-#     - Check CAL_ACC0 offsets, EKF2_ABIAS_INIT = 0.2, EKF2_ACC_B_NOISE = 0.001
-#   "Height estimate not stable":
-#     - Verify EKF2_BARO_NOISE = 1.0 and CAL_BARO1_PRIO = 0
-#     - Check EKF2_GPS_V_NOISE = 0.15 (not 0.014!)
-#   "Vertical velocity unstable":
-#     - Check ULog estimator aid-source topics before changing bridge sensors
-#     - If it appears only after disarm/log close, wait 10-15s after disarm
-#       before stopping PX4 so the shutdown phase is captured clearly
-#
-# Altitude drop during front transition (MC -> FW):
-#   - Current recovery baseline uses VT_F_TRANS_THR = 1.0,
-#     VT_F_TRANS_DUR = 45.0, VT_ARSP_TRANS = 46.0, and VT_F_TR_OL_TM = 55.0
-#   - v3.4.19 disables default lift-prop braking after evtol4 showed the first
-#     FW sink recovery matched v3.4.13 until the brake window removed margin
-#   - If QGC shows zero airspeed while raw ULog `airspeed` is valid, check
-#     `airspeed_validated` freshness and keep ASPD_DO_CHECKS = 1 for SITL
-#   - Check airspeed build-up, tilt state, pusher thrust, and altitude error in
-#     ULog before changing transition timing
-#
-# Aircraft overshoots landing point:
-#   - Test6 measured about 2.27 m/s^2 average back-transition deceleration.
-#   - Current baseline uses VT_B_DEC_MSS = 1.5, VT_B_TRANS_DUR = 35.0,
-#     VT_B_DEC_I = 0.25, VT_B_TRANS_RAMP = 15.0
-#   - Tune deceleration and transition duration from position/velocity traces.
-#
-# Tight loiter radius / oscillation in FW mode:
-#   - Current baseline uses NPFG_PERIOD = 35.0, NPFG_DAMPING = 0.80,
-#     NAV_LOITER_RAD = 2000.0, RTL_LOITER_RAD = 2000.0, FW_R_LIM = 22.0
-#   - Tune NPFG period/damping, roll limit, and TECS together from ULog evidence
-#
-# Altitude oscillation during cruise:
-#   - Current baseline uses FW_T_ALT_TC = 6.0, FW_T_STE_R_TC = 2.0,
-#     FW_T_THR_DAMPING = 0.25, FW_T_PTCH_DAMP = 0.25
-#   - Adjust one parameter at a time and compare against the same RTL/circle run
-#
-# Keep a short change log when tuning this file. Back each change with a
-# repeatable run, ULog estimator evidence, or an XPlaneTruthCapture replay diff.
-#
-################################################################################
 # END OF CONFIGURATION
-################################################################################
-# Maintainer: px4xplane project - https://github.com/alireza787b/px4xplane/
-# Status: X-Plane 12 Alia SITL test baseline; continue ULog-guided tuning
-# Flight Modes: MC hover, FW cruise, transition
 ################################################################################

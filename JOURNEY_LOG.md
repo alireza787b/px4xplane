@@ -4,6 +4,27 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-29
 
+### v3.4.63 PX4 Main Startup Cleanup and Alia Mission Review
+
+- Reviewed `/home/alireza/17_21_30.ulg`; Alia was correctly loaded
+  (`SYS_AUTOSTART=5020`, `VT_TYPE=2`, `MAV_TYPE=22`).
+- Found that common PX4 mavlink simulator startup was overwriting X-Plane
+  airframe defaults after the airframe file ran:
+  `SENS_GPS0_DELAY=10`, `SENS_GPS1_DELAY=10`, `EKF2_MULTI_IMU=3`,
+  `SENS_IMU_MODE=0`, and `IMU_INTEG_RATE=250`.
+- Marked X-Plane targets with `PX4_SIMULATOR=xplane` and guarded the common
+  mavlinksim defaults so X-Plane airframes keep their own sensor timing and
+  estimator topology.
+- Traced the logger warning flood to current PX4 SITL default logging expanding
+  too many estimator multi-instance topics for the fixed logger subscription
+  budget. Limited default estimator expansion to three instances and set
+  packaged X-Plane airframes to `SDLOG_PROFILE=1`.
+- Reviewed the Alia mission sequence: the long orbit was an explicit
+  `NAV_LOITER_TO_ALT` mission item with a `75 m` radius, not the Alia
+  `NAV_LOITER_RAD=2000 m` default. The final test should use a larger QGC
+  VTOL landing/loiter radius.
+- New report: `docs/reports/report_v75.md`.
+
 ### v3.4.62 PX4 Main Param Compatibility and Alia Startup Triage
 
 - Reviewed `newAlia1.zip` and the pasted terminal output. The uploaded ULog was

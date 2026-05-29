@@ -3,12 +3,6 @@
 # PX4 SITL Configuration for QuadTailsitter in X-Plane
 ################################################################################
 #
-# @name              QuadTailsitter X-Plane SITL
-# @class             VTOL
-# @type              VTOL Quad Tailsitter
-# @maintainer        alireza787b <p30planets@gmail.com>
-# @url               https://github.com/alireza787b/px4xplane/
-#
 # X-Plane model:     QuadTailsitter.acf
 # Compatible Sim:    X-Plane 12
 # Control:           Four fixed rotors, no aerodynamic control surfaces
@@ -21,8 +15,11 @@
 # USAGE:
 #   make px4_sitl_default xplane_qtailsitter
 #
-################################################################################
-
+# @name              QuadTailsitter X-Plane SITL
+# @type              VTOL Quad Tailsitter
+# @class             VTOL
+# @maintainer        Alireza Ghaderi <p30planets@gmail.com>
+# @url               https://github.com/alireza787b/px4xplane/
 . ${R}etc/init.d/rc.vtol_defaults
 
 
@@ -345,6 +342,7 @@ param set-default FD_FAIL_P 85
 param set-default FD_FAIL_R_TTRI 1.0
 param set-default FD_FAIL_P_TTRI 1.0
 param set-default WV_EN 0
+param set-default SDLOG_PROFILE 1
 
 ################################################################################
 # END OF FILE

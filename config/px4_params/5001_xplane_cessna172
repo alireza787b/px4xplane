@@ -3,18 +3,12 @@
 # PX4 SITL Configuration for Cessna 172 Skyhawk in X-Plane
 ################################################################################
 #
-# @name              Cessna 172 Skyhawk X-Plane SITL
-# @type              Standard Plane
-# @maintainer        alireza787b <p30planets@gmail.com>
-# @url               https://github.com/alireza787b/px4xplane/
-#
 # Airframe:          Cessna 172 Skyhawk
 # Type:              Fixed-wing, tricycle landing gear
 # Configuration:     1 propeller motor + ailerons + elevator + rudder + nosewheel
 # Compatible Sim:    X-Plane 11/12
-# Date:              May 2026
 #
-# REFERENCE VALUES USED FOR INITIAL TUNING:
+# AIRCRAFT REFERENCE VALUES:
 # - MTOW: 2,550 lb / 1,157 kg
 # - Wingspan: 36 ft 1 in / 11.0 m
 # - Cruise speed: about 124 ktas / 64 m/s
@@ -23,17 +17,17 @@
 # - Sea-level max climb: about 730 ft/min / 3.7 m/s
 # - Engine: Lycoming IO-360-L2A, 180 hp
 #
-# This is the first Cessna refresh after the Alia, Ehang, and QuadTailsitter
-# sensor-contract work. It is intended as a clean runway-mission baseline for
-# X-Plane validation, not as final flight-test tuning without returned logs.
+# The defaults are tuned for the packaged X-Plane model and runway-mission
+# SITL validation.
 #
 # USAGE:
-# 1. Place this file in: PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes/
-# 2. Run: make px4_sitl_default xplane_cessna172
-# 3. Launch X-Plane with the Cessna 172 aircraft model
+#   make px4_sitl_default xplane_cessna172
 #
-################################################################################
-
+# @name              Cessna 172 Skyhawk X-Plane SITL
+# @type              Standard Plane
+# @class             Plane
+# @maintainer        Alireza Ghaderi <p30planets@gmail.com>
+# @url               https://github.com/alireza787b/px4xplane/
 . ${R}etc/init.d/rc.fw_defaults
 
 
@@ -102,9 +96,7 @@ param set-default CAL_BARO0_PRIO 100
 param set-default CAL_BARO1_ID 6620428
 param set-default CAL_BARO1_PRIO 0
 
-# Simulated accelerometer calibration. The first Cessna log committed these
-# offsets after disarm; source-controlling them avoids a preflight high-bias
-# warning without raising EKF2_ABL_LIM beyond the PX4 metadata maximum.
+# Simulated accelerometer calibration for the packaged X-Plane aircraft model.
 param set-default CAL_ACC0_PRIO 50
 param set-default CAL_ACC0_XOFF -0.018
 param set-default CAL_ACC0_YOFF -0.139
@@ -157,9 +149,8 @@ param set-default IMU_INTEG_RATE 200
 # SECTION 3: FIXED-WING ATTITUDE / RATE CONTROL
 ################################################################################
 
-# Roll. v3.4.56 over-softened this axis and caused late path capture. Restore
-# most of the accepted v3.4.55 authority while leaving margin below the previous
-# saturated feed-forward baseline.
+# Roll authority is kept high enough for path capture while avoiding the
+# control-surface saturation seen with more aggressive feed-forward settings.
 param set-default FW_RR_P 0.42
 param set-default FW_RR_I 0.11
 param set-default FW_RR_D 0.08
@@ -242,7 +233,7 @@ param set-default FW_TKO_PITCH_MIN 10.0
 param set-default MIS_TAKEOFF_ALT 150.0
 
 # Auto landing. Use landing flaps and early landing configuration so the
-# aircraft stabilizes before final. Disable touchdown-time clamping because
+# aircraft stabilizes before approach. Disable touchdown-time clamping because
 # the C172 flare timing varies with X-Plane runway geometry and wind.
 param set-default FW_LND_ABORT 0
 param set-default FW_LND_ANG 5.0
@@ -305,6 +296,7 @@ param set-default MPC_JERK_MAX 3.0
 
 # Keep the normal SITL logger behavior; the launcher starts the full ULog.
 param set-default SDLOG_MODE 0
+param set-default SDLOG_PROFILE 1
 
 # SITL-only circuit breakers.
 param set-default CBRK_USB_CHK 197848

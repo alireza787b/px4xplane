@@ -3,36 +3,28 @@
 # PX4 SITL Configuration for Bayraktar TB2-Style UAV in X-Plane
 ################################################################################
 #
-# @name              Bayraktar TB2 X-Plane SITL
-# @type              Plane A-Tail
-# @class             Plane
-# @maintainer        alireza787b <p30planets@gmail.com>
-# @url               https://github.com/alireza787b/px4xplane/
-#
 # Airframe:          Bayraktar TB2-style MALE UAV
 # Type:              Fixed-wing, tricycle landing gear, inverted A-tail
 # Configuration:     1 propeller motor + ailerons + A-tail + nosewheel + flaps
 # Compatible Sim:    X-Plane 11/12
-# Date:              May 2026
 #
-# REFERENCE VALUES USED FOR INITIAL TUNING:
+# AIRCRAFT REFERENCE VALUES:
 # - Baykar official data: 12 m wingspan, 6.5 m length, 2.2 m height,
 #   700 kg MTOW, 100 hp engine, 70 kt cruise class, 90-110 KTAS travel/max.
 # - Uploaded X-Plane model: about 10.8 m modeled main-wing span and about
 #   418 kg empty-plus-full-fuel loaded mass from the ACF weight fields.
 #
-# This file is a first refreshed TB2 baseline after the Alia, Ehang,
-# QuadTailsitter, and Cessna validation work. It intentionally matches the
-# current X-Plane model mass/geometry for the first test instead of forcing the
-# published MTOW into a lighter simulator aircraft.
+# The defaults match the tested X-Plane model mass and geometry while keeping
+# published TB2 performance values as reference bounds.
 #
 # USAGE:
-# 1. Place this file in: PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes/
-# 2. Run: make px4_sitl_default xplane_tb2
-# 3. Launch X-Plane with the Bayraktar_tb2 aircraft model
+#   make px4_sitl_default xplane_tb2
 #
-################################################################################
-
+# @name              Bayraktar TB2 X-Plane SITL
+# @type              Plane A-Tail
+# @class             Plane
+# @maintainer        Alireza Ghaderi <p30planets@gmail.com>
+# @url               https://github.com/alireza787b/px4xplane/
 . ${R}etc/init.d/rc.fw_defaults
 
 
@@ -101,9 +93,7 @@ param set-default CAL_BARO0_PRIO 100
 param set-default CAL_BARO1_ID 6620428
 param set-default CAL_BARO1_PRIO 0
 
-# Simulated accelerometer offsets from the clean TB2 v3.4.59 ULog startup bias
-# estimate. This is the same approach used for the accepted Cessna profile and
-# avoids masking a real estimator issue by simply raising EKF2_ABL_LIM.
+# Simulated accelerometer calibration for the packaged X-Plane aircraft model.
 param set-default CAL_ACC0_PRIO 50
 param set-default CAL_ACC0_XOFF -0.030
 param set-default CAL_ACC0_YOFF 0.010
@@ -187,8 +177,8 @@ param set-default FW_W_RMAX 0.0
 ################################################################################
 
 # Baykar lists 70 kt cruise class and 90-110 KTAS travel/max. The X-Plane model
-# is lighter than the published 700 kg MTOW, so these are conservative first
-# targets for SITL validation.
+# is lighter than the published 700 kg MTOW, so these values are conservative
+# SITL targets.
 param set-default FW_AIRSPD_MIN 24.0
 param set-default FW_AIRSPD_MAX 56.0
 param set-default FW_AIRSPD_TRIM 36.0
@@ -297,6 +287,7 @@ param set-default WEIGHT_GROSS 418.0
 ################################################################################
 
 param set-default SDLOG_MODE 0
+param set-default SDLOG_PROFILE 1
 param set-default CBRK_USB_CHK 197848
 param set-default CBRK_SUPPLY_CHK 894281
 param set-default CBRK_IO_SAFETY 22027

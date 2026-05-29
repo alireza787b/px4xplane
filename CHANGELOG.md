@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.63] - 2026-05-29
+
+### Fixed
+
+- Updated the PX4 PR branch so X-Plane SITL targets export
+  `PX4_SIMULATOR=xplane`, preventing common mavlinksim startup defaults from
+  overwriting X-Plane airframe sensor timing and IMU topology.
+- Reduced PX4 SITL logger warning noise by limiting default estimator
+  multi-instance topic expansion to the simulator-supported estimator count.
+- Set the packaged X-Plane PX4 airframe references to `SDLOG_PROFILE=1` for
+  normal flight tests.
+- Synchronized packaged px4xplane parameter references with the PX4 PR branch.
+
+### Notes
+
+- `17_21_30.ulg` confirmed Alia was correctly loaded as `SYS_AUTOSTART=5020`,
+  but common simulator startup had overwritten X-Plane defaults such as
+  `SENS_GPS0_DELAY`, `EKF2_MULTI_IMU`, and `IMU_INTEG_RATE`.
+- The apparent Alia mission loiter issue came from an explicit QGC
+  `NAV_LOITER_TO_ALT` item with a `75 m` radius, not from the Alia default
+  `NAV_LOITER_RAD=2000 m`.
+
 ## [3.4.62] - 2026-05-29
 
 ### Fixed
