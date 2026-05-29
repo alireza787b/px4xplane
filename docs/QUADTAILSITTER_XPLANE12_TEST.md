@@ -121,7 +121,6 @@ Before judging the run, confirm these defaults in the ULog:
 - `MPC_THR_HOVER=0.22`
 - `MPC_THR_MIN=0.08`
 - `MPC_THR_XY_MARG=0.4`
-- `MPC_USE_HTE=0`
 - `MPC_XY_P=0.18`
 - `MPC_Z_P=1.00`
 - `MPC_Z_VEL_P_ACC=2.0`

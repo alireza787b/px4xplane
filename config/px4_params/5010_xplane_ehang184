@@ -176,7 +176,8 @@ param set-default CAL_ACC0_YOFF 0.112
 param set-default CAL_ACC0_ZOFF -0.815
 
 # GPS parameters
-param set-default EKF2_GPS_DELAY 0.0
+param set-default SENS_GPS0_DELAY 0
+param set-default SENS_GPS1_DELAY 0
 param set-default EKF2_GPS_P_NOISE 0.15   # Position noise (matches vertical accuracy)
 param set-default EKF2_GPS_V_NOISE 0.15   # Realistic GPS velocity noise (was 0.01)
 param set-default EKF2_GPS_P_GATE 5.0     # Innovation gate
@@ -189,7 +190,6 @@ param set-default EKF2_MAG_NOISE 0.05
 param set-default EKF2_MAG_GATE 5.0       # Increased for FPS tolerance
 
 # Additional sensors
-param set-default EKF2_AGP_CTRL 3
 param set-default EKF2_ASP_DELAY 0.0
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_TAS_GATE 5.0
@@ -331,7 +331,6 @@ param set-default MPC_HOLD_MAX_Z 0.6
 # Advanced options
 param set-default MPC_POS_MODE 4
 param set-default MPC_ALT_MODE 0
-param set-default MPC_USE_HTE 1
 param set-default MPC_VELD_LP 5
 param set-default MPC_VEL_MAN_BACK -1
 param set-default MPC_VEL_MAN_SIDE -1
@@ -360,7 +359,6 @@ param set-default LNDMC_ALT_GND 2
 param set-default LNDMC_XY_VEL_MAX 1.5
 param set-default LNDMC_Z_VEL_MAX 0.24
 param set-default LNDMC_ROT_MAX 20
-param set-default LNDMC_TRIG_TIME 1
 param set-default COM_DISARM_LAND 1.5
 
 
@@ -384,7 +382,6 @@ param set-default MC_ACRO_SUPEXPOY 0
 
 param set-default MC_AT_APPLY 1
 param set-default MC_AT_RISE_TIME 0.14
-param set-default MC_AT_START 0
 param set-default MC_AT_SYSID_AMP 0.7
 
 

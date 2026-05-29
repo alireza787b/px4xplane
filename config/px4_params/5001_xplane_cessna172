@@ -126,7 +126,8 @@ param set-default EKF2_GYR_B_NOISE 0.001
 param set-default EKF2_BARO_NOISE 1.0
 param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0
-param set-default EKF2_GPS_DELAY 0.0
+param set-default SENS_GPS0_DELAY 0
+param set-default SENS_GPS1_DELAY 0
 param set-default EKF2_GPS_P_NOISE 0.15
 param set-default EKF2_GPS_V_NOISE 0.15
 param set-default EKF2_GPS_P_GATE 5.0
@@ -141,7 +142,6 @@ param set-default EKF2_MAG_GATE 5.0
 param set-default EKF2_SYNT_MAG_Z 1
 param set-default EKF2_ASP_DELAY 0.0
 param set-default EKF2_TAS_GATE 5.0
-param set-default EKF2_AGP_CTRL 3
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_WIND_NSD 0.01
 param set-default EKF2_REQ_VDRIFT 1.0

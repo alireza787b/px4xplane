@@ -2,6 +2,28 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-29
+
+### v3.4.62 PX4 Main Param Compatibility and Alia Startup Triage
+
+- Reviewed `newAlia1.zip` and the pasted terminal output. The uploaded ULog was
+  an Alia startup (`SYS_AUTOSTART=5020`, `VT_TYPE=2`, `MAV_TYPE=22`), while the
+  pasted terminal output showed a separate Cessna startup
+  (`SYS_AUTOSTART=5001`). Treat those as two separate evidence streams.
+- Fixed active PX4 main compatibility in all five X-Plane airframes:
+  `EKF2_GPS_DELAY` became `SENS_GPS0_DELAY`/`SENS_GPS1_DELAY`, and obsolete
+  defaults `EKF2_AGP_CTRL`, `MPC_USE_HTE`, `LNDMC_TRIG_TIME`, and
+  `MC_AT_START` were removed.
+- Added launcher visibility before build/run: selected PX4 target,
+  `SYS_AUTOSTART`, and airframe file path now print before `make
+  px4_sitl_default ...`, with a reminder to match the loaded X-Plane aircraft
+  and config before arming.
+- Verification: PX4 SITL build passed, Alia startup smoke check reached
+  simulator wait with no `Parameter ... not found` errors, static parameter
+  validation passed all five X-Plane airframes, and px4xplane offline tests
+  passed.
+- New report: `docs/reports/report_v74.md`.
+
 ## 2026-05-28
 
 ### v3.4.59 TB2 First-Test Triage and Config Guard

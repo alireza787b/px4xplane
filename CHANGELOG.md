@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.62] - 2026-05-29
+
+### Fixed
+
+- Updated all packaged PX4 X-Plane reference airframes to current PX4 main
+  parameter names: `EKF2_GPS_DELAY` is now `SENS_GPS0_DELAY`/`SENS_GPS1_DELAY`.
+- Removed obsolete PX4 defaults that no longer exist on current main:
+  `EKF2_AGP_CTRL`, `MPC_USE_HTE`, `LNDMC_TRIG_TIME`, and `MC_AT_START`.
+- Added launcher output showing the selected PX4 target and `SYS_AUTOSTART`
+  before `make px4_sitl_default ...` runs, so wrong-airframe startups are
+  visible before arming.
+- Refreshed TB2 and QuadTailsitter test-card parameter references for current
+  PX4 main.
+
+### Notes
+
+- `newAlia1.zip` contained an Alia ULog with `SYS_AUTOSTART=5020`, but the
+  pasted terminal output showed a separate Cessna startup with
+  `SYS_AUTOSTART=5001`. v3.4.62 addresses the real stale-param failures and
+  makes this target mismatch harder to miss in the launcher.
+
 ## [3.4.59] - 2026-05-28
 
 ### Changed

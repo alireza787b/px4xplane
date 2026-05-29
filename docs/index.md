@@ -84,23 +84,27 @@ This index is the stable entry point for user and developer documentation.
 - [Report v71 - TB2 First-Test Triage and Config Guard](reports/report_v71.md)
 - [Report v72 - TB2 Estimator and Landing Closure](reports/report_v72.md)
 - [Report v73 - TB3 Autoland Energy and Rollout Closure](reports/report_v73.md)
+- [Report v74 - PX4 Main Param Compatibility and Alia Startup Triage](reports/report_v74.md)
 
 ## Current Policy
 
-- Use the `v3.4.61` package for the next TB2 validation. This package
-  intentionally makes `TB2` the active config so testers do not have to switch
-  manually during this slice, defers aircraft-match checks until X-Plane reports
-  an actual `.acf` path, keeps the ground sensor contract latched during
-  uncommanded idle creep, and auto-resets saved PX4 SITL parameters when the
-  selected airframe/default file fingerprint changes.
+- Use the `v3.4.62` package with the refreshed PX4 `px4xplane-sitl` branch.
+  This package keeps the v3.4.61 flight behavior, but updates the packaged
+  reference PX4 airframes to current PX4 main parameter names and makes the
+  launcher print the selected `SYS_AUTOSTART` before build/run.
+- The next Alia retest must show `SYS_AUTOSTART=5020`. If startup prints
+  `SYS_AUTOSTART=5001`, stop the run; that is the Cessna PX4 target, not Alia.
+- The active plugin config can still be changed from the X-Plane menu or config
+  editor. Confirm the connection HUD and X-Plane `Log.txt` both show the
+  intended airframe config before arming.
 - Use the TB2 test card for runway takeoff, mission, loiter, and autoland.
   Confirm X-Plane parses TB2 channels 5, 6, and 7 and the ULog has
   `PWM_MAIN_FUNC6=440`, `PWM_MAIN_FUNC7=205`, `PWM_MAIN_FUNC8=206`, and the
   TB2 `CAL_ACC0_*OFF` offsets before judging estimator, steering, flap
-  deployment, or rollout behavior. v3.4.61 should also log
+  deployment, or rollout behavior. v3.4.62 should also log
   `Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)`.
 - TB2 cruise remains at `FW_AIRSPD_TRIM=36 m/s`; the TB3 issue was final
-  energy management, not an intentionally high approach target. v3.4.61 keeps
+  energy management, not an intentionally high approach target. v3.4.62 keeps
   `FW_LND_AIRSPD=28 m/s`, deploys full landing flaps, softens low-height TECS
   tracking, and delays fixed-wing land detection/disarm until rollout is slower.
 - Cessna is closed at the accepted v3.4.57 behavior with v3.4.58 landing polish:

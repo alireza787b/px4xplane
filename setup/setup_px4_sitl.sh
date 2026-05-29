@@ -204,6 +204,17 @@ airframe_file_for_platform() {
     esac
 }
 
+sys_autostart_for_platform() {
+    case "$1" in
+        xplane_ehang184) echo "5010" ;;
+        xplane_alia250) echo "5020" ;;
+        xplane_cessna172) echo "5001" ;;
+        xplane_tb2) echo "5002" ;;
+        xplane_qtailsitter) echo "5021" ;;
+        *) echo "unknown" ;;
+    esac
+}
+
 airframe_hash_for_platform() {
     local relative_path
     relative_path="$(airframe_file_for_platform "$1")"
@@ -707,6 +718,9 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
     elif [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
         highlight "Building: $PLATFORM"
         LAST_PLATFORM="$PLATFORM"
+        info "PX4 target: $PLATFORM (SYS_AUTOSTART=$(sys_autostart_for_platform "$PLATFORM"))"
+        info "Airframe file: $(airframe_file_for_platform "$PLATFORM")"
+        warning "Confirm X-Plane is loaded with the matching aircraft/config before arming."
 
         cd "$CLONE_PATH" || exit
         reset_params_if_airframe_changed "$PLATFORM"
