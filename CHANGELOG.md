@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.65] - 2026-05-29
+
+### Fixed
+
+- Restored standard PX4 GNSS measurement delay handling for every X-Plane
+  airframe by setting `SENS_GPS0_DELAY=110` and `SENS_GPS1_DELAY=110`.
+- Synchronized packaged px4xplane parameter references with the PX4 PR branch.
+
+### Notes
+
+- The `18_33_37.ulg` Alia transition failure was not a raw compass-vector
+  problem. The HIL GPS samples had `timestamp_sample=0`, while the X-Plane
+  airframes forced GPS delay to `0 ms`; during high-speed transition this
+  produced GNSS position innovation rejection, EKF emergency yaw resets, PX4
+  compass-fault health messages, and then a VTOL quad-chute after the aircraft
+  dropped below `VT_FW_MIN_ALT`.
+- A brief startup `Preflight Fail: no heading reference` before `Ready for
+  takeoff` is still expected while the EKF performs its first yaw alignment. It
+  is only actionable if it persists after `Ready for takeoff`.
+
 ## [3.4.64] - 2026-05-29
 
 ### Fixed

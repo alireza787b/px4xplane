@@ -9,13 +9,13 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v3.4.64
+px4xplane: Version: v3.4.65
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
 
 4. Confirm the HUD or `Log.txt` does not show a config warning after the
-   Bayraktar `.acf` is loaded. v3.4.64 defers the match check while X-Plane is
+   Bayraktar `.acf` is loaded. v3.4.65 defers the match check while X-Plane is
    still reporting only the simulator root path during startup.
 5. Confirm the config editor shows `TB2` as the selected airframe.
 
@@ -62,8 +62,8 @@ CAL_ACC0_YOFF=0.010
 CAL_ACC0_ZOFF=-0.770
 IMU_GYRO_RATEMAX=200
 IMU_INTEG_RATE=200
-SENS_GPS0_DELAY=0
-SENS_GPS1_DELAY=0
+SENS_GPS0_DELAY=110
+SENS_GPS1_DELAY=110
 EKF2_MULTI_IMU=1
 SENS_IMU_MODE=0
 FW_AIRSPD_TRIM=36.0
@@ -81,7 +81,7 @@ COM_DISARM_LAND=4.0
 ```
 
 Abort the test if the ULog still shows stale values such as
-`EKF2_ABL_LIM=2.0`, `SENS_GPS0_DELAY=10`, `EKF2_MULTI_IMU=3`, or
+`EKF2_ABL_LIM=2.0`, `SENS_GPS0_DELAY=0`, `EKF2_MULTI_IMU=3`, or
 `IMU_INTEG_RATE=250`. Run `make px4_sitl_default distclean`, then delete any
 saved SITL parameter store if stale values remain:
 

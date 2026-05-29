@@ -4,6 +4,31 @@ This log preserves project decisions, evidence, and next actions across the long
 
 ## 2026-05-29
 
+### v3.4.65 X-Plane GNSS Timing and Alia Compass Fault Recovery
+
+- Reviewed `/home/alireza/18_33_37.ulg`; Alia loaded correctly as
+  `SYS_AUTOSTART=5020` and the startup `no heading reference` warning cleared
+  before `Ready for takeoff`.
+- Found the in-flight compass warning was caused by EKF yaw emergency resets,
+  not by a bad raw magnetometer vector. The magnetic field magnitude and
+  ground-truth-frame reconstruction stayed stable through transition.
+- Found the underlying timing problem: X-Plane HIL GPS samples had
+  `timestamp_sample=0`, while all X-Plane airframes forced
+  `SENS_GPS0_DELAY=0` and `SENS_GPS1_DELAY=0`. PX4 therefore could not apply
+  its standard GPS measurement delay fallback, causing GNSS position innovation
+  rejection during high-speed transition.
+- Set all PX4 PR airframes and packaged px4xplane parameter mirrors to
+  `SENS_GPS0_DELAY=110` and `SENS_GPS1_DELAY=110`.
+- New report: `docs/reports/report_v77.md`.
+
+### v3.4.64 X-Plane IMU Selection Recovery
+
+- Restored `SENS_IMU_MODE=0` explicitly in every X-Plane airframe so
+  `EKF2_MULTI_IMU=1` starts cleanly on current PX4 main without accel timeout
+  errors.
+- Synchronized packaged px4xplane parameter mirrors with the PX4 PR branch.
+- New report: `docs/reports/report_v76.md`.
+
 ### v3.4.63 PX4 Main Startup Cleanup and Alia Mission Review
 
 - Reviewed `/home/alireza/17_21_30.ulg`; Alia was correctly loaded

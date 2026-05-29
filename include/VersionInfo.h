@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.64";
+    constexpr const char* VERSION = "3.4.65";
 
     /** Version phase description */
-    constexpr const char* PHASE = "X-Plane IMU selection compatibility";
+    constexpr const char* PHASE = "X-Plane GNSS timing recovery";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "072";
+    constexpr const char* BUILD = "073";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

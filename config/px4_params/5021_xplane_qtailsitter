@@ -102,8 +102,8 @@ param set-default EKF2_BARO_GATE 10.0
 param set-default EKF2_HGT_REF 1
 
 param set-default EKF2_GPS_CTRL 7
-param set-default SENS_GPS0_DELAY 0
-param set-default SENS_GPS1_DELAY 0
+param set-default SENS_GPS0_DELAY 110
+param set-default SENS_GPS1_DELAY 110
 param set-default EKF2_GPS_P_NOISE 0.15
 param set-default EKF2_GPS_V_NOISE 0.15
 param set-default EKF2_GPS_P_GATE 5.0
