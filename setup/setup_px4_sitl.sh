@@ -99,7 +99,7 @@ SETUP_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
 MAVLINK_ROUTER_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/mavlink-anywhere/main/install_mavlink_router.sh"
-MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 -e MAVLINK2REST_IP_PLACEHOLDER:14569 0.0.0.0:14550"
+MAVLINK_ROUTER_COMMAND="mavlink-routerd -e __PX4_SIM_HOSTNAME__:14540 -e __PX4_SIM_HOSTNAME__:14550 -e __PX4_SIM_HOSTNAME__:14569 -e __MAVLINK2REST_IP__:14569 0.0.0.0:14550"
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
@@ -893,8 +893,8 @@ if [ "$USE_MAVLINK_ROUTER" = true ]; then
     fi
 
     # Replace specific IP placeholders in the MAVLink Router command
-    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_COMMAND//IP_PLACEHOLDER/$PX4_SIM_HOSTNAME}"
-    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_CMD//MAVLINK2REST_IP_PLACEHOLDER/$MAVLINK2REST_IP}"
+    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_COMMAND//__PX4_SIM_HOSTNAME__/$PX4_SIM_HOSTNAME}"
+    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_CMD//__MAVLINK2REST_IP__/$MAVLINK2REST_IP}"
 
     progress "Starting MAVLink Router..."
     info "Command: $MAVLINK_ROUTER_CMD"

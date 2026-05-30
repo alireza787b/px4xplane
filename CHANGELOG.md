@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   so an accidental value such as `c` is not reused for MAVLink Router endpoints.
 - MAVLink Router startup now verifies the process is still alive before
   reporting success.
+- Fixed MAVLink Router endpoint substitution so the MAVLink2REST endpoint is not
+  corrupted when the PX4/X-Plane host IP is expanded.
 
 ## [3.4.65] - 2026-05-29
 
