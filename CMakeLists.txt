@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.65 LANGUAGES CXX)
+project(px4xplane VERSION 3.4.66 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -342,6 +342,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/reports
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/docs/reports
+        ${OUTPUT_DIR}/../docs/reports
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/config-editor.html
         ${OUTPUT_DIR}/../docs/config-editor.html
@@ -351,27 +354,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v69.md
-        ${OUTPUT_DIR}/../docs/reports/report_v69.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v70.md
-        ${OUTPUT_DIR}/../docs/reports/report_v70.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v71.md
-        ${OUTPUT_DIR}/../docs/reports/report_v71.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v72.md
-        ${OUTPUT_DIR}/../docs/reports/report_v72.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v73.md
-        ${OUTPUT_DIR}/../docs/reports/report_v73.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v74.md
-        ${OUTPUT_DIR}/../docs/reports/report_v74.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v75.md
-        ${OUTPUT_DIR}/../docs/reports/report_v75.md
     COMMENT "Copying config editor docs to plugin package"
 )
 
@@ -439,6 +421,9 @@ set(PACKAGE_ASSET_COMMANDS
         ${OUTPUT_DIR}/../docs/reports
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/reports
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/docs/reports
+        ${OUTPUT_DIR}/../docs/reports
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/config-editor.html
         ${OUTPUT_DIR}/../docs/config-editor.html
@@ -448,27 +433,6 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v69.md
-        ${OUTPUT_DIR}/../docs/reports/report_v69.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v70.md
-        ${OUTPUT_DIR}/../docs/reports/report_v70.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v71.md
-        ${OUTPUT_DIR}/../docs/reports/report_v71.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v72.md
-        ${OUTPUT_DIR}/../docs/reports/report_v72.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v73.md
-        ${OUTPUT_DIR}/../docs/reports/report_v73.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v74.md
-        ${OUTPUT_DIR}/../docs/reports/report_v74.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/reports/report_v75.md
-        ${OUTPUT_DIR}/../docs/reports/report_v75.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../tools
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

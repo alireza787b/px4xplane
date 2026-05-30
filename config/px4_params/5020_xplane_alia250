@@ -168,15 +168,15 @@ param set-default CAL_ACC0_YOFF -0.160
 param set-default CAL_ACC0_ZOFF -0.714
 
 # GPS Parameters
-param set-default SENS_GPS0_DELAY 110
-param set-default SENS_GPS1_DELAY 110
+param set-default SENS_GPS0_DELAY 10
+param set-default SENS_GPS1_DELAY 10
 param set-default EKF2_GPS_P_NOISE 0.18  # Matches vertical accuracy
 param set-default EKF2_GPS_V_NOISE 0.15   # Realistic GPS velocity noise (Gazebo: 0.06-0.16 m/s)
 param set-default EKF2_GPS_P_GATE 5.0
 param set-default EKF2_GPS_V_GATE 5.0
 
 # Magnetometer
-param set-default EKF2_MAG_TYPE 0
+param set-default EKF2_MAG_TYPE 1
 param set-default EKF2_HEAD_NOISE 0.3
 param set-default EKF2_MAG_NOISE 0.05
 param set-default EKF2_MAG_GATE 5.0

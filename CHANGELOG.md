@@ -22,6 +22,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed MAVLink Router endpoint substitution so the MAVLink2REST endpoint is not
   corrupted when the PX4/X-Plane host IP is expanded.
 
+## [3.4.66] - 2026-05-30
+
+### Fixed
+
+- Corrected X-Plane HIL GPS timing for all packaged PX4 airframes by setting
+  `SENS_GPS0_DELAY=10` and `SENS_GPS1_DELAY=10`. X-Plane sends current-position
+  HIL GPS samples, so the previous `110 ms` delay over-lagged the EKF during
+  Alia front transition and caused emergency yaw resets.
+- Set all X-Plane airframes to `EKF2_MAG_TYPE=1` so the simulated
+  magnetometer is used as a heading source instead of switching into automatic
+  3D mag fusion during aggressive transition phases.
+- Packaged all versioned analysis reports automatically instead of maintaining a
+  stale manual report list in CMake.
+
+### Notes
+
+- `newAlia2.zip` showed raw mag, GPS course, and groundtruth heading agreeing,
+  while EKF yaw jumped about 25 degrees to the EKF-GSF yaw estimate during
+  front transition. The compass fault was therefore a symptom of a bad yaw
+  emergency reset, not a simulated compass hardware failure.
+- Back-transition parameters were intentionally left unchanged in this slice so
+  the next Alia test isolates the estimator fix before changing braking or
+  transition dynamics again.
+
 ## [3.4.65] - 2026-05-29
 
 ### Fixed
