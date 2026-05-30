@@ -1,10 +1,10 @@
-﻿#!/bin/bash
+#!/bin/bash
 
 # === PX4 X-Plane SITL Setup Script ===
 #
 # Author: Alireza Ghaderi
 # LinkedIn: alireza787b
-# Date: October 2024
+# Updated: May 2026
 # GitHub Repo: alireza787b/px4xplane
 #
 # === Purpose ===
@@ -94,11 +94,12 @@ DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 MAVLINK2REST_IP="127.0.0.1"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
+SETUP_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh"
 
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
 MAVLINK_ROUTER_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/mavlink-anywhere/main/install_mavlink_router.sh"
-MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 -e MAVLINK2REST_IP_PLACEHOLDE:14569 0.0.0.0:14550"
+MAVLINK_ROUTER_COMMAND="mavlink-routerd -e IP_PLACEHOLDER:14540 -e IP_PLACEHOLDER:14550 -e IP_PLACEHOLDER:14569 -e MAVLINK2REST_IP_PLACEHOLDER:14569 0.0.0.0:14550"
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
@@ -106,8 +107,73 @@ REPAIR_MODE=false  # Set to true if you always want full repair mode
 # === Flags and Arguments ===
 REPAIR_MODE_FLAG="--repair"
 UNINSTALL_FLAG="--uninstall"
+SYNC_MODE_FLAG="--sync"
+RESET_CONFIG_FLAG="--reset-config"
+RESET_IP_FLAG="--reset-ip"
+HELP_FLAG="--help"
 
-if [[ "$1" == "$UNINSTALL_FLAG" ]]; then
+SYNC_MODE=false
+RESET_CONFIG_MODE=false
+RESET_IP_MODE=false
+UNINSTALL_MODE=false
+
+print_usage() {
+    cat <<EOF
+Usage: $0 [options] [install_path]
+
+Options:
+  --sync          Force-sync PX4-Autopilot-Me to origin/$BRANCH_NAME, update submodules,
+                  and reset saved SITL parameters before launching.
+  --repair        Run the full dependency/setup path and sync the PX4 fork.
+  --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
+  --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
+  --uninstall     Remove the global px4xplane command and default PX4 fork checkout.
+  --help          Show this help.
+EOF
+}
+
+POSITIONAL_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        "$UNINSTALL_FLAG")
+            UNINSTALL_MODE=true
+            shift
+            ;;
+        "$REPAIR_MODE_FLAG")
+            REPAIR_MODE=true
+            shift
+            ;;
+        "$SYNC_MODE_FLAG")
+            SYNC_MODE=true
+            shift
+            ;;
+        "$RESET_CONFIG_FLAG")
+            RESET_CONFIG_MODE=true
+            RESET_IP_MODE=true
+            shift
+            ;;
+        "$RESET_IP_FLAG")
+            RESET_IP_MODE=true
+            shift
+            ;;
+        "$HELP_FLAG"|"-h")
+            print_usage
+            exit 0
+            ;;
+        --*)
+            echo "Unknown option: $1"
+            print_usage
+            exit 1
+            ;;
+        *)
+            POSITIONAL_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+set -- "${POSITIONAL_ARGS[@]}"
+
+if [ "$UNINSTALL_MODE" = true ]; then
     # Uninstall the global access command
     echo "Uninstalling global access for px4xplane..."
     if [ -L "$HOME/bin/px4xplane" ] || [ -e "$HOME/bin/px4xplane" ]; then
@@ -132,11 +198,6 @@ if [[ "$1" == "$UNINSTALL_FLAG" ]]; then
 
     echo "Uninstallation complete."
     exit 0
-fi
-
-if [[ "$1" == "$REPAIR_MODE_FLAG" ]]; then
-    REPAIR_MODE=true  # Override repair mode from command line
-    shift
 fi
 
 # === Check for Custom Installation Directory Parameter ===
@@ -184,6 +245,114 @@ warning() {
 
 progress() {
     echo -e "\033[1;34m[PROGRESS]\033[0m $1"  # Blue progress messages
+}
+
+is_valid_ipv4() {
+    local ip="$1"
+    local IFS=.
+    local -a parts
+
+    [[ "$ip" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+    read -r -a parts <<< "$ip"
+
+    for part in "${parts[@]}"; do
+        [[ "$part" =~ ^[0-9]+$ ]] || return 1
+        ((part >= 0 && part <= 255)) || return 1
+    done
+}
+
+normalize_ip_input() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+
+    case "$value" in
+        localhost|LOCALHOST)
+            echo "127.0.0.1"
+            ;;
+        *)
+            echo "$value"
+            ;;
+    esac
+}
+
+detect_wsl_host_ip() {
+    local detected
+    detected="$(ip route 2>/dev/null | awk '/^default / {print $3; exit}')"
+
+    if is_valid_ipv4 "$detected"; then
+        echo "$detected"
+    else
+        echo "$DEFAULT_FALLBACK_IP"
+    fi
+}
+
+choose_px4_sim_ip() {
+    local environment="$1"
+    local auto_ip="$2"
+    local default_ip="$3"
+    local saved_ip="$4"
+    local prompt_text="$5"
+    local input
+    local candidate=""
+
+    auto_ip="$(normalize_ip_input "$auto_ip")"
+    default_ip="$(normalize_ip_input "$default_ip")"
+    saved_ip="$(normalize_ip_input "$saved_ip")"
+
+    if ! is_valid_ipv4 "$auto_ip"; then
+        warning "Auto-detected $environment IP '$auto_ip' is invalid; using $default_ip."
+        auto_ip="$default_ip"
+    fi
+
+    if [ "$RESET_IP_MODE" = true ]; then
+        info "Saved IP reset requested; ignoring previous PX4_SIM_HOSTNAME."
+        saved_ip=""
+    elif [ -n "$saved_ip" ]; then
+        if is_valid_ipv4 "$saved_ip"; then
+            info "Previous configuration found: $saved_ip"
+        else
+            warning "Saved PX4_SIM_HOSTNAME '$saved_ip' is invalid and will be ignored."
+            saved_ip=""
+        fi
+    fi
+
+    echo "$prompt_text"
+    echo "  Current/default: ${saved_ip:-$auto_ip}"
+    echo "  Auto-detected:   $auto_ip"
+    echo ""
+    echo "Press Enter to use current/default, type 'a' for auto, 'r' to reset to default,"
+    echo "or enter a valid IPv4 address."
+
+    read -t 15 -r input
+    input="$(normalize_ip_input "$input")"
+
+    case "$input" in
+        "")
+            candidate="${saved_ip:-$auto_ip}"
+            ;;
+        [Aa])
+            candidate="$auto_ip"
+            ;;
+        [Rr]|reset|RESET|default|DEFAULT)
+            candidate="$default_ip"
+            ;;
+        *)
+            candidate="$input"
+            ;;
+    esac
+
+    if ! is_valid_ipv4 "$candidate"; then
+        warning "Invalid IP '$candidate'. Falling back to $auto_ip."
+        candidate="$auto_ip"
+    fi
+
+    if ! is_valid_ipv4 "$candidate"; then
+        warning "Fallback IP '$candidate' is invalid. Using $DEFAULT_FALLBACK_IP."
+        candidate="$DEFAULT_FALLBACK_IP"
+    fi
+
+    CHOSEN_PX4_SIM_IP="$candidate"
 }
 
 last_config_value() {
@@ -270,11 +439,125 @@ reset_params_if_airframe_changed() {
     fi
 }
 
+sync_px4_repo_to_remote() {
+    local clean_untracked="${1:-false}"
+    local remote_ref="origin/$BRANCH_NAME"
+    local status_output
+    local ahead_count
+    local backup_branch
+
+    cd "$CLONE_PATH" || return 1
+
+    progress "Syncing PX4 fork with $remote_ref..."
+
+    if ! git remote get-url origin >/dev/null 2>&1; then
+        git remote add origin "$REPO_URL"
+        info "Added origin remote: $REPO_URL"
+    fi
+
+    if ! git fetch origin "$BRANCH_NAME" --prune; then
+        warning "Could not fetch origin/$BRANCH_NAME."
+        return 1
+    fi
+
+    if ! git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
+        warning "Remote branch $remote_ref was not found."
+        return 1
+    fi
+
+    status_output="$(git status --porcelain --untracked-files=normal 2>/dev/null)"
+    if [ -n "$status_output" ]; then
+        info "Saving local uncommitted/untracked PX4 changes to git stash before sync."
+        git stash push --include-untracked -m "px4xplane auto-backup before sync $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
+    fi
+
+    ahead_count="$(git rev-list --count "$remote_ref"..HEAD 2>/dev/null || echo 0)"
+    if [[ "$ahead_count" =~ ^[0-9]+$ ]] && [ "$ahead_count" -gt 0 ]; then
+        backup_branch="px4xplane-local-backup-$(date -u +%Y%m%dT%H%M%SZ)"
+        git branch "$backup_branch" HEAD >/dev/null 2>&1 || true
+        info "Local commits were ahead of remote; backup branch created: $backup_branch"
+    fi
+
+    if ! git checkout -B "$BRANCH_NAME" "$remote_ref"; then
+        warning "Could not switch local branch to $remote_ref."
+        return 1
+    fi
+
+    if ! git reset --hard "$remote_ref"; then
+        warning "Could not reset local branch to $remote_ref."
+        return 1
+    fi
+
+    if [ "$clean_untracked" = true ]; then
+        git clean -fd
+    fi
+
+    progress "Synchronizing submodules..."
+    git submodule sync --recursive
+    if git submodule update --init --recursive --force --checkout --quiet; then
+        success "Submodules updated."
+    else
+        warning "Submodule update had issues. Continuing with the synced PX4 branch."
+    fi
+
+    if [ "$clean_untracked" = true ]; then
+        git submodule foreach --recursive 'git reset --hard >/dev/null 2>&1; git clean -fd >/dev/null 2>&1' >/dev/null 2>&1 || true
+    fi
+
+    reset_saved_sitl_parameters
+    success "PX4 fork is synced to $(git rev-parse --short HEAD)."
+}
+
+update_launcher_script_if_needed() {
+    local current_script_path
+    local temp_script
+
+    command -v curl >/dev/null 2>&1 || return 0
+
+    current_script_path="$(readlink -f "$0" 2>/dev/null || echo "$0")"
+    temp_script="$(mktemp)"
+
+    if ! curl -fsSL "$SETUP_SCRIPT_URL" -o "$temp_script" 2>/dev/null; then
+        rm -f "$temp_script"
+        warning "Could not check for the latest px4xplane launcher script."
+        return 0
+    fi
+
+    if ! cmp -s "$temp_script" "$current_script_path" 2>/dev/null; then
+        info "Updating px4xplane launcher script from master."
+        cp "$temp_script" "$SCRIPT_PATH"
+        chmod +x "$SCRIPT_PATH"
+
+        if [ "$current_script_path" != "$SCRIPT_PATH" ]; then
+            cp "$temp_script" "$current_script_path" 2>/dev/null || true
+            chmod +x "$current_script_path" 2>/dev/null || true
+        fi
+
+        rm -f "$temp_script"
+        success "Launcher script updated: $SCRIPT_PATH"
+        highlight "The px4xplane launcher was updated. Re-run the same command now."
+        exit 0
+    fi
+
+    rm -f "$temp_script"
+}
+
+if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
+    rm -f "$CONFIG_FILE"
+    success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
+fi
+
+if [ "$SYNC_MODE" = true ] || [ "$REPAIR_MODE" = true ]; then
+    update_launcher_script_if_needed
+fi
+
 # === Trap for Cleanup ===
 cleanup() {
     if [[ -n "$MAVLINK_ROUTER_PID" ]]; then
         highlight "Stopping MAVLink Router..."
-        kill "$MAVLINK_ROUTER_PID"
+        if kill -0 "$MAVLINK_ROUTER_PID" 2>/dev/null; then
+            kill "$MAVLINK_ROUTER_PID" 2>/dev/null || true
+        fi
     fi
 }
 trap cleanup EXIT
@@ -287,7 +570,7 @@ echo "╚═══════════════════════�
 echo ""
 highlight "Author: Alireza Ghaderi (@alireza787b)"
 highlight "GitHub: https://github.com/alireza787b/px4xplane"
-highlight "Updated: October 2024"
+highlight "Updated: May 2026"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 warning "⚠️  TESTING PHASE - TEMPORARY WORKAROUND ⚠️"
@@ -334,37 +617,47 @@ fi
 success "Git found."
 
 # === Simplified Process for Subsequent Runs ===
-if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; then
+if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
     info "Detected existing installation at: $CLONE_PATH"
 
     # === Auto-Sync Detection ===
     cd "$CLONE_PATH" || exit
 
-    # Prompt user if they want to check for updates
-    highlight "Check for updates from remote repository?"
-    echo "Press 's' to skip (fast start) or any other key to check (default: check in 5 seconds)"
-    read -t 5 -n 1 -r SKIP_UPDATE_CHECK
-    echo ""
-
-    if [[ "$SKIP_UPDATE_CHECK" =~ ^[Ss]$ ]]; then
-        warning "Skipped update check. Using current local version."
-        info "To check for updates later, run: $0 --repair"
-        LOCAL_HASH=""
-        REMOTE_HASH=""
-    else
-        progress "Checking for updates from remote repository..."
-
-        # Fetch latest changes silently (with error handling)
-        if git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null; then
-            success "Remote repository checked."
+    if [ "$SYNC_MODE" = true ]; then
+        if sync_px4_repo_to_remote true; then
+            LOCAL_HASH="$(git rev-parse HEAD 2>/dev/null)"
+            REMOTE_HASH="$LOCAL_HASH"
         else
-            warning "Could not fetch updates from remote. Continuing with local version..."
-            warning "Check your internet connection or try again later."
+            LOCAL_HASH=""
+            REMOTE_HASH=""
         fi
+    else
+        # Prompt user if they want to check for updates
+        highlight "Check for updates from remote repository?"
+        echo "Press 's' to skip (fast start) or any other key to check (default: check in 5 seconds)"
+        read -t 5 -n 1 -r SKIP_UPDATE_CHECK
+        echo ""
 
-        # Check if local branch is behind remote (with error handling)
-        LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
-        REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME" 2>/dev/null)
+        if [[ "$SKIP_UPDATE_CHECK" =~ ^[Ss]$ ]]; then
+            warning "Skipped update check. Using current local version."
+            info "To force a clean sync later, run: $0 --sync"
+            LOCAL_HASH=""
+            REMOTE_HASH=""
+        else
+            progress "Checking for updates from remote repository..."
+
+            # Fetch latest changes silently (with error handling)
+            if git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null; then
+                success "Remote repository checked."
+            else
+                warning "Could not fetch updates from remote. Continuing with local version..."
+                warning "Check your internet connection or try again later."
+            fi
+
+            # Check if local branch differs from remote (with error handling)
+            LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
+            REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME" 2>/dev/null)
+        fi
     fi
 
     if [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ] && [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
@@ -378,25 +671,7 @@ if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; 
         read -t 10 -r PULL_UPDATES
 
         if [[ -z "$PULL_UPDATES" || ! "$PULL_UPDATES" =~ ^[Nn]$ ]]; then
-            progress "Pulling latest updates..."
-
-            # Stash any local changes (shouldn't be any, but be safe)
-            if ! git diff-index --quiet HEAD -- 2>/dev/null; then
-                info "Stashing local changes..."
-                git stash push -m "Auto-stash before pulling updates" 2>/dev/null || true
-            fi
-
-            # Reset to remote branch (force sync) with error handling
-            if git reset --hard origin/"$BRANCH_NAME" 2>/dev/null; then
-                success "Repository updated to latest version!"
-
-                # Update submodules
-                progress "Updating submodules..."
-                if git submodule update --init --recursive --quiet 2>/dev/null; then
-                    success "Submodules updated."
-                else
-                    warning "Submodule update had issues. Continuing anyway..."
-                fi
+            if sync_px4_repo_to_remote false; then
 
                 # Check if setup script itself was updated
                 if [ -f "$CLONE_PATH/setup_px4_sitl.sh" ]; then
@@ -425,8 +700,8 @@ if [ -d "$CLONE_PATH" ] && [ -f "$CONFIG_FILE" ] && [ "$REPAIR_MODE" = false ]; 
                 success "Successfully updated to latest version!"
                 highlight "Changes pulled. You may want to rebuild your airframe."
             else
-                warning "Could not reset to remote branch. Continuing with local version..."
-                info "You may need to run with --repair flag: $0 --repair"
+                warning "Could not sync to remote branch. Continuing with local version..."
+                info "You may need to run: $0 --sync"
             fi
         else
             info "Skipping updates. Using current local version."
@@ -496,19 +771,10 @@ else
         warning "Dependency installation completed with warnings. This is usually okay."
     fi
 
-    # === Fetch Latest Changes ===
-    progress "Fetching the latest changes from the remote repository..."
-    git fetch --all --quiet
-
-    # Reset to match remote (in case user had local changes)
-    info "Syncing with remote branch..."
-    git reset --hard origin/"$BRANCH_NAME"
-    success "Local branch synced with remote."
-
-    # === Initialize and Update Submodules ===
-    progress "Updating submodules (this may take a moment)..."
-    git submodule update --init --recursive --quiet
-    success "Submodules updated."
+    # === Fetch Latest Changes and Normalize Branch State ===
+    if ! sync_px4_repo_to_remote true; then
+        warning "Could not fully sync the PX4 fork. Continuing with the checked-out branch."
+    fi
 fi
 
 # === Clean Build Options ===
@@ -550,38 +816,16 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     echo ""
 
     # Try to auto-detect the Windows IP from WSL
-    AUTO_DETECTED_IP=$(ip route | grep default | awk '{print $3}')
-
-    if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-        info "Previous configuration found: $PX4_SIM_HOSTNAME"
-        echo "Press Enter to keep this IP (default) or enter a new one:"
-        echo "  Auto-detected: $AUTO_DETECTED_IP"
-        echo ""
-    else
-        info "Auto-detected Windows IP: $AUTO_DETECTED_IP"
-        PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
-    fi
+    AUTO_DETECTED_IP="$(detect_wsl_host_ip)"
+    SAVED_IP="$(last_config_value PX4_SIM_HOSTNAME)"
 
     echo "💡 Tip: Find your Windows IP by running 'ipconfig' in PowerShell."
     echo "   Look for 'Ethernet adapter vEthernet (WSL)' or similar."
     echo ""
-    highlight "Enter IP address (or press Enter for auto-detected: $AUTO_DETECTED_IP):"
-
-    read -t 15 -r NEW_IP
-    if [ -n "$NEW_IP" ]; then
-        PX4_SIM_HOSTNAME="$NEW_IP"
-        info "Using manual IP: $PX4_SIM_HOSTNAME"
-    else
-        PX4_SIM_HOSTNAME="${PX4_SIM_HOSTNAME:-$AUTO_DETECTED_IP}"
-        info "Using auto-detected IP: $PX4_SIM_HOSTNAME"
-    fi
-
-    # If no IP is set, default to localhost
-    if [ -z "$PX4_SIM_HOSTNAME" ]; then
-        warning "No IP detected. Falling back to: $DEFAULT_FALLBACK_IP"
-        PX4_SIM_HOSTNAME="$DEFAULT_FALLBACK_IP"
-    fi
+    highlight "PX4/X-Plane network target"
+    choose_px4_sim_ip "WSL host" "$AUTO_DETECTED_IP" "$AUTO_DETECTED_IP" "$SAVED_IP" "Choose the Windows host IPv4 address for X-Plane."
+    PX4_SIM_HOSTNAME="$CHOSEN_PX4_SIM_IP"
+    info "Using PX4_SIM_HOSTNAME: $PX4_SIM_HOSTNAME"
 else
     # Native Linux: Both X-Plane and PX4 run on the same machine
     highlight "Native Linux Environment Detected"
@@ -589,14 +833,8 @@ else
     echo ""
 
     # Check if user had previous configuration
-    if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-        info "Previous configuration found: $PX4_SIM_HOSTNAME"
-        AUTO_DETECTED_IP="${PX4_SIM_HOSTNAME:-127.0.0.1}"
-    else
-        AUTO_DETECTED_IP="127.0.0.1"
-        PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
-    fi
+    SAVED_IP="$(last_config_value PX4_SIM_HOSTNAME)"
+    AUTO_DETECTED_IP="127.0.0.1"
 
     info "Auto-detected IP: $AUTO_DETECTED_IP (localhost)"
     echo ""
@@ -605,22 +843,21 @@ else
     echo ""
     echo "   If X-Plane runs on a different machine, enter that machine's IP address."
     echo ""
-    highlight "Press Enter to use $AUTO_DETECTED_IP or enter different IP:"
-
-    read -t 15 -r NEW_IP
-    if [ -n "$NEW_IP" ]; then
-        PX4_SIM_HOSTNAME="$NEW_IP"
-        info "Using custom IP: $PX4_SIM_HOSTNAME"
-    else
-        PX4_SIM_HOSTNAME="$AUTO_DETECTED_IP"
-        info "Using localhost: $PX4_SIM_HOSTNAME"
-    fi
+    highlight "PX4/X-Plane network target"
+    choose_px4_sim_ip "native Linux" "$AUTO_DETECTED_IP" "$DEFAULT_FALLBACK_IP" "$SAVED_IP" "Choose the X-Plane host IPv4 address."
+    PX4_SIM_HOSTNAME="$CHOSEN_PX4_SIM_IP"
+    info "Using PX4_SIM_HOSTNAME: $PX4_SIM_HOSTNAME"
 fi
 
 # Ensure config directory exists and save the configuration
 CONFIG_DIR=$(dirname "$CONFIG_FILE")
 if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR"
+fi
+
+if ! is_valid_ipv4 "$PX4_SIM_HOSTNAME"; then
+    warning "PX4_SIM_HOSTNAME '$PX4_SIM_HOSTNAME' is invalid. Resetting to $DEFAULT_FALLBACK_IP."
+    PX4_SIM_HOSTNAME="$DEFAULT_FALLBACK_IP"
 fi
 
 # Preserve the previous airframe fingerprint before rewriting the config file.
@@ -656,24 +893,31 @@ if [ "$USE_MAVLINK_ROUTER" = true ]; then
     fi
 
     # Replace specific IP placeholders in the MAVLink Router command
-    MAVLINK_ROUTER_CMD=$(echo "$MAVLINK_ROUTER_COMMAND" | sed "s/IP_PLACEHOLDER/$PX4_SIM_HOSTNAME/g" | sed "s/MAVLINK2REST_IP_PLACEHOLDE/$MAVLINK2REST_IP/g")
+    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_COMMAND//IP_PLACEHOLDER/$PX4_SIM_HOSTNAME}"
+    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_CMD//MAVLINK2REST_IP_PLACEHOLDER/$MAVLINK2REST_IP}"
 
     progress "Starting MAVLink Router..."
     info "Command: $MAVLINK_ROUTER_CMD"
-    $MAVLINK_ROUTER_CMD &
+    bash -c "$MAVLINK_ROUTER_CMD" &
     MAVLINK_ROUTER_PID=$!
 
-    # Provide additional instructions
-    success "MAVLink Router is running (PID: $MAVLINK_ROUTER_PID)"
-    echo ""
-    highlight "MAVLink Endpoints Available:"
-    echo "  • $PX4_SIM_HOSTNAME:14540 (X-Plane connection)"
-    echo "  • $PX4_SIM_HOSTNAME:14550 (Ground Control Station)"
-    echo "  • $PX4_SIM_HOSTNAME:14569 (Additional endpoint)"
-    echo "  • $MAVLINK2REST_IP:14569 (MAVLink2REST interface)"
-    echo ""
-    info "Configure these endpoints in QGroundControl or your GCS."
-    sleep 3
+    sleep 1
+    if kill -0 "$MAVLINK_ROUTER_PID" 2>/dev/null; then
+        # Provide additional instructions
+        success "MAVLink Router is running (PID: $MAVLINK_ROUTER_PID)"
+        echo ""
+        highlight "MAVLink Endpoints Available:"
+        echo "  • $PX4_SIM_HOSTNAME:14540 (X-Plane connection)"
+        echo "  • $PX4_SIM_HOSTNAME:14550 (Ground Control Station)"
+        echo "  • $PX4_SIM_HOSTNAME:14569 (Additional endpoint)"
+        echo "  • $MAVLINK2REST_IP:14569 (MAVLink2REST interface)"
+        echo ""
+        info "Configure these endpoints in QGroundControl or your GCS."
+        sleep 2
+    else
+        warning "MAVLink Router exited immediately. Check the command above and rerun with --reset-ip if the IP is wrong."
+        MAVLINK_ROUTER_PID=""
+    fi
 fi
 
 # === Global Access Setup (Optional) ===

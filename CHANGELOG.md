@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- Hardened the `px4xplane` setup launcher sync path. `px4xplane --sync` now
+  refreshes the launcher, force-aligns `PX4-Autopilot-Me` to
+  `origin/px4xplane-sitl`, updates submodules, backs up local commits/stashes
+  uncommitted changes, and clears saved SITL parameter stores.
+- Added saved-IP validation and `--reset-ip` / `--reset-config` recovery paths
+  so an accidental value such as `c` is not reused for MAVLink Router endpoints.
+- MAVLink Router startup now verifies the process is still alive before
+  reporting success.
+
 ## [3.4.65] - 2026-05-29
 
 ### Fixed

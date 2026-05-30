@@ -324,6 +324,10 @@ To quickly set up PX4 with X-Plane using WSL (Ubuntu 22.04 or newer), follow thi
 - **Smart Defaults**: Auto-proceeds with sensible defaults if no input provided
 - **Robust Error Handling**: Graceful fallbacks if network is unavailable
 - **Repair Mode**: Use `--repair` flag to force full re-setup if needed
+- **Clean Sync Mode**: Use `--sync` to reset the PX4 fork to the remote
+  `px4xplane-sitl` branch, update submodules, and clear saved SITL parameters.
+- **Config Reset**: Use `--reset-ip` or `--reset-config` if a wrong saved IP or
+  stale launcher setting needs to be re-entered.
 
 ### Important Notes
 
@@ -354,6 +358,22 @@ px4xplane
 ```bash
 px4xplane --repair
 # Forces full setup and update
+```
+
+**Clean sync without reinstalling dependencies:**
+```bash
+px4xplane --sync
+# Updates the launcher if needed, resets PX4-Autopilot-Me to origin/px4xplane-sitl,
+# updates submodules, and clears saved PX4 SITL parameters.
+```
+
+**Reset a bad saved IP/config value:**
+```bash
+px4xplane --reset-ip
+# Re-prompts only the PX4_SIM_HOSTNAME/X-Plane host IP.
+
+px4xplane --reset-config
+# Clears the saved CLI config and re-prompts remembered values.
 ```
 
 ### Available Airframes
