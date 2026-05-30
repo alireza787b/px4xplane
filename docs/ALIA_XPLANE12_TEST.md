@@ -103,7 +103,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.66` Alia milestone test,
+For the current `v3.4.67` Alia milestone test,
 verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
@@ -112,7 +112,11 @@ parameter store and rerun before judging the package.
 - `SENS_IMU_MODE=0`
 - `SENS_GPS0_DELAY=10`
 - `SENS_GPS1_DELAY=10`
+- `EKF2_GPS_P_NOISE=5.0`
+- `EKF2_GPS_P_GATE=10.0`
 - `EKF2_MAG_TYPE=1`
+- `EKF2_ARSP_THR=50.0`
+- `EKF2_GSF_TAS=52.0`
 - `IMU_INTEG_RATE=200`
 - `MPC_TKO_SPEED=3.0`
 - `MPC_XY_ERR_MAX=10.0`

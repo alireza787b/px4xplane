@@ -22,7 +22,7 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.66";
+    constexpr const char* VERSION = "3.4.67";
 
     /** Version phase description */
     constexpr const char* PHASE = "X-Plane EKF yaw recovery";
@@ -31,7 +31,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "074";
+    constexpr const char* BUILD = "075";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

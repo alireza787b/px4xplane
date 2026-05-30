@@ -121,9 +121,9 @@ param set-default EKF2_BARO_DELAY 0.0
 param set-default EKF2_BARO_GATE 10.0
 param set-default SENS_GPS0_DELAY 10
 param set-default SENS_GPS1_DELAY 10
-param set-default EKF2_GPS_P_NOISE 0.15
+param set-default EKF2_GPS_P_NOISE 2.5
 param set-default EKF2_GPS_V_NOISE 0.15
-param set-default EKF2_GPS_P_GATE 5.0
+param set-default EKF2_GPS_P_GATE 8.0
 param set-default EKF2_GPS_V_GATE 5.0
 
 # Magnetometer and airspeed aiding.
@@ -134,6 +134,8 @@ param set-default EKF2_MAG_NOISE 0.05
 param set-default EKF2_MAG_GATE 5.0
 param set-default EKF2_SYNT_MAG_Z 1
 param set-default EKF2_ASP_DELAY 0.0
+param set-default EKF2_ARSP_THR 10.0
+param set-default EKF2_GSF_TAS 50.0
 param set-default EKF2_TAS_GATE 5.0
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_WIND_NSD 0.01

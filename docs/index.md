@@ -89,10 +89,11 @@ This index is the stable entry point for user and developer documentation.
 - [Report v76 - X-Plane IMU Selection Recovery](reports/report_v76.md)
 - [Report v77 - X-Plane GNSS Timing and Alia Compass Fault Recovery](reports/report_v77.md)
 - [Report v78 - Alia EKF Yaw Reset Recovery](reports/report_v78.md)
+- [Report v79 - Alia Transition Compass Fault Root Cause](reports/report_v79.md)
 
 ## Current Policy
 
-- Use the `v3.4.66` package with the refreshed PX4 `px4xplane-sitl` branch.
+- Use the `v3.4.67` package with the refreshed PX4 `px4xplane-sitl` branch.
   This package keeps the accepted airframe flight behavior, updates the
   packaged reference PX4 airframes for current PX4 main, and keeps X-Plane
   sensor timing from being overwritten by common mavlinksim startup defaults.
@@ -105,6 +106,11 @@ This index is the stable entry point for user and developer documentation.
   state. All X-Plane airframes also use `EKF2_MAG_TYPE=1` so the simulated
   magnetometer corrects heading without allowing automatic 3D mag fusion to
   perturb tilt during aggressive transition phases.
+- v3.4.67 also reports HIL GPS horizontal accuracy as `1.5 m` and the PX4 PR
+  airframes use wider GNSS horizontal covariance/gates. This is intentionally a
+  simulator covariance contract, not a compass-warning suppressor: velocity
+  aiding remains tight, but high-speed transition position innovations no longer
+  trigger false yaw emergency resets.
 - The next Alia retest must show `SYS_AUTOSTART=5020`. If startup prints
   `SYS_AUTOSTART=5001`, stop the run; that is the Cessna PX4 target, not Alia.
 - The active plugin config can still be changed from the X-Plane menu or config

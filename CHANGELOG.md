@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.67] - 2026-05-30
+
 ### Fixed
 
 - Hardened the `px4xplane` setup launcher sync path. `px4xplane --sync` now
@@ -21,6 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reporting success.
 - Fixed MAVLink Router endpoint substitution so the MAVLink2REST endpoint is not
   corrupted when the PX4/X-Plane host IP is expanded.
+- Added configurable HIL GPS reported accuracy (`gps_horizontal_accuracy_m` and
+  `gps_vertical_accuracy_m`) and set the packaged default horizontal accuracy to
+  `1.5 m` so PX4 does not over-trust X-Plane geodetic position during high-speed
+  transition and turn phases.
+- Updated packaged PX4 airframe references with wider X-Plane GNSS horizontal
+  position covariance and VTOL-specific EKF airspeed fusion thresholds. This
+  prevents false EKF-GSF yaw emergency resets during Alia and QuadTailsitter
+  transitions while preserving real pitot/airspeed use for VTOL transition and
+  fixed-wing control.
 
 ## [3.4.66] - 2026-05-30
 

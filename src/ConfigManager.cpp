@@ -167,6 +167,8 @@ int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
 int ConfigManager::mavlink_gps_rate_hz = 10;        // HIL_GPS
 int ConfigManager::mavlink_state_rate_hz = 50;      // HIL_STATE_QUATERNION
 int ConfigManager::mavlink_rc_rate_hz = 50;         // HIL_RC_INPUTS
+float ConfigManager::gps_horizontal_accuracy_m = 1.5f;
+float ConfigManager::gps_vertical_accuracy_m = 1.0f;
 
 
 /**
@@ -270,6 +272,8 @@ void ConfigManager::loadConfiguration() {
     mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 10);
     mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 50);
     mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 50);
+    gps_horizontal_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_horizontal_accuracy_m", 1.5));
+    gps_vertical_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_vertical_accuracy_m", 1.0));
 
     // Validate rates (minimum 1 Hz, maximum 500 Hz)
     if (mavlink_sensor_rate_hz < 1 || mavlink_sensor_rate_hz > 500) {
@@ -287,6 +291,16 @@ void ConfigManager::loadConfiguration() {
     if (mavlink_rc_rate_hz < 1 || mavlink_rc_rate_hz > 200) {
         XPLMDebugString("px4xplane: [WARNING] Invalid RC rate, using default 50 Hz\n");
         mavlink_rc_rate_hz = 50;
+    }
+    if (!std::isfinite(gps_horizontal_accuracy_m) || gps_horizontal_accuracy_m < 0.1f ||
+        gps_horizontal_accuracy_m > 50.0f) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid GPS horizontal accuracy, using default 1.5 m\n");
+        gps_horizontal_accuracy_m = 1.5f;
+    }
+    if (!std::isfinite(gps_vertical_accuracy_m) || gps_vertical_accuracy_m < 0.1f ||
+        gps_vertical_accuracy_m > 100.0f) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid GPS vertical accuracy, using default 1.0 m\n");
+        gps_vertical_accuracy_m = 1.0f;
     }
 
     if (debug_verbose_logging) {
@@ -315,9 +329,10 @@ void ConfigManager::loadConfiguration() {
     // Log MAVLink rates
     char rateBuf[256];
     snprintf(rateBuf, sizeof(rateBuf),
-        "px4xplane: MAVLink rates - SENSOR:%dHz GPS:%dHz STATE:%dHz RC:%dHz\n",
+        "px4xplane: MAVLink rates - SENSOR:%dHz GPS:%dHz STATE:%dHz RC:%dHz GPS_ACC:%.1fm/%.1fm\n",
         mavlink_sensor_rate_hz, mavlink_gps_rate_hz,
-        mavlink_state_rate_hz, mavlink_rc_rate_hz);
+        mavlink_state_rate_hz, mavlink_rc_rate_hz,
+        gps_horizontal_accuracy_m, gps_vertical_accuracy_m);
     XPLMDebugString(rateBuf);
 
     // Configure motor brakes based on the loaded configuration

@@ -177,6 +177,24 @@
         group: "mavlink_rates",
         reload_policy: "reconnect_before_flight",
         description: "Target HIL_RC_INPUTS rate."
+      },
+      gps_horizontal_accuracy_m: {
+        type: "float",
+        default: 1.5,
+        min: 0.1,
+        max: 50,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Reported HIL_GPS horizontal accuracy (eph) in meters. This should describe the simulator GPS covariance given X-Plane frame timing and geodetic/local-coordinate conversion, not the visual model precision."
+      },
+      gps_vertical_accuracy_m: {
+        type: "float",
+        default: 1.0,
+        min: 0.1,
+        max: 100,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Reported HIL_GPS vertical accuracy (epv) in meters."
       }
     },
     airframe_fields: {

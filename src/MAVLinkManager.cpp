@@ -1925,12 +1925,10 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
 void MAVLinkManager::setGPSAccuracyData(mavlink_hil_gps_t& hil_gps) {
-	// GPS accuracy values matched to working d25f24d version
-	// eph = horizontal position uncertainty in cm (80 = 0.8m)
-	// epv = vertical position uncertainty in cm (100 = 1.0m)
-	// These conservative values work reliably with PX4 EKF2 in SITL
-	hil_gps.eph = static_cast<uint16_t>(80); // 0.8m horizontal accuracy
-	hil_gps.epv = static_cast<uint16_t>(100); // 1.0m vertical accuracy
+	const float ephCm = std::round(ConfigManager::gps_horizontal_accuracy_m * 100.0f);
+	const float epvCm = std::round(ConfigManager::gps_vertical_accuracy_m * 100.0f);
+	hil_gps.eph = static_cast<uint16_t>(std::clamp(ephCm, 10.0f, 65535.0f));
+	hil_gps.epv = static_cast<uint16_t>(std::clamp(epvCm, 10.0f, 65535.0f));
 	hil_gps.satellites_visible = static_cast<uint16_t>(16); // 16 satellites visible in good conditions
 
 	// Debug logging for GPS accuracy

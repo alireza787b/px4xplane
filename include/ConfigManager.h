@@ -177,6 +177,8 @@ public:
     static int mavlink_gps_rate_hz;          // HIL_GPS rate
     static int mavlink_state_rate_hz;        // HIL_STATE_QUATERNION rate
     static int mavlink_rc_rate_hz;           // HIL_RC_INPUTS rate
+    static float gps_horizontal_accuracy_m;  // HIL_GPS eph, meters
+    static float gps_vertical_accuracy_m;    // HIL_GPS epv, meters
 
 private:
     static std::vector<int> parseMotorIndices(const std::string& indicesStr);
