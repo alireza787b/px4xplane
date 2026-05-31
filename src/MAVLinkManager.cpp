@@ -187,9 +187,8 @@ bool mappedMotorCommandActive()
 		return false;
 	}
 
-	if (DataRefManager::hasMappedMotorCommands() &&
-		DataRefManager::getMaxMappedMotorCommand() > GroundGuardMotorReleaseCommand) {
-		return true;
+	if (DataRefManager::hasMappedMotorCommands()) {
+		return DataRefManager::getMaxMappedMotorCommand() > GroundGuardMotorReleaseCommand;
 	}
 
 	const std::vector<float> engineCommands = dataRefFloatArray("sim/flightmodel/engine/ENGN_thro_use");

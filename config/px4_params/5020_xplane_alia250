@@ -185,7 +185,7 @@ param set-default EKF2_MAG_DELAY 1.0
 # Airspeed (SITL strategy - optional fusion)
 param set-default EKF2_ASP_DELAY 0.0
 param set-default EKF2_ARSP_THR 50.0
-param set-default EKF2_GSF_TAS 52.0
+param set-default EKF2_GSF_TAS 0.0
 param set-default EKF2_TAS_GATE 5.0
 
 # Additional Sensors
@@ -345,7 +345,7 @@ param set-default MPC_LAND_RC_HELP 1
 # Land Detector
 param set-default LNDMC_ALT_GND 2
 param set-default LNDMC_XY_VEL_MAX 1.5
-param set-default LNDMC_Z_VEL_MAX 0.30
+param set-default LNDMC_Z_VEL_MAX 0.25
 param set-default LNDMC_ROT_MAX 20
 param set-default COM_DISARM_LAND 1.5
 

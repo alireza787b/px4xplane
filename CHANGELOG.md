@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.68] - 2026-05-31
+
+### Fixed
+
+- Added a PX4 EKF2 guard so EKF-GSF yaw rescue is not accepted while a VTOL is
+  in transition. `newAlia4` showed the simulated magnetometer and GPS were
+  coherent, but the EKF-GSF yaw estimate drifted 25-50 degrees during
+  high-acceleration transition and triggered false compass-fault health
+  messages.
+- Set VTOL X-Plane airframes to `EKF2_GSF_TAS=0` so the EKF-GSF default
+  fixed-wing centripetal compensation is not applied before validated airspeed
+  fusion has stabilized the fixed-wing phase.
+- Fixed the stationary-ground sensor contract so configured PX4 motor mappings
+  are the authority for release. X-Plane idle/contact engine data can no longer
+  release the zero-motion guard while PX4 is still commanding zero.
+- Corrected Alia's multicopter land-detector threshold to
+  `LNDMC_Z_VEL_MAX=0.25`, matching PX4's enforced
+  `min(MPC_LAND_CRWL, MPC_LAND_SPEED) / 1.2` limit and removing the startup
+  auto-rewrite warning.
+
 ## [3.4.67] - 2026-05-30
 
 ### Fixed
