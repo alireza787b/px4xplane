@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.69] - 2026-05-31
+
+### Fixed
+
+- Identified the Alia `newAlia5` compass warning as a regression exposed by the
+  current PX4 EKF2 GNSS yaw-rescue logic. PX4 commit `d62f112017` allows
+  EKF-GSF yaw rescue from GNSS position-fusion rejection as well as velocity
+  rejection; in `newAlia5`, GNSS velocity and magnetic heading were healthy but
+  a position-only transition transient reset yaw to a bad EKF-GSF estimate.
+- Updated the PX4 PR branch so position-only GNSS rejection can trigger
+  EKF-GSF yaw rescue only when GNSS velocity aiding is not active. When velocity
+  aiding is active, the yaw-rescue evidence must come from velocity rejection.
+  This keeps the upstream position-only fallback for velocityless cases while
+  avoiding false compass faults during VTOL handoff.
+- Kept the v3.4.68 `in_transition` guard and VTOL `EKF2_GSF_TAS=0` defaults.
+  The new evidence showed the reset happened immediately after PX4 declared
+  fixed-wing state, so a post-transition position-only guard was also required.
+
 ## [3.4.68] - 2026-05-31
 
 ### Fixed

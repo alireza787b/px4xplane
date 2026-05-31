@@ -2,6 +2,26 @@
 
 This log preserves project decisions, evidence, and next actions across the longer px4xplane recovery effort.
 
+## 2026-05-31
+
+### v3.4.69 Alia GNSS Position-Only Yaw Reset Regression
+
+- Reviewed `/home/alireza/newAlia5.zip` after the v3.4.68 test. The installed
+  plugin was correct (`v3.4.68`) and Alia loaded the expected current PX4
+  defaults, including `EKF2_GSF_TAS=0`.
+- Found that the compass warning was still a yaw emergency-reset symptom, but
+  the reset happened just after PX4 declared fixed-wing state, not while
+  `in_transition=true`.
+- Traced the regression to current PX4 EKF2 logic introduced by `d62f112017`:
+  GNSS position-only rejection can trigger EKF-GSF yaw rescue. In `newAlia5`,
+  GNSS velocity fusion and mag heading were healthy, while EKF-GSF yaw was about
+  `30 deg` wrong at handoff.
+- Updated the PX4 PR branch so position-only GNSS rejection can trigger yaw
+  rescue only when GNSS velocity aiding is not active. This keeps the upstream
+  fallback for velocityless cases and avoids false transition handoff compass
+  faults.
+- New report: `docs/reports/report_v81.md`.
+
 ## 2026-05-29
 
 ### v3.4.65 X-Plane GNSS Timing and Alia Compass Fault Recovery

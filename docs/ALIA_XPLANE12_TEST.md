@@ -103,7 +103,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v3.4.67` Alia milestone test,
+For the current `v3.4.69` Alia milestone test,
 verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
@@ -116,7 +116,7 @@ parameter store and rerun before judging the package.
 - `EKF2_GPS_P_GATE=10.0`
 - `EKF2_MAG_TYPE=1`
 - `EKF2_ARSP_THR=50.0`
-- `EKF2_GSF_TAS=52.0`
+- `EKF2_GSF_TAS=0.0`
 - `IMU_INTEG_RATE=200`
 - `MPC_TKO_SPEED=3.0`
 - `MPC_XY_ERR_MAX=10.0`
@@ -164,7 +164,7 @@ parameter store and rerun before judging the package.
 - `VT_B_TRANS_RAMP=15.0`
 - `RTL_RETURN_ALT=100`
 - `RTL_DESCEND_ALT=80`
-- `LNDMC_Z_VEL_MAX=0.24`
+- `LNDMC_Z_VEL_MAX=0.25`
 - `COM_DISARM_LAND=1.5`
 
 Do not use the exact accelerometer offset values as a package pass/fail check.
@@ -172,12 +172,12 @@ PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.22`
+- `px4xplane: Version: v3.4.69`
 - `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
 - `px4xplane: Motor brakes configured for motors: 00000000`
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
-only applies when `autoPropBrakes` lists motor indices. v3.4.22 keeps Alia
+only applies when `autoPropBrakes` lists motor indices. v3.4.69 keeps Alia
 lift-prop braking disabled by default because `evtol4` matched the accepted
 v3.4.13 first-FW sink recovery until the brake window removed the remaining margin. `feather`,
 `hard_lock`, and `prop_separate` remain available for controlled A/B testing
@@ -194,7 +194,7 @@ copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 
 If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
 unstable`, do not tune from that run until the aircraft has been restarted with
-the v3.4.22 airframe defaults and the warning state is rechecked. Keep the log:
+the v3.4.69 airframe defaults and the warning state is rechecked. Keep the log:
 that case is useful for validating frame-rate robustness, but it is not the
 same evidence as a clean high-FPS Alia tuning flight.
 

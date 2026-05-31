@@ -91,10 +91,11 @@ This index is the stable entry point for user and developer documentation.
 - [Report v78 - Alia EKF Yaw Reset Recovery](reports/report_v78.md)
 - [Report v79 - Alia Transition Compass Fault Root Cause](reports/report_v79.md)
 - [Report v80 - Alia VTOL Transition EKF Guard](reports/report_v80.md)
+- [Report v81 - Alia GNSS Position-Only Yaw Reset Regression](reports/report_v81.md)
 
 ## Current Policy
 
-- Use the `v3.4.68` package with the refreshed PX4 `px4xplane-sitl` branch.
+- Use the `v3.4.69` package with the refreshed PX4 `px4xplane-sitl` branch.
   This package keeps the accepted airframe flight behavior, updates the
   packaged reference PX4 airframes for current PX4 main, and keeps X-Plane
   sensor timing from being overwritten by common mavlinksim startup defaults.
@@ -107,10 +108,11 @@ This index is the stable entry point for user and developer documentation.
   state. All X-Plane airframes also use `EKF2_MAG_TYPE=1` so the simulated
   magnetometer corrects heading without allowing automatic 3D mag fusion to
   perturb tilt during aggressive transition phases.
-- v3.4.68 also blocks EKF-GSF yaw rescue during VTOL transition. `newAlia4`
-  showed the raw simulated magnetometer was healthy and WMM-aligned, while the
-  EKF-GSF yaw estimate diverged during high-acceleration transition and caused
-  the visible heading jump and compass-fault messages.
+- v3.4.69 also preserves PX4's EKF-GSF yaw rescue for true GNSS velocity-fusion
+  failures and velocityless position-only cases, but blocks position-only GNSS
+  rejection from resetting yaw while GNSS velocity aiding is active. `newAlia5`
+  showed velocity aiding, magnetic heading, and GPS course were healthy at
+  handoff, while EKF-GSF yaw was about 30 degrees wrong.
 - The next Alia retest must show `SYS_AUTOSTART=5020`. If startup prints
   `SYS_AUTOSTART=5001`, stop the run; that is the Cessna PX4 target, not Alia.
 - The active plugin config can still be changed from the X-Plane menu or config
