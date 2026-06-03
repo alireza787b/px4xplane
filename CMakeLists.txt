@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 3.4.69 LANGUAGES CXX)
+project(px4xplane VERSION 4.0.0 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -341,19 +341,52 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E make_directory
-        ${OUTPUT_DIR}/../docs/reports
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/docs/reports
-        ${OUTPUT_DIR}/../docs/reports
+        ${OUTPUT_DIR}/../docs/developer
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/config-editor.html
         ${OUTPUT_DIR}/../docs/config-editor.html
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/index.md
+        ${OUTPUT_DIR}/../docs/index.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/custom-airframe-config.md
+        ${OUTPUT_DIR}/../docs/custom-airframe-config.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/BUILD.md
+        ${OUTPUT_DIR}/../docs/BUILD.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/BUILD_SYSTEM.md
+        ${OUTPUT_DIR}/../docs/BUILD_SYSTEM.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/DEVELOPER.md
+        ${OUTPUT_DIR}/../docs/DEVELOPER.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/ALIA_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/ALIA_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/EHANG184_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/EHANG184_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/QUADTAILSITTER_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/CESSNA172_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/TB2_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/TB2_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/developer/config-schema.md
+        ${OUTPUT_DIR}/../docs/developer/config-schema.md
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config/config_schema.json
         ${OUTPUT_DIR}/../docs/config_schema.json
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/assets/config-editor-ui.png
+        ${OUTPUT_DIR}/../docs/assets/config-editor-ui.png
     COMMENT "Copying config editor docs to plugin package"
 )
 
@@ -417,22 +450,53 @@ set(PACKAGE_ASSET_COMMANDS
         ${OUTPUT_DIR}/../TB2_XPLANE12_TEST.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
-    COMMAND ${CMAKE_COMMAND} -E remove_directory
-        ${OUTPUT_DIR}/../docs/reports
     COMMAND ${CMAKE_COMMAND} -E make_directory
-        ${OUTPUT_DIR}/../docs/reports
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/docs/reports
-        ${OUTPUT_DIR}/../docs/reports
+        ${OUTPUT_DIR}/../docs/developer
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/config-editor.html
         ${OUTPUT_DIR}/../docs/config-editor.html
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/index.md
+        ${OUTPUT_DIR}/../docs/index.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/custom-airframe-config.md
+        ${OUTPUT_DIR}/../docs/custom-airframe-config.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/BUILD.md
+        ${OUTPUT_DIR}/../docs/BUILD.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/BUILD_SYSTEM.md
+        ${OUTPUT_DIR}/../docs/BUILD_SYSTEM.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/DEVELOPER.md
+        ${OUTPUT_DIR}/../docs/DEVELOPER.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/ALIA_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/ALIA_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/EHANG184_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/EHANG184_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/QUADTAILSITTER_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/CESSNA172_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/TB2_XPLANE12_TEST.md
+        ${OUTPUT_DIR}/../docs/TB2_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/developer/config-schema.md
+        ${OUTPUT_DIR}/../docs/developer/config-schema.md
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/config/config_schema.json
         ${OUTPUT_DIR}/../docs/config_schema.json
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor.js
         ${OUTPUT_DIR}/../docs/assets/config-editor.js
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/assets/config-editor-ui.png
+        ${OUTPUT_DIR}/../docs/assets/config-editor-ui.png
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../tools
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

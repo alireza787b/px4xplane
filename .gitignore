@@ -1,5 +1,5 @@
 #==============================================================================
-# px4xplane (PixEagle) - Professional .gitignore
+# px4xplane - .gitignore
 # X-Plane Plugin for PX4 SITL Integration
 # Repository: alireza787b/px4xplane
 #==============================================================================
@@ -32,6 +32,10 @@ Log.txt
 temp/
 tmp/
 .tmp/
+.claude/
+JOURNEY_LOG.md
+report*.md
+docs/reports/
 
 #==============================================================================
 # Visual Studio & MSBuild

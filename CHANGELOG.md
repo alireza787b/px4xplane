@@ -9,6 +9,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-06-03
+
+### Changed
+
+- Promoted the plugin to the PX4 integration release-candidate line with
+  consistent `4.0.0` version metadata across CMake, the plugin UI, and docs.
+- Rewrote the public README around the current release workflow, WSL/Docker
+  host-IP setup, the config editor, and the single-runtime-source
+  `64/config.ini` model.
+- Rewrote the custom airframe guide to make the browser config editor the
+  normal workflow while keeping the advanced `config.ini` mapping format
+  documented.
+- Clarified that the shipped targets are preconfigured examples, not a hard
+  X-Plane vehicle-class limit. Additional models still require a matching PX4
+  control path and writable X-Plane dataref mappings.
+
+### Removed
+
+- Removed internal investigation reports, local assistant settings, and the
+  private journey log from the public repository tree and release package.
+
 ## [3.4.69] - 2026-05-31
 
 ### Fixed

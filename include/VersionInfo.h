@@ -8,7 +8,7 @@
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
  * @license MIT License
- * @version 3.0.0 (Phase 3 - Production Ready)
+ * @version 4.0.0 (PX4 integration release candidate)
  * @url https://github.com/alireza787b/px4xplane
  */
 
@@ -22,16 +22,16 @@ namespace PX4XPlaneVersion {
     // =================================================================
 
     /** Plugin version string - displayed in UI and About dialog */
-    constexpr const char* VERSION = "3.4.69";
+    constexpr const char* VERSION = "4.0.0";
 
     /** Version phase description */
-    constexpr const char* PHASE = "GNSS yaw reset guard";
+    constexpr const char* PHASE = "PX4 integration release candidate";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "077";
+    constexpr const char* BUILD = "001";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

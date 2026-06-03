@@ -49,18 +49,18 @@ git push origin master && git push origin vX.Y.Z
 
 **1. `include/VersionInfo.h`**
 ```cpp
-constexpr const char* VERSION = "3.1.0";  // Update
+constexpr const char* VERSION = "4.1.0";  // Update
 constexpr const char* BUILD = "001";      // Reset for major/minor, increment for patch
 ```
 
 **2. `CMakeLists.txt`**
 ```cmake
-project(px4xplane VERSION 3.1.0 LANGUAGES CXX)  // Update
+project(px4xplane VERSION 4.1.0 LANGUAGES CXX)  // Update
 ```
 
 **3. `CHANGELOG.md`** - Add new section at top:
 ```markdown
-## [3.1.0] - 2025-01-XX
+## [4.1.0] - 2026-XX-XX
 
 ### Added
 - Feature description
@@ -75,12 +75,12 @@ project(px4xplane VERSION 3.1.0 LANGUAGES CXX)  // Update
 # 1. Update versions (3 files above)
 # 2. Commit
 git add include/VersionInfo.h CMakeLists.txt CHANGELOG.md
-git commit -m "Release v3.1.0: Feature name"
+git commit -m "Release v4.1.0: Feature name"
 
 # 3. Tag and push
-git tag -a v3.1.0 -m "Release v3.1.0: Feature name"
+git tag -a v4.1.0 -m "Release v4.1.0: Feature name"
 git push origin master
-git push origin v3.1.0
+git push origin v4.1.0
 
 # 4. Monitor release
 # → https://github.com/alireza787b/px4xplane/actions
@@ -134,53 +134,53 @@ px4xplane/
 ### Bug Fix (Patch Release)
 
 ```bash
-# Current: v3.1.0 → Target: v3.1.1
+# Current: v4.0.0 -> Target: v4.0.1
 
 # 1. Fix bug and test
 # 2. Update versions:
-#    - VersionInfo.h: VERSION="3.1.1", BUILD="002" (increment)
-#    - CMakeLists.txt: VERSION 3.1.1
-#    - CHANGELOG.md: Add [3.1.1] section
+#    - VersionInfo.h: VERSION="4.0.1", BUILD="002" (increment)
+#    - CMakeLists.txt: VERSION 4.0.1
+#    - CHANGELOG.md: Add [4.0.1] section
 
 # 3. Release
-git commit -m "Release v3.1.1: Fix critical bug"
-git tag -a v3.1.1 -m "Release v3.1.1: Fix critical bug"
-git push origin master && git push origin v3.1.1
+git commit -m "Release v4.0.1: Fix critical bug"
+git tag -a v4.0.1 -m "Release v4.0.1: Fix critical bug"
+git push origin master && git push origin v4.0.1
 ```
 
 ### New Feature (Minor Release)
 
 ```bash
-# Current: v3.1.0 → Target: v3.2.0
+# Current: v4.0.0 -> Target: v4.1.0
 
 # 1. Implement feature and test
 # 2. Update versions:
-#    - VersionInfo.h: VERSION="3.2.0", BUILD="001" (reset)
-#    - CMakeLists.txt: VERSION 3.2.0
-#    - CHANGELOG.md: Add [3.2.0] section
+#    - VersionInfo.h: VERSION="4.1.0", BUILD="001" (reset)
+#    - CMakeLists.txt: VERSION 4.1.0
+#    - CHANGELOG.md: Add [4.1.0] section
 
 # 3. Release
-git commit -m "Release v3.2.0: New feature"
-git tag -a v3.2.0 -m "Release v3.2.0: New feature"
-git push origin master && git push origin v3.2.0
+git commit -m "Release v4.1.0: New feature"
+git tag -a v4.1.0 -m "Release v4.1.0: New feature"
+git push origin master && git push origin v4.1.0
 ```
 
 ### Breaking Change (Major Release)
 
 ```bash
-# Current: v3.2.0 → Target: v4.0.0
+# Current: v4.1.0 -> Target: v5.0.0
 
 # 1. Implement breaking change
 # 2. Document migration in CHANGELOG.md (⚠️ BREAKING CHANGES section)
 # 3. Update versions:
-#    - VersionInfo.h: VERSION="4.0.0", BUILD="001" (reset)
-#    - CMakeLists.txt: VERSION 4.0.0
-#    - CHANGELOG.md: Add [4.0.0] with migration guide
+#    - VersionInfo.h: VERSION="5.0.0", BUILD="001" (reset)
+#    - CMakeLists.txt: VERSION 5.0.0
+#    - CHANGELOG.md: Add [5.0.0] with migration guide
 
 # 4. Release
-git commit -m "Release v4.0.0: Breaking change description"
-git tag -a v4.0.0 -m "Release v4.0.0: Breaking change description"
-git push origin master && git push origin v4.0.0
+git commit -m "Release v5.0.0: Breaking change description"
+git tag -a v5.0.0 -m "Release v5.0.0: Breaking change description"
+git push origin master && git push origin v5.0.0
 ```
 
 ---
@@ -246,8 +246,8 @@ tree build/{platform}/Release/px4xplane
 
 ```bash
 # Delete tag locally and remotely
-git tag -d v3.1.0
-git push --delete origin v3.1.0
+git tag -d v4.1.0
+git push --delete origin v4.1.0
 
 # Delete GitHub Release manually
 # Fix version numbers, recommit, re-tag
@@ -283,9 +283,9 @@ px4xplane/
 │   ├── DEVELOPER.md       # This file: workflow, versioning, CI/CD
 │   ├── BUILD.md           # Detailed build instructions (all platforms)
 │   ├── BUILD_SYSTEM.md    # Technical build system details
-│   ├── GITHUB_ACTIONS.md  # Detailed CI/CD workflow reference
-│   ├── custom-airframe-config.md  # Creating custom aircraft
-│   └── v2.md              # Legacy v2.x documentation
+│   ├── config-editor.html # Local config editor
+│   ├── custom-airframe-config.md
+│   └── developer/config-schema.md
 ```
 
 ---
@@ -300,4 +300,4 @@ px4xplane/
 
 ---
 
-**Last Updated**: 2025-01-26 (px4xplane v3.1.0)
+**Last Updated**: 2026-06-03 (px4xplane v4.0.0)

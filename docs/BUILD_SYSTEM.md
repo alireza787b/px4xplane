@@ -136,7 +136,8 @@ px4xplane/
 ├── 64/
 │   └── {platform}.xpl    # win.xpl, lin.xpl, or mac.xpl
 ├── config.ini            # Automatically copied
-├── px4_params/           # PX4 parameter files (copied)
+├── px4_airframes/        # Reference PX4 airframe files
+├── docs/                 # Config editor and user docs
 └── README.md             # Documentation
 ```
 
@@ -358,7 +359,7 @@ make -f Makefile.macos install XPLANE_DIR=/Applications/X-Plane\ 12
 
 **Look for:**
 ```
-Loaded: plugins/px4xplane/64/win.xpl (px4xplane v2.5.1)
+Loaded: plugins/px4xplane/64/win.xpl (px4xplane v4.0.0)
 ```
 
 **If errors:**
@@ -371,8 +372,8 @@ Plugin px4xplane failed to load: <error message>
 ## 📚 Additional Documentation
 
 - **Quick Start Guide**: See [README.md](../README.md)
-- **Detailed Build Instructions**: See [docs/BUILD.md](./docs/BUILD.md)
-- **Custom Airframe Configuration**: See [docs/custom-airframe-config.md](./docs/custom-airframe-config.md)
+- **Detailed Build Instructions**: See [BUILD.md](BUILD.md)
+- **Custom Airframe Configuration**: See [custom-airframe-config.md](custom-airframe-config.md)
 
 ---
 
@@ -387,15 +388,6 @@ When contributing to the build system:
    - CMake: Modern CMake 3.15+ practices
    - Makefiles: POSIX-compliant where possible
    - Visual Studio: Portable paths only (no absolute paths)
-
----
-
-## 📝 Version History
-
-- **v2.5.1 (January 2025)**: Added CMake cross-platform support, Makefile.linux, Makefile.macos
-- **v2.5.0 (January 2025)**: Professional cross-platform build system
-- **v2.0.0 (2024)**: Visual Studio project with multi-platform support
-- **v1.0.0 (2024)**: Initial release
 
 ---
 

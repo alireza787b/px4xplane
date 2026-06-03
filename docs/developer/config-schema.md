@@ -70,19 +70,14 @@ Keep them disabled for normal release packages and demo runs.
 not changed by `config.ini`; change the PX4 airframe file or saved parameters
 and restart/reset PX4 SITL.
 
-## Editor Direction
-
-The future config editor should consume this schema first. Do not build a raw
-INI editor as the primary UX. The normal path should show a small set of fields
-with validation, while advanced users can edit channel mappings, ranges, and
-datarefs with inline warnings.
+## Editor Workflow
 
 The static editor lives at `docs/config-editor.html`. Runtime behavior still
 comes from `64/config.ini`; the schema is loaded automatically from
 `docs/config_schema.json` when the browser allows local reads and is also
-embedded in the editor as a fallback. The editor validates the editable model
-and exports a clean `config.ini`. It does not write into X-Plane or PX4
-directly.
+embedded in the editor as a fallback. The editor validates the editable model,
+shows reload policy, helps edit channel/camera rows, and exports a clean
+`config.ini`. It does not write into X-Plane or PX4 directly.
 
 The plugin does not read `config_schema.json`. CMake packages it under
 `px4xplane/docs/` so it is visibly documentation/tooling metadata rather than a

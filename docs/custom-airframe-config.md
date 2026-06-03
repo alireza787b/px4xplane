@@ -1,228 +1,200 @@
 # Defining Custom Airframes in PX4-XPlane
 
-This guide walks you through defining custom airframe configurations in PX4-XPlane using the `config.ini` file. We’ll cover key concepts, provide detailed examples, and guide you through the entire process—from configuring the file to testing your setup in X-Plane.
+This guide explains how to create or modify a px4xplane airframe configuration using the browser config editor and the runtime `config.ini` file.
 
-## Overview
+## Configuration Model
 
-To define a custom airframe configuration, follow these steps:
-1. **Select or Build a Plane Model**: Choose an existing X-Plane model or create one from scratch using X-Plane’s Plane Maker.
-2. **Select a Similar Airframe in PX4 or Start from Scratch**: Choose a pre-existing PX4 airframe that closely matches your custom setup, or define a new one from scratch. You can double-check channel numbers, servos, and functionalities in the dynamic mixing section of QGroundControl’s Actuator section under SITL.
-3. **Configure the `config.ini` File**: Map PX4 channels to X-Plane datarefs.
-4. **Understand Datarefs and Their Types**: Learn how to select and configure datarefs.
-5. **Build and Test the Configuration**: Test your configuration in X-Plane and PX4.
+px4xplane uses one runtime source of truth:
 
-## Step 1: Select or Build a Plane Model
-
-### Using Existing Models
-
-- **Pre-existing Models**: Use existing X-Plane models that closely match your custom airframe.
-- **Modify Models**: Modify an existing X-Plane model to fit your requirements.
-
-### Creating a New Model
-
-- **Use Plane Maker**: Create a new aircraft using X-Plane’s Plane Maker tool if no existing model fits your needs.
-
-## Step 2: Select a Similar Airframe in PX4 or Start from Scratch
-
-### Using Pre-existing Airframes in PX4
-
-- **Choose a Similar Airframe**: If your custom airframe is similar to an existing setup, use that as a starting point (e.g., `xplane_alia250`).
-- **Dynamic Mixing in QGroundControl**: Verify and adjust channel mappings in the dynamic mixing section of the Actuator settings in QGroundControl’s SITL section.
-
-### Starting from Scratch
-
-- **Define in PX4 Source Code**: For complex airframes, you may prefer to define the aircraft directly in the PX4 source code and compile it.
-- **Dynamic Mixing in QGroundControl**: Verify and adjust channel mappings in the dynamic mixing section of the Actuator settings in QGroundControl’s SITL section.
-
-## Step 3: Configuring the `config.ini` File
-
-The `config.ini` file defines how PX4’s outputs (e.g., motors, control surfaces) map to X-Plane’s inputs.
-It is the runtime source of truth for the plugin. `config_schema.json` is
-metadata for the validator and editor, not a second runtime configuration file.
-If the editor cannot auto-load because your browser blocks local file reads,
-manually load `px4xplane/64/config.ini`; do not load the JSON file as the
-runtime config.
-
-### Example Configuration for Alia 250 eVTOL
-
-```ini
-; PX4-XPlane Configuration File
-; File Version: 1.3
-; Last Updated: December 26, 2023
-; This file configures the mapping of motor and servo channels from PX4 to X-Plane.
-
-; Configuration Name (Displayed in UI)
-config_name = Alia250
-
-[Alia250]
-
-; Auto-Prop Brakes: Specifies which motors have an auto-prop brake system.
-; Format: Comma-separated list of motor indices in X-Plane.
-autoPropBrakes = 0, 1, 2, 3
-autoPropBrakeApplyThreshold = 0.01
-autoPropBrakeReleaseThreshold = 0.12
-autoPropBrakeDwellSec = 2.0
-autoPropBrakeMinAirspeedMps = 55.0
-autoPropBrakeMode = feather
-autoPropBrakeUseFailure = false
-
-; Optional warning guard for wrong-aircraft/wrong-config mistakes.
-aircraftMatch = Alia,250
-
-; Pitot / differential-pressure source.
-; Use xplane_indicated for conventional aircraft when X-Plane IAS has the
-; correct sign. Use body_axis for tailsitters or custom pitot placement, then
-; set pitotAxisBody to the physical probe axis in PX4 body frame.
-airspeedSource = xplane_indicated
-pitotAxisBody = +X
-
-; Optional camera presets shown in PX4 X-Plane > Camera Views.
-; The packaged config editor presents these as rows, but the runtime INI format is:
-; Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom
-cameraViews = Forward|5.0|0.0|0.7|0.0|0.0|0.0|0.90; Down|1.2|0.0|-0.6|-90.0|0.0|0.0|0.85; Chase|-18.0|0.0|4.0|-8.0|0.0|0.0|0.70
-
-; Optional low-pass smoothing of normalized actuator commands before writing
-; X-Plane datarefs. Use 0.0 for direct pass-through.
-actuatorSmoothingTimeConstantSec = 0.0
-; Optional comma-separated channel allow-list for smoothing. Omit this key to
-; smooth all channels when smoothing is enabled.
-actuatorSmoothingChannels =
-
-; Quadcopter Motors (1-4)
-channel0 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
-channel1 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [1], [-1 1]
-channel2 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [2], [-1 1]
-channel3 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [3], [-1 1]
-
-; Fixed-Wing Control Surfaces (Ailerons, Elevator, Rudder)
-channel4 = sim/flightmodel/controls/wing2l_ail1def, float, 0, [-20 10] | sim/flightmodel/controls/wing2l_ail2def, float, 0, [-20 10] | sim/flightmodel/controls/wing3l_ail2def, float, 0, [-20 10]
-channel5 = sim/flightmodel/controls/wing2r_ail1def, float, 0, [-20 10] | sim/flightmodel/controls/wing2r_ail2def, float, 0, [-20 10] | sim/flightmodel/controls/wing3r_ail2def, float, 0, [-20 10]
-channel6 = sim/flightmodel/controls/hstab1_elv1def, float, 0, [-15 20] | sim/flightmodel/controls/hstab1_elv2def, float, 0, [-15 20]
-channel7 = sim/flightmodel/controls/vstab1_rud1def, float, 0, [-15 20] | sim/flightmodel/controls/vstab2_rud2def, float, 0, [-15 20]
-
-; Additional Forward Thrust Motor
-channel8 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [4], [-1 1]
+```text
+px4xplane/64/config.ini
 ```
 
-### Key Sections Explained
+`config_schema.json` is validation metadata for tools and the editor. It is not read by the plugin at runtime and should not be loaded as the active aircraft config.
 
-- **Configuration Name**: Displayed in the PX4-XPlane UI; this helps you identify the active configuration.
-- **Auto-Prop Brakes**: Reduces drag by braking configured X-Plane engine indices when they are not commanded. Use `feather` first; `hard_lock`, `prop_separate`, and `autoPropBrakeUseFailure` are experimental recovery-test options.
-- **Aircraft Match**: Optional comma-separated tokens checked against the loaded
-  X-Plane aircraft file/path. This is only a warning guard; it does not select
-  or change the airframe. It catches setup mistakes such as a TB2 aircraft
-  loaded while `config_name` still points at Cessna.
-- **Airspeed Source**: Selects the simulated pitot source. `xplane_indicated`
-  uses X-Plane's IAS dataref, `disabled` sends zero differential pressure, and
-  `body_axis` projects the local air-relative velocity onto `pitotAxisBody`.
-  Conventional aircraft normally use `+X`; tailsitters may need a different
-  physical probe axis such as `-Z`.
-  PX4 receives pitot data through `HIL_SENSOR.diff_pressure`, not by trusting a
-  direct TAS value. `xplane_indicated` converts X-Plane IAS to equivalent
-  dynamic pressure with sea-level density. `body_axis` treats the body-axis
-  projection as local true air-relative flow and converts it to dynamic pressure
-  with X-Plane local pressure/temperature density, allowing PX4 to derive
-  calibrated and true airspeed through its normal airspeed pipeline.
-- **Camera Views**: Optional plugin-owned views for the active airframe. They
-  appear under `PX4 X-Plane > Camera Views` and can be bound to
-  `px4xplane/camera/view_1` through `px4xplane/camera/view_8`. Leave
-  `cameraViews` empty or omit it if the aircraft does not need custom views.
-  Conventional aircraft normally use `pitch_offset_deg=0` for forward views and
-  `-90` for down-looking views. Tailsitters can use different offsets because
-  their multicopter hover attitude is not the same as conventional fixed-wing
-  level attitude.
-- **Actuator Smoothing**: Optional first-order smoothing for actuator commands
-  between PX4's HIL actuator packets and X-Plane's frame loop. Keep
-  `actuatorSmoothingTimeConstantSec = 0.0` for direct pass-through. Use small
-  values such as `0.02` to `0.05` only when a fixed-wing aircraft has visibly
-  stepped surfaces because the simulator renders much faster than the actuator
-  stream arrives. Use `actuatorSmoothingChannels` to restrict smoothing to
-  surface channels, for example `0, 1, 2, 4`. Do not smooth wheel steering,
-  throttle, or flap channels unless there is direct evidence that those channels
-  need interpolation. Do not use smoothing to hide an unstable tune.
-- **Channel Mappings**: Defines how each PX4 channel maps to X-Plane’s datarefs. Each channel can control a motor, control surface, or other aircraft function.
+The editor-first workflow is recommended:
 
-Auto-prop brakes are mode-agnostic. The bridge watches the configured motor
-commands: it applies brakes only after all listed motors stay below
-`autoPropBrakeApplyThreshold` for `autoPropBrakeDwellSec` seconds and the
-optional true-airspeed gate is met. Any listed motor above
-`autoPropBrakeReleaseThreshold` releases all configured brakes immediately, so
-PX4 remains the source of authority during hover, front transition,
-back-transition, and assisted recovery.
+1. Open the config editor.
+2. Load `px4xplane/64/config.ini` if auto-load is blocked.
+3. Add or edit the airframe section.
+4. Validate warnings and ranges.
+5. Export the edited `config.ini`.
+6. Replace `px4xplane/64/config.ini`.
+7. Reload config in X-Plane or reconnect PX4 before flight, depending on the changed fields.
 
-## Step 4: Understanding Datarefs and Their Types
+![px4xplane config editor](assets/config-editor-ui.png)
 
-### Dataref Types
+## Open the Config Editor
 
-- **`float`**: Single floating-point value, typically used for control surfaces like ailerons or rudders.
-- **`floatArray`**: An array of floating-point values, often used for multi-engine aircraft or multiple control surfaces.
+From X-Plane:
 
-Only `float` and `floatArray` are supported by the current runtime parser. The
-X-Plane SDK exposes other dataref types, but px4xplane actuator outputs
-currently write float scalar and float-array values because PX4 actuator
-commands are normalized floating-point setpoints. Use aircraft-local plugin or
-dataref logic for integer-only systems until the typed config schema adds
-explicit integer support.
+```text
+Plugins > px4xplane > Advanced > Open Config Editor
+```
 
-### Selecting Datarefs
+From a release package:
 
-Choosing the correct dataref ensures accurate simulation behavior:
-- **Throttle and Motors**: Use `sim/flightmodel/engine/ENGN_thro_use` with `floatArray`.
-- **Control Surfaces**: For ailerons, elevators, and rudders, use datarefs like `sim/flightmodel/controls/wing2l_ail1def` with `float`.
-- **Auto-Prop Brakes**: Define motor indices that should have auto-prop brakes to minimize drag during flight.
+```text
+px4xplane/docs/config-editor.html
+```
 
-Use the Dataref Tool plugin in X-Plane to find the correct dataref for your setup, or refer to the [X-Plane Dataref Documentation](https://developer.x-plane.com/datarefs/) for more details.
+From the source tree:
 
-### Runtime Reload and Safety
+```text
+docs/config-editor.html
+```
 
-Mappings, diagnostics, HUD settings, and MAVLink rates can be changed in
-`config.ini` and reloaded from the px4xplane menu. If you change the loaded
-X-Plane aircraft, aircraft-specific datarefs, or PX4 airframe, reconnect PX4 SITL
-and reload the configuration before flying.
+If the browser blocks local-file auto-load, use the main file picker to choose:
 
-px4xplane validates the active `config.ini` with `tools/validate_config.py` and
-guards runtime actuator writes:
+```text
+px4xplane/64/config.ini
+```
 
-- stale channel mappings are cleared on every reload
-- actuator commands are clamped to finite values before dataref writes
-- invalid finite ranges are skipped and logged
-- configured actuator datarefs are zeroed if PX4 actuator input becomes stale
+Only use the advanced schema JSON picker when you intentionally want to load custom schema metadata.
 
-Run this before packaging or sharing a custom airframe:
+## What Can Be Integrated
+
+The packaged examples cover fixed-wing, multicopter, and VTOL aircraft. A new model can be integrated when all of these are true:
+
+- X-Plane can model the vehicle or aircraft behavior.
+- The required X-Plane controls are exposed as writable datarefs.
+- PX4 has a matching SITL-capable control path or airframe.
+- The px4xplane `config.ini` maps PX4 actuator outputs to those writable datarefs.
+
+Aircraft are the primary tested path today. Rovers, boats, helicopters, or other X-Plane vehicle models are possible in principle when the PX4 control path and dataref mapping exist, but they should be treated as custom integrations until validated.
+
+Useful X-Plane references:
+
+- [Plane Maker manual](https://developer.x-plane.com/manuals/planemaker/index.html)
+- [X-Plane datarefs reference](https://developer.x-plane.com/datarefs/)
+- [X-Plane developer documentation](https://developer.x-plane.com/)
+
+## Build the X-Plane Model
+
+Choose one path:
+
+- Start from an existing X-Plane aircraft that is close to your target.
+- Build a new model in Plane Maker.
+- For plugin-controlled custom systems, expose writable datarefs that px4xplane can command.
+
+In Plane Maker, confirm basic geometry, mass, CG, landing gear, engines, control surfaces, flaps, and steering before PX4 is connected. A poor X-Plane model cannot be fixed only with PX4 gains.
+
+## Choose or Create the PX4 Airframe
+
+Use the closest PX4 SITL airframe as a starting point:
+
+- fixed-wing: Cessna 172 or TB2 style targets
+- multicopter: Ehang 184 style targets
+- standard VTOL: Alia 250 style targets
+- tailsitter VTOL: QuadTailsitter style targets
+
+For a new upstream PX4 target, create or update the PX4 airframe file, set `SYS_AUTOSTART`, configure control allocation, and tune parameters from ULog evidence. Use QGroundControl actuator setup to verify which PX4 actuator function appears on each output channel.
+
+## Edit the px4xplane Mapping
+
+Each airframe section in `config.ini` maps PX4 actuator channels to X-Plane datarefs.
+
+Example:
+
+```ini
+config_name = Cessna172
+
+[Cessna172]
+aircraftMatch = Cessna,172
+cameraViews = Forward|2.8|0.0|0.7|0.0|0.0|0.0|0.90; Down|0.4|0.0|-0.55|-90.0|0.0|0.0|0.85; Chase|-13.0|0.0|3.2|-8.0|0.0|0.0|0.70
+actuatorSmoothingTimeConstantSec = 0.04
+actuatorSmoothingChannels = 0, 1, 2, 4
+
+channel0 = sim/flightmodel/controls/wing2l_ail1def, float, 0, [-20 +20]
+channel1 = sim/flightmodel/controls/wing2r_ail1def, float, 0, [-20 +20]
+channel2 = sim/flightmodel/controls/hstab1_elv1def, float, 0, [-20 +20]
+channel3 = sim/flightmodel/engine/ENGN_thro_use, floatArray, [0], [-1 1]
+```
+
+Channel format:
+
+```text
+channelN = dataref, type, index, [min max]
+```
+
+Multiple X-Plane datarefs can be driven from one PX4 channel by separating mappings with `|`.
+
+Supported runtime types:
+
+- `float`: scalar writable dataref, usually control surfaces or steering
+- `floatArray`: array writable dataref, usually engine throttle arrays
+
+PX4 actuator outputs are normalized floating-point setpoints, so px4xplane currently writes scalar floats and float-array elements. For integer-only aircraft systems, use aircraft-local plugin logic or add a typed schema/runtime extension before relying on it.
+
+## Important Fields
+
+`config_name`
+: Active airframe section name. This must match one section exactly.
+
+`aircraftMatch`
+: Optional warning tokens checked against the loaded X-Plane aircraft file/path. This is a setup guard, not an automatic selector.
+
+`airspeedSource`
+: Simulated pitot source. `xplane_indicated` is normal for conventional aircraft. `body_axis` projects air-relative velocity onto `pitotAxisBody`, useful for tailsitters or custom pitot placement.
+
+`cameraViews`
+: Plugin-owned camera presets available from `PX4 X-Plane > Camera Views` and X-Plane command bindings such as `px4xplane/camera/view_1`.
+
+`actuatorSmoothingTimeConstantSec`
+: Optional first-order smoothing between PX4 HIL actuator packets and X-Plane frames. Use small values such as `0.02` to `0.05` only for visibly stepped fixed-wing surfaces. Do not use smoothing to hide unstable tuning.
+
+`actuatorSmoothingChannels`
+: Optional allow-list so only specific PX4 output channels are smoothed.
+
+`autoPropBrakes`
+: X-Plane engine indices that can be braked or feathered when commanded low. Use only when validated for the airframe.
+
+## Reload Policy
+
+Safe live-reload fields are limited to compact diagnostics, HUD visibility, FPS warning settings, and camera definitions.
+
+Treat these as setup-time fields:
+
+- active airframe name
+- actuator channel mappings
+- actuator smoothing
+- aircraft match tokens
+- prop-brake configuration
+- accelerometer calibration/offset fields
+- MAVLink target rates
+
+For setup-time fields, disconnect PX4 SITL, export the new `config.ini`, reload config in X-Plane, reconnect PX4, and then fly. Do not change actuator mappings while armed.
+
+## Validate
+
+From the source tree:
 
 ```bash
 python3 tools/validate_config.py config/config.ini
-```
-
-The validator uses `config/config_schema.json` in the source tree for global
-field types, ranges, and reload policy. Packaged releases also include
-`docs/config_schema.json` for the local editor. This schema is tooling metadata;
-the plugin reads `64/config.ini` as the only runtime source. To see which fields
-are safe to reload live and which require
-disconnect/reconnect before flight:
-
-```bash
 python3 tools/validate_config.py --list-fields
 ```
 
-Treat actuator mappings, `config_name`, prop-brake motor lists, accelerometer
-calibration, and MAVLink target rates as setup-time fields. Change them before
-connecting PX4 SITL, or disconnect, reload, validate, and reconnect before
-flying. Compact diagnostic and UI fields can be reloaded during a debugging
-session, but do not change any config while armed unless you are deliberately
-diagnosing a controlled test.
+From X-Plane:
 
-## Step 5: Building and Testing the Configuration
+```text
+Plugins > px4xplane > Advanced > Validate Config
+```
 
-### Testing
+Before judging flight behavior, confirm:
 
-1. **Load and Test in PX4-XPlane**: Load the configuration in X-Plane and test the controls.
-2. **Adjust as Needed**: Modify the `config.ini` file or PX4 parameters to fine-tune control and simulation accuracy.
+- X-Plane loaded the intended aircraft.
+- `config_name` points to the matching section.
+- The connection HUD has no aircraft/config mismatch warning.
+- PX4 started the intended `SYS_AUTOSTART` target.
+- QGroundControl actuator outputs match the expected channel order.
 
-### Final Notes: Custom Airframe Setup in PX4
+## Test in Steps
 
-Remember, the channel numbers should be defined in the SITL Actuator section of QGroundControl. You can either:
-- **Use Dynamic Mixing**: Adjust actuator outputs directly within QGroundControl for flexibility.
-- **Define in Source Code**: For more complex setups, define the airframe in the PX4 source code, build it, and then test.
+1. Check datarefs with the aircraft parked and PX4 disconnected.
+2. Start PX4 SITL and confirm sensor health before arming.
+3. Move actuators from QGroundControl and verify X-Plane surfaces, motors, steering, and flaps.
+4. Run a short manual or mission test.
+5. Compare PX4 ULog data with X-Plane truth logs before changing gains.
+6. Update PX4 parameters and `config.ini` separately so each change has clear evidence.
 
-By following these steps, you’ll ensure your custom airframe behaves correctly in both PX4 and X-Plane, allowing for realistic and accurate simulations.
+Use the packaged test cards as examples for the level of evidence expected before calling an airframe ready.

@@ -19,9 +19,9 @@
 # official PX4 repository directly, and this custom fork will no longer be needed.
 #
 # Current Status:
-# - Fork Branch: px4xplane-sitl (synced with feature/xplane-sitl-integration)
+# - Fork Branch: px4xplane-sitl
 # - Target: Official PX4 repository (pending PR approval)
-# - Progress: https://github.com/alireza787b/PX4-Autopilot-Me/tree/feature/xplane-sitl-integration
+# - Progress: https://github.com/PX4/PX4-Autopilot/pull/22493
 #
 # === Functionality ===
 # The script performs the following tasks:
@@ -586,8 +586,8 @@ echo "  → A simple 'git remote' change will migrate you to official PX4"
 echo ""
 info "Current Status:"
 echo "  → Fork: github.com/alireza787b/PX4-Autopilot-Me"
-echo "  → Branch: px4xplane-sitl (synced with feature/xplane-sitl-integration)"
-echo "  → PR Status: In preparation for submission"
+echo "  → Branch: px4xplane-sitl"
+echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""
