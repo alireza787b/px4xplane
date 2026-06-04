@@ -37,6 +37,24 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 `px4xplane` launcher can auto-detect common WSL2 host IPs, and
 `px4xplane --reset-ip` clears a saved wrong IP and asks again.
 
+## Troubleshooting
+
+- Wrong X-Plane host IP: run `px4xplane --reset-ip` and choose the correct host
+  IP again.
+- Stale local PX4 checkout, submodules, or SITL parameters: run
+  `px4xplane --sync`.
+- Broken setup or missing launcher command: rerun the setup helper, or use
+  `px4xplane --repair` if the command already exists.
+- Plugin does not appear in X-Plane: confirm the whole `px4xplane` folder is in
+  `X-Plane/Resources/plugins/`, then check X-Plane `Log.txt` for plugin load
+  errors.
+- Custom mapping behaves unexpectedly: validate `px4xplane/64/config.ini` from
+  the plugin menu or with `python3 tools/validate_config.py config/config.ini`.
+- Build problems: use the [Build Guide troubleshooting section](BUILD.md#troubleshooting).
+- Unresolved runtime issue: open a
+  [GitHub issue](https://github.com/alireza787b/px4xplane/issues) with the
+  X-Plane `Log.txt`, PX4 terminal output, active `config.ini`, and any ULog.
+
 ## Current Release Policy
 
 - Use the `v4.0.0` package with the refreshed PX4 `px4xplane-sitl` branch while the official PX4 PR is under review.

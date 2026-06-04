@@ -52,7 +52,10 @@ tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza7
 ```
 
 The helper installs the `px4xplane` launcher, syncs the PX4 SITL fork branch,
-and opens the airframe menu. This helper is temporary while
+and opens the airframe menu. If you accept the command install prompt, future
+sessions can be started by typing `px4xplane` from any terminal.
+
+This helper is temporary while
 [PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493) is
 under review; after the PR merges, this section will switch to the official PX4
 SITL commands.
@@ -60,6 +63,8 @@ SITL commands.
 For WSL2, Docker, remote machines, or firewall/IP setup, use the
 [network setup guide](docs/index.md#network-and-platform-notes). If a wrong host
 IP was saved, rerun the launcher with `px4xplane --reset-ip`.
+For common setup or connection errors, see
+[Troubleshooting](docs/index.md#troubleshooting).
 
 ## Common Paths
 
@@ -67,6 +72,7 @@ IP was saved, rerun the launcher with `px4xplane --reset-ip`.
 | --- | --- |
 | Install and fly an included airframe | [Quick Start](#quick-start) and the matching [flight-test card](docs/index.md#flight-test-cards) |
 | Run PX4 in WSL2, Docker, or another computer | [Network setup](docs/index.md#network-and-platform-notes) |
+| Fix setup or connection errors | [Troubleshooting](docs/index.md#troubleshooting) |
 | Create or edit a custom airframe mapping | [Custom airframe guide](docs/custom-airframe-config.md) |
 | Use the browser config editor | [Config editor guide](docs/custom-airframe-config.md#open-the-config-editor) |
 | Build the plugin from source | [Build guide](docs/BUILD.md) |
