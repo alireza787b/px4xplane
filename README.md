@@ -2,7 +2,7 @@
 
 [![Build Status](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml/badge.svg)](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/alireza787b/px4xplane)](https://github.com/alireza787b/px4xplane/releases)
-[![License](https://img.shields.io/github/license/alireza787b/px4xplane)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/alireza787b/px4xplane)
 
 PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
@@ -12,6 +12,14 @@ magnetometer, airspeed, and ground-truth data.
 The current package is `v4.0.0` with Windows, Linux, and macOS builds. It
 includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
 QuadTailsitter.
+
+## Media
+
+[![PX4-XPlane video archive and future v4 playlist](https://img.youtube.com/vi/eZJpRHFgx6g/hqdefault.jpg)](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
+
+New `v4` walkthrough videos are coming soon after the PX4 integration lands.
+The current playlist is kept as a project-history archive and will also host
+future videos.
 
 ## Status
 
@@ -74,14 +82,6 @@ writable X-Plane datarefs.
 
 Use the [custom airframe guide](docs/custom-airframe-config.md) for the config
 editor, schema, camera presets, actuator mappings, and validation workflow.
-
-## Videos
-
-New `v4` walkthrough videos will be recorded after the PX4 integration lands in
-the official repository. Older videos remain available as a project-history
-archive, and future videos will use the same playlist:
-
-[px4xplane video archive and future playlist](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
 
 ## Maintenance
 
