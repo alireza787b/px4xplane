@@ -21,6 +21,22 @@ Use these cards when validating a package or tuning a PX4 airframe:
 - [Cessna 172 X-Plane 12 Test Card](CESSNA172_XPLANE12_TEST.md)
 - [TB2 X-Plane 12 Test Card](TB2_XPLANE12_TEST.md)
 
+## Network and Platform Notes
+
+PX4 connects to X-Plane on TCP port `4560`.
+
+Same-machine Linux or macOS usually needs no extra network setup. If PX4 runs
+inside WSL2, Docker, or another computer, set `PX4_SIM_HOSTNAME` in the PX4/SITL
+environment to the IP address of the machine running X-Plane:
+
+```bash
+export PX4_SIM_HOSTNAME=<xplane-host-ip>
+```
+
+Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
+`px4xplane` launcher can auto-detect common WSL2 host IPs, and
+`px4xplane --reset-ip` clears a saved wrong IP and asks again.
+
 ## Current Release Policy
 
 - Use the `v4.0.0` package with the refreshed PX4 `px4xplane-sitl` branch while the official PX4 PR is under review.

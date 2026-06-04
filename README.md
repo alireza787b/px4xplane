@@ -37,57 +37,33 @@ That fix is intentionally not bundled into this plugin repository.
 2. Extract it and copy the `px4xplane` folder to
    `X-Plane/Resources/plugins/`.
 3. Start X-Plane and load the matching aircraft.
-4. Start PX4 SITL with the helper:
+4. Start the temporary PX4 SITL helper:
 
 ```bash
-cd ~
-curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh
-bash setup_px4_sitl.sh
+tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash "$tmp"
 ```
 
-After setup, run:
+The helper installs the `px4xplane` launcher, syncs the PX4 SITL fork branch,
+and opens the airframe menu. This helper is temporary while
+[PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493) is
+under review; after the PR merges, this section will switch to the official PX4
+SITL commands.
 
-```bash
-px4xplane
-```
-
-The launcher currently supports:
-
-```text
-xplane_cessna172
-xplane_tb2
-xplane_ehang184
-xplane_alia250
-xplane_qtailsitter
-```
+For WSL2, Docker, remote machines, or firewall/IP setup, use the
+[network setup guide](docs/index.md#network-and-platform-notes). If a wrong host
+IP was saved, rerun the launcher with `px4xplane --reset-ip`.
 
 ## Common Paths
 
 | I want to... | Start here |
 | --- | --- |
 | Install and fly an included airframe | [Quick Start](#quick-start) and the matching [flight-test card](docs/index.md#flight-test-cards) |
-| Run PX4 in WSL2, Docker, or another computer | [Network setup](#network-setup) |
+| Run PX4 in WSL2, Docker, or another computer | [Network setup](docs/index.md#network-and-platform-notes) |
 | Create or edit a custom airframe mapping | [Custom airframe guide](docs/custom-airframe-config.md) |
 | Use the browser config editor | [Config editor guide](docs/custom-airframe-config.md#open-the-config-editor) |
 | Build the plugin from source | [Build guide](docs/BUILD.md) |
 | Work on the project or release process | [Developer guide](docs/DEVELOPER.md) |
 | See all packaged docs | [Documentation index](docs/index.md) |
-
-## Network Setup
-
-PX4 connects to X-Plane on TCP port `4560`.
-
-Same-machine Linux or macOS usually needs no extra setup. If PX4 runs in WSL2,
-Docker, or another computer, set `PX4_SIM_HOSTNAME` in the PX4/SITL shell to
-the IP address of the machine running X-Plane:
-
-```bash
-export PX4_SIM_HOSTNAME=172.21.144.1
-```
-
-Also allow inbound TCP `4560` on the X-Plane host firewall. The setup helper can
-auto-detect the Windows host IP for common WSL2 setups, and
-`px4xplane --reset-ip` re-prompts if a wrong IP was saved.
 
 ## Custom Airframes
 
@@ -109,18 +85,9 @@ archive, and future videos will use the same playlist:
 
 ## Maintenance
 
-```bash
-px4xplane --sync         # sync PX4 fork branch, submodules, and saved SITL params
-px4xplane --reset-ip     # re-enter the X-Plane host IP
-px4xplane --reset-config # clear saved launcher settings
-px4xplane --repair       # rerun setup and sync path
-```
-
-Before sharing a custom config:
-
-```bash
-python3 tools/validate_config.py config/config.ini
-```
+The launcher includes maintenance flags for syncing the PX4 fork branch,
+resetting saved IP/config choices, and repairing the setup. See the
+[documentation index](docs/index.md) for the operator and developer workflows.
 
 ## License
 
