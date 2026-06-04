@@ -1,9 +1,9 @@
 # Alia X-Plane 12 Validation Workflow
 
-This workflow keeps the v3.4.3 bridge sensor contract as the baseline. Do not
-change accel signs, GPS velocity units, GPS COG, or HIL_STATE units from a single
-visual symptom. First compare truth capture, decoded bridge replay, and PX4 ULog
-estimator topics.
+This workflow keeps the current bridge sensor contract as the baseline. Do not
+change accel signs, GPS velocity units, GPS COG, or HIL_STATE units from a
+single visual symptom. First compare truth capture, decoded bridge replay, and
+PX4 ULog estimator topics.
 
 ## References
 
@@ -178,10 +178,9 @@ In the X-Plane `Log.txt`, confirm:
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
 only applies when `autoPropBrakes` lists motor indices. v4.0.0 keeps Alia
-lift-prop braking disabled by default because `evtol4` matched the accepted
-v3.4.13 first-FW sink recovery until the brake window removed the remaining margin. `feather`,
-`hard_lock`, and `prop_separate` remain available for controlled A/B testing
-only.
+lift-prop braking disabled by default because the accepted no-brake handoff
+kept more recovery margin than the brake-window test. `feather`, `hard_lock`,
+and `prop_separate` remain available for controlled A/B testing only.
 
 If the first connection attempt times out, click `Connect to SITL` again after
 PX4 is visibly waiting on `simulator_mavlink`. A first timeout usually means

@@ -24,6 +24,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Clarified that the shipped targets are preconfigured examples, not a hard
   X-Plane vehicle-class limit. Additional models still require a matching PX4
   control path and writable X-Plane dataref mappings.
+- Added a README media section that points to the project video archive while
+  keeping the v4 walkthroughs marked as upcoming.
+- Updated public test cards and config comments so current-package checks refer
+  to `v4.0.0` instead of old development package versions.
 
 ### Removed
 

@@ -113,8 +113,8 @@ Parsed channel 7
 - Runway takeoff accelerates, rotates, and climbs without wingstrike or
   immediate heading divergence. If it leaves centerline, check that the ULog has
   `PWM_MAIN_FUNC6 = 440` and X-Plane `Log.txt` shows `Parsed channel 5`.
-  `cessna2` still loaded px4xplane `v3.4.53`, so it did not test the dedicated
-  v3.4.54+ Cessna wheel channel.
+  Earlier Cessna logs that loaded an older package did not test the dedicated
+  Cessna wheel channel.
 - No in-flight EKF, baro stale, accelerometer bias, or airspeed selector
   warnings after sensors settle.
 - TECS holds altitude without phugoid-like throttle/pitch hunting in straight
@@ -124,7 +124,7 @@ Parsed channel 7
 - Mission landing follows the final approach path, slows before final, visibly
   deploys landing flaps, flares near the runway, and disarms after rollout.
 - X-Plane `Log.txt` should not report replaced or missing Cessna flap
-  datarefs. v3.4.57 writes `sim/cockpit2/controls/flap_handle_request_ratio`
+  datarefs. The current package writes `sim/cockpit2/controls/flap_handle_request_ratio`
   and the physical `sim/flightmodel/controls/wing1l_fla1def` /
   `sim/flightmodel/controls/wing1r_fla1def` datarefs.
 - Takeoff flaps are intentionally disabled in this package

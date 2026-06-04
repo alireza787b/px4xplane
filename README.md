@@ -7,7 +7,17 @@
 
 PX4-XPlane connects PX4 SITL to X-Plane. It lets PX4 fly X-Plane aircraft by sending actuator commands to writable X-Plane datarefs and returning simulated sensors such as IMU, GPS, barometer, magnetometer, airspeed, and ground truth.
 
-The current release candidate is `v4.0.0`. It includes the plugin, a browser config editor, reference PX4 airframes, and tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and QuadTailsitter.
+The current package is `v4.0.0`. It includes the plugin, a browser config editor, reference PX4 airframes, and tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and QuadTailsitter.
+
+## Media
+
+The v4 walkthrough videos will be recorded after the PX4 integration lands in
+the official repository. Older videos are still useful as a project history
+archive and show how the integration evolved:
+
+[![px4xplane video archive](https://img.youtube.com/vi/eZJpRHFgx6g/hqdefault.jpg)](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
+
+[Watch the px4xplane video archive and future playlist](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
 
 ## Quick Start
 
@@ -98,7 +108,7 @@ Start here:
 - [Cessna 172 test card](docs/CESSNA172_XPLANE12_TEST.md)
 - [TB2 test card](docs/TB2_XPLANE12_TEST.md)
 
-New walkthrough videos will be published after the PX4 integration lands in the official repository.
+New v4 walkthrough videos will be published after the PX4 integration lands in the official repository.
 
 ## Build from Source
 

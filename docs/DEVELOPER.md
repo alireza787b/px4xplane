@@ -19,16 +19,15 @@ git checkout -b feature/my-feature
 git add .
 git commit -m "Add feature: description"
 
-# 4. Push to master (triggers builds, no release)
+# 4. Push to master
 git checkout master
 git merge feature/my-feature
 git push origin master
-# → GitHub Actions builds Windows, Linux, macOS
-# → Artifacts available for 90 days
+# → No release is created. Use workflow_dispatch for a manual CI build.
 
 # 5. When ready to release:
 # Update version numbers (see Versioning below)
-git add include/VersionInfo.h CMakeLists.txt CHANGELOG.md
+git add include/VersionInfo.h CMakeLists.txt Makefile.linux Makefile.macos docs/config-editor.html CHANGELOG.md
 git commit -m "Release vX.Y.Z: description"
 git tag -a vX.Y.Z -m "Release vX.Y.Z: description"
 git push origin master && git push origin vX.Y.Z
@@ -41,7 +40,7 @@ git push origin master && git push origin vX.Y.Z
 
 ### Version Format: `MAJOR.MINOR.PATCH`
 
-- **MAJOR** (3.x.x): Breaking changes, migration required
+- **MAJOR** (x.0.0): Breaking changes, migration required
 - **MINOR** (x.1.x): New features, backward compatible
 - **PATCH** (x.x.1): Bug fixes, backward compatible
 
@@ -58,7 +57,14 @@ constexpr const char* BUILD = "001";      // Reset for major/minor, increment fo
 project(px4xplane VERSION 4.1.0 LANGUAGES CXX)  // Update
 ```
 
-**3. `CHANGELOG.md`** - Add new section at top:
+**3. `Makefile.linux` and `Makefile.macos`**
+```make
+VERSION := 4.1.0
+```
+
+**4. `docs/config-editor.html`** - Update the displayed editor version/build.
+
+**5. `CHANGELOG.md`** - Add new section at top:
 ```markdown
 ## [4.1.0] - 2026-XX-XX
 
@@ -96,9 +102,9 @@ git push origin v4.1.0
 
 | Trigger | Branch/Tag | Result |
 |---------|-----------|--------|
-| Push to `master` | - | Build all platforms (no release) |
+| Pull request to `master` | - | Build all platforms for validation |
 | Push tag `v*.*.*` | - | Build + Create GitHub Release |
-| Manual | Any | Can trigger from Actions tab |
+| Manual workflow dispatch | Any | Build all platforms on demand |
 
 ### Build Outputs
 
@@ -124,7 +130,7 @@ px4xplane/
 
 ### Workflow Files
 
-- `.github/workflows/build.yml` - Continuous integration (builds on push to master)
+- `.github/workflows/build.yml` - Pull-request and manual build validation
 - `.github/workflows/release.yml` - Release automation (builds + GitHub Release on tag)
 
 ---

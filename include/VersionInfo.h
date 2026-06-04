@@ -8,7 +8,7 @@
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
  * @license MIT License
- * @version 4.0.0 (PX4 integration release candidate)
+ * @version 4.0.0
  * @url https://github.com/alireza787b/px4xplane
  */
 
@@ -25,7 +25,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* VERSION = "4.0.0";
 
     /** Version phase description */
-    constexpr const char* PHASE = "PX4 integration release candidate";
+    constexpr const char* PHASE = "PX4 integration package";
 
     /** Copyright year - update annually */
     constexpr const char* YEAR = "2026";

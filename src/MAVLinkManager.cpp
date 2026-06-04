@@ -525,7 +525,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// Initialized at startup, updated periodically to create realistic bias drift
 	static Eigen::Vector3f accel_bias_drift(0.0f, 0.0f, 0.0f);
 	static uint64_t lastBiasUpdateTime = 0;
-	// v3.3.2: DISABLED - Bias drift feature removed, constant retained for reference
+	// Disabled: bias drift feature removed, constant retained for reference
 	// static const uint64_t BIAS_UPDATE_INTERVAL_US = 100000;  // Update every 100ms (10 Hz)
 
 	// CRITICAL BUG FIX (January 2025): Reset timing state on reconnection
@@ -539,7 +539,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	// Get the current time in microseconds.
 	uint64_t currentTime = TimeManager::getCurrentTimeUsec();
 
-	// v3.3.2: DISABLED - Bias drift causes "High Accelerometer Bias" errors
+	// Disabled: bias drift causes "High Accelerometer Bias" errors
 	// PX4's EKF2 is extremely sensitive to slowly-varying accelerometer data.
 	// Even small drifts (±0.002 m/s²) get interpreted as sensor instability.
 	// Real SITL simulators (Gazebo, jMAVSim) do NOT add artificial bias drift.
@@ -676,14 +676,14 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	}
 
 	//----------------------------------------------------------------------
-	// 3.5. v3.3.2: Bias drift DISABLED
+	// 3.5. Bias drift disabled
 	// Was: Add slowly-varying bias drift to simulate MEMS accelerometer instability
 	// REMOVED: PX4's EKF2 interprets any drift as sensor problems, triggering
 	// "High Accelerometer Bias" errors. Gazebo/jMAVSim don't add artificial drift.
 	//----------------------------------------------------------------------
-	// body_accel.x() += accel_bias_drift.x();  // DISABLED in v3.3.2
-	// body_accel.y() += accel_bias_drift.y();  // DISABLED in v3.3.2
-	// body_accel.z() += accel_bias_drift.z();  // DISABLED in v3.3.2
+	// body_accel.x() += accel_bias_drift.x();  // disabled
+	// body_accel.y() += accel_bias_drift.y();  // disabled
+	// body_accel.z() += accel_bias_drift.z();  // disabled
 	(void)accel_bias_drift;  // Suppress unused variable warning
 
 	// Pipeline Stage 4 Logging: After bias drift (now shows DISABLED)
@@ -691,7 +691,7 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
 	if (ConfigManager::debug_log_accel_pipeline && (++pipelineLogCounter4 % 500 == 0)) {
 		char buf[256];
 		snprintf(buf, sizeof(buf),
-			"px4xplane: [ACCEL_S4_BIAS] X=%.4f Y=%.4f Z=%.4f m/s² | bias=DISABLED(v3.3.2)\n",
+			"px4xplane: [ACCEL_S4_BIAS] X=%.4f Y=%.4f Z=%.4f m/s² | bias=DISABLED\n",
 			body_accel.x(), body_accel.y(), body_accel.z());
 		XPLMDebugString(buf);
 	}

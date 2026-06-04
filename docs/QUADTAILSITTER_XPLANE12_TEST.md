@@ -1,7 +1,7 @@
 # QuadTailsitter X-Plane 12 Final Polish Workflow
 
 This card is for the next controlled QuadTailsitter closure validation after
-`qtail27.zip`. v3.4.52 keeps the accepted `5 kg` 6S 3115-class aircraft target,
+`qtail27.zip`. v4.0.0 keeps the accepted `5 kg` 6S 3115-class aircraft target,
 the stationary sensor/contact fixes, and the body-axis `-Z` virtual pitot.
 qtail27 showed that manual RTL can trigger auto back-transition too low when
 `RTL_DESCEND_ALT=75 m`, so this package raises the RTL altitude margin and adds
@@ -70,13 +70,13 @@ target before the aircraft reaches the current point.
 Keep fixed-wing waypoint spacing at least `1300 m`, avoid tight waypoint
 clusters, and do not use a `50 m` VTOL Land approach altitude for public demos.
 qtail27 proved that `75 m` RTL descent altitude is not enough margin for this
-tailsitter if auto RTL starts back-transition from fixed-wing energy. v3.4.51+
+tailsitter if auto RTL starts back-transition from fixed-wing energy. v4.0.0
 uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150` so manual RTL starts the
 recovery higher while preserving the qtail26/qtail27 accepted flight-control
 baseline.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
-stability. v3.4.46+ hides the large rendered gear geometry while keeping the
+stability. v4.0.0 hides the large rendered gear geometry while keeping the
 fixed contact pads active. True animated cosmetic retractable legs remain a
 separate visual-asset slice.
 
@@ -211,7 +211,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v3.4.52`
+- `px4xplane: Version: v4.0.0`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -262,7 +262,7 @@ In TruthCapture, confirm:
 
 ## qtail26 Baseline
 
-The qtail26 mission run loaded the intended v3.4.49 PX4 values and is the
+The qtail26 mission run loaded the intended PX4 values and is the
 baseline for judging this package:
 
 - TruthCapture: `45,723` rows, `0` dropped rows, `0` sim-time resets, about
@@ -275,7 +275,7 @@ baseline for judging this package:
 - Estimator health was clean: no baro stale, vertical velocity instability,
   accelerometer-bias warning, or pause/FPS sensor regression.
 
-v3.4.52 preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
+v4.0.0 preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
 The only flight-param change is the RTL return/descent altitude margin for
 manual RTL from fixed-wing mode.
 
@@ -303,7 +303,7 @@ Save and send:
 The next log should be used to verify:
 
 - The ULog initial parameters match this card, especially the canted
-  `CA_ROTOR*_AX/AY/AZ` values and the v3.4.52 RTL/FW/back-transition values. If the
+  `CA_ROTOR*_AX/AY/AZ` values and the v4.0.0 RTL/FW/back-transition values. If the
   rotor axes are all `AX=0`, `AY=0`, `AZ=-1`, or if `FW_R_LIM` is still `32`,
   stop: the run is using stale PX4 parameters.
 - Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this

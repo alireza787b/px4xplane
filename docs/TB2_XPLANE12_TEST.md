@@ -9,14 +9,14 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v3.4.66
+px4xplane: Version: v4.0.0
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
 
 4. Confirm the HUD or `Log.txt` does not show a config warning after the
-   Bayraktar `.acf` is loaded. v3.4.66 defers the match check while X-Plane is
-   still reporting only the simulator root path during startup.
+   Bayraktar `.acf` is loaded. The current package defers the match check while
+   X-Plane is still reporting only the simulator root path during startup.
 5. Confirm the config editor shows `TB2` as the selected airframe.
 
 ## PX4 Check
@@ -132,4 +132,4 @@ The target is safe autonomous runway takeoff, cruise, loiter, and landing with
 no EKF warnings, controlled centerline tracking, stable flap deployment, and a
 landing approach that converges toward the configured `28 m/s` airspeed without
 the previous high-energy final. Rollout should stay armed and steered longer
-than v3.4.60, then disarm after the aircraft has slowed to a low taxi speed.
+than the earlier high-energy landing baseline, then disarm after the aircraft has slowed to a low taxi speed.
