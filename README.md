@@ -5,24 +5,37 @@
 [![License](https://img.shields.io/github/license/alireza787b/px4xplane)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/alireza787b/px4xplane)
 
-PX4-XPlane connects PX4 SITL to X-Plane. It lets PX4 fly X-Plane aircraft by sending actuator commands to writable X-Plane datarefs and returning simulated sensors such as IMU, GPS, barometer, magnetometer, airspeed, and ground truth.
+PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
+writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
+magnetometer, airspeed, and ground-truth data.
 
-The current package is `v4.0.0`. It includes the plugin, a browser config editor, reference PX4 airframes, and tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and QuadTailsitter.
+The current package is `v4.0.0` with Windows, Linux, and macOS builds. It
+includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
+QuadTailsitter.
 
-## Media
+## Status
 
-The v4 walkthrough videos will be recorded after the PX4 integration lands in
-the official repository. Older videos are still useful as a project history
-archive and show how the integration evolved:
+PX4 integration is under review in
+[PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
+Until that merges, the setup helper temporarily uses the maintained
+`alireza787b/PX4-Autopilot-Me` branch `px4xplane-sitl`.
 
-[![px4xplane video archive](https://img.youtube.com/vi/eZJpRHFgx6g/hqdefault.jpg)](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
+`v4.0.0` includes the px4xplane-side fixes from the recent validation cycle:
+sensor timing robustness, low-FPS/pause recovery, stale SITL parameter cleanup,
+airframe config validation, camera presets, and the accelerometer-bias/ground
+contact fixes that affected earlier test packages.
 
-[Watch the px4xplane video archive and future playlist](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
+One PX4-side EKF edge case found during fast VTOL transition testing is tracked
+separately in
+[PX4-Autopilot PR #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
+That fix is intentionally not bundled into this plugin repository.
 
 ## Quick Start
 
-1. Download the plugin package for your OS from [Releases](https://github.com/alireza787b/px4xplane/releases).
-2. Copy the extracted `px4xplane` folder to `X-Plane/Resources/plugins/`.
+1. Download the package for your OS from
+   [Releases](https://github.com/alireza787b/px4xplane/releases).
+2. Extract it and copy the `px4xplane` folder to
+   `X-Plane/Resources/plugins/`.
 3. Start X-Plane and load the matching aircraft.
 4. Start PX4 SITL with the helper:
 
@@ -32,13 +45,13 @@ curl -O https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/set
 bash setup_px4_sitl.sh
 ```
 
-After the first setup, run:
+After setup, run:
 
 ```bash
 px4xplane
 ```
 
-The launcher lets you select:
+The launcher currently supports:
 
 ```text
 xplane_cessna172
@@ -48,78 +61,51 @@ xplane_alia250
 xplane_qtailsitter
 ```
 
-Until the PX4 PR is merged, the launcher uses the maintained `alireza787b/PX4-Autopilot-Me` branch `px4xplane-sitl`. After merge, the workflow will move to the official PX4 repository.
+## Common Paths
 
-## Windows, WSL, Docker, and Firewalls
+| I want to... | Start here |
+| --- | --- |
+| Install and fly an included airframe | [Quick Start](#quick-start) and the matching [flight-test card](docs/index.md#flight-test-cards) |
+| Run PX4 in WSL2, Docker, or another computer | [Network setup](#network-setup) |
+| Create or edit a custom airframe mapping | [Custom airframe guide](docs/custom-airframe-config.md) |
+| Use the browser config editor | [Config editor guide](docs/custom-airframe-config.md#open-the-config-editor) |
+| Build the plugin from source | [Build guide](docs/BUILD.md) |
+| Work on the project or release process | [Developer guide](docs/DEVELOPER.md) |
+| See all packaged docs | [Documentation index](docs/index.md) |
+
+## Network Setup
 
 PX4 connects to X-Plane on TCP port `4560`.
 
-If PX4 and X-Plane are on the same native Linux or macOS machine, no extra network setup is usually needed. If PX4 runs in WSL2, Docker, or another computer, set `PX4_SIM_HOSTNAME` in the PX4/SITL shell to the IP address of the machine running X-Plane:
+Same-machine Linux or macOS usually needs no extra setup. If PX4 runs in WSL2,
+Docker, or another computer, set `PX4_SIM_HOSTNAME` in the PX4/SITL shell to
+the IP address of the machine running X-Plane:
 
 ```bash
 export PX4_SIM_HOSTNAME=172.21.144.1
 ```
 
-Also allow inbound TCP `4560` on the X-Plane host firewall. The setup helper can auto-detect the Windows host IP for common WSL2 setups, and `px4xplane --reset-ip` re-prompts if a wrong IP was saved.
-
-## Config Editor
-
-The plugin reads one runtime config file:
-
-```text
-px4xplane/64/config.ini
-```
-
-Open the editor from:
-
-```text
-Plugins > px4xplane > Advanced > Open Config Editor
-```
-
-or open:
-
-```text
-px4xplane/docs/config-editor.html
-```
-
-If your browser blocks auto-load, choose `px4xplane/64/config.ini` manually. The JSON schema is only editor/validator metadata, not a second runtime config.
-
-![px4xplane config editor](docs/assets/config-editor-ui.png)
+Also allow inbound TCP `4560` on the X-Plane host firewall. The setup helper can
+auto-detect the Windows host IP for common WSL2 setups, and
+`px4xplane --reset-ip` re-prompts if a wrong IP was saved.
 
 ## Custom Airframes
 
-The included examples are ready-to-test PX4 targets. They are not a hard limit. A new X-Plane aircraft or vehicle model can be integrated when PX4 has a matching SITL-capable control path and px4xplane can map the needed actuator outputs to writable X-Plane datarefs.
+The included examples are ready-to-test PX4 targets, not a hard vehicle-class
+limit. A new X-Plane model can be integrated when PX4 has a matching
+SITL-capable control path and px4xplane can map the needed actuator outputs to
+writable X-Plane datarefs.
 
-Start here:
+Use the [custom airframe guide](docs/custom-airframe-config.md) for the config
+editor, schema, camera presets, actuator mappings, and validation workflow.
 
-- [Custom airframe guide](docs/custom-airframe-config.md)
-- [Config schema](docs/developer/config-schema.md)
-- [X-Plane datarefs](https://developer.x-plane.com/datarefs/)
-- [Plane Maker manual](https://developer.x-plane.com/manuals/planemaker/index.html)
+## Videos
 
-## Docs
+New `v4` walkthrough videos will be recorded after the PX4 integration lands in
+the official repository. Older videos remain available as a project-history
+archive, and future videos will use the same playlist:
 
-- [Build guide](docs/BUILD.md)
-- [Developer guide](docs/DEVELOPER.md)
-- [Documentation index](docs/index.md)
-- [Alia test card](docs/ALIA_XPLANE12_TEST.md)
-- [Ehang test card](docs/EHANG184_XPLANE12_TEST.md)
-- [QuadTailsitter test card](docs/QUADTAILSITTER_XPLANE12_TEST.md)
-- [Cessna 172 test card](docs/CESSNA172_XPLANE12_TEST.md)
-- [TB2 test card](docs/TB2_XPLANE12_TEST.md)
-
-New v4 walkthrough videos will be published after the PX4 integration lands in the official repository.
-
-## Build from Source
-
-```bash
-git clone --recursive https://github.com/alireza787b/px4xplane.git
-cd px4xplane
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
-```
-
-Build output is under `build/<platform>/Release/px4xplane/`.
+[px4xplane video archive and future playlist](https://www.youtube.com/watch?v=eZJpRHFgx6g&list=PLVZvZdBQdm_4RepbwUZaccwH0iQvHtMBh&pp=sAgC)
 
 ## Maintenance
 
