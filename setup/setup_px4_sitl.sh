@@ -87,6 +87,7 @@
 # === Configurable Variables ===
 REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
+EKF_GSF_GUARD_BRANCH="ekf2-gnss-yaw-reset-guard"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
@@ -110,12 +111,14 @@ UNINSTALL_FLAG="--uninstall"
 SYNC_MODE_FLAG="--sync"
 RESET_CONFIG_FLAG="--reset-config"
 RESET_IP_FLAG="--reset-ip"
+EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=false
 RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
+APPLY_EKF_GSF_GUARD=false
 
 print_usage() {
     cat <<EOF
@@ -127,6 +130,9 @@ Options:
   --repair        Run the full dependency/setup path and sync the PX4 fork.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
+  --with-ekf-gsf-guard
+                  Local test mode: sync the X-Plane PR branch, then cherry-pick
+                  the open EKF-GSF yaw reset guard PR on top before launching.
   --uninstall     Remove the global px4xplane command and default PX4 fork checkout.
   --help          Show this help.
 EOF
@@ -154,6 +160,11 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$RESET_IP_FLAG")
             RESET_IP_MODE=true
+            shift
+            ;;
+        "$EKF_GSF_GUARD_FLAG")
+            APPLY_EKF_GSF_GUARD=true
+            SYNC_MODE=true
             shift
             ;;
         "$HELP_FLAG"|"-h")
@@ -442,6 +453,10 @@ reset_params_if_airframe_changed() {
 sync_px4_repo_to_remote() {
     local clean_untracked="${1:-false}"
     local remote_ref="origin/$BRANCH_NAME"
+    local local_branch="$BRANCH_NAME"
+    local guard_ref="origin/$EKF_GSF_GUARD_BRANCH"
+    local guard_commits
+    local guard_commit
     local status_output
     local ahead_count
     local backup_branch
@@ -460,8 +475,22 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
+    if [ "$APPLY_EKF_GSF_GUARD" = true ]; then
+        progress "Fetching EKF-GSF guard branch for local validation..."
+        if ! git fetch origin "$EKF_GSF_GUARD_BRANCH" --prune; then
+            warning "Could not fetch origin/$EKF_GSF_GUARD_BRANCH."
+            return 1
+        fi
+        local_branch="${BRANCH_NAME}-with-ekf-gsf-guard"
+    fi
+
     if ! git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
         warning "Remote branch $remote_ref was not found."
+        return 1
+    fi
+
+    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "$guard_ref" >/dev/null 2>&1; then
+        warning "Remote branch $guard_ref was not found."
         return 1
     fi
 
@@ -478,7 +507,7 @@ sync_px4_repo_to_remote() {
         info "Local commits were ahead of remote; backup branch created: $backup_branch"
     fi
 
-    if ! git checkout -B "$BRANCH_NAME" "$remote_ref"; then
+    if ! git checkout -B "$local_branch" "$remote_ref"; then
         warning "Could not switch local branch to $remote_ref."
         return 1
     fi
@@ -486,6 +515,26 @@ sync_px4_repo_to_remote() {
     if ! git reset --hard "$remote_ref"; then
         warning "Could not reset local branch to $remote_ref."
         return 1
+    fi
+
+    if [ "$APPLY_EKF_GSF_GUARD" = true ]; then
+        guard_commits="$(git rev-list --reverse "$remote_ref..$guard_ref" 2>/dev/null || true)"
+
+        if [ -z "$guard_commits" ]; then
+            warning "No EKF-GSF guard commits found on $guard_ref."
+            return 1
+        fi
+
+        progress "Applying EKF-GSF yaw reset guard locally for validation..."
+        for guard_commit in $guard_commits; do
+            if ! git cherry-pick -x "$guard_commit"; then
+                git cherry-pick --abort >/dev/null 2>&1 || true
+                warning "Could not apply EKF-GSF guard commit $guard_commit."
+                return 1
+            fi
+        done
+
+        success "Local validation branch includes EKF-GSF guard: $(git rev-parse --short HEAD)."
     fi
 
     if [ "$clean_untracked" = true ]; then
@@ -505,7 +554,7 @@ sync_px4_repo_to_remote() {
     fi
 
     reset_saved_sitl_parameters
-    success "PX4 fork is synced to $(git rev-parse --short HEAD)."
+    success "PX4 fork is synced to $(git rev-parse --short HEAD) on $(git branch --show-current)."
 }
 
 update_launcher_script_if_needed() {
@@ -588,6 +637,7 @@ info "Current Status:"
 echo "  → Fork: github.com/alireza787b/PX4-Autopilot-Me"
 echo "  → Branch: px4xplane-sitl"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
+echo "  → EKF-GSF guard test option: px4xplane --with-ekf-gsf-guard"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""

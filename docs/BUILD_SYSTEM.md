@@ -359,7 +359,7 @@ make -f Makefile.macos install XPLANE_DIR=/Applications/X-Plane\ 12
 
 **Look for:**
 ```
-Loaded: plugins/px4xplane/64/win.xpl (px4xplane v4.0.1)
+Loaded: plugins/px4xplane/64/win.xpl (px4xplane v4.0.2)
 ```
 
 **If errors:**

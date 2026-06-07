@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-06-07
+
+### Added
+
+- Added `px4xplane --with-ekf-gsf-guard` for final local validation while the
+  PX4 EKF-GSF yaw-reset guard PR is under review. The launcher now syncs the
+  X-Plane SITL branch, creates a local validation branch, cherry-picks the EKF
+  guard on top, and clears saved SITL parameters before launch.
+
+### Changed
+
+- Updated package metadata and docs so the current release, config editor, and
+  plugin About dialog report the same `v4.0.2` version.
+
 ## [4.0.0] - 2026-06-03
 
 ### Changed

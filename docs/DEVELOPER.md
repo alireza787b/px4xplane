@@ -140,24 +140,24 @@ px4xplane/
 ### Bug Fix (Patch Release)
 
 ```bash
-# Current: v4.0.0 -> Target: v4.0.1
+# Example: v4.0.1 -> v4.0.2
 
 # 1. Fix bug and test
 # 2. Update versions:
-#    - VersionInfo.h: VERSION="4.0.1", BUILD="002" (increment)
-#    - CMakeLists.txt: VERSION 4.0.1
-#    - CHANGELOG.md: Add [4.0.1] section
+#    - VersionInfo.h: VERSION="4.0.2", BUILD="002" (increment)
+#    - CMakeLists.txt: VERSION 4.0.2
+#    - CHANGELOG.md: Add [4.0.2] section
 
 # 3. Release
-git commit -m "Release v4.0.1: Fix critical bug"
-git tag -a v4.0.1 -m "Release v4.0.1: Fix critical bug"
-git push origin master && git push origin v4.0.1
+git commit -m "Release v4.0.2: Fix critical bug"
+git tag -a v4.0.2 -m "Release v4.0.2: Fix critical bug"
+git push origin master && git push origin v4.0.2
 ```
 
 ### New Feature (Minor Release)
 
 ```bash
-# Current: v4.0.0 -> Target: v4.1.0
+# Example: v4.0.x -> v4.1.0
 
 # 1. Implement feature and test
 # 2. Update versions:
@@ -306,4 +306,4 @@ px4xplane/
 
 ---
 
-**Last Updated**: 2026-06-03 (px4xplane v4.0.1)
+**Last Updated**: 2026-06-07 (px4xplane v4.0.2)

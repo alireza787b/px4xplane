@@ -57,7 +57,7 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 
 ## Current Release Policy
 
-- Use the `v4.0.1` package with the refreshed PX4 `px4xplane-sitl` branch while the official PX4 PR is under review.
+- Use the `v4.0.2` package with the refreshed PX4 `px4xplane-sitl` branch while the official PX4 PR is under review.
 - PX4 integration PR:
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 - Temporary helper behavior: until #22493 merges, `setup_px4_sitl.sh` and
@@ -67,6 +67,10 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
   This covers the fast-VTOL transition EKF-GSF yaw-reset issue found during
   final Alia validation and is intentionally separate from the plugin package.
+- For local validation while #27533 is pending, run
+  `px4xplane --sync --reset-config --with-ekf-gsf-guard`. The launcher creates
+  a local PX4 branch named `px4xplane-sitl-with-ekf-gsf-guard` by stacking the
+  EKF guard on top of the X-Plane SITL branch.
 - The plugin runtime config is `px4xplane/64/config.ini`.
 - `config_schema.json` is editor and validator metadata only; it is not read by the plugin at runtime.
 - Use `Plugins > px4xplane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
