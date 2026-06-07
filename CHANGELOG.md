@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-06-07
+
+### Changed
+
+- The launcher now asks whether to apply the pending PX4 EKF-GSF yaw-reset guard
+  during local validation. The default answer is yes while PX4 PR #27533 is
+  under review.
+- Added `px4xplane --without-ekf-gsf-guard` for exact-branch testing without the
+  temporary EKF guard.
+- Updated package metadata and docs so the current release, config editor, and
+  plugin About dialog report `v4.0.3`.
+
 ## [4.0.2] - 2026-06-07
 
 ### Added

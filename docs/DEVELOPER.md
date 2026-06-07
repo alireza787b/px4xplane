@@ -306,4 +306,4 @@ px4xplane/
 
 ---
 
-**Last Updated**: 2026-06-07 (px4xplane v4.0.2)
+**Last Updated**: 2026-06-07 (px4xplane v4.0.3)

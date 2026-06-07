@@ -4,7 +4,7 @@
 #
 # Author: Alireza Ghaderi
 # LinkedIn: alireza787b
-# Updated: May 2026
+# Updated: June 2026
 # GitHub Repo: alireza787b/px4xplane
 #
 # === Purpose ===
@@ -112,6 +112,7 @@ SYNC_MODE_FLAG="--sync"
 RESET_CONFIG_FLAG="--reset-config"
 RESET_IP_FLAG="--reset-ip"
 EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
+NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=false
@@ -119,6 +120,7 @@ RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
 APPLY_EKF_GSF_GUARD=false
+SKIP_EKF_GSF_GUARD=false
 
 print_usage() {
     cat <<EOF
@@ -133,6 +135,8 @@ Options:
   --with-ekf-gsf-guard
                   Local test mode: sync the X-Plane PR branch, then cherry-pick
                   the open EKF-GSF yaw reset guard PR on top before launching.
+  --without-ekf-gsf-guard
+                  Do not prompt for or apply the temporary EKF-GSF guard.
   --uninstall     Remove the global px4xplane command and default PX4 fork checkout.
   --help          Show this help.
 EOF
@@ -165,6 +169,11 @@ while [[ $# -gt 0 ]]; do
         "$EKF_GSF_GUARD_FLAG")
             APPLY_EKF_GSF_GUARD=true
             SYNC_MODE=true
+            shift
+            ;;
+        "$NO_EKF_GSF_GUARD_FLAG")
+            SKIP_EKF_GSF_GUARD=true
+            APPLY_EKF_GSF_GUARD=false
             shift
             ;;
         "$HELP_FLAG"|"-h")
@@ -591,6 +600,30 @@ update_launcher_script_if_needed() {
     rm -f "$temp_script"
 }
 
+prompt_for_ekf_gsf_guard() {
+    if [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$SKIP_EKF_GSF_GUARD" = true ]; then
+        return
+    fi
+
+    echo ""
+    highlight "EKF-GSF yaw-reset guard"
+    echo "A separate PX4 PR fixes a fast-VTOL transition yaw-reset edge case:"
+    echo "  https://github.com/PX4/PX4-Autopilot/pull/27533"
+    echo ""
+    echo "Apply that guard locally on top of the X-Plane SITL branch? (Recommended)"
+    echo "Press Enter for yes (default) or type 'n' to run without it."
+    read -t 10 -r EKF_GSF_GUARD_CHOICE
+
+    if [[ -z "$EKF_GSF_GUARD_CHOICE" || ! "$EKF_GSF_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
+        APPLY_EKF_GSF_GUARD=true
+        SYNC_MODE=true
+        info "EKF-GSF guard will be applied locally for this run."
+    else
+        SKIP_EKF_GSF_GUARD=true
+        info "Continuing without the temporary EKF-GSF guard."
+    fi
+}
+
 if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
     rm -f "$CONFIG_FILE"
     success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
@@ -619,7 +652,7 @@ echo "╚═══════════════════════�
 echo ""
 highlight "Author: Alireza Ghaderi (@alireza787b)"
 highlight "GitHub: https://github.com/alireza787b/px4xplane"
-highlight "Updated: May 2026"
+highlight "Updated: June 2026"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 warning "⚠️  TESTING PHASE - TEMPORARY WORKAROUND ⚠️"
@@ -637,7 +670,7 @@ info "Current Status:"
 echo "  → Fork: github.com/alireza787b/PX4-Autopilot-Me"
 echo "  → Branch: px4xplane-sitl"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
-echo "  → EKF-GSF guard test option: px4xplane --with-ekf-gsf-guard"
+echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""
@@ -665,6 +698,8 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 success "Git found."
+
+prompt_for_ekf_gsf_guard
 
 # === Simplified Process for Subsequent Runs ===
 if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
