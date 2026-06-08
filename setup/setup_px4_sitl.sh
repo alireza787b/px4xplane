@@ -85,8 +85,10 @@
 # - Official PX4: https://github.com/PX4/PX4-Autopilot
 
 # === Configurable Variables ===
-REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
-BRANCH_NAME="px4xplane-sitl"
+REPO_URL="${PX4XPLANE_PX4_REPO:-https://github.com/alireza787b/PX4-Autopilot-Me.git}"
+BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-px4xplane-sitl}"
+REPO_URL_WAS_OVERRIDDEN=false
+[ -n "${PX4XPLANE_PX4_REPO:-}" ] && REPO_URL_WAS_OVERRIDDEN=true
 EKF_GSF_GUARD_BRANCH="ekf2-gnss-yaw-reset-guard"
 VTOL_HANDOFF_GUARD_BRANCH="vtol-standard-throttle-handoff-xplane"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
@@ -112,6 +114,8 @@ UNINSTALL_FLAG="--uninstall"
 SYNC_MODE_FLAG="--sync"
 RESET_CONFIG_FLAG="--reset-config"
 RESET_IP_FLAG="--reset-ip"
+PX4_REPO_FLAG="--px4-repo"
+PX4_BRANCH_FLAG="--px4-branch"
 EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
 VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
@@ -137,6 +141,10 @@ Options:
   --repair        Run the full dependency/setup path and sync the PX4 fork.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
+  --px4-repo URL  Use a different PX4 fork remote for this run.
+  --px4-branch NAME
+                  Use a different PX4 branch for this run. Also available via
+                  PX4XPLANE_PX4_BRANCH for scripted validation.
   --with-ekf-gsf-guard
                   Local test mode: sync the X-Plane PR branch, then cherry-pick
                   the open EKF-GSF yaw reset guard PR on top before launching.
@@ -175,6 +183,27 @@ while [[ $# -gt 0 ]]; do
         "$RESET_IP_FLAG")
             RESET_IP_MODE=true
             shift
+            ;;
+        "$PX4_REPO_FLAG")
+            if [ -z "${2:-}" ]; then
+                echo "Missing value for $PX4_REPO_FLAG"
+                print_usage
+                exit 1
+            fi
+            REPO_URL="$2"
+            REPO_URL_WAS_OVERRIDDEN=true
+            SYNC_MODE=true
+            shift 2
+            ;;
+        "$PX4_BRANCH_FLAG")
+            if [ -z "${2:-}" ]; then
+                echo "Missing value for $PX4_BRANCH_FLAG"
+                print_usage
+                exit 1
+            fi
+            BRANCH_NAME="$2"
+            SYNC_MODE=true
+            shift 2
             ;;
         "$EKF_GSF_GUARD_FLAG")
             APPLY_EKF_GSF_GUARD=true
@@ -526,6 +555,9 @@ sync_px4_repo_to_remote() {
     if ! git remote get-url origin >/dev/null 2>&1; then
         git remote add origin "$REPO_URL"
         info "Added origin remote: $REPO_URL"
+    elif [ "$REPO_URL_WAS_OVERRIDDEN" = true ]; then
+        git remote set-url origin "$REPO_URL"
+        info "Using overridden origin remote: $REPO_URL"
     fi
 
     if ! git fetch origin "+$BRANCH_NAME:refs/remotes/origin/$BRANCH_NAME"; then
