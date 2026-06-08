@@ -57,9 +57,9 @@ ASPD_DO_CHECKS=1
 ASPD_FALLBACK=1
 SYS_HAS_NUM_ASPD=0
 EKF2_ABL_LIM=0.8
-CAL_ACC0_XOFF=-0.030
-CAL_ACC0_YOFF=0.010
-CAL_ACC0_ZOFF=-0.770
+CAL_ACC0_XOFF=0.0
+CAL_ACC0_YOFF=0.0
+CAL_ACC0_ZOFF=0.0
 IMU_GYRO_RATEMAX=200
 IMU_INTEG_RATE=200
 SENS_GPS0_DELAY=10
@@ -80,6 +80,10 @@ LNDFW_VEL_XY_MAX=6.0
 LNDFW_TRIG_TIME=2.0
 COM_DISARM_LAND=4.0
 ```
+
+Keep the accelerometer offsets neutral. The bridge already publishes
+attitude-consistent HIL accelerometer data; nonzero offsets can corrupt
+`sensor_combined` and trigger EKF2 accelerometer-bias checks while parked.
 
 Abort the test if the ULog still shows stale values such as
 `EKF2_ABL_LIM=2.0`, `SENS_GPS0_DELAY=0`, `EKF2_MULTI_IMU=3`, or

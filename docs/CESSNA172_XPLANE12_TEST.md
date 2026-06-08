@@ -56,8 +56,8 @@ SYS_AUTOSTART = 5001
 EKF2_MULTI_IMU = 1
 SENS_IMU_MODE = 0
 CAL_ACC0_PRIO = 50
-CAL_ACC0_XOFF = -0.018
-CAL_ACC0_YOFF = -0.139
+CAL_ACC0_XOFF = 0.0
+CAL_ACC0_YOFF = 0.0
 CAL_ACC0_ZOFF = 0.0
 EKF2_ABL_LIM = 0.8
 EKF2_ACC_B_NOISE = 0.001
@@ -97,6 +97,10 @@ LNDFW_AIRSPD_MAX = 30
 NAV_ACC_RAD = 180
 NAV_LOITER_RAD = 600
 ```
+
+Keep the accelerometer offsets neutral. The bridge already publishes
+attitude-consistent HIL accelerometer data; nonzero offsets can corrupt
+`sensor_combined` and trigger EKF2 accelerometer-bias checks while parked.
 
 Bridge sanity values:
 
