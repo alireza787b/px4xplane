@@ -9,7 +9,7 @@ PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
 writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
-The current package is `v4.0.3` with Windows, Linux, and macOS builds. It
+The current package is `v4.0.4` with Windows, Linux, and macOS builds. It
 includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
 QuadTailsitter.
 
@@ -28,10 +28,10 @@ PX4 integration is under review in
 Until that merges, the setup helper temporarily uses the maintained
 `alireza787b/PX4-Autopilot-Me` branch `px4xplane-sitl`.
 
-`v4.0.3` includes the px4xplane-side fixes from the recent validation cycle:
+`v4.0.4` includes the px4xplane-side fixes from the recent validation cycle:
 sensor timing robustness, low-FPS/pause recovery, stale SITL parameter cleanup,
-airframe config validation, camera presets, and the accelerometer-bias/ground
-contact fixes that affected earlier test packages. The launcher also asks
+airframe config validation, camera presets, Alia elevator mapping, and the
+accelerometer-bias/ground contact fixes that affected earlier test packages. The launcher also asks
 whether to apply temporary PX4 guard PRs while separate PX4 fixes are under
 review.
 
