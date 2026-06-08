@@ -116,8 +116,10 @@ param set-default SENS_GPS1_DELAY 10
 # report landed/at-rest. Keep normal GNSS quality checks, but do not reject a
 # valid simulator GNSS source on stationary-only horizontal drift checks.
 param set-default EKF2_GPS_CHECK 1887
-param set-default EKF2_GPS_P_NOISE 2.5
-param set-default EKF2_GPS_V_NOISE 0.30
+# X-Plane runway/landing-roll dynamics and variable frame cadence make the
+# HIL GNSS stream less ideal than a purely kinematic simulator.
+param set-default EKF2_GPS_P_NOISE 3.5
+param set-default EKF2_GPS_V_NOISE 0.35
 param set-default EKF2_GPS_P_GATE 8.0
 
 # Magnetometer and airspeed aiding.

@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Adjusted X-Plane PX4 airframe GNSS covariance mirrors to match the final
+  validation logs: slightly higher velocity covariance for all packaged
+  airframes and higher fixed-wing position covariance for Cessna/TB2 rollout
+  and landing phases.
+- Extended the temporary PX4 SITL launcher so it can use an existing
+  PX4-Autopilot checkout via `--px4-path` without rewriting `origin`, and added
+  `--restore-official` to return that checkout to official PX4 `master`.
+
 ## [4.0.4] - 2026-06-08
 
 ### Changed

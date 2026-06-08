@@ -79,12 +79,19 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   `px4xplane --without-ekf-gsf-guard` or
   `px4xplane --without-vtol-handoff-guard` only for exact-branch testing
   without the temporary guards.
+- If you already maintain an official PX4 checkout, use
+  `px4xplane --px4-path ~/PX4-Autopilot --sync --reset-config`. The launcher
+  adds/updates a separate `px4xplane` remote and does not rewrite `origin`.
+- Use `px4xplane --px4-path ~/PX4-Autopilot --restore-official` to reset that
+  checkout back to official PX4 `master` after validation.
 - The plugin runtime config is `px4xplane/64/config.ini`.
 - `config_schema.json` is editor and validator metadata only; it is not read by the plugin at runtime.
 - Use `Plugins > px4xplane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
 - Use `Plugins > px4xplane > Advanced > Validate Config` after changing the active mapping in-sim.
 - Confirm the X-Plane aircraft, active `config_name`, and PX4 `SYS_AUTOSTART` target match before arming.
-- Run `px4xplane --sync` before release validation to align the PX4 fork branch, update submodules, and clear stale SITL parameters.
+- Run `px4xplane --sync` before release validation to align the selected PX4
+  checkout with the X-Plane branch, update submodules, and clear stale SITL
+  parameters.
 
 ## Public Docs Policy
 

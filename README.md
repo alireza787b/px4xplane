@@ -86,6 +86,21 @@ creates a local PX4 validation branch with those guard commits cherry-picked on
 top of the X-Plane SITL branch. It does not change the official X-Plane PR
 scope.
 
+If you already have a PX4 checkout and do not want a second clone, pass it to
+the helper:
+
+```bash
+px4xplane --px4-path ~/PX4-Autopilot --sync --reset-config
+```
+
+The helper uses a separate `px4xplane` git remote inside that checkout and
+leaves your `origin` remote unchanged. To put the selected checkout back on
+official PX4 `master`, run:
+
+```bash
+px4xplane --px4-path ~/PX4-Autopilot --restore-official
+```
+
 ## Common Paths
 
 | I want to... | Start here |

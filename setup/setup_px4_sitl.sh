@@ -89,11 +89,13 @@ REPO_URL="${PX4XPLANE_PX4_REPO:-https://github.com/alireza787b/PX4-Autopilot-Me.
 BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-px4xplane-sitl}"
 REPO_URL_WAS_OVERRIDDEN=false
 [ -n "${PX4XPLANE_PX4_REPO:-}" ] && REPO_URL_WAS_OVERRIDDEN=true
+PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-origin}"
 EKF_GSF_GUARD_BRANCH="ekf2-gnss-yaw-reset-guard"
 VTOL_HANDOFF_GUARD_BRANCH="vtol-standard-throttle-handoff-xplane"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
+PX4_PATH_OVERRIDE="${PX4XPLANE_PX4_PATH:-}"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 MAVLINK2REST_IP="127.0.0.1"
@@ -116,6 +118,8 @@ RESET_CONFIG_FLAG="--reset-config"
 RESET_IP_FLAG="--reset-ip"
 PX4_REPO_FLAG="--px4-repo"
 PX4_BRANCH_FLAG="--px4-branch"
+PX4_PATH_FLAG="--px4-path"
+RESTORE_OFFICIAL_FLAG="--restore-official"
 EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
 VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
@@ -126,6 +130,7 @@ SYNC_MODE=false
 RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
+RESTORE_OFFICIAL_MODE=false
 APPLY_EKF_GSF_GUARD=false
 SKIP_EKF_GSF_GUARD=false
 APPLY_VTOL_HANDOFF_GUARD=false
@@ -136,8 +141,9 @@ print_usage() {
 Usage: $0 [options] [install_path]
 
 Options:
-  --sync          Force-sync PX4-Autopilot-Me to origin/$BRANCH_NAME, update submodules,
-                  and reset saved SITL parameters before launching.
+  --sync          Force-sync the selected PX4 checkout to the configured X-Plane
+                  branch remote, update submodules, and reset saved SITL
+                  parameters before launching.
   --repair        Run the full dependency/setup path and sync the PX4 fork.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
@@ -145,6 +151,12 @@ Options:
   --px4-branch NAME
                   Use a different PX4 branch for this run. Also available via
                   PX4XPLANE_PX4_BRANCH for scripted validation.
+  --px4-path PATH Use an existing PX4-Autopilot checkout instead of cloning
+                  ~/PX4-Autopilot-Me. The script adds/uses a separate
+                  px4xplane remote and does not rewrite your origin remote.
+  --restore-official
+                  Restore the selected PX4 checkout to official PX4 master,
+                  update submodules, reset saved SITL params, and exit.
   --with-ekf-gsf-guard
                   Local test mode: sync the X-Plane PR branch, then cherry-pick
                   the open EKF-GSF yaw reset guard PR on top before launching.
@@ -204,6 +216,21 @@ while [[ $# -gt 0 ]]; do
             BRANCH_NAME="$2"
             SYNC_MODE=true
             shift 2
+            ;;
+        "$PX4_PATH_FLAG")
+            if [ -z "${2:-}" ]; then
+                echo "Missing value for $PX4_PATH_FLAG"
+                print_usage
+                exit 1
+            fi
+            PX4_PATH_OVERRIDE="$2"
+            SYNC_MODE=true
+            shift 2
+            ;;
+        "$RESTORE_OFFICIAL_FLAG")
+            RESTORE_OFFICIAL_MODE=true
+            SYNC_MODE=true
+            shift
             ;;
         "$EKF_GSF_GUARD_FLAG")
             APPLY_EKF_GSF_GUARD=true
@@ -269,8 +296,16 @@ if [ "$UNINSTALL_MODE" = true ]; then
     exit 0
 fi
 
-# === Check for Custom Installation Directory Parameter ===
-if [ -n "$1" ]; then
+# === Check for Custom Installation Directory / PX4 Checkout Parameters ===
+USING_EXTERNAL_PX4_PATH=false
+AUTO_DETECTED_PX4_PATH=""
+
+if [ -n "$PX4_PATH_OVERRIDE" ]; then
+    CLONE_PATH="${PX4_PATH_OVERRIDE/#\~/$HOME}"
+    INSTALL_PATH="$(dirname "$CLONE_PATH")"
+    CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
+    USING_EXTERNAL_PX4_PATH=true
+elif [ -n "$1" ]; then
     INSTALL_PATH="$1"
     CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
     CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
@@ -278,6 +313,21 @@ else
     INSTALL_PATH="$DEFAULT_CLONE_PATH"
     CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
     CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+
+    # If the temporary fork checkout is not present but the user already has
+    # an official PX4 checkout in HOME, reuse it with a separate px4xplane
+    # remote instead of cloning a second full repository.
+    if [ ! -d "$CLONE_PATH/.git" ] && [ -d "$HOME/PX4-Autopilot/.git" ]; then
+        AUTO_DETECTED_PX4_PATH="$HOME/PX4-Autopilot"
+        CLONE_PATH="$AUTO_DETECTED_PX4_PATH"
+        INSTALL_PATH="$HOME"
+        CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+        USING_EXTERNAL_PX4_PATH=true
+    fi
+fi
+
+if [ "$USING_EXTERNAL_PX4_PATH" = true ] && [ "$PX4_REMOTE_NAME" = "origin" ]; then
+    PX4_REMOTE_NAME="px4xplane"
 fi
 
 # === Create Parent Directory if Needed ===
@@ -513,7 +563,7 @@ apply_guard_commits() {
     local enabled="$2"
     local guard_branch="$3"
     local label="$4"
-    local guard_ref="origin/$guard_branch"
+    local guard_ref="$PX4_REMOTE_NAME/$guard_branch"
     local guard_commits
     local guard_commit
 
@@ -542,7 +592,7 @@ apply_guard_commits() {
 
 sync_px4_repo_to_remote() {
     local clean_untracked="${1:-false}"
-    local remote_ref="origin/$BRANCH_NAME"
+    local remote_ref="$PX4_REMOTE_NAME/$BRANCH_NAME"
     local local_branch="$BRANCH_NAME"
     local status_output
     local ahead_count
@@ -550,25 +600,25 @@ sync_px4_repo_to_remote() {
 
     cd "$CLONE_PATH" || return 1
 
-    progress "Syncing PX4 fork with $remote_ref..."
+    progress "Syncing PX4 checkout with $remote_ref..."
 
-    if ! git remote get-url origin >/dev/null 2>&1; then
-        git remote add origin "$REPO_URL"
-        info "Added origin remote: $REPO_URL"
-    elif [ "$REPO_URL_WAS_OVERRIDDEN" = true ]; then
-        git remote set-url origin "$REPO_URL"
-        info "Using overridden origin remote: $REPO_URL"
+    if ! git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1; then
+        git remote add "$PX4_REMOTE_NAME" "$REPO_URL"
+        info "Added $PX4_REMOTE_NAME remote: $REPO_URL"
+    elif [ "$REPO_URL_WAS_OVERRIDDEN" = true ] || [ "$PX4_REMOTE_NAME" != "origin" ]; then
+        git remote set-url "$PX4_REMOTE_NAME" "$REPO_URL"
+        info "Using $PX4_REMOTE_NAME remote: $REPO_URL"
     fi
 
-    if ! git fetch origin "+$BRANCH_NAME:refs/remotes/origin/$BRANCH_NAME"; then
-        warning "Could not fetch origin/$BRANCH_NAME."
+    if ! git fetch "$PX4_REMOTE_NAME" "+$BRANCH_NAME:refs/remotes/$PX4_REMOTE_NAME/$BRANCH_NAME"; then
+        warning "Could not fetch $PX4_REMOTE_NAME/$BRANCH_NAME."
         return 1
     fi
 
     if [ "$APPLY_EKF_GSF_GUARD" = true ]; then
         progress "Fetching EKF-GSF guard branch for local validation..."
-        if ! git fetch origin "+$EKF_GSF_GUARD_BRANCH:refs/remotes/origin/$EKF_GSF_GUARD_BRANCH"; then
-            warning "Could not fetch origin/$EKF_GSF_GUARD_BRANCH."
+        if ! git fetch "$PX4_REMOTE_NAME" "+$EKF_GSF_GUARD_BRANCH:refs/remotes/$PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH"; then
+            warning "Could not fetch $PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH."
             return 1
         fi
         local_branch="${BRANCH_NAME}-validation"
@@ -576,8 +626,8 @@ sync_px4_repo_to_remote() {
 
     if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ]; then
         progress "Fetching Standard VTOL handoff guard branch for local validation..."
-        if ! git fetch origin "+$VTOL_HANDOFF_GUARD_BRANCH:refs/remotes/origin/$VTOL_HANDOFF_GUARD_BRANCH"; then
-            warning "Could not fetch origin/$VTOL_HANDOFF_GUARD_BRANCH."
+        if ! git fetch "$PX4_REMOTE_NAME" "+$VTOL_HANDOFF_GUARD_BRANCH:refs/remotes/$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH"; then
+            warning "Could not fetch $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH."
             return 1
         fi
         local_branch="${BRANCH_NAME}-validation"
@@ -588,13 +638,13 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "origin/$EKF_GSF_GUARD_BRANCH" >/dev/null 2>&1; then
-        warning "Remote branch origin/$EKF_GSF_GUARD_BRANCH was not found."
+    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH" >/dev/null 2>&1; then
+        warning "Remote branch $PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH was not found."
         return 1
     fi
 
-    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "origin/$VTOL_HANDOFF_GUARD_BRANCH" >/dev/null 2>&1; then
-        warning "Remote branch origin/$VTOL_HANDOFF_GUARD_BRANCH was not found."
+    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH" >/dev/null 2>&1; then
+        warning "Remote branch $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH was not found."
         return 1
     fi
 
@@ -641,7 +691,55 @@ sync_px4_repo_to_remote() {
     fi
 
     reset_saved_sitl_parameters
-    success "PX4 fork is synced to $(git rev-parse --short HEAD) on $(git branch --show-current)."
+    success "PX4 checkout is synced to $(git rev-parse --short HEAD) on $(git branch --show-current)."
+}
+
+restore_px4_repo_to_official() {
+    local official_remote="upstream"
+    local official_ref="$official_remote/master"
+    local status_output
+
+    if [ ! -d "$CLONE_PATH/.git" ]; then
+        warning "No PX4 git checkout found at $CLONE_PATH."
+        return 1
+    fi
+
+    cd "$CLONE_PATH" || return 1
+
+    if git remote get-url origin 2>/dev/null | grep -Eq 'github.com[:/]PX4/PX4-Autopilot(.git)?$'; then
+        official_remote="origin"
+        official_ref="origin/master"
+    elif ! git remote get-url "$official_remote" >/dev/null 2>&1; then
+        git remote add "$official_remote" "$UPSTREAM_URL"
+        info "Added upstream remote: $UPSTREAM_URL"
+    fi
+
+    progress "Restoring PX4 checkout to official $official_ref..."
+    if ! git fetch "$official_remote" "+master:refs/remotes/$official_remote/master"; then
+        warning "Could not fetch official PX4 master from $official_remote."
+        return 1
+    fi
+
+    status_output="$(git status --porcelain --untracked-files=normal 2>/dev/null)"
+    if [ -n "$status_output" ]; then
+        info "Saving local uncommitted/untracked PX4 changes to git stash before official restore."
+        git stash push --include-untracked -m "px4xplane auto-backup before official restore $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
+    fi
+
+    if ! git checkout -B master "$official_ref"; then
+        warning "Could not switch to official PX4 master."
+        return 1
+    fi
+
+    git reset --hard "$official_ref" || return 1
+    git clean -fd
+    git submodule sync --recursive
+    git submodule update --init --recursive --force --checkout --quiet || true
+    git submodule foreach --recursive 'git reset --hard >/dev/null 2>&1; git clean -fd >/dev/null 2>&1' >/dev/null 2>&1 || true
+
+    reset_saved_sitl_parameters
+    success "PX4 checkout restored to official master at $(git rev-parse --short HEAD)."
+    info "X-Plane SITL airframes are available from the px4xplane branch until PX4 PR #22493 is merged."
 }
 
 update_launcher_script_if_needed() {
@@ -747,6 +845,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
+if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
+    restore_px4_repo_to_official
+    exit $?
+fi
+
 # === Introductory Information ===
 clear
 echo "╔════════════════════════════════════════════════════════════════════════════╗"
@@ -770,11 +873,15 @@ echo "  → This custom fork will no longer be needed"
 echo "  → A simple 'git remote' change will migrate you to official PX4"
 echo ""
 info "Current Status:"
-echo "  → Fork: github.com/alireza787b/PX4-Autopilot-Me"
-echo "  → Branch: px4xplane-sitl"
+echo "  → PX4 checkout: $CLONE_PATH"
+echo "  → X-Plane branch source: $PX4_REMOTE_NAME ($REPO_URL)"
+echo "  → Branch: $BRANCH_NAME"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
 echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
+if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
+    echo "  → Existing PX4 checkout auto-detected; origin remote will be left unchanged"
+fi
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""
@@ -837,7 +944,11 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
             progress "Checking for updates from remote repository..."
 
             # Fetch latest changes silently (with error handling)
-            if git fetch origin "$BRANCH_NAME" --quiet 2>/dev/null; then
+            if git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1 || git remote add "$PX4_REMOTE_NAME" "$REPO_URL"; then
+                :
+            fi
+
+            if git fetch "$PX4_REMOTE_NAME" "$BRANCH_NAME" --quiet 2>/dev/null; then
                 success "Remote repository checked."
             else
                 warning "Could not fetch updates from remote. Continuing with local version..."
@@ -846,7 +957,7 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
 
             # Check if local branch differs from remote (with error handling)
             LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
-            REMOTE_HASH=$(git rev-parse origin/"$BRANCH_NAME" 2>/dev/null)
+            REMOTE_HASH=$(git rev-parse "$PX4_REMOTE_NAME/$BRANCH_NAME" 2>/dev/null)
         fi
     fi
 
@@ -1216,7 +1327,8 @@ echo "  • Issues: https://github.com/alireza787b/px4xplane/issues"
 echo ""
 info "Installation Summary:"
 echo "  ✓ Repository: $CLONE_PATH"
-echo "  ✓ Branch: $BRANCH_NAME"
+echo "  ✓ Branch: $(cd "$CLONE_PATH" 2>/dev/null && git branch --show-current 2>/dev/null || echo "$BRANCH_NAME")"
+echo "  ✓ X-Plane remote: $PX4_REMOTE_NAME"
 echo "  ✓ Airframe: $PLATFORM"
 echo "  ✓ IP Address: ${PX4_SIM_HOSTNAME:-Not configured}"
 echo ""
