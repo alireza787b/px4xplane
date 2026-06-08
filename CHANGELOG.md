@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Synced the bundled PX4 airframe parameter mirrors with the current PX4 X-Plane
+  SITL branch and removed the custom low `EKF2_ACC_B_NOISE` override so EKF2
+  uses its standard accelerometer-bias process noise model.
+
 ## [4.0.3] - 2026-06-07
 
 ### Changed
