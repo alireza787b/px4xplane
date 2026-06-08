@@ -88,6 +88,7 @@
 REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
 BRANCH_NAME="px4xplane-sitl"
 EKF_GSF_GUARD_BRANCH="ekf2-gnss-yaw-reset-guard"
+VTOL_HANDOFF_GUARD_BRANCH="vtol-standard-throttle-handoff-xplane"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
@@ -113,6 +114,8 @@ RESET_CONFIG_FLAG="--reset-config"
 RESET_IP_FLAG="--reset-ip"
 EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
+VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
+NO_VTOL_HANDOFF_GUARD_FLAG="--without-vtol-handoff-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=false
@@ -121,6 +124,8 @@ RESET_IP_MODE=false
 UNINSTALL_MODE=false
 APPLY_EKF_GSF_GUARD=false
 SKIP_EKF_GSF_GUARD=false
+APPLY_VTOL_HANDOFF_GUARD=false
+SKIP_VTOL_HANDOFF_GUARD=false
 
 print_usage() {
     cat <<EOF
@@ -137,6 +142,11 @@ Options:
                   the open EKF-GSF yaw reset guard PR on top before launching.
   --without-ekf-gsf-guard
                   Do not prompt for or apply the temporary EKF-GSF guard.
+  --with-vtol-handoff-guard
+                  Local test mode: also cherry-pick the open Standard VTOL
+                  front-transition setpoint handoff PR before launching.
+  --without-vtol-handoff-guard
+                  Do not prompt for or apply the temporary VTOL handoff guard.
   --uninstall     Remove the global px4xplane command and default PX4 fork checkout.
   --help          Show this help.
 EOF
@@ -174,6 +184,16 @@ while [[ $# -gt 0 ]]; do
         "$NO_EKF_GSF_GUARD_FLAG")
             SKIP_EKF_GSF_GUARD=true
             APPLY_EKF_GSF_GUARD=false
+            shift
+            ;;
+        "$VTOL_HANDOFF_GUARD_FLAG")
+            APPLY_VTOL_HANDOFF_GUARD=true
+            SYNC_MODE=true
+            shift
+            ;;
+        "$NO_VTOL_HANDOFF_GUARD_FLAG")
+            SKIP_VTOL_HANDOFF_GUARD=true
+            APPLY_VTOL_HANDOFF_GUARD=false
             shift
             ;;
         "$HELP_FLAG"|"-h")
@@ -459,13 +479,42 @@ reset_params_if_airframe_changed() {
     fi
 }
 
+apply_guard_commits() {
+    local base_ref="$1"
+    local enabled="$2"
+    local guard_branch="$3"
+    local label="$4"
+    local guard_ref="origin/$guard_branch"
+    local guard_commits
+    local guard_commit
+
+    if [ "$enabled" != true ]; then
+        return 0
+    fi
+
+    guard_commits="$(git rev-list --reverse "$base_ref..$guard_ref" 2>/dev/null || true)"
+
+    if [ -z "$guard_commits" ]; then
+        warning "No $label commits found on $guard_ref."
+        return 1
+    fi
+
+    progress "Applying $label locally for validation..."
+    for guard_commit in $guard_commits; do
+        if ! git cherry-pick -x "$guard_commit"; then
+            git cherry-pick --abort >/dev/null 2>&1 || true
+            warning "Could not apply $label commit $guard_commit."
+            return 1
+        fi
+    done
+
+    success "Local validation branch includes $label: $(git rev-parse --short HEAD)."
+}
+
 sync_px4_repo_to_remote() {
     local clean_untracked="${1:-false}"
     local remote_ref="origin/$BRANCH_NAME"
     local local_branch="$BRANCH_NAME"
-    local guard_ref="origin/$EKF_GSF_GUARD_BRANCH"
-    local guard_commits
-    local guard_commit
     local status_output
     local ahead_count
     local backup_branch
@@ -479,18 +528,27 @@ sync_px4_repo_to_remote() {
         info "Added origin remote: $REPO_URL"
     fi
 
-    if ! git fetch origin "$BRANCH_NAME" --prune; then
+    if ! git fetch origin "+$BRANCH_NAME:refs/remotes/origin/$BRANCH_NAME"; then
         warning "Could not fetch origin/$BRANCH_NAME."
         return 1
     fi
 
     if [ "$APPLY_EKF_GSF_GUARD" = true ]; then
         progress "Fetching EKF-GSF guard branch for local validation..."
-        if ! git fetch origin "$EKF_GSF_GUARD_BRANCH" --prune; then
+        if ! git fetch origin "+$EKF_GSF_GUARD_BRANCH:refs/remotes/origin/$EKF_GSF_GUARD_BRANCH"; then
             warning "Could not fetch origin/$EKF_GSF_GUARD_BRANCH."
             return 1
         fi
-        local_branch="${BRANCH_NAME}-with-ekf-gsf-guard"
+        local_branch="${BRANCH_NAME}-validation"
+    fi
+
+    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ]; then
+        progress "Fetching Standard VTOL handoff guard branch for local validation..."
+        if ! git fetch origin "+$VTOL_HANDOFF_GUARD_BRANCH:refs/remotes/origin/$VTOL_HANDOFF_GUARD_BRANCH"; then
+            warning "Could not fetch origin/$VTOL_HANDOFF_GUARD_BRANCH."
+            return 1
+        fi
+        local_branch="${BRANCH_NAME}-validation"
     fi
 
     if ! git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
@@ -498,8 +556,13 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "$guard_ref" >/dev/null 2>&1; then
-        warning "Remote branch $guard_ref was not found."
+    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "origin/$EKF_GSF_GUARD_BRANCH" >/dev/null 2>&1; then
+        warning "Remote branch origin/$EKF_GSF_GUARD_BRANCH was not found."
+        return 1
+    fi
+
+    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "origin/$VTOL_HANDOFF_GUARD_BRANCH" >/dev/null 2>&1; then
+        warning "Remote branch origin/$VTOL_HANDOFF_GUARD_BRANCH was not found."
         return 1
     fi
 
@@ -526,25 +589,8 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    if [ "$APPLY_EKF_GSF_GUARD" = true ]; then
-        guard_commits="$(git rev-list --reverse "$remote_ref..$guard_ref" 2>/dev/null || true)"
-
-        if [ -z "$guard_commits" ]; then
-            warning "No EKF-GSF guard commits found on $guard_ref."
-            return 1
-        fi
-
-        progress "Applying EKF-GSF yaw reset guard locally for validation..."
-        for guard_commit in $guard_commits; do
-            if ! git cherry-pick -x "$guard_commit"; then
-                git cherry-pick --abort >/dev/null 2>&1 || true
-                warning "Could not apply EKF-GSF guard commit $guard_commit."
-                return 1
-            fi
-        done
-
-        success "Local validation branch includes EKF-GSF guard: $(git rev-parse --short HEAD)."
-    fi
+    apply_guard_commits "$remote_ref" "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_BRANCH" "EKF-GSF yaw reset guard" || return 1
+    apply_guard_commits "$remote_ref" "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_BRANCH" "Standard VTOL handoff guard" || return 1
 
     if [ "$clean_untracked" = true ]; then
         git clean -fd
@@ -624,6 +670,31 @@ prompt_for_ekf_gsf_guard() {
     fi
 }
 
+prompt_for_vtol_handoff_guard() {
+    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || [ "$SKIP_VTOL_HANDOFF_GUARD" = true ]; then
+        return
+    fi
+
+    echo ""
+    highlight "Standard VTOL transition handoff guard"
+    echo "A separate PX4 PR keeps Standard VTOL pusher thrust and pitch setpoints"
+    echo "continuous just after front transition:"
+    echo "  https://github.com/PX4/PX4-Autopilot/pull/27601"
+    echo ""
+    echo "Apply that guard locally on top of the X-Plane SITL branch? (Recommended)"
+    echo "Press Enter for yes (default) or type 'n' to run without it."
+    read -t 10 -r VTOL_HANDOFF_GUARD_CHOICE
+
+    if [[ -z "$VTOL_HANDOFF_GUARD_CHOICE" || ! "$VTOL_HANDOFF_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
+        APPLY_VTOL_HANDOFF_GUARD=true
+        SYNC_MODE=true
+        info "Standard VTOL handoff guard will be applied locally for this run."
+    else
+        SKIP_VTOL_HANDOFF_GUARD=true
+        info "Continuing without the temporary Standard VTOL handoff guard."
+    fi
+}
+
 if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
     rm -f "$CONFIG_FILE"
     success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
@@ -671,6 +742,7 @@ echo "  → Fork: github.com/alireza787b/PX4-Autopilot-Me"
 echo "  → Branch: px4xplane-sitl"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
+echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""
@@ -700,6 +772,7 @@ fi
 success "Git found."
 
 prompt_for_ekf_gsf_guard
+prompt_for_vtol_handoff_guard
 
 # === Simplified Process for Subsequent Runs ===
 if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then

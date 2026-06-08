@@ -32,17 +32,19 @@ Until that merges, the setup helper temporarily uses the maintained
 sensor timing robustness, low-FPS/pause recovery, stale SITL parameter cleanup,
 airframe config validation, camera presets, and the accelerometer-bias/ground
 contact fixes that affected earlier test packages. The launcher also asks
-whether to apply the temporary PX4 EKF-GSF guard while the separate PX4 PR is
-under review.
+whether to apply temporary PX4 guard PRs while separate PX4 fixes are under
+review.
 
 One PX4-side EKF edge case found during fast VTOL transition testing is tracked
 separately in
 [PX4-Autopilot PR #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
-That fix is intentionally not bundled into this plugin repository. For local
-validation while that PR is pending, the launcher asks whether to stack it over
-the X-Plane SITL branch. The default answer is yes; use
-`px4xplane --without-ekf-gsf-guard` only when you deliberately want the exact
-X-Plane branch without the temporary EKF guard.
+A Standard VTOL front-transition setpoint handoff fix is tracked separately in
+[PX4-Autopilot PR #27601](https://github.com/PX4/PX4-Autopilot/pull/27601).
+Those fixes are intentionally not bundled into this plugin repository. For
+local validation while those PRs are pending, the launcher asks whether to stack
+them over the X-Plane SITL branch. The default answer is yes; use the
+`--without-...-guard` flags only when you deliberately want the exact X-Plane
+branch without a temporary PX4 guard.
 
 ## Quick Start
 
@@ -72,17 +74,17 @@ IP was saved, rerun the launcher with `px4xplane --reset-ip`.
 For common setup or connection errors, see
 [Troubleshooting](docs/index.md#troubleshooting).
 
-For final VTOL transition validation while
-[PX4-Autopilot PR #27533](https://github.com/PX4/PX4-Autopilot/pull/27533) is
-still under review, run:
+For final VTOL transition validation while the separate PX4 guard PRs are still
+under review, run:
 
 ```bash
 px4xplane --sync --reset-config
 ```
 
-Accept the EKF-GSF guard prompt. The launcher creates a local PX4 validation
-branch with the EKF guard cherry-picked on top of the X-Plane SITL branch. It
-does not change the official X-Plane PR scope.
+Accept the EKF-GSF and Standard VTOL handoff guard prompts. The launcher
+creates a local PX4 validation branch with those guard commits cherry-picked on
+top of the X-Plane SITL branch. It does not change the official X-Plane PR
+scope.
 
 ## Common Paths
 

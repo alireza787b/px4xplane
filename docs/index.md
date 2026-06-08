@@ -67,12 +67,18 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
   This covers the fast-VTOL transition EKF-GSF yaw-reset issue found during
   final Alia validation and is intentionally separate from the plugin package.
-- For local validation while #27533 is pending, run
-  `px4xplane --sync --reset-config` and accept the EKF-GSF guard prompt. The
-  launcher creates a local PX4 branch named
-  `px4xplane-sitl-with-ekf-gsf-guard` by stacking the EKF guard on top of the
-  X-Plane SITL branch. Use `px4xplane --without-ekf-gsf-guard` only for
-  exact-branch testing without the temporary guard.
+- Separate PX4 Standard VTOL handoff PR:
+  [PX4-Autopilot #27601](https://github.com/PX4/PX4-Autopilot/pull/27601).
+  This covers the front-transition pusher-thrust and pitch-setpoint handoff
+  issue found during Alia validation and is intentionally separate from the
+  plugin package.
+- For local validation while #27533 and #27601 are pending, run
+  `px4xplane --sync --reset-config` and accept both guard prompts. The launcher
+  creates a local PX4 branch named `px4xplane-sitl-validation` by stacking the
+  guard commits on top of the X-Plane SITL branch. Use
+  `px4xplane --without-ekf-gsf-guard` or
+  `px4xplane --without-vtol-handoff-guard` only for exact-branch testing
+  without the temporary guards.
 - The plugin runtime config is `px4xplane/64/config.ini`.
 - `config_schema.json` is editor and validator metadata only; it is not read by the plugin at runtime.
 - Use `Plugins > px4xplane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
