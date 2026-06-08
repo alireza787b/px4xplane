@@ -152,7 +152,7 @@ parameter store and rerun before judging the package.
 - `FW_T_I_GAIN_PIT=0.20`
 - `FW_T_CLMB_R_SP=2.0`
 - `FW_T_SINK_R_SP=1.5`
-- `FW_PSP_OFF=8.0`
+- `FW_PSP_OFF=4.0`
 - `FW_P_LIM_MAX=24.0`
 - `FW_R_LIM=20.0`
 - `FW_THR_TRIM=0.65`

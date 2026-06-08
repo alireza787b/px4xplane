@@ -65,15 +65,15 @@ ASPD_DO_CHECKS = 1
 ASPD_FALLBACK = 1
 SYS_HAS_NUM_ASPD = 0
 FW_AIRSPD_MIN = 28
-FW_AIRSPD_TRIM = 42
+FW_AIRSPD_TRIM = 40
 FW_AIRSPD_MAX = 65
 FW_AIRSPD_FLP_SC = 0.85
-FW_TKO_AIRSPD = 42
-FW_TKO_PITCH_MIN = 12
+FW_TKO_AIRSPD = 40
+FW_TKO_PITCH_MIN = 10
 RWTO_TKOFF = 1
 RWTO_ROT_AIRSPD = 32
 FW_FLAPS_TO_SCL = 0.33
-CA_SV_FLAP_SLEW = 0.20
+CA_SV_FLAP_SLEW = 0.08
 FW_W_EN = 1
 PWM_MAIN_FUNC6 = 440
 PWM_MAIN_FUNC7 = 205
@@ -81,9 +81,9 @@ PWM_MAIN_FUNC8 = 206
 FW_RR_FF = 3.2
 FW_RR_P = 0.42
 FW_RR_D = 0.08
-FW_R_RMAX = 12
-FW_R_TC = 1.1
-FW_R_LIM = 20
+FW_R_RMAX = 8
+FW_R_TC = 1.5
+FW_R_LIM = 15
 FW_LND_AIRSPD = 32.5
 FW_LND_EARLYCFG = 1
 FW_LND_ANG = 5
@@ -130,7 +130,7 @@ Parsed channel 7
   and the physical `sim/flightmodel/controls/wing1l_fla1def` /
   `sim/flightmodel/controls/wing1r_fla1def` datarefs.
 - Takeoff flaps are intentional in this package (`FW_FLAPS_TO_SCL = 0.33`).
-  They should move smoothly because `CA_SV_FLAP_SLEW = 0.20`; abrupt flap
+  They should move smoothly because `CA_SV_FLAP_SLEW = 0.08`; abrupt flap
   retraction usually means stale PX4 parameters or an aircraft-side override.
 
 ## Log Bundle
