@@ -1155,7 +1155,7 @@
         state.selectedSection = state.config.globals.config_name || "";
         state.configLoaded = true;
         state.configSource = file.name;
-        setStatus(`Loaded runtime config from ${file.name}. Exported edits should replace px4xplane/64/config.ini.`);
+        setStatus(`Loaded runtime config from ${file.name}. Saved edits should replace px4xplane/64/config.ini.`);
         render();
       };
       reader.readAsText(file);
@@ -1208,6 +1208,7 @@
       link.download = "config.ini";
       link.click();
       URL.revokeObjectURL(link.href);
+      setStatus("Saved config.ini as a download. Replace px4xplane/64/config.ini with the downloaded file, then reload the plugin.");
     });
 
     $("copyPreview").addEventListener("click", async () => {

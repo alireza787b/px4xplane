@@ -12,8 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Synced the bundled PX4 airframe parameter mirrors with the current PX4 X-Plane
-  SITL branch and removed the custom low `EKF2_ACC_B_NOISE` override so EKF2
-  uses its standard accelerometer-bias process noise model.
+  SITL branch, restored the validated `EKF2_ACC_B_NOISE=0.001` defaults, and
+  added the full Alia elevator dataref mapping for both horizontal stabilizers.
+- Updated the config editor save action so users see that saving downloads a
+  replacement `config.ini` for `px4xplane/64/config.ini`.
 
 ## [4.0.3] - 2026-06-07
 

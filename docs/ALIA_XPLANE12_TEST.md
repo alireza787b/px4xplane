@@ -137,6 +137,7 @@ parameter store and rerun before judging the package.
 - `CAL_BARO1_ID=6620428`
 - `CAL_BARO1_PRIO=0`
 - `EKF2_BARO_NOISE=1.0`
+- `EKF2_ACC_B_NOISE=0.001`
 - `CAL_ACC0_PRIO=50`
 - `ASPD_DO_CHECKS=1`
 - `SYS_HAS_NUM_ASPD=0`
@@ -152,7 +153,8 @@ parameter store and rerun before judging the package.
 - `FW_T_I_GAIN_PIT=0.20`
 - `FW_T_CLMB_R_SP=2.0`
 - `FW_T_SINK_R_SP=1.5`
-- `FW_PSP_OFF=4.0`
+- `FW_PSP_OFF=2.0`
+- `FW_AIRSPD_TRIM=55.0`
 - `FW_P_LIM_MAX=24.0`
 - `FW_R_LIM=20.0`
 - `FW_THR_TRIM=0.65`
@@ -160,10 +162,10 @@ parameter store and rerun before judging the package.
 - `FW_THR_SLEW_MAX=0.35`
 - `WEIGHT_BASE=3120.0`
 - `WEIGHT_GROSS=3120.0`
-- `VT_B_TRANS_DUR=35.0`
-- `VT_B_DEC_MSS=1.5`
+- `VT_B_TRANS_DUR=28.0`
+- `VT_B_DEC_MSS=2.0`
 - `VT_B_DEC_I=0.25`
-- `VT_B_TRANS_RAMP=15.0`
+- `VT_B_TRANS_RAMP=10.0`
 - `RTL_RETURN_ALT=100`
 - `RTL_DESCEND_ALT=80`
 - `LNDMC_Z_VEL_MAX=0.25`

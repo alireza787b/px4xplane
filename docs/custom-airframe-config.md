@@ -163,7 +163,7 @@ Treat these as setup-time fields:
 - accelerometer calibration/offset fields
 - MAVLink target rates
 
-For setup-time fields, disconnect PX4 SITL, export the new `config.ini`, reload config in X-Plane, reconnect PX4, and then fly. Do not change actuator mappings while armed.
+For setup-time fields, disconnect PX4 SITL, save the new `config.ini`, replace `px4xplane/64/config.ini`, reload config in X-Plane, reconnect PX4, and then fly. Do not change actuator mappings while armed.
 
 ## Validate
 
