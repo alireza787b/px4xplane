@@ -58,19 +58,22 @@ SENS_IMU_MODE = 0
 CAL_ACC0_PRIO = 50
 CAL_ACC0_XOFF = -0.018
 CAL_ACC0_YOFF = -0.139
-CAL_ACC0_ZOFF = -0.797
+CAL_ACC0_ZOFF = 0.0
 EKF2_ABL_LIM = 0.8
 FW_USE_AIRSPD = 1
 ASPD_DO_CHECKS = 1
 ASPD_FALLBACK = 1
 SYS_HAS_NUM_ASPD = 0
 FW_AIRSPD_MIN = 28
-FW_AIRSPD_TRIM = 50
-FW_AIRSPD_MAX = 75
+FW_AIRSPD_TRIM = 42
+FW_AIRSPD_MAX = 65
 FW_AIRSPD_FLP_SC = 0.85
-FW_TKO_AIRSPD = 38
+FW_TKO_AIRSPD = 42
+FW_TKO_PITCH_MIN = 12
 RWTO_TKOFF = 1
-RWTO_ROT_AIRSPD = 28
+RWTO_ROT_AIRSPD = 32
+FW_FLAPS_TO_SCL = 0.33
+CA_SV_FLAP_SLEW = 0.20
 FW_W_EN = 1
 PWM_MAIN_FUNC6 = 440
 PWM_MAIN_FUNC7 = 205
@@ -78,19 +81,18 @@ PWM_MAIN_FUNC8 = 206
 FW_RR_FF = 3.2
 FW_RR_P = 0.42
 FW_RR_D = 0.08
-FW_R_RMAX = 20
-FW_R_TC = 0.9
-FW_R_LIM = 35
-FW_LND_AIRSPD = 33
+FW_R_RMAX = 12
+FW_R_TC = 1.1
+FW_R_LIM = 20
+FW_LND_AIRSPD = 32.5
 FW_LND_EARLYCFG = 1
 FW_LND_ANG = 5
 FW_LND_FLALT = 8
 FW_LND_FL_TIME = 4
-FW_LND_FL_PMIN = 8
+FW_LND_FL_PMIN = 9
 FW_LND_TD_TIME = -1
-FW_FLAPS_TO_SCL = 0.0
 FW_FLAPS_LND_SCL = 0.85
-LNDFW_AIRSPD_MAX = 34
+LNDFW_AIRSPD_MAX = 30
 NAV_ACC_RAD = 180
 NAV_LOITER_RAD = 600
 ```
@@ -127,9 +129,9 @@ Parsed channel 7
   datarefs. The current package writes `sim/cockpit2/controls/flap_handle_request_ratio`
   and the physical `sim/flightmodel/controls/wing1l_fla1def` /
   `sim/flightmodel/controls/wing1r_fla1def` datarefs.
-- Takeoff flaps are intentionally disabled in this package
-  (`FW_FLAPS_TO_SCL = 0.0`). If flap movement is seen during takeoff, treat it
-  as stale PX4 parameters or an aircraft-side override.
+- Takeoff flaps are intentional in this package (`FW_FLAPS_TO_SCL = 0.33`).
+  They should move smoothly because `CA_SV_FLAP_SLEW = 0.20`; abrupt flap
+  retraction usually means stale PX4 parameters or an aircraft-side override.
 
 ## Log Bundle
 
