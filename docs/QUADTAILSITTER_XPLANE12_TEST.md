@@ -33,7 +33,7 @@ high enough that a failed recovery has margin.
    below. qtail20 proved that stale SITL `parameters.bson` can override the
    airframe `set-default` values even when X-Plane is running the right plugin.
    - After the run, use:
-     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param VT_ARSP_TRANS --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_TRIM --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_PR_P --param FW_PR_I --param FW_R_LIM --param FW_R_RMAX --param FW_RR_P --param FW_RR_I --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param VT_FW_QC_R --param VT_FW_QC_P --param VT_QC_ALT_LOSS --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param VT_ARSP_TRANS --param VT_F_TRANS_DUR --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_TRIM --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_P_RMAX_POS --param FW_P_RMAX_NEG --param FW_PR_P --param FW_PR_I --param FW_R_LIM --param FW_R_RMAX --param FW_RR_P --param FW_RR_I --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param VT_FW_QC_R --param VT_FW_QC_P --param VT_QC_ALT_LOSS --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -79,6 +79,11 @@ The current QuadTailsitter contact gear is intentionally fixed for physics
 stability. v4.0.0 hides the large rendered gear geometry while keeping the
 fixed contact pads active. True animated cosmetic retractable legs remain a
 separate visual-asset slice.
+
+The packaged aircraft also includes the tuned validation geometry used by this
+card: the CG is shifted slightly forward in the X-Plane longitudinal axis and
+the electric motor power limits are reduced from the earlier high-margin
+prototype. Do not validate with an older `QuadTailsitter.acf` copy.
 
 ## Parameter Sanity Check
 
@@ -163,45 +168,48 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_AIRSPD_TRIM=27`
 - `FW_AIRSPD_MAX=36`
 - `FW_ARSP_SCALE_EN=0`
-- `FW_THR_TRIM=0.14`
+- `FW_THR_TRIM=0.18`
 - `FW_THR_MAX=0.50`
-- `FW_THR_MIN=0.00`
-- `FW_THR_SLEW_MAX=0.20`
-- `FW_T_CLMB_MAX=5.0`
-- `FW_T_ALT_TC=5.0`
-- `FW_T_SPDWEIGHT=0.80`
+- `FW_THR_MIN=0.05`
+- `FW_THR_SLEW_MAX=0.24`
+- `FW_T_CLMB_MAX=2.8`
+- `FW_T_ALT_TC=6.0`
+- `FW_T_SPDWEIGHT=1.0`
 - `FW_T_RLL2THR=2.0`
-- `FW_T_THR_DAMPING=0.25`
-- `FW_T_PTCH_DAMP=0.25`
-- `FW_T_I_GAIN_PIT=0.25`
-- `FW_T_CLMB_R_SP=2.0`
-- `FW_T_SINK_R_SP=2.0`
+- `FW_T_THR_DAMPING=0.35`
+- `FW_T_PTCH_DAMP=0.45`
+- `FW_T_I_GAIN_PIT=0.08`
+- `FW_T_CLMB_R_SP=1.4`
+- `FW_T_SINK_R_SP=1.6`
 - `FW_T_VERT_ACC=1.8`
 - `FW_PSP_OFF=2.0`
-- `FW_P_TC=0.60`
-- `FW_P_LIM_MAX=35`
-- `FW_PR_P=0.50`
-- `FW_PR_I=0.30`
+- `FW_P_TC=1.00`
+- `FW_P_LIM_MAX=22`
+- `FW_P_RMAX_POS=28`
+- `FW_P_RMAX_NEG=28`
+- `FW_PR_P=0.24`
+- `FW_PR_I=0.04`
+- `FW_PR_FF=0.08`
 - `FW_R_TC=1.5`
-- `FW_R_LIM=16`
-- `FW_R_RMAX=35`
+- `FW_R_LIM=12`
+- `FW_R_RMAX=25`
 - `FW_PN_R_SLEW_MAX=10`
-- `FW_RR_P=0.10`
-- `FW_RR_I=0.04`
-- `FW_RR_FF=0.05`
+- `FW_RR_P=0.06`
+- `FW_RR_I=0.015`
+- `FW_RR_FF=0.02`
 - `FW_YR_P=0.01`
-- `VT_F_TRANS_DUR=8.0`
+- `VT_F_TRANS_DUR=12.0`
 - `VT_F_TRANS_THR=0.36`
-- `VT_TRANS_MIN_TM=6.0`
-- `VT_F_TR_OL_TM=12.0`
-- `VT_TRANS_TIMEOUT=30`
+- `VT_TRANS_MIN_TM=8.0`
+- `VT_F_TR_OL_TM=16.0`
+- `VT_TRANS_TIMEOUT=40`
 - `VT_B_TRANS_DUR=5.0`
 - `VT_B_DEC_MSS=1.0`
 - `VT_B_DEC_I=0.12`
 - `VT_B_TRANS_RAMP=1.5`
-- `VT_FW_DIFTHR_S_R=0.55`
-- `VT_FW_DIFTHR_S_P=0.90`
-- `VT_FW_DIFTHR_S_Y=0.32`
+- `VT_FW_DIFTHR_S_R=0.32`
+- `VT_FW_DIFTHR_S_P=0.45`
+- `VT_FW_DIFTHR_S_Y=0.24`
 - `VT_FW_MIN_ALT=30`
 - `VT_QC_ALT_LOSS=45`
 - `VT_QC_T_ALT_LOSS=35`

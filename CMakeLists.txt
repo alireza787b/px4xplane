@@ -518,9 +518,19 @@ foreach(PARAM_FILE ${PX4_PARAMS})
     )
 endforeach()
 
+if(EXISTS "${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter")
+    list(APPEND PACKAGE_ASSET_COMMANDS
+        COMMAND ${CMAKE_COMMAND} -E make_directory
+            ${PACKAGE_ROOT}/X-Plane_Aircraft
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+            ${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter
+            ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
+    )
+endif()
+
 add_custom_target(package_assets ALL
     ${PACKAGE_ASSET_COMMANDS}
-    COMMENT "Refreshing packaged config, docs, and PX4 airframe files"
+    COMMENT "Refreshing packaged config, docs, PX4 airframe, and aircraft files"
     VERBATIM
 )
 add_dependencies(package_assets ${PROJECT_NAME})
