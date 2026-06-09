@@ -205,8 +205,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `VT_FW_MIN_ALT=30`
 - `VT_QC_ALT_LOSS=45`
 - `VT_QC_T_ALT_LOSS=35`
-- `VT_FW_QC_P=75`
-- `VT_FW_QC_R=75`
+- `VT_FW_QC_P=0`
+- `VT_FW_QC_R=0`
 - `NPFG_PERIOD=55.0`
 - `NPFG_DAMPING=1.0`
 - `NPFG_ROLL_TC=2.4`

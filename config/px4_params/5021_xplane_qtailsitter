@@ -284,8 +284,8 @@ param set-default VT_B_TRANS_RAMP 1.5
 param set-default VT_FW_MIN_ALT 30
 param set-default VT_QC_ALT_LOSS 45
 param set-default VT_QC_T_ALT_LOSS 35
-param set-default VT_FW_QC_P 75
-param set-default VT_FW_QC_R 75
+param set-default VT_FW_QC_P 0
+param set-default VT_FW_QC_R 0
 param set-default VT_PITCH_MIN -10
 
 param set-default VT_FW_DIFTHR_EN 7
