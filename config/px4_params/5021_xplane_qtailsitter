@@ -92,7 +92,8 @@ param set-default CAL_BARO1_PRIO 0
 param set-default SENS_GPS0_DELAY 10
 param set-default SENS_GPS1_DELAY 10
 param set-default EKF2_GPS_P_NOISE 1.5
-param set-default EKF2_GPS_V_NOISE 0.35
+param set-default EKF2_GPS_V_NOISE 0.15
+param set-default EKF2_GPS_V_GATE 3.0
 param set-default EKF2_GPS_P_GATE 10.0
 
 param set-default EKF2_MAG_TYPE 1
@@ -179,7 +180,7 @@ param set-default MPC_MAN_TILT_MAX 30
 param set-default MPC_TILTMAX_AIR 30
 param set-default MPC_TILTMAX_LND 8
 
-param set-default MPC_THR_HOVER 0.22
+param set-default MPC_THR_HOVER 0.24
 param set-default MPC_THR_MIN 0.08
 param set-default MPC_THR_XY_MARG 0.4
 
@@ -218,31 +219,33 @@ param set-default EKF2_ARSP_THR 24.0
 param set-default EKF2_GSF_TAS 0.0
 
 param set-default FW_AIRSPD_STALL 16
-param set-default FW_AIRSPD_MIN 19
+param set-default FW_AIRSPD_MIN 22
 param set-default FW_AIRSPD_TRIM 27
 param set-default FW_AIRSPD_MAX 36
 param set-default FW_ARSP_SCALE_EN 0
 
-param set-default FW_THR_TRIM 0.21
-param set-default FW_THR_MIN 0.12
-param set-default FW_THR_MAX 0.50
-param set-default FW_THR_SLEW_MAX 0.24
+param set-default FW_THR_TRIM 0.22
+param set-default FW_THR_MIN 0.18
+param set-default FW_THR_MAX 0.55
+param set-default FW_THR_SLEW_MAX 0.70
 
-param set-default FW_T_ALT_TC 7.0
+param set-default FW_T_CLMB_MAX 2.4
+param set-default FW_T_ALT_TC 8.0
 param set-default FW_T_SINK_MAX 2.4
 param set-default FW_T_SINK_MIN 1.6
-param set-default FW_T_SPDWEIGHT 0.70
+param set-default FW_T_SPDWEIGHT 1.20
 param set-default FW_T_RLL2THR 2.0
 param set-default FW_T_STE_R_TC 1.0
-param set-default FW_T_THR_DAMPING 0.35
-param set-default FW_T_PTCH_DAMP 0.50
-param set-default FW_T_I_GAIN_PIT 0.08
+param set-default FW_T_THR_DAMPING 0.40
+param set-default FW_T_PTCH_DAMP 0.55
+param set-default FW_T_I_GAIN_PIT 0.05
 param set-default FW_T_VERT_ACC 1.8
-param set-default FW_T_CLMB_R_SP 1.7
+param set-default FW_T_CLMB_R_SP 1.2
+param set-default FW_T_SINK_R_SP 1.5
 
 param set-default FW_P_TC 0.90
 param set-default FW_PSP_OFF 2.0
-param set-default FW_P_LIM_MAX 24
+param set-default FW_P_LIM_MAX 18
 param set-default FW_P_LIM_MIN -15
 param set-default FW_P_RMAX_POS 34
 param set-default FW_P_RMAX_NEG 30
@@ -268,7 +271,7 @@ param set-default FW_YR_FF 0.0
 ################################################################################
 
 param set-default VT_ARSP_BLEND 17
-param set-default VT_ARSP_TRANS 22
+param set-default VT_ARSP_TRANS 24
 param set-default VT_F_TRANS_DUR 10.0
 param set-default VT_F_TRANS_THR 0.36
 param set-default VT_F_TR_OL_TM 14.0

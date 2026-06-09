@@ -33,7 +33,7 @@ high enough that a failed recovery has margin.
    below. qtail20 proved that stale SITL `parameters.bson` can override the
    airframe `set-default` values even when X-Plane is running the right plugin.
    - After the run, use:
-     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param VT_ARSP_TRANS --param FW_AIRSPD_TRIM --param FW_R_LIM --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_Y --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param EKF2_GPS_V_GATE --param VT_ARSP_TRANS --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_R_LIM --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -118,7 +118,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_PITCHRATE_K=0.92`
 - `MC_ROLLRATE_MAX=80`
 - `MC_PITCHRATE_MAX=110`
-- `MPC_THR_HOVER=0.22`
+- `MPC_THR_HOVER=0.24`
 - `MPC_THR_MIN=0.08`
 - `MPC_THR_XY_MARG=0.4`
 - `MPC_XY_P=0.18`
@@ -156,25 +156,31 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_USE_AIRSPD=1`
 - `ASPD_DO_CHECKS=1`
 - `SYS_HAS_NUM_ASPD=0`
+- `EKF2_GPS_V_NOISE=0.15`
+- `EKF2_GPS_V_GATE=3.0`
 - `VT_ARSP_BLEND=17`
-- `VT_ARSP_TRANS=22`
-- `FW_AIRSPD_MIN=19`
+- `VT_ARSP_TRANS=24`
+- `FW_AIRSPD_MIN=22`
 - `FW_AIRSPD_TRIM=27`
 - `FW_AIRSPD_MAX=36`
 - `FW_ARSP_SCALE_EN=0`
-- `FW_THR_TRIM=0.21`
-- `FW_THR_MAX=0.50`
-- `FW_THR_MIN=0.12`
-- `FW_THR_SLEW_MAX=0.24`
-- `FW_T_ALT_TC=7.0`
-- `FW_T_SPDWEIGHT=0.70`
+- `FW_THR_TRIM=0.22`
+- `FW_THR_MAX=0.55`
+- `FW_THR_MIN=0.18`
+- `FW_THR_SLEW_MAX=0.70`
+- `FW_T_CLMB_MAX=2.4`
+- `FW_T_ALT_TC=8.0`
+- `FW_T_SPDWEIGHT=1.20`
 - `FW_T_RLL2THR=2.0`
-- `FW_T_CLMB_R_SP=1.7`
-- `FW_T_SINK_R_SP=2.0`
+- `FW_T_THR_DAMPING=0.40`
+- `FW_T_PTCH_DAMP=0.55`
+- `FW_T_I_GAIN_PIT=0.05`
+- `FW_T_CLMB_R_SP=1.2`
+- `FW_T_SINK_R_SP=1.5`
 - `FW_T_VERT_ACC=1.8`
 - `FW_PSP_OFF=2.0`
 - `FW_P_TC=0.90`
-- `FW_P_LIM_MAX=24`
+- `FW_P_LIM_MAX=18`
 - `FW_P_RMAX_POS=34`
 - `FW_P_RMAX_NEG=30`
 - `FW_PR_P=0.24`
