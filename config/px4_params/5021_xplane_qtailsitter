@@ -222,26 +222,26 @@ param set-default FW_AIRSPD_MIN 19
 param set-default FW_AIRSPD_TRIM 27
 param set-default FW_AIRSPD_MAX 36
 
-param set-default FW_THR_TRIM 0.14
-param set-default FW_THR_MAX 0.50
-param set-default FW_THR_SLEW_MAX 0.20
+param set-default FW_THR_TRIM 0.12
+param set-default FW_THR_MAX 0.42
+param set-default FW_THR_SLEW_MAX 0.16
 
-param set-default FW_T_SINK_MAX 3
+param set-default FW_T_SINK_MAX 2.4
 param set-default FW_T_SINK_MIN 1.6
-param set-default FW_T_SPDWEIGHT 0.8
+param set-default FW_T_SPDWEIGHT 0.55
 param set-default FW_T_RLL2THR 2.0
-param set-default FW_T_STE_R_TC 1.0
-param set-default FW_T_THR_DAMPING 0.25
-param set-default FW_T_PTCH_DAMP 0.25
-param set-default FW_T_I_GAIN_PIT 0.25
-param set-default FW_T_CLMB_R_SP 2.0
+param set-default FW_T_STE_R_TC 1.6
+param set-default FW_T_THR_DAMPING 0.35
+param set-default FW_T_PTCH_DAMP 0.35
+param set-default FW_T_I_GAIN_PIT 0.12
+param set-default FW_T_CLMB_R_SP 1.4
 
-param set-default FW_P_TC 0.6
-param set-default FW_PSP_OFF 2.0
-param set-default FW_P_LIM_MAX 35
+param set-default FW_P_TC 0.9
+param set-default FW_PSP_OFF 1.0
+param set-default FW_P_LIM_MAX 25
 param set-default FW_P_LIM_MIN -15
-param set-default FW_PR_P 0.50
-param set-default FW_PR_I 0.30
+param set-default FW_PR_P 0.32
+param set-default FW_PR_I 0.08
 
 param set-default FW_R_TC 1.5
 param set-default FW_R_LIM 16
@@ -261,7 +261,7 @@ param set-default FW_YR_FF 0.0
 param set-default VT_ARSP_BLEND 20
 param set-default VT_ARSP_TRANS 28
 param set-default VT_F_TRANS_DUR 10.0
-param set-default VT_F_TRANS_THR 0.36
+param set-default VT_F_TRANS_THR 0.30
 param set-default VT_F_TR_OL_TM 14.0
 param set-default VT_TRANS_MIN_TM 8.0
 param set-default VT_TRANS_TIMEOUT 30
@@ -275,7 +275,7 @@ param set-default VT_PITCH_MIN -10
 
 param set-default VT_FW_DIFTHR_EN 7
 param set-default VT_FW_DIFTHR_S_R 0.55
-param set-default VT_FW_DIFTHR_S_P 0.90
+param set-default VT_FW_DIFTHR_S_P 0.55
 param set-default VT_FW_DIFTHR_S_Y 0.32
 
 

@@ -93,7 +93,13 @@ FW_LND_FL_TIME = 4
 FW_LND_FL_PMIN = 9
 FW_LND_TD_TIME = -1
 FW_FLAPS_LND_SCL = 0.85
-LNDFW_AIRSPD_MAX = 30
+FW_WR_P = 0.55
+FW_WR_I = 0.08
+FW_WR_FF = 0.20
+FW_W_RMAX = 20
+LNDFW_AIRSPD_MAX = 12
+LNDFW_VEL_XY_MAX = 5
+LNDFW_TRIG_TIME = 2
 NAV_ACC_RAD = 180
 NAV_LOITER_RAD = 600
 ```
@@ -129,7 +135,8 @@ Parsed channel 7
 - NPFG turns are broad and coordinated; no repeated path overshoot around the
   `600 m` loiter.
 - Mission landing follows the final approach path, slows before final, visibly
-  deploys landing flaps, flares near the runway, and disarms after rollout.
+  deploys landing flaps, flares near the runway, and disarms after a controlled
+  rollout at low ground speed.
 - X-Plane `Log.txt` should not report replaced or missing Cessna flap
   datarefs. The current package writes `sim/cockpit2/controls/flap_handle_request_ratio`
   and the physical `sim/flightmodel/controls/wing1l_fla1def` /
