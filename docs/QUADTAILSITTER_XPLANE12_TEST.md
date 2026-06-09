@@ -33,7 +33,7 @@ high enough that a failed recovery has margin.
    below. qtail20 proved that stale SITL `parameters.bson` can override the
    airframe `set-default` values even when X-Plane is running the right plugin.
    - After the run, use:
-     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param EKF2_GPS_V_GATE --param VT_ARSP_TRANS --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_R_LIM --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param VT_ARSP_TRANS --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_R_LIM --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -156,8 +156,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_USE_AIRSPD=1`
 - `ASPD_DO_CHECKS=1`
 - `SYS_HAS_NUM_ASPD=0`
-- `EKF2_GPS_V_NOISE=0.15`
-- `EKF2_GPS_V_GATE=3.0`
+- `EKF2_GPS_V_NOISE=0.35`
 - `VT_ARSP_BLEND=17`
 - `VT_ARSP_TRANS=24`
 - `FW_AIRSPD_MIN=22`
