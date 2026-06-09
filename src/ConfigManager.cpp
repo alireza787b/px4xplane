@@ -162,11 +162,11 @@ bool ConfigManager::actuator_smoothing_channels_configured = false;
 std::bitset<ConfigManager::MAX_ACTUATOR_CHANNELS> ConfigManager::actuator_smoothing_channels;
 std::string ConfigManager::aircraft_match_tokens;
 
-// MAVLink message rates (Hz) - defaults match PX4 Gazebo best practices
+// MAVLink message rates (Hz)
 int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
-int ConfigManager::mavlink_gps_rate_hz = 10;        // HIL_GPS
-int ConfigManager::mavlink_state_rate_hz = 50;      // HIL_STATE_QUATERNION
-int ConfigManager::mavlink_rc_rate_hz = 50;         // HIL_RC_INPUTS
+int ConfigManager::mavlink_gps_rate_hz = 20;        // HIL_GPS
+int ConfigManager::mavlink_state_rate_hz = 10;      // HIL_STATE_QUATERNION
+int ConfigManager::mavlink_rc_rate_hz = 10;         // HIL_RC_INPUTS
 float ConfigManager::gps_horizontal_accuracy_m = 1.5f;
 float ConfigManager::gps_vertical_accuracy_m = 1.0f;
 
@@ -269,9 +269,9 @@ void ConfigManager::loadConfiguration() {
 
     // Load MAVLink message rates
     mavlink_sensor_rate_hz = (int)ini.GetLongValue("", "mavlink_sensor_rate_hz", 200);
-    mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 10);
-    mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 50);
-    mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 50);
+    mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 20);
+    mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 10);
+    mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 10);
     gps_horizontal_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_horizontal_accuracy_m", 1.5));
     gps_vertical_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_vertical_accuracy_m", 1.0));
 
@@ -281,16 +281,16 @@ void ConfigManager::loadConfiguration() {
         mavlink_sensor_rate_hz = 200;
     }
     if (mavlink_gps_rate_hz < 1 || mavlink_gps_rate_hz > 100) {
-        XPLMDebugString("px4xplane: [WARNING] Invalid GPS rate, using default 10 Hz\n");
-        mavlink_gps_rate_hz = 10;
+        XPLMDebugString("px4xplane: [WARNING] Invalid GPS rate, using default 20 Hz\n");
+        mavlink_gps_rate_hz = 20;
     }
     if (mavlink_state_rate_hz < 1 || mavlink_state_rate_hz > 200) {
-        XPLMDebugString("px4xplane: [WARNING] Invalid state rate, using default 50 Hz\n");
-        mavlink_state_rate_hz = 50;
+        XPLMDebugString("px4xplane: [WARNING] Invalid state rate, using default 10 Hz\n");
+        mavlink_state_rate_hz = 10;
     }
     if (mavlink_rc_rate_hz < 1 || mavlink_rc_rate_hz > 200) {
-        XPLMDebugString("px4xplane: [WARNING] Invalid RC rate, using default 50 Hz\n");
-        mavlink_rc_rate_hz = 50;
+        XPLMDebugString("px4xplane: [WARNING] Invalid RC rate, using default 10 Hz\n");
+        mavlink_rc_rate_hz = 10;
     }
     if (!std::isfinite(gps_horizontal_accuracy_m) || gps_horizontal_accuracy_m < 0.1f ||
         gps_horizontal_accuracy_m > 50.0f) {

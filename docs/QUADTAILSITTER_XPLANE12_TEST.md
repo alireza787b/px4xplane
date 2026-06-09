@@ -203,7 +203,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `FD_FAIL_P=85`
 - `FD_FAIL_R_TTRI=1.0`
 - `FD_FAIL_P_TTRI=1.0`
-- `EKF2_BARO_NOISE=1.0`
+- `EKF2_GPS_P_NOISE=1.5`
+- PX4 default baro noise/gate values are used with GPS height reference
 - `CAL_BARO1_PRIO=0`
 - `IMU_GYRO_RATEMAX=200`
 - `IMU_INTEG_RATE=200`

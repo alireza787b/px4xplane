@@ -89,12 +89,9 @@ param set-default CAL_BARO0_PRIO 100
 param set-default CAL_BARO1_ID 6620428
 param set-default CAL_BARO1_PRIO 0
 
-param set-default EKF2_BARO_NOISE 1.0
-param set-default EKF2_BARO_GATE 10.0
-
 param set-default SENS_GPS0_DELAY 10
 param set-default SENS_GPS1_DELAY 10
-param set-default EKF2_GPS_P_NOISE 5.0
+param set-default EKF2_GPS_P_NOISE 1.5
 param set-default EKF2_GPS_V_NOISE 0.35
 param set-default EKF2_GPS_P_GATE 10.0
 
@@ -108,6 +105,7 @@ param set-default EKF2_ACC_NOISE 1.0
 param set-default EKF2_ACC_B_NOISE 0.001
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
+param set-default EKF2_IMU_CTRL 5
 param set-default EKF2_ASP_DELAY 0.0
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_WIND_NSD 0.01

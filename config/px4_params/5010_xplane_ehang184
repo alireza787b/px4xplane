@@ -88,30 +88,9 @@ param set-default PWM_MAIN_FUNC4 104
 ################################################################################
 # Optimized for X-Plane SITL with variable FPS (30-150 Hz)
 #
-# BAROMETER TUNING:
-# - BARO_NOISE: 1.0 m, matching the Alia SITL lesson that X-Plane baro should
-#   not be treated as centimeter-class when frame timing and physics vary.
-# - BARO_GATE: 10.0 (increased from default 3.0)
-#   * Tolerates FPS-induced timing gaps and altitude transients
-#   * Prevents false "BARO switch" errors during mission climbs
-#
-# GPS TUNING:
-# - GPS_P_NOISE: 0.15 m, kept conservative for this X-Plane model.
-#   * Barometer remains the primary smooth height source, but not centimeter-class.
-# - Horizontal noise: 0.01m (GPS horizontal is more accurate)
-#
-# INNOVATION GATES:
-# All gates increased from default values for FPS variability tolerance.
-# Prevents false sensor faults during:
-# - X-Plane FPS drops (timing jitter)
-# - Mission altitude changes (pressure transients)
-# - Waypoint transitions (acceleration spikes)
-#
-# TROUBLESHOOTING:
-# If "BARO switch" errors occur:
-# 1. Verify CAL_BARO1_PRIO=0 (backup sensor disabled)
-# 2. Check only one barometer message per frame in px4xplane plugin
-# 3. Increase EKF2_BARO_GATE if needed (max 10.0)
+# GPS is the EKF height reference on current PX4 defaults. Keep the simulated
+# backup barometer disabled by priority and leave baro noise/gates at PX4
+# defaults so frame-timing gaps do not over-weight pressure height while parked.
 
 # Simulation mode enablement
 param set-default SENS_EN_GPSSIM 1
@@ -126,6 +105,7 @@ param set-default CAL_BARO1_PRIO 0        # Backup disabled (prevents mid-missio
 # EKF2 core configuration
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
+param set-default EKF2_IMU_CTRL 5
 
 # Accelerometer bias estimation for X-Plane SITL.
 param set-default EKF2_ABL_LIM 2.5        # X-Plane SITL requires higher tolerance (see note below)
@@ -138,10 +118,6 @@ param set-default EKF2_ACC_B_NOISE 0.001  # Accel bias damping for frame-paced S
 # rendering load, which can make EKF2 estimate higher acceleration bias.
 # This does NOT affect flight performance - only the preflight arming check.
 
-# Barometer parameters.
-param set-default EKF2_BARO_NOISE 1.0     # Baro height noise in m; avoids overconfident fusion during X-Plane transients
-param set-default EKF2_BARO_GATE 10.0     # Increased for FPS variability tolerance
-
 # Use neutral simulated accelerometer offsets. The px4xplane bridge publishes
 # attitude-consistent HIL accelerometer data, so model-specific calibration
 # offsets would corrupt sensor_combined and can trip EKF2 bias checks.
@@ -153,7 +129,7 @@ param set-default CAL_ACC0_ZOFF 0.0
 # GPS parameters
 param set-default SENS_GPS0_DELAY 10
 param set-default SENS_GPS1_DELAY 10
-param set-default EKF2_GPS_P_NOISE 1.5    # X-Plane HIL position covariance
+param set-default EKF2_GPS_P_NOISE 1.5    # Matches px4xplane HIL_GPS position accuracy
 param set-default EKF2_GPS_V_NOISE 0.35   # X-Plane HIL velocity covariance for variable-FPS ground/transition phases
 param set-default EKF2_GPS_P_GATE 8.0     # Innovation gate
 

@@ -98,6 +98,7 @@ DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 PX4_PATH_OVERRIDE="${PX4XPLANE_PX4_PATH:-}"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
+COMMAND_NAME="px4xplane"
 MAVLINK2REST_IP="127.0.0.1"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
 SETUP_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh"
@@ -366,6 +367,42 @@ progress() {
     echo -e "\033[1;34m[PROGRESS]\033[0m $1"  # Blue progress messages
 }
 
+global_command_paths() {
+    local command_path
+
+    if command_path="$(command -v "$COMMAND_NAME" 2>/dev/null)"; then
+        echo "$command_path"
+    fi
+
+    echo "$HOME/bin/$COMMAND_NAME"
+    echo "$HOME/.local/bin/$COMMAND_NAME"
+}
+
+refresh_global_command() {
+    local target
+    local current_target
+    local seen=":"
+
+    for target in $(global_command_paths); do
+        [ -n "$target" ] || continue
+        case "$seen" in
+            *":$target:"*) continue ;;
+        esac
+        seen="${seen}${target}:"
+
+        if [ -e "$target" ] || [ -L "$target" ]; then
+            mkdir -p "$(dirname "$target")" 2>/dev/null || true
+            current_target="$(readlink -f "$target" 2>/dev/null || true)"
+
+            if [ "$current_target" != "$SCRIPT_PATH" ]; then
+                ln -sf "$SCRIPT_PATH" "$target" 2>/dev/null || cp "$SCRIPT_PATH" "$target" 2>/dev/null || true
+            fi
+
+            chmod +x "$target" 2>/dev/null || true
+        fi
+    done
+}
+
 is_valid_ipv4() {
     local ip="$1"
     local IFS=.
@@ -549,6 +586,12 @@ reset_params_if_airframe_changed() {
     fi
 
     SELECTED_AIRFRAME_HASH="$current_hash"
+
+    if [ "$SYNC_MODE" = true ] || [ "$RESET_CONFIG_MODE" = true ] || [ "$REPAIR_MODE" = true ]; then
+        info "Sync/reset requested; clearing saved SITL parameters before launch."
+        reset_saved_sitl_parameters
+        return
+    fi
 
     if [ "$PREVIOUS_PLATFORM" != "$platform" ] || [ "$PREVIOUS_AIRFRAME_HASH" != "$current_hash" ]; then
         info "Selected airframe/defaults changed since the previous run."
@@ -757,7 +800,7 @@ update_launcher_script_if_needed() {
         return 0
     fi
 
-    if ! cmp -s "$temp_script" "$current_script_path" 2>/dev/null; then
+    if ! cmp -s "$temp_script" "$current_script_path" 2>/dev/null || ! cmp -s "$temp_script" "$SCRIPT_PATH" 2>/dev/null; then
         info "Updating px4xplane launcher script from master."
         cp "$temp_script" "$SCRIPT_PATH"
         chmod +x "$SCRIPT_PATH"
@@ -766,6 +809,7 @@ update_launcher_script_if_needed() {
             cp "$temp_script" "$current_script_path" 2>/dev/null || true
             chmod +x "$current_script_path" 2>/dev/null || true
         fi
+        refresh_global_command
 
         rm -f "$temp_script"
         success "Launcher script updated: $SCRIPT_PATH"
@@ -987,6 +1031,7 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
 
                         if cp "$CLONE_PATH/setup_px4_sitl.sh" "$SCRIPT_PATH" 2>/dev/null; then
                             chmod +x "$SCRIPT_PATH"
+                            refresh_global_command
                             success "Setup script updated successfully!"
                             echo ""
                             highlight "⚠️  The script has been updated. Please re-run the command."
@@ -1222,9 +1267,9 @@ if [ "$USE_MAVLINK_ROUTER" = true ]; then
 fi
 
 # === Global Access Setup (Optional) ===
-if ! command -v px4xplane &> /dev/null; then
+if ! command -v "$COMMAND_NAME" &> /dev/null; then
     highlight "Global Command Setup"
-    echo "Set up 'px4xplane' command for system-wide access?"
+    echo "Set up '$COMMAND_NAME' command for system-wide access?"
     echo "This allows you to run this script from any directory."
     echo ""
     echo "Press Enter to enable (default: yes) or type 'n' to skip."
@@ -1232,20 +1277,21 @@ if ! command -v px4xplane &> /dev/null; then
 
     if [[ -z "$GLOBAL_SETUP" || "$GLOBAL_SETUP" =~ ^[Yy]$ ]]; then
         if [ -d "$HOME/bin" ]; then
-            ln -sf "$SCRIPT_PATH" "$HOME/bin/px4xplane"
-            success "Global command set up in: $HOME/bin/px4xplane"
+            ln -sf "$SCRIPT_PATH" "$HOME/bin/$COMMAND_NAME"
+            success "Global command set up in: $HOME/bin/$COMMAND_NAME"
         elif [ -d "$HOME/.local/bin" ]; then
-            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/px4xplane"
-            success "Global command set up in: $HOME/.local/bin/px4xplane"
+            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/$COMMAND_NAME"
+            success "Global command set up in: $HOME/.local/bin/$COMMAND_NAME"
         else
             mkdir -p "$HOME/.local/bin"
-            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/px4xplane"
+            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/$COMMAND_NAME"
             echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
             source "$HOME/.bashrc"
-            success "Global command set up in: $HOME/.local/bin/px4xplane"
+            success "Global command set up in: $HOME/.local/bin/$COMMAND_NAME"
         fi
         chmod +x "$SCRIPT_PATH"
-        info "You can now run 'px4xplane' from anywhere!"
+        refresh_global_command
+        info "You can now run '$COMMAND_NAME' from anywhere!"
     else
         info "Global access setup skipped."
     fi

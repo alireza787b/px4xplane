@@ -153,7 +153,7 @@
       },
       mavlink_gps_rate_hz: {
         type: "int",
-        default: 10,
+        default: 20,
         min: 1,
         max: 100,
         group: "mavlink_rates",
@@ -162,7 +162,7 @@
       },
       mavlink_state_rate_hz: {
         type: "int",
-        default: 50,
+        default: 10,
         min: 1,
         max: 200,
         group: "mavlink_rates",
@@ -171,7 +171,7 @@
       },
       mavlink_rc_rate_hz: {
         type: "int",
-        default: 50,
+        default: 10,
         min: 1,
         max: 200,
         group: "mavlink_rates",

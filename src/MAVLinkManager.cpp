@@ -471,8 +471,8 @@ std::normal_distribution<float> MAVLinkManager::noiseDistribution_gyro(0.0f, 0.0
 //   - u-blox M8: 1-2m (typical)
 //   - u-blox F9P RTK: 0.05-0.15m (high quality) ← TARGET for SITL
 //
-// With σ=0.15m: 95% of readings within ±0.3m → stable height estimate
-// Barometer (σ=0.003m) still dominates short-term, GPS provides long-term reference
+// With σ=0.15m: 95% of readings within ±0.3m → stable GPS height reference
+// Barometer remains a live secondary pressure source for the estimator.
 // REMOVED: noiseDistribution_gps_alt static member - now created fresh per sample in sendHILGPS()
 
 // Phase 2 Fix: Accelerometer bias drift model (MEMS accelerometer characteristics)
@@ -1489,126 +1489,26 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
 /**
  * @brief Sets the pressure data in the HIL_SENSOR message.
  *
- * OPTIMIZATION HISTORY (October 2025):
- * ------------------------------------
- * This function underwent significant optimization to achieve professional-grade
- * barometer simulation matching real MS5611/BMP388 sensors used in actual drones.
+ * px4xplane publishes absolute pressure from X-Plane MSL elevation plus a
+ * small live noise term. The X-Plane airframe defaults keep GPS as the height
+ * reference and leave PX4's baro noise/gate defaults in place; baro remains a
+ * secondary live pressure source instead of the primary height truth source.
  *
- * PROBLEM IDENTIFIED:
- * - Previous implementation: 5mm quantization + 5mm Gaussian noise
- * - Result: "Staircase" pattern causing EKF2 vertical velocity instability
- * - Measured performance: 0.5-1.5 m/s vertical velocity oscillation when stationary
+ * This function implements independent RNG streams for sensor IDs 0 and 1, but
+ * the SITL bridge sends one HIL_SENSOR message per frame. X-Plane provides one
+ * altitude source, and adding a second correlated barometer does not add useful
+ * redundancy in lockstep simulation.
  *
- * ROOT CAUSE ANALYSIS:
- * The combination of quantization + noise created non-Gaussian artifacts that
- * confused PX4's EKF2 estimator. The quantization steps made altitude appear to
- * "jump" in discrete increments, which EKF2 interpreted as rapid altitude changes,
- * leading to unstable vertical velocity estimates.
+ * Troubleshooting barometer switching:
+ * 1. Verify CAL_BARO1_PRIO=0 in the airframe defaults.
+ * 2. Check only one sendHILSensor() call per frame in the flight loop.
+ * 3. Check GPS/baro covariance before changing EKF2_BARO_GATE.
  *
- * SOLUTION APPLIED:
- * 1. Removed altitude quantization entirely (barometers measure continuous pressure)
- * 2. Reduced noise from 5mm to 1mm (matches real sensor specifications)
- * 3. Removed time-based startup filtering (let EKF2 handle convergence naturally)
- * 4. Added comprehensive noise statistics for validation
+ * @param hil_sensor Reference to the HIL_SENSOR message where pressure data is set.
+ * @param sensor_id Sensor identifier (0=primary, 1=backup). SITL uses 0.
  *
- * MEASURED RESULTS:
- * - Noise distribution: mean=0.0mm, sigma=0.997mm (target: 1.0mm) ✓
- * - 3-sigma spike rate: 0.28% (target: <0.3%, perfect Gaussian!) ✓
- * - Vertical velocity: <0.3 m/s when stationary (was 0.5-1.5 m/s) ✓
- *
- * IMPLEMENTATION DETAILS:
- * -----------------------
- * Process Flow:
- * 1. Retrieves MSL elevation from X-Plane (proven working dataref)
- * 2. Adds realistic Gaussian noise (mean=0, sigma=1mm)
- * 3. Calculates barometric pressure from altitude using ISA model
- * 4. Calculates differential pressure (pitot tube) from indicated airspeed
- * 5. Populates HIL_SENSOR message with pressure data
- *
- * Key Design Principles:
- * - CONTINUOUS PRESSURE: Real barometers output continuous values, not quantized
- * - REALISTIC NOISE: 1mm RMS matches MS5611/BMP388 datasheets
- * - NO FILTERING: Let PX4's EKF2 handle sensor fusion (it's designed for noisy data)
- * - VALIDATION: Track noise statistics to ensure proper Gaussian distribution
- *
- * TUNING GUIDE FOR DEVELOPERS:
- * -----------------------------
- * If you need to adjust barometer characteristics for different aircraft or conditions:
- *
- * 1. CHANGING NOISE LEVEL:
- *    - Locate line ~809: static std::normal_distribution<float> distribution(0.0f, 0.001f);
- *    - Change 0.001f (1mm) to desired sigma:
- *      * 0.0005f = 0.5mm (very high quality sensor)
- *      * 0.001f  = 1mm    (MS5611/BMP388, current setting)
- *      * 0.002f  = 2mm    (lower quality sensor)
- *    - ALWAYS update EKF2_BARO_NOISE in PX4 params = 3× new sigma value
- *
- * 2. VALIDATING CHANGES:
- *    - Enable debug logging: debug_log_sensor_values = true in config.ini
- *    - Check X-Plane Log.txt every 50 samples for noise statistics
- *    - Target metrics:
- *      * Mean: ±0.1mm (near-zero bias)
- *      * Sigma: Within 5% of configured value
- *      * 3-sigma rate: <0.3% (true Gaussian distribution)
- *    - If 3-sigma rate >0.5%, investigate X-Plane dataref issues
- *
- * 3. COMMON MISTAKES TO AVOID:
- *    - DON'T add altitude quantization (causes staircase artifacts)
- *    - DON'T filter the output (EKF2 handles this better)
- *    - DON'T use time-based startup filtering (EKF2 self-tunes)
- *    - DON'T set EKF2_BARO_NOISE < 2× sigma (causes over-trust)
- *    - DON'T set EKF2_BARO_NOISE > 5× sigma (causes under-trust)
- *
- * 4. INTEGRATION WITH PX4 PARAMETERS:
- *    This implementation is tuned with:
- *    - EKF2_BARO_NOISE = 0.003m (3mm) in config/px4_params/5010_xplane_ehang184
- *    - This is 3× safety margin over 1mm sensor noise
- *    - Accounts for X-Plane physics uncertainty and network jitter
- *    - See parameter file for detailed EKF2 tuning guide
- *
- * REFERENCES:
- * -----------
- * - MS5611 Datasheet: RMS noise 0.012 mbar @ 1Hz = ~0.1m (10cm)
- * - BMP388 Datasheet: RMS noise 0.003 mbar = ~0.025m (2.5cm)
- * - Our implementation: ~0.01 mbar = 0.001m (1mm) - better than hardware!
- * - This is intentional for SITL - perfect simulation with realistic characteristics
- *
- * DUAL BAROMETER CAPABILITY vs SITL SINGLE SENSOR STRATEGY (October 2025):
- * --------------------------------------------------------------------------
- * This function implements independent noise generators for sensor IDs 0 and 1,
- * but PX4-XPlane SITL uses SINGLE BAROMETER strategy for these reasons:
- *
- * WHY SINGLE SENSOR FOR SITL:
- * - X-Plane provides ONE altitude source (sim/flightmodel/position/elevation)
- * - Dual sensors would add correlated noise without real redundancy benefit
- * - Lockstep simulation requires one HIL_SENSOR per frame (timestamp monotonicity)
- * - Prevents "BARO switch from #0 -> #1" mid-mission RTL emergencies (critical!)
- *
- * CURRENT SITL CONFIGURATION:
- * - Only sendHILSensor(0) called in px4xplane.cpp:486 → single sensor per frame
- * - Parameter CAL_BARO1_PRIO=0 → PX4 knows sensor #1 doesn't exist
- * - Parameter EKF2_BARO_GATE=6.0 → tolerates innovation spikes during maneuvers
- * - Result: No switching attempts, robust mission flight
- *
- * DUAL BAROMETER ALTERNATIVE (NOT RECOMMENDED FOR SITL):
- * - Would require TWO HIL_SENSOR messages per frame (different sensor_id)
- * - Breaks one-message-per-frame lockstep rule → timestamp monotonicity issues
- * - Adds complexity without clear simulation benefit
- * - The dual-sensor RNG infrastructure exists for future HIL use cases
- *
- * TROUBLESHOOTING "BARO switch" ERRORS:
- * 1. Verify CAL_BARO1_PRIO=0 in parameter file (disables sensor #1)
- * 2. Check only ONE sendHILSensor() call per frame in flight loop
- * 3. Increase EKF2_BARO_GATE if innovation spikes during climbs
- * 4. Enable debug_log_sensor_values to check noise statistics
- *
- * @param hil_sensor Reference to the HIL_SENSOR message where the pressure data will be set.
- * @param sensor_id Sensor identifier (0=primary, 1=backup). SITL: Always use 0.
- *
- * @see config/px4_params/5010_xplane_ehang184 - CAL_BARO1_PRIO=0 (disables sensor #1)
- * @see config/px4_params/5010_xplane_ehang184 - EKF2_BARO_NOISE=0.003, GATE=6.0 tuning
- * @see src/px4xplane.cpp:486 - sendHILSensor(0) single sensor call
- * @see DataRefManager::calculatePressureFromAltitude() - ISA pressure calculation
+ * @see config/px4_params/5010_xplane_ehang184
+ * @see DataRefManager::calculatePressureFromAltitude()
  */
 void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t sensor_id) {
 	// ==================================================================================
@@ -1623,42 +1523,8 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// - This dataref provides smooth, continuous altitude updates
 	float basePressureAltitude_m = elevationMForSensors();
 
-	// ==================================================================================
-	// STEP 2: Generate Realistic Barometer Noise (DUAL SENSOR SYSTEM)
-	// ==================================================================================
-	// Simulates MS5611/BMP388 high-quality MEMS barometer characteristics:
-	// - Gaussian distribution: mean=0, sigma=0.01m (1cm RMS noise)
-	// - NO altitude quantization (real barometers measure continuous pressure!)
-	// - NO time-based filtering (let PX4 EKF2 handle sensor fusion)
-	// - INDEPENDENT NOISE per sensor: Each barometer has unique RNG for proper voting
-	//
-	// Why 1mm noise?
-	// - Matches real sensor datasheets (MS5611: ~10cm, BMP388: ~2.5cm at 1Hz)
-	// - Our 1cm is intentionally better for high-rate SITL (100Hz sampling)
-	// - Provides natural variation for EKF2 without introducing instability
-	//
-	// REALISTIC BAROMETER NOISE:
-	// Real MEMS barometers (MS5611/BMP388) have ~10mm RMS noise at 100Hz sampling
-	// This matches Gazebo/PX4 SITL standards and provides visible, realistic pressure variation
-	//
-	// CRITICAL FIX (January 2025): Barometer noise MUST match PX4 EKF2_BARO_NOISE parameter
-	//
-	// BEFORE: 10mm sensor noise + EKF2_BARO_NOISE=0.003 (3mm) = MISMATCH
-	//   → EKF2 expects 3mm but gets 10mm
-	//   → EKF2 thinks sensor is 3× noisier than configured
-	//   → 76% 3-sigma rate (should be 27% for Gaussian)
-	//   → EKF2 over-trusts GPS, causes height drift
-	//
-	// AFTER: 3mm sensor noise + EKF2_BARO_NOISE=0.003 (3mm) = PERFECT MATCH
-	//   → EKF2 expectations match reality
-	//   → 27% 3-sigma rate (proper Gaussian distribution)
-	//   → EKF2 correctly weights barometer vs GPS
-	//
-	// Noise levels by sensor quality:
-	// - 3mm (0.003m)  = High quality (MS5611/BMP388 in controlled environment) ← CURRENT
-	// - 10mm (0.01m)  = Standard quality (MS5611 in field conditions)
-	// - 30mm (0.03m)  = Lower quality / high vibration
-	//
+	// Keep pressure live but smooth. Estimator covariance belongs in PX4
+	// parameters, not hard-coded into the sensor generator.
 	static std::mt19937 generator0(12345);  // Barometer RNG (fixed seed for repeatability)
 	static std::mt19937 generator1(54321);  // Backup generator (if dual-sensor enabled)
 
@@ -1688,9 +1554,9 @@ void MAVLinkManager::setPressureData(mavlink_hil_sensor_t& hil_sensor, uint8_t s
 	// These statistics validate that our noise generator produces proper Gaussian
 	// distribution. Deviations indicate implementation bugs or X-Plane issues.
 	//
-	// Target metrics (for healthy sensor):
-	// - Mean: ±0.1mm (near-zero bias)
-	// - Sigma: 0.95-1.05mm (within 5% of 1mm target)
+	// Target metrics for a healthy sensor:
+	// - Mean: near-zero bias
+	// - Sigma: near the configured 3mm target
 	// - 3-sigma rate: <0.3% (true Gaussian: 0.27% theoretical)
 	//
 	// Static arrays track statistics per sensor independently
@@ -1874,11 +1740,9 @@ void MAVLinkManager::setGPSTimeAndFix(mavlink_hil_gps_t& hil_gps) {
 /**
  * @brief Sets the position data for the HIL_GPS message.
  *
- * PHASE 1 FIX: Changed GPS altitude from unrealistic 5mm quantization to realistic 0.5m noise
- * - Previous: 5mm quantization (unrealistic - better than barometer!)
- * - Current: 0.5m Gaussian noise (matches RTK-GPS vertical accuracy)
- * - Reason: GPS vertical accuracy is typically 2-3× worse than horizontal
- * - Impact: Prevents EKF2 confusion when fusing barometer (1cm noise) vs GPS (was 5mm)
+ * GPS height is published with high-quality GNSS-like vertical noise. X-Plane
+ * airframes use GPS as the EKF height reference while baro stays available as a
+ * live secondary pressure source.
  *
  * @param hil_gps Reference to the mavlink_hil_gps_t structure to populate.
  */
@@ -1887,15 +1751,9 @@ void MAVLinkManager::setGPSPositionData(mavlink_hil_gps_t& hil_gps) {
 	hil_gps.lat = static_cast<int32_t>(latitudeDegForSensors() * 1e7);
 	hil_gps.lon = static_cast<int32_t>(longitudeDegForSensors() * 1e7);
 
-	// CRITICAL FIX (January 2025): Reduced GPS altitude noise for stability
-	// GPS vertical accuracy (high-quality): σ = 0.15m (was 0.5m)
-	// This aligns with barometer being the primary altitude sensor (3mm noise << 150mm GPS noise)
-	//
-	// NOTE: GPS noise is 50× larger than barometer (0.15m vs 0.003m)
-	//   → EKF2 heavily favors barometer for short-term altitude (correct behavior)
-	//   → GPS provides long-term reference without causing ±1m jumps
-	//   → Prevents EKF2 confusion: "aircraft climbing" when GPS randomly jumps
-	//   → 95% of GPS readings within ±0.3m → stable height estimate
+	// GPS vertical accuracy (high-quality): σ = 0.15m.
+	// The stationary-ground guard removes GPS altitude noise while parked so the
+	// EKF does not see artificial height motion before takeoff.
 	float elevation_m = elevationMForSensors();
 
 	// CRITICAL FIX (January 2025): Create fresh distribution for each sample

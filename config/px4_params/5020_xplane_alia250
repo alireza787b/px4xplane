@@ -113,6 +113,7 @@ param set-default CAL_BARO1_PRIO 0       # Backup disabled
 # EKF2 Core Configuration
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
+param set-default EKF2_IMU_CTRL 5
 
 # Accelerometer Bias Estimation
 param set-default EKF2_ABL_LIM 2.5        # X-Plane SITL requires higher tolerance (see note below)
@@ -125,10 +126,6 @@ param set-default EKF2_ACC_B_NOISE 0.001
 # physics model is not identical to the EKF sensor model. Revisit with replay
 # and ULog innovation evidence before reducing it.
 
-# Barometer
-param set-default EKF2_BARO_NOISE 1.0    # Baro height noise in m; avoids overconfident fusion during VTOL/FW transients
-param set-default EKF2_BARO_GATE 10.0    # Increased tolerance for VTOL transitions (prevents false BARO switch)
-
 # Use neutral simulated accelerometer offsets. The px4xplane bridge publishes
 # attitude-consistent HIL accelerometer data, so model-specific calibration
 # offsets would corrupt sensor_combined and can trip EKF2 bias checks.
@@ -140,7 +137,7 @@ param set-default CAL_ACC0_ZOFF 0.0
 # GPS Parameters
 param set-default SENS_GPS0_DELAY 10
 param set-default SENS_GPS1_DELAY 10
-param set-default EKF2_GPS_P_NOISE 5.0    # X-Plane HIL position covariance during high-speed transition
+param set-default EKF2_GPS_P_NOISE 1.5    # Matches px4xplane HIL_GPS position accuracy
 param set-default EKF2_GPS_V_NOISE 0.35   # X-Plane HIL velocity covariance for variable-FPS ground/transition phases
 param set-default EKF2_GPS_P_GATE 10.0
 

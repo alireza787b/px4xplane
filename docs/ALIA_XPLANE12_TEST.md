@@ -136,7 +136,8 @@ parameter store and rerun before judging the package.
 - `CAL_BARO0_PRIO=100`
 - `CAL_BARO1_ID=6620428`
 - `CAL_BARO1_PRIO=0`
-- `EKF2_BARO_NOISE=1.0`
+- `EKF2_GPS_P_NOISE=1.5`
+- PX4 default baro noise/gate values are used with GPS height reference
 - `EKF2_ACC_B_NOISE=0.001`
 - `CAL_ACC0_PRIO=50`
 - `ASPD_DO_CHECKS=1`

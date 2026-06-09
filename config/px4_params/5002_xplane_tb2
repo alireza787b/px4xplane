@@ -97,22 +97,21 @@ param set-default CAL_ACC0_ZOFF 0.0
 
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
+param set-default EKF2_IMU_CTRL 5
 param set-default EKF2_ABL_LIM 0.8
 param set-default EKF2_ABL_ACCLIM 35.0
 param set-default EKF2_ACC_NOISE 1.0
 param set-default EKF2_ACC_B_NOISE 0.001
 
-param set-default EKF2_BARO_NOISE 1.0
-param set-default EKF2_BARO_GATE 10.0
 param set-default SENS_GPS0_DELAY 10
 param set-default SENS_GPS1_DELAY 10
 # Runway roll is intentional motion while the fixed-wing land detector can still
 # report landed/at-rest. Keep normal GNSS quality checks, but do not reject a
 # valid simulator GNSS source on stationary-only horizontal drift checks.
 param set-default EKF2_GPS_CHECK 1887
-# X-Plane fixed-wing runway/landing-roll dynamics and variable frame cadence
-# make the HIL GNSS stream less ideal than a purely kinematic simulator.
-param set-default EKF2_GPS_P_NOISE 3.5
+# Match the bridge's reported HIL_GPS accuracy. GPS remains the height
+# reference; baro is left at PX4 defaults as a secondary aiding source.
+param set-default EKF2_GPS_P_NOISE 1.5
 param set-default EKF2_GPS_V_NOISE 0.35
 param set-default EKF2_GPS_P_GATE 8.0
 

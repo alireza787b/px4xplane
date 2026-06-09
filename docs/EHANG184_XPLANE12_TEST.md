@@ -67,7 +67,8 @@ Confirm these values in the ULog before judging the result:
 - `NAV_ACC_RAD=12.0`
 - `NAV_MC_ALT_RAD=2.0`
 - `CAL_ACC0_PRIO=50`
-- `EKF2_BARO_NOISE=1.0`
+- `EKF2_GPS_P_NOISE=1.5`
+- PX4 default baro noise/gate values are used with GPS height reference
 - `IMU_GYRO_RATEMAX=200`
 - `IMU_INTEG_RATE=200`
 - `SENS_IMU_MODE=0`
