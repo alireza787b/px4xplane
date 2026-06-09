@@ -26,7 +26,7 @@ future videos.
 PX4 integration is under review in
 [PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 Until that merges, the setup helper temporarily uses the maintained
-`alireza787b/PX4-Autopilot-Me` branch `px4xplane-sitl`.
+`alireza787b/PX4-Autopilot-Me` branch `px4xplane-sitl-validation`.
 
 `v4.0.4` includes the px4xplane-side fixes from the recent validation cycle:
 sensor timing robustness, low-FPS/pause recovery, stale SITL parameter cleanup,
@@ -59,7 +59,7 @@ branch without a temporary PX4 guard.
 tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash "$tmp"
 ```
 
-The helper installs the `px4xplane` launcher, syncs the PX4 SITL fork branch,
+The helper installs the `px4xplane` launcher, syncs the PX4 SITL validation branch,
 and opens the airframe menu. If you accept the command install prompt, future
 sessions can be started by typing `px4xplane` from any terminal.
 
@@ -74,17 +74,17 @@ IP was saved, rerun the launcher with `px4xplane --reset-ip`.
 For common setup or connection errors, see
 [Troubleshooting](docs/index.md#troubleshooting).
 
-For final VTOL transition validation while the separate PX4 guard PRs are still
-under review, run:
+For final validation while the separate PX4 guard PRs are still under review,
+plain `px4xplane` syncs by default and asks whether to apply both guards.
+To also clear remembered IP/config choices and force a fresh prompt cycle, run:
 
 ```bash
 px4xplane --sync --reset-config
 ```
 
 Accept the EKF-GSF and Standard VTOL handoff guard prompts. The launcher
-creates a local PX4 validation branch with those guard commits cherry-picked on
-top of the X-Plane SITL branch. It does not change the official X-Plane PR
-scope.
+keeps the selected PX4 checkout aligned with the validation branch and stacks
+those guard commits locally. It does not change the official X-Plane PR scope.
 
 If you already have a PX4 checkout and do not want a second clone, pass it to
 the helper:

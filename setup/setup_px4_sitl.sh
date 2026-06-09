@@ -19,7 +19,7 @@
 # official PX4 repository directly, and this custom fork will no longer be needed.
 #
 # Current Status:
-# - Fork Branch: px4xplane-sitl
+# - Fork Branch: px4xplane-sitl-validation
 # - Target: Official PX4 repository (pending PR approval)
 # - Progress: https://github.com/PX4/PX4-Autopilot/pull/22493
 #
@@ -56,7 +56,7 @@
 # === Customization Options ===
 # The following variables can be customized at the top of the script:
 # - `REPO_URL`: URL of the forked PX4 repository
-# - `BRANCH_NAME`: Branch to checkout (currently: px4xplane-sitl)
+# - `BRANCH_NAME`: Branch to checkout (currently: px4xplane-sitl-validation)
 # - `UPSTREAM_URL`: URL of the upstream PX4 repository
 # - `DEFAULT_CLONE_PATH`: Default installation directory
 # - `PLATFORM_CHOICES`: Available airframes for X-Plane
@@ -86,7 +86,8 @@
 
 # === Configurable Variables ===
 REPO_URL="${PX4XPLANE_PX4_REPO:-https://github.com/alireza787b/PX4-Autopilot-Me.git}"
-BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-px4xplane-sitl}"
+DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-px4xplane-sitl-validation}"
+BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-$DEFAULT_PX4_BRANCH}"
 REPO_URL_WAS_OVERRIDDEN=false
 [ -n "${PX4XPLANE_PX4_REPO:-}" ] && REPO_URL_WAS_OVERRIDDEN=true
 PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-origin}"
@@ -115,6 +116,7 @@ REPAIR_MODE=false  # Set to true if you always want full repair mode
 REPAIR_MODE_FLAG="--repair"
 UNINSTALL_FLAG="--uninstall"
 SYNC_MODE_FLAG="--sync"
+NO_SYNC_MODE_FLAG="--no-sync"
 RESET_CONFIG_FLAG="--reset-config"
 RESET_IP_FLAG="--reset-ip"
 PX4_REPO_FLAG="--px4-repo"
@@ -127,7 +129,7 @@ VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
 NO_VTOL_HANDOFF_GUARD_FLAG="--without-vtol-handoff-guard"
 HELP_FLAG="--help"
 
-SYNC_MODE=false
+SYNC_MODE=true
 RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
@@ -145,6 +147,9 @@ Options:
   --sync          Force-sync the selected PX4 checkout to the configured X-Plane
                   branch remote, update submodules, and reset saved SITL
                   parameters before launching.
+  --no-sync       Advanced/offline mode: do not sync the PX4 checkout before
+                  launching. Saved SITL params are still reset if the selected
+                  airframe defaults changed.
   --repair        Run the full dependency/setup path and sync the PX4 fork.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
@@ -186,6 +191,12 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$SYNC_MODE_FLAG")
             SYNC_MODE=true
+            shift
+            ;;
+        "$NO_SYNC_MODE_FLAG")
+            SYNC_MODE=false
+            SKIP_EKF_GSF_GUARD=true
+            SKIP_VTOL_HANDOFF_GUARD=true
             shift
             ;;
         "$RESET_CONFIG_FLAG")
@@ -880,9 +891,7 @@ if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
     success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
 fi
 
-if [ "$SYNC_MODE" = true ] || [ "$REPAIR_MODE" = true ]; then
-    update_launcher_script_if_needed
-fi
+update_launcher_script_if_needed
 
 # === Trap for Cleanup ===
 cleanup() {
@@ -979,15 +988,16 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
             REMOTE_HASH=""
         fi
     else
-        # Prompt user if they want to check for updates
-        highlight "Check for updates from remote repository?"
-        echo "Press 's' to skip (fast start) or any other key to check (default: check in 5 seconds)"
+        # Advanced/offline path, reached only when --no-sync is used.
+        highlight "Offline/no-sync mode"
+        echo "Check for updates from remote repository anyway?"
+        echo "Press 's' to skip or any other key to check (default: check in 5 seconds)"
         read -t 5 -n 1 -r SKIP_UPDATE_CHECK
         echo ""
 
         if [[ "$SKIP_UPDATE_CHECK" =~ ^[Ss]$ ]]; then
             warning "Skipped update check. Using current local version."
-            info "To force a clean sync later, run: $0 --sync"
+            info "Normal '$COMMAND_NAME' runs sync by default. Use --no-sync only for deliberate offline/debug runs."
             LOCAL_HASH=""
             REMOTE_HASH=""
         else

@@ -41,8 +41,10 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 
 - Wrong X-Plane host IP: run `px4xplane --reset-ip` and choose the correct host
   IP again.
-- Stale local PX4 checkout, submodules, or SITL parameters: run
-  `px4xplane --sync`.
+- Stale local PX4 checkout, submodules, or SITL parameters: run `px4xplane`.
+  The launcher syncs the selected PX4 branch by default during the temporary
+  validation phase. Use `px4xplane --sync --reset-config` when you also want to
+  clear remembered IP/config choices.
 - Broken setup or missing launcher command: rerun the setup helper, or use
   `px4xplane --repair` if the command already exists.
 - Plugin does not appear in X-Plane: confirm the whole `px4xplane` folder is in
@@ -57,12 +59,14 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 
 ## Current Release Policy
 
-- Use the `v4.0.4` package with the refreshed PX4 `px4xplane-sitl` branch while the official PX4 PR is under review.
+- Use the `v4.0.4` package with the refreshed PX4 `px4xplane-sitl-validation`
+  branch while the official PX4 PR is under review.
 - PX4 integration PR:
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 - Temporary helper behavior: until #22493 merges, `setup_px4_sitl.sh` and
-  `px4xplane --sync` use the maintained `alireza787b/PX4-Autopilot-Me`
-  `px4xplane-sitl` branch.
+  plain `px4xplane` use the maintained `alireza787b/PX4-Autopilot-Me`
+  `px4xplane-sitl-validation` branch and sync it by default. Use `--no-sync`
+  only for deliberate offline/debug runs.
 - Separate PX4 EKF edge-case PR:
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
   This covers the fast-VTOL transition EKF-GSF yaw-reset issue found during
@@ -72,10 +76,9 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   This covers the front-transition pusher-thrust and pitch-setpoint handoff
   issue found during Alia validation and is intentionally separate from the
   plugin package.
-- For local validation while #27533 and #27601 are pending, run
-  `px4xplane --sync --reset-config` and accept both guard prompts. The launcher
-  creates a local PX4 branch named `px4xplane-sitl-validation` by stacking the
-  guard commits on top of the X-Plane SITL branch. Use
+- For local validation while #27533 and #27601 are pending, run `px4xplane` and
+  accept both guard prompts. The launcher keeps the validation branch current
+  and stacks the guard commits locally. Use
   `px4xplane --without-ekf-gsf-guard` or
   `px4xplane --without-vtol-handoff-guard` only for exact-branch testing
   without the temporary guards.
@@ -89,9 +92,9 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 - Use `Plugins > px4xplane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
 - Use `Plugins > px4xplane > Advanced > Validate Config` after changing the active mapping in-sim.
 - Confirm the X-Plane aircraft, active `config_name`, and PX4 `SYS_AUTOSTART` target match before arming.
-- Run `px4xplane --sync` before release validation to align the selected PX4
-  checkout with the X-Plane branch, update submodules, and clear stale SITL
-  parameters.
+- Run `px4xplane --sync --reset-config` before release validation when you want
+  a fully fresh prompt/config cycle. Plain `px4xplane` still syncs the selected
+  PX4 checkout, updates submodules, and clears stale SITL parameters.
 
 ## Public Docs Policy
 
