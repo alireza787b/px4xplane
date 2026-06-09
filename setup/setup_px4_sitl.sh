@@ -339,10 +339,12 @@ fi
 
 # === Copy Script to Parent Directory ===
 SCRIPT_PATH="$INSTALL_PATH/$SCRIPT_NAME"
+SCRIPT_WAS_COPIED=false
 if [ "$(basename "$0")" != "$SCRIPT_NAME" ]; then
     echo "Copying script to $SCRIPT_PATH..."
     cp "$0" "$SCRIPT_PATH"
     chmod +x "$SCRIPT_PATH"
+    SCRIPT_WAS_COPIED=true
 fi
 
 
@@ -402,6 +404,10 @@ refresh_global_command() {
         fi
     done
 }
+
+if [ "$SCRIPT_WAS_COPIED" = true ]; then
+    refresh_global_command
+fi
 
 is_valid_ipv4() {
     local ip="$1"
