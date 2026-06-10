@@ -93,6 +93,7 @@ REPO_URL_WAS_OVERRIDDEN=false
 PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-origin}"
 EKF_GSF_GUARD_BRANCH="ekf2-gnss-yaw-reset-guard"
 VTOL_HANDOFF_GUARD_BRANCH="vtol-standard-throttle-handoff-xplane"
+TAILSITTER_FW_FRAME_GUARD_BRANCH="tailsitter-fw-attitude-frame-guard"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
@@ -127,6 +128,8 @@ EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
 VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
 NO_VTOL_HANDOFF_GUARD_FLAG="--without-vtol-handoff-guard"
+TAILSITTER_FW_FRAME_GUARD_FLAG="--with-tailsitter-fw-frame-guard"
+NO_TAILSITTER_FW_FRAME_GUARD_FLAG="--without-tailsitter-fw-frame-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=true
@@ -138,6 +141,8 @@ APPLY_EKF_GSF_GUARD=false
 SKIP_EKF_GSF_GUARD=false
 APPLY_VTOL_HANDOFF_GUARD=false
 SKIP_VTOL_HANDOFF_GUARD=false
+APPLY_TAILSITTER_FW_FRAME_GUARD=false
+SKIP_TAILSITTER_FW_FRAME_GUARD=false
 
 print_usage() {
     cat <<EOF
@@ -173,6 +178,11 @@ Options:
                   front-transition setpoint handoff PR before launching.
   --without-vtol-handoff-guard
                   Do not prompt for or apply the temporary VTOL handoff guard.
+  --with-tailsitter-fw-frame-guard
+                  Local test mode: cherry-pick the experimental tailsitter
+                  fixed-wing quaternion attitude-frame guard before launching.
+  --without-tailsitter-fw-frame-guard
+                  Do not apply the temporary tailsitter FW frame guard.
   --uninstall     Remove the global px4xplane command and default PX4 fork checkout.
   --help          Show this help.
 EOF
@@ -262,6 +272,16 @@ while [[ $# -gt 0 ]]; do
         "$NO_VTOL_HANDOFF_GUARD_FLAG")
             SKIP_VTOL_HANDOFF_GUARD=true
             APPLY_VTOL_HANDOFF_GUARD=false
+            shift
+            ;;
+        "$TAILSITTER_FW_FRAME_GUARD_FLAG")
+            APPLY_TAILSITTER_FW_FRAME_GUARD=true
+            SYNC_MODE=true
+            shift
+            ;;
+        "$NO_TAILSITTER_FW_FRAME_GUARD_FLAG")
+            SKIP_TAILSITTER_FW_FRAME_GUARD=true
+            APPLY_TAILSITTER_FW_FRAME_GUARD=false
             shift
             ;;
         "$HELP_FLAG"|"-h")
@@ -641,9 +661,14 @@ apply_guard_commits() {
     progress "Applying $label locally for validation..."
     for guard_commit in $guard_commits; do
         if ! git cherry-pick -x "$guard_commit"; then
-            git cherry-pick --abort >/dev/null 2>&1 || true
-            warning "Could not apply $label commit $guard_commit."
-            return 1
+            if [ -z "$(git diff --name-only --diff-filter=U)" ] && git diff --quiet && git diff --cached --quiet; then
+                git cherry-pick --skip >/dev/null 2>&1 || git reset --hard HEAD >/dev/null 2>&1 || true
+                info "$label commit $guard_commit was already present; skipped."
+            else
+                git cherry-pick --abort >/dev/null 2>&1 || true
+                warning "Could not apply $label commit $guard_commit."
+                return 1
+            fi
         fi
     done
 
@@ -693,6 +718,15 @@ sync_px4_repo_to_remote() {
         local_branch="${BRANCH_NAME}-validation"
     fi
 
+    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ]; then
+        progress "Fetching tailsitter FW attitude-frame guard branch for local validation..."
+        if ! git fetch "$PX4_REMOTE_NAME" "+$TAILSITTER_FW_FRAME_GUARD_BRANCH:refs/remotes/$PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH"; then
+            warning "Could not fetch $PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH."
+            return 1
+        fi
+        local_branch="${BRANCH_NAME}-validation"
+    fi
+
     if ! git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
         warning "Remote branch $remote_ref was not found."
         return 1
@@ -705,6 +739,11 @@ sync_px4_repo_to_remote() {
 
     if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH" >/dev/null 2>&1; then
         warning "Remote branch $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH was not found."
+        return 1
+    fi
+
+    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH" >/dev/null 2>&1; then
+        warning "Remote branch $PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH was not found."
         return 1
     fi
 
@@ -733,6 +772,7 @@ sync_px4_repo_to_remote() {
 
     apply_guard_commits "$remote_ref" "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_BRANCH" "EKF-GSF yaw reset guard" || return 1
     apply_guard_commits "$remote_ref" "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_BRANCH" "Standard VTOL handoff guard" || return 1
+    apply_guard_commits "$remote_ref" "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_BRANCH" "tailsitter FW attitude-frame guard" || return 1
 
     if [ "$clean_untracked" = true ]; then
         git clean -fd
@@ -938,6 +978,7 @@ echo "  → Branch: $BRANCH_NAME"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
 echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
+echo "  → Tailsitter FW frame guard: opt-in with --with-tailsitter-fw-frame-guard"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
     echo "  → Existing PX4 checkout auto-detected; origin remote will be left unchanged"
 fi
