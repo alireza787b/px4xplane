@@ -148,6 +148,7 @@ APPLY_VTOL_HANDOFF_GUARD=false
 SKIP_VTOL_HANDOFF_GUARD=false
 APPLY_TAILSITTER_FW_FRAME_GUARD=false
 SKIP_TAILSITTER_FW_FRAME_GUARD=false
+TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=false
 
 print_usage() {
     cat <<EOF
@@ -336,6 +337,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 set -- "${POSITIONAL_ARGS[@]}"
+
+if [ "$BRANCH_NAME" = "$VALIDATION_PX4_BRANCH" ]; then
+    TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=true
+    APPLY_TAILSITTER_FW_FRAME_GUARD=false
+    SKIP_TAILSITTER_FW_FRAME_GUARD=true
+fi
 
 if [ "$UNINSTALL_MODE" = true ]; then
     # Uninstall the global access command
@@ -965,8 +972,11 @@ prompt_for_vtol_handoff_guard() {
 guard_state_text() {
     local apply="$1"
     local skip="$2"
+    local included="${3:-false}"
 
-    if [ "$apply" = true ]; then
+    if [ "$included" = true ]; then
+        echo "included in branch"
+    elif [ "$apply" = true ]; then
         echo "apply"
     elif [ "$skip" = true ]; then
         echo "skip"
@@ -981,7 +991,7 @@ print_validation_selection() {
     echo "  PX4 remote:        $PX4_REMOTE_NAME ($REPO_URL)"
     echo "  EKF-GSF guard:     $(guard_state_text "$APPLY_EKF_GSF_GUARD" "$SKIP_EKF_GSF_GUARD")"
     echo "  VTOL handoff guard: $(guard_state_text "$APPLY_VTOL_HANDOFF_GUARD" "$SKIP_VTOL_HANDOFF_GUARD")"
-    echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD")"
+    echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_IN_BRANCH")"
 
     if [ "$VALIDATION_MODE" = true ]; then
         info "--validation selected: using the validation branch and guard stack for flight testing."
