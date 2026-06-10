@@ -16052,7 +16052,7 @@ P _engn/0/_part_the 90.000000000
 P _engn/0/_part_x 1.399999976
 P _engn/0/_part_y -0.850000024
 P _engn/0/_part_z -0.720000029
-P _engn/0/_power_max_limit 1.649999976
+P _engn/0/_power_max_limit 2.400000095
 P _engn/0/_thrust_max_limit 0.000000000
 P _engn/0/_type ELE
 P _engn/1/_RSC_max_pwr_ENGN 2.5000E4
@@ -16070,7 +16070,7 @@ P _engn/1/_part_the 90.000000000
 P _engn/1/_part_x -1.399999976
 P _engn/1/_part_y -0.850000024
 P _engn/1/_part_z 0.720000029
-P _engn/1/_power_max_limit 1.649999976
+P _engn/1/_power_max_limit 2.400000095
 P _engn/1/_thrust_max_limit 0.000000000
 P _engn/1/_type ELE
 P _engn/2/_RSC_max_pwr_ENGN 2.5000E4
@@ -16088,7 +16088,7 @@ P _engn/2/_part_the 90.000000000
 P _engn/2/_part_x -1.399999976
 P _engn/2/_part_y -0.850000024
 P _engn/2/_part_z -0.720000029
-P _engn/2/_power_max_limit 1.649999976
+P _engn/2/_power_max_limit 2.400000095
 P _engn/2/_thrust_max_limit 0.000000000
 P _engn/2/_type ELE
 P _engn/3/_RSC_max_pwr_ENGN 2.5000E4
@@ -16106,7 +16106,7 @@ P _engn/3/_part_the 90.000000000
 P _engn/3/_part_x 1.399999976
 P _engn/3/_part_y -0.850000024
 P _engn/3/_part_z 0.720000029
-P _engn/3/_power_max_limit 1.649999976
+P _engn/3/_power_max_limit 2.400000095
 P _engn/3/_thrust_max_limit 0.000000000
 P _engn/3/_type ELE
 P _engn/count 16
@@ -32165,9 +32165,9 @@ P acf/_cdi_auto_crs_gps1 0
 P acf/_cgX_lft -0.010000000
 P acf/_cgX_rgt 0.010000000
 P acf/_cgY -1.000000000
-P acf/_cgZ -0.080000000
-P acf/_cgZ_aft -0.080000000
-P acf/_cgZ_fwd -0.080000000
+P acf/_cgZ 0.000000000
+P acf/_cgZ_aft 0.000000000
+P acf/_cgZ_fwd 0.000000000
 P acf/_cg_in_mac 0
 P acf/_chaff_max 0
 P acf/_chute_line_len/0 0.000000000

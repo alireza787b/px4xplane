@@ -80,10 +80,9 @@ stability. v4.0.0 hides the large rendered gear geometry while keeping the
 fixed contact pads active. True animated cosmetic retractable legs remain a
 separate visual-asset slice.
 
-The packaged aircraft also includes the tuned validation geometry used by this
-card: the CG is shifted slightly forward in the X-Plane longitudinal axis and
-the electric motor power limits are reduced from the earlier high-margin
-prototype. Do not validate with an older `QuadTailsitter.acf` copy.
+Do not validate with an older `QuadTailsitter.acf` copy. The packaged aircraft
+must match this repository so the X-Plane motor geometry and the PX4 control
+allocation remain consistent.
 
 ## Parameter Sanity Check
 
@@ -168,11 +167,11 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_AIRSPD_TRIM=27`
 - `FW_AIRSPD_MAX=36`
 - `FW_ARSP_SCALE_EN=0`
-- `FW_THR_TRIM=0.18`
+- `FW_THR_TRIM=0.14`
 - `FW_THR_MAX=0.50`
-- `FW_THR_MIN=0.05`
-- `FW_THR_SLEW_MAX=0.24`
-- `FW_T_CLMB_MAX=2.8`
+- `FW_THR_MIN=0.00`
+- `FW_THR_SLEW_MAX=0.20`
+- `FW_T_CLMB_MAX=3.5`
 - `FW_T_ALT_TC=6.0`
 - `FW_T_SPDWEIGHT=1.0`
 - `FW_T_RLL2THR=2.0`
@@ -183,18 +182,18 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_T_SINK_R_SP=1.6`
 - `FW_T_VERT_ACC=1.8`
 - `FW_PSP_OFF=2.0`
-- `FW_P_TC=1.00`
+- `FW_P_TC=0.85`
 - `FW_P_LIM_MAX=22`
-- `FW_P_RMAX_POS=28`
-- `FW_P_RMAX_NEG=28`
-- `FW_PR_P=0.24`
-- `FW_PR_I=0.04`
-- `FW_PR_FF=0.08`
+- `FW_P_RMAX_POS=36`
+- `FW_P_RMAX_NEG=34`
+- `FW_PR_P=0.30`
+- `FW_PR_I=0.05`
+- `FW_PR_FF=0.09`
 - `FW_R_TC=1.5`
 - `FW_R_LIM=12`
-- `FW_R_RMAX=25`
+- `FW_R_RMAX=28`
 - `FW_PN_R_SLEW_MAX=10`
-- `FW_RR_P=0.06`
+- `FW_RR_P=0.07`
 - `FW_RR_I=0.015`
 - `FW_RR_FF=0.02`
 - `FW_YR_P=0.01`
@@ -207,8 +206,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `VT_B_DEC_MSS=1.0`
 - `VT_B_DEC_I=0.12`
 - `VT_B_TRANS_RAMP=1.5`
-- `VT_FW_DIFTHR_S_R=0.32`
-- `VT_FW_DIFTHR_S_P=0.45`
+- `VT_FW_DIFTHR_S_R=0.36`
+- `VT_FW_DIFTHR_S_P=0.58`
 - `VT_FW_DIFTHR_S_Y=0.24`
 - `VT_FW_MIN_ALT=30`
 - `VT_QC_ALT_LOSS=45`
