@@ -76,12 +76,14 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   This covers the front-transition pusher-thrust and pitch-setpoint handoff
   issue found during Alia validation and is intentionally separate from the
   plugin package.
-- For local validation while #27533 and #27601 are pending, run `px4xplane` and
-  accept both guard prompts. The launcher keeps the validation branch current
-  and stacks the guard commits locally. Use
+- For local validation while #27533 and #27601 are pending, run
+  `px4xplane --validation --reset-config`. The launcher keeps the validation
+  branch current and stacks the guard commits locally. Use
   `px4xplane --without-ekf-gsf-guard` or
   `px4xplane --without-vtol-handoff-guard` only for exact-branch testing
   without the temporary guards.
+- For reviewer-scope checks of the exact PX4 X-Plane PR branch without
+  validation-only tuning or guard commits, run `px4xplane --exact-pr`.
 - If you already maintain an official PX4 checkout, use
   `px4xplane --px4-path ~/PX4-Autopilot --sync --reset-config`. The launcher
   adds/updates a separate `px4xplane` remote and does not rewrite `origin`.

@@ -75,16 +75,18 @@ For common setup or connection errors, see
 [Troubleshooting](docs/index.md#troubleshooting).
 
 For final validation while the separate PX4 guard PRs are still under review,
-plain `px4xplane` syncs by default and asks whether to apply both guards.
-To also clear remembered IP/config choices and force a fresh prompt cycle, run:
+use the validation shortcut. It selects `px4xplane-sitl-validation`, applies
+the EKF-GSF and Standard VTOL guard PRs, and skips the tailsitter frame guard
+because that guard is already included in the validation branch:
 
 ```bash
-px4xplane --sync --reset-config
+px4xplane --validation --reset-config
 ```
 
-Accept the EKF-GSF and Standard VTOL handoff guard prompts. The launcher
-keeps the selected PX4 checkout aligned with the validation branch and stacks
-those guard commits locally. It does not change the official X-Plane PR scope.
+The launcher keeps the selected PX4 checkout aligned with the validation branch
+and stacks the pending PX4 guard commits locally. It does not change the
+official X-Plane PR scope. For reviewer-scope checks of the exact X-Plane PR
+without temporary guard PRs, run `px4xplane --exact-pr --reset-config`.
 
 If you already have a PX4 checkout and do not want a second clone, pass it to
 the helper:

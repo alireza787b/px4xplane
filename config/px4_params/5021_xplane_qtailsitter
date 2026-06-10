@@ -124,7 +124,7 @@ param set-default MC_AIRMODE 2
 param set-default MAN_ARM_GESTURE 0
 
 param set-default MC_ROLL_P 0.9
-param set-default MC_PITCH_P 0.58
+param set-default MC_PITCH_P 0.66
 param set-default MC_YAW_P 0.65
 param set-default MC_YAW_WEIGHT 0.35
 
@@ -133,7 +133,7 @@ param set-default MC_ROLLRATE_I 0.02
 param set-default MC_ROLLRATE_D 0.0008
 param set-default MC_ROLLRATE_MAX 80
 
-param set-default MC_PITCHRATE_P 0.115
+param set-default MC_PITCHRATE_P 0.16
 param set-default MC_PITCHRATE_I 0.02
 param set-default MC_PITCHRATE_D 0.0012
 param set-default MC_PITCHRATE_K 0.92
@@ -223,10 +223,10 @@ param set-default FW_AIRSPD_TRIM 27
 param set-default FW_AIRSPD_MAX 36
 param set-default FW_ARSP_SCALE_EN 0
 
-param set-default FW_THR_TRIM 0.14
-param set-default FW_THR_MIN 0.00
+param set-default FW_THR_TRIM 0.18
+param set-default FW_THR_MIN 0.08
 param set-default FW_THR_MAX 0.50
-param set-default FW_THR_SLEW_MAX 0.20
+param set-default FW_THR_SLEW_MAX 0.24
 
 param set-default FW_T_CLMB_MAX 3.5
 param set-default FW_T_SINK_MAX 2.4
@@ -278,7 +278,7 @@ param set-default VT_F_TRANS_THR 0.36
 param set-default VT_F_TR_OL_TM 16.0
 param set-default VT_TRANS_MIN_TM 8.0
 param set-default VT_TRANS_TIMEOUT 40
-param set-default VT_B_TRANS_DUR 5.0
+param set-default VT_B_TRANS_DUR 7.0
 param set-default VT_B_DEC_MSS 1.0
 param set-default VT_B_DEC_I 0.12
 param set-default VT_B_TRANS_RAMP 1.5

@@ -86,7 +86,8 @@
 
 # === Configurable Variables ===
 REPO_URL="${PX4XPLANE_PX4_REPO:-https://github.com/alireza787b/PX4-Autopilot-Me.git}"
-DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-px4xplane-sitl-validation}"
+VALIDATION_PX4_BRANCH="${PX4XPLANE_VALIDATION_PX4_BRANCH:-px4xplane-sitl-validation}"
+DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-$VALIDATION_PX4_BRANCH}"
 BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-$DEFAULT_PX4_BRANCH}"
 REPO_URL_WAS_OVERRIDDEN=false
 [ -n "${PX4XPLANE_PX4_REPO:-}" ] && REPO_URL_WAS_OVERRIDDEN=true
@@ -124,6 +125,8 @@ PX4_REPO_FLAG="--px4-repo"
 PX4_BRANCH_FLAG="--px4-branch"
 PX4_PATH_FLAG="--px4-path"
 RESTORE_OFFICIAL_FLAG="--restore-official"
+VALIDATION_MODE_FLAG="--validation"
+EXACT_PR_MODE_FLAG="--exact-pr"
 EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
 VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
@@ -137,6 +140,8 @@ RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
 RESTORE_OFFICIAL_MODE=false
+VALIDATION_MODE=false
+EXACT_PR_MODE=false
 APPLY_EKF_GSF_GUARD=false
 SKIP_EKF_GSF_GUARD=false
 APPLY_VTOL_HANDOFF_GUARD=false
@@ -168,6 +173,12 @@ Options:
   --restore-official
                   Restore the selected PX4 checkout to official PX4 master,
                   update submodules, reset saved SITL params, and exit.
+  --validation    Final-validation shortcut: use px4xplane-sitl-validation,
+                  apply the EKF-GSF and Standard VTOL guard PRs, and skip the
+                  tailsitter FW frame guard because it is already in that branch.
+  --exact-pr      Use the exact X-Plane SITL PR branch without temporary PX4
+                  guard PRs. This is for reviewer-scope checks, not final flight
+                  validation.
   --with-ekf-gsf-guard
                   Local test mode: sync the X-Plane PR branch, then cherry-pick
                   the open EKF-GSF yaw reset guard PR on top before launching.
@@ -207,6 +218,7 @@ while [[ $# -gt 0 ]]; do
             SYNC_MODE=false
             SKIP_EKF_GSF_GUARD=true
             SKIP_VTOL_HANDOFF_GUARD=true
+            SKIP_TAILSITTER_FW_FRAME_GUARD=true
             shift
             ;;
         "$RESET_CONFIG_FLAG")
@@ -251,6 +263,30 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$RESTORE_OFFICIAL_FLAG")
             RESTORE_OFFICIAL_MODE=true
+            SYNC_MODE=true
+            shift
+            ;;
+        "$VALIDATION_MODE_FLAG")
+            VALIDATION_MODE=true
+            BRANCH_NAME="$VALIDATION_PX4_BRANCH"
+            APPLY_EKF_GSF_GUARD=true
+            SKIP_EKF_GSF_GUARD=false
+            APPLY_VTOL_HANDOFF_GUARD=true
+            SKIP_VTOL_HANDOFF_GUARD=false
+            APPLY_TAILSITTER_FW_FRAME_GUARD=false
+            SKIP_TAILSITTER_FW_FRAME_GUARD=true
+            SYNC_MODE=true
+            shift
+            ;;
+        "$EXACT_PR_MODE_FLAG")
+            EXACT_PR_MODE=true
+            BRANCH_NAME="px4xplane-sitl"
+            APPLY_EKF_GSF_GUARD=false
+            SKIP_EKF_GSF_GUARD=true
+            APPLY_VTOL_HANDOFF_GUARD=false
+            SKIP_VTOL_HANDOFF_GUARD=true
+            APPLY_TAILSITTER_FW_FRAME_GUARD=false
+            SKIP_TAILSITTER_FW_FRAME_GUARD=true
             SYNC_MODE=true
             shift
             ;;
@@ -926,6 +962,34 @@ prompt_for_vtol_handoff_guard() {
     fi
 }
 
+guard_state_text() {
+    local apply="$1"
+    local skip="$2"
+
+    if [ "$apply" = true ]; then
+        echo "apply"
+    elif [ "$skip" = true ]; then
+        echo "skip"
+    else
+        echo "prompt"
+    fi
+}
+
+print_validation_selection() {
+    highlight "Selected PX4 Validation Stack"
+    echo "  PX4 branch:        $BRANCH_NAME"
+    echo "  PX4 remote:        $PX4_REMOTE_NAME ($REPO_URL)"
+    echo "  EKF-GSF guard:     $(guard_state_text "$APPLY_EKF_GSF_GUARD" "$SKIP_EKF_GSF_GUARD")"
+    echo "  VTOL handoff guard: $(guard_state_text "$APPLY_VTOL_HANDOFF_GUARD" "$SKIP_VTOL_HANDOFF_GUARD")"
+    echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD")"
+
+    if [ "$VALIDATION_MODE" = true ]; then
+        info "--validation selected: using the validation branch and guard stack for flight testing."
+    elif [ "$EXACT_PR_MODE" = true ]; then
+        info "--exact-pr selected: using the PR branch without temporary guard PRs."
+    fi
+}
+
 if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
     rm -f "$CONFIG_FILE"
     success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
@@ -1012,6 +1076,7 @@ success "Git found."
 
 prompt_for_ekf_gsf_guard
 prompt_for_vtol_handoff_guard
+print_validation_selection
 
 # === Simplified Process for Subsequent Runs ===
 if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then

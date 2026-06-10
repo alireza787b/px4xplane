@@ -1,12 +1,10 @@
 # QuadTailsitter X-Plane 12 Final Polish Workflow
 
-This card is for the next controlled QuadTailsitter closure validation after
-`qtail27.zip`. v4.0.0 keeps the accepted `5 kg` 6S 3115-class aircraft target,
-the stationary sensor/contact fixes, and the body-axis `-Z` virtual pitot.
-qtail27 showed that manual RTL can trigger auto back-transition too low when
-`RTL_DESCEND_ALT=75 m`, so this package raises the RTL altitude margin and adds
-config-driven plugin camera views plus the upgraded editor/menu workflow that
-does not depend on numpad quick-look bindings.
+This card is for the next controlled QuadTailsitter closure validation on the
+PX4 `px4xplane-sitl-validation` branch. The branch keeps the accepted `5 kg`
+6S 3115-class aircraft target, the stationary sensor/contact fixes, the
+body-axis `-Z` virtual pitot, the tailsitter fixed-wing attitude-frame guard,
+and the latest back-transition thrust handoff tuning.
 
 The next gate is a high-margin manual RTL plus mission validation. Do not use a
 low-altitude VTOL Land approach yet; keep the approach/back-transition altitude
@@ -19,8 +17,9 @@ high enough that a failed recovery has margin.
 2. Install the packaged `QuadTailsitter` aircraft folder into X-Plane.
 3. Install the PX4 airframe file:
    - `5021_xplane_qtailsitter`
-4. Run PX4 with:
-   - `make px4_sitl_default xplane_qtailsitter`
+4. Run PX4 with the validation launcher:
+   - `px4xplane --validation --reset-config`
+   - select `xplane_qtailsitter`
    - `SYS_AUTOSTART` must be `5021`
 5. Force a clean PX4 parameter load before the test. Do not use only `make
    clean` for this airframe after a parameter-file change.
@@ -106,7 +105,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `CA_ROTOR2_KM=-0.04`, `CA_ROTOR3_KM=-0.04`
 - `MC_AIRMODE=2`
 - `MC_ROLL_P=0.9`
-- `MC_PITCH_P=0.58`
+- `MC_PITCH_P=0.66`
 - `MC_YAW_P=0.65`
 - `MC_YAW_WEIGHT=0.35`
 - `MC_YAWRATE_P=0.20`
@@ -115,7 +114,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_YAWRATE_K=1.10`
 - `MC_YAWRATE_MAX=55`
 - `MC_ROLLRATE_P=0.10`
-- `MC_PITCHRATE_P=0.115`
+- `MC_PITCHRATE_P=0.16`
 - `MC_ROLLRATE_D=0.0008`
 - `MC_PITCHRATE_D=0.0012`
 - `MC_ROLLRATE_K=1.00`
@@ -167,10 +166,10 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_AIRSPD_TRIM=27`
 - `FW_AIRSPD_MAX=36`
 - `FW_ARSP_SCALE_EN=0`
-- `FW_THR_TRIM=0.14`
+- `FW_THR_TRIM=0.18`
 - `FW_THR_MAX=0.50`
-- `FW_THR_MIN=0.00`
-- `FW_THR_SLEW_MAX=0.20`
+- `FW_THR_MIN=0.08`
+- `FW_THR_SLEW_MAX=0.24`
 - `FW_T_CLMB_MAX=3.5`
 - `FW_T_ALT_TC=6.0`
 - `FW_T_SPDWEIGHT=1.0`
@@ -202,7 +201,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `VT_TRANS_MIN_TM=8.0`
 - `VT_F_TR_OL_TM=16.0`
 - `VT_TRANS_TIMEOUT=40`
-- `VT_B_TRANS_DUR=5.0`
+- `VT_B_TRANS_DUR=7.0`
 - `VT_B_DEC_MSS=1.0`
 - `VT_B_DEC_I=0.12`
 - `VT_B_TRANS_RAMP=1.5`
