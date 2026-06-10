@@ -160,8 +160,8 @@ Before judging the run, confirm these defaults in the ULog:
 - `ASPD_DO_CHECKS=1`
 - `SYS_HAS_NUM_ASPD=0`
 - `EKF2_GPS_V_NOISE=0.35`
-- `VT_ARSP_BLEND=17`
-- `VT_ARSP_TRANS=22`
+- `VT_ARSP_BLEND=20`
+- `VT_ARSP_TRANS=28`
 - `FW_AIRSPD_MIN=19`
 - `FW_AIRSPD_TRIM=27`
 - `FW_AIRSPD_MAX=36`
@@ -172,22 +172,22 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_THR_SLEW_MAX=0.24`
 - `FW_T_CLMB_MAX=3.5`
 - `FW_T_ALT_TC=6.0`
-- `FW_T_SPDWEIGHT=1.0`
+- `FW_T_SPDWEIGHT=0.8`
 - `FW_T_RLL2THR=2.0`
-- `FW_T_THR_DAMPING=0.35`
-- `FW_T_PTCH_DAMP=0.45`
-- `FW_T_I_GAIN_PIT=0.08`
-- `FW_T_CLMB_R_SP=1.4`
+- `FW_T_THR_DAMPING=0.25`
+- `FW_T_PTCH_DAMP=0.25`
+- `FW_T_I_GAIN_PIT=0.25`
+- `FW_T_CLMB_R_SP=2.0`
 - `FW_T_SINK_R_SP=1.6`
 - `FW_T_VERT_ACC=1.8`
 - `FW_PSP_OFF=2.0`
-- `FW_P_TC=0.85`
-- `FW_P_LIM_MAX=22`
-- `FW_P_RMAX_POS=36`
-- `FW_P_RMAX_NEG=34`
-- `FW_PR_P=0.30`
-- `FW_PR_I=0.05`
-- `FW_PR_FF=0.09`
+- `FW_P_TC=0.6`
+- `FW_P_LIM_MAX=35`
+- `FW_P_RMAX_POS=60`
+- `FW_P_RMAX_NEG=60`
+- `FW_PR_P=0.50`
+- `FW_PR_I=0.30`
+- `FW_PR_FF=0.50`
 - `FW_R_TC=1.5`
 - `FW_R_LIM=12`
 - `FW_R_RMAX=28`
@@ -196,18 +196,18 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_RR_I=0.015`
 - `FW_RR_FF=0.02`
 - `FW_YR_P=0.01`
-- `VT_F_TRANS_DUR=12.0`
+- `VT_F_TRANS_DUR=10.0`
 - `VT_F_TRANS_THR=0.36`
 - `VT_TRANS_MIN_TM=8.0`
-- `VT_F_TR_OL_TM=16.0`
+- `VT_F_TR_OL_TM=14.0`
 - `VT_TRANS_TIMEOUT=40`
 - `VT_B_TRANS_DUR=7.0`
 - `VT_B_DEC_MSS=1.0`
 - `VT_B_DEC_I=0.12`
 - `VT_B_TRANS_RAMP=1.5`
-- `VT_FW_DIFTHR_S_R=0.36`
-- `VT_FW_DIFTHR_S_P=0.58`
-- `VT_FW_DIFTHR_S_Y=0.24`
+- `VT_FW_DIFTHR_S_R=0.55`
+- `VT_FW_DIFTHR_S_P=0.90`
+- `VT_FW_DIFTHR_S_Y=0.32`
 - `VT_FW_MIN_ALT=30`
 - `VT_QC_ALT_LOSS=45`
 - `VT_QC_T_ALT_LOSS=35`
@@ -339,7 +339,7 @@ The next log should be used to verify:
   auto back-transition. If it starts back-transition near `75 m AGL`, stop and
   check for stale PX4 parameters.
 - The first transition should remain in transition until the body-axis
-  calibrated airspeed reaches roughly `VT_ARSP_TRANS=22 m/s`.
+  calibrated airspeed reaches roughly `VT_ARSP_TRANS=28 m/s`.
 - In the ULog, `airspeed_validated.calibrated_airspeed_m_s` should be positive
   in FW and should broadly match truth true airspeed. QGC should no longer show
   the large negative FW airspeed seen in qtail11.

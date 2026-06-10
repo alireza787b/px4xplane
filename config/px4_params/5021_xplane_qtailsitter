@@ -229,29 +229,29 @@ param set-default FW_THR_MAX 0.50
 param set-default FW_THR_SLEW_MAX 0.24
 
 param set-default FW_T_CLMB_MAX 3.5
-param set-default FW_T_SINK_MAX 2.4
+param set-default FW_T_SINK_MAX 3
 param set-default FW_T_SINK_MIN 1.6
 param set-default FW_T_HRATE_FF 0.5
 param set-default FW_T_ALT_TC 6.0
-param set-default FW_T_SPDWEIGHT 1.0
+param set-default FW_T_SPDWEIGHT 0.8
 param set-default FW_T_RLL2THR 2.0
 param set-default FW_T_STE_R_TC 1.0
-param set-default FW_T_THR_DAMPING 0.35
-param set-default FW_T_PTCH_DAMP 0.45
-param set-default FW_T_I_GAIN_PIT 0.08
+param set-default FW_T_THR_DAMPING 0.25
+param set-default FW_T_PTCH_DAMP 0.25
+param set-default FW_T_I_GAIN_PIT 0.25
 param set-default FW_T_VERT_ACC 1.8
-param set-default FW_T_CLMB_R_SP 1.4
+param set-default FW_T_CLMB_R_SP 2.0
 param set-default FW_T_SINK_R_SP 1.6
 
-param set-default FW_P_TC 0.85
+param set-default FW_P_TC 0.6
 param set-default FW_PSP_OFF 2.0
-param set-default FW_P_LIM_MAX 22
+param set-default FW_P_LIM_MAX 35
 param set-default FW_P_LIM_MIN -15
-param set-default FW_P_RMAX_POS 36
-param set-default FW_P_RMAX_NEG 34
-param set-default FW_PR_P 0.30
-param set-default FW_PR_I 0.05
-param set-default FW_PR_FF 0.09
+param set-default FW_P_RMAX_POS 60
+param set-default FW_P_RMAX_NEG 60
+param set-default FW_PR_P 0.50
+param set-default FW_PR_I 0.30
+param set-default FW_PR_FF 0.50
 
 param set-default FW_R_TC 1.5
 param set-default FW_R_LIM 12
@@ -271,11 +271,11 @@ param set-default FW_YR_FF 0.0
 # VTOL TRANSITION
 ################################################################################
 
-param set-default VT_ARSP_BLEND 17
-param set-default VT_ARSP_TRANS 22
-param set-default VT_F_TRANS_DUR 12.0
+param set-default VT_ARSP_BLEND 20
+param set-default VT_ARSP_TRANS 28
+param set-default VT_F_TRANS_DUR 10.0
 param set-default VT_F_TRANS_THR 0.36
-param set-default VT_F_TR_OL_TM 16.0
+param set-default VT_F_TR_OL_TM 14.0
 param set-default VT_TRANS_MIN_TM 8.0
 param set-default VT_TRANS_TIMEOUT 40
 param set-default VT_B_TRANS_DUR 7.0
@@ -290,9 +290,9 @@ param set-default VT_FW_QC_R 0
 param set-default VT_PITCH_MIN -10
 
 param set-default VT_FW_DIFTHR_EN 7
-param set-default VT_FW_DIFTHR_S_R 0.36
-param set-default VT_FW_DIFTHR_S_P 0.58
-param set-default VT_FW_DIFTHR_S_Y 0.24
+param set-default VT_FW_DIFTHR_S_R 0.55
+param set-default VT_FW_DIFTHR_S_P 0.90
+param set-default VT_FW_DIFTHR_S_Y 0.32
 
 
 ################################################################################
