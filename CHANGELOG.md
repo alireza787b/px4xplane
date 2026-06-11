@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   validation logs: slightly higher velocity covariance for all packaged
   airframes and higher fixed-wing position covariance for Cessna/TB2 rollout
   and landing phases.
+- Restored the QuadTailsitter accepted back-transition timing and fixed-wing
+  roll authority after validation logs showed the extended thrust handoff and
+  conservative roll envelope degraded fixed-wing tracking and RTL recovery.
 - Extended the temporary PX4 SITL launcher so it can use an existing
   PX4-Autopilot checkout via `--px4-path` without rewriting `origin`, and added
   `--restore-official` to return that checkout to official PX4 `master`.
