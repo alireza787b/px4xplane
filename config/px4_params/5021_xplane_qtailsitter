@@ -133,7 +133,7 @@ param set-default MC_ROLLRATE_I 0.02
 param set-default MC_ROLLRATE_D 0.0008
 param set-default MC_ROLLRATE_MAX 80
 
-param set-default MC_PITCHRATE_P 0.16
+param set-default MC_PITCHRATE_P 0.18
 param set-default MC_PITCHRATE_I 0.02
 param set-default MC_PITCHRATE_D 0.0012
 param set-default MC_PITCHRATE_K 0.92
@@ -258,7 +258,7 @@ param set-default FW_R_LIM 16
 param set-default FW_R_RMAX 35
 param set-default FW_PN_R_SLEW_MAX 10
 param set-default FW_RR_P 0.10
-param set-default FW_RR_I 0.02
+param set-default FW_RR_I 0.01
 param set-default FW_RR_FF 0.03
 
 param set-default FW_YR_P 0.01
@@ -304,7 +304,7 @@ param set-default NPFG_DAMPING 1.00
 param set-default NPFG_ROLL_TC 2.4
 param set-default NPFG_SW_DST_MLT 0.70
 param set-default NAV_ACC_RAD 120
-param set-default NAV_FW_ALT_RAD 40
+param set-default NAV_FW_ALT_RAD 10
 param set-default NAV_MC_ALT_RAD 2
 param set-default NAV_LOITER_RAD 1300
 param set-default RTL_LOITER_RAD 1300

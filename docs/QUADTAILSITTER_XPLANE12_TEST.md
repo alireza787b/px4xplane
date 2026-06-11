@@ -49,8 +49,10 @@ Use calm weather and model calculations per frame `6`.
    loiter/RTL radius is now `1300 m`; do not use tight manual orbit radii for
    this gate.
 8. Use a mission VTOL Land item only with a high approach/back-transition
-   altitude. If you want to reduce the altitude later, do it only after one
-   clean qtail26-style run.
+   altitude. Place the approach-loiter center at least `1.2 x` its radius from
+   the landing point, and verify the vehicle has captured altitude and aligned
+   with the exit path before back-transition begins. If you want to reduce the
+   altitude later, do it only after one clean qtail26-style run.
 9. Land in MC and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
@@ -114,7 +116,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `MC_YAWRATE_K=1.10`
 - `MC_YAWRATE_MAX=55`
 - `MC_ROLLRATE_P=0.10`
-- `MC_PITCHRATE_P=0.16`
+- `MC_PITCHRATE_P=0.18`
 - `MC_ROLLRATE_D=0.0008`
 - `MC_PITCHRATE_D=0.0012`
 - `MC_ROLLRATE_K=1.00`
@@ -193,7 +195,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_R_RMAX=35`
 - `FW_PN_R_SLEW_MAX=10`
 - `FW_RR_P=0.10`
-- `FW_RR_I=0.02`
+- `FW_RR_I=0.01`
 - `FW_RR_FF=0.03`
 - `FW_YR_P=0.01`
 - `VT_F_TRANS_DUR=10.0`
@@ -218,7 +220,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `NPFG_ROLL_TC=2.4`
 - `NPFG_SW_DST_MLT=0.70`
 - `NAV_ACC_RAD=120`
-- `NAV_FW_ALT_RAD=40`
+- `NAV_FW_ALT_RAD=10`
 - `NAV_LOITER_RAD=1300`
 - `RTL_LOITER_RAD=1300`
 - `RTL_RETURN_ALT=180`
