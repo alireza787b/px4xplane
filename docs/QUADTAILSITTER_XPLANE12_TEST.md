@@ -192,7 +192,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_R_LIM=16`
 - `FW_R_RMAX=35`
 - `FW_PN_R_SLEW_MAX=10`
-- `FW_RR_P=0.07`
+- `FW_RR_P=0.10`
 - `FW_RR_I=0.02`
 - `FW_RR_FF=0.03`
 - `FW_YR_P=0.01`
@@ -236,7 +236,7 @@ Before judging the run, confirm these defaults in the ULog:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v4.0.2`
+- `px4xplane: Version: v4.0.4`
 - `Config Name: QuadTailsitter`
 - the connection HUD shows `Airframe: QuadTailsitter`
 - `Aircraft/QuadTailsitter/QuadTailsitter.acf`
@@ -346,3 +346,12 @@ The next log should be used to verify:
 - FW energy behavior is judged against the `27 m/s` trim target. If speed still
   runs into the `40+ m/s` range or altitude/throttle oscillates, record it and
   send the logs before continuing to Orbit/RTL/VTOL Land tuning.
+- During the first fixed-wing straight leg, actual roll must follow the adapted
+  fixed-wing roll setpoint without repeated full-bank reversals. Stop if actual
+  bank repeatedly exceeds `30 deg` while the setpoint remains limited to
+  `16 deg`.
+- Judge lateral tuning before changing the commanded airspeed. A later speed
+  step may verify the envelope, but it must not be used to hide roll-loop lag.
+- Back-transition must complete without a failure detector or altitude loss.
+  Record the MC-entry attitude and the following altitude gain; a large recovery
+  balloon means the transition is safe but still needs a separate tuning pass.

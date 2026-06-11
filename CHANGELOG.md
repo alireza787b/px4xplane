@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Restored the QuadTailsitter accepted back-transition timing and fixed-wing
   roll authority after validation logs showed the extended thrust handoff and
   conservative roll envelope degraded fixed-wing tracking and RTL recovery.
+- Increased QuadTailsitter fixed-wing roll-rate feedback after validation logs
+  isolated roll-loop lag without actuator saturation.
 - Extended the temporary PX4 SITL launcher so it can use an existing
   PX4-Autopilot checkout via `--px4-path` without rewriting `origin`, and added
   `--restore-official` to return that checkout to official PX4 `master`.

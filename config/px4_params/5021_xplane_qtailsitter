@@ -257,7 +257,7 @@ param set-default FW_R_TC 1.5
 param set-default FW_R_LIM 16
 param set-default FW_R_RMAX 35
 param set-default FW_PN_R_SLEW_MAX 10
-param set-default FW_RR_P 0.07
+param set-default FW_RR_P 0.10
 param set-default FW_RR_I 0.02
 param set-default FW_RR_FF 0.03
 
