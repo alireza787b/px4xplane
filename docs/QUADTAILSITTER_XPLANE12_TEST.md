@@ -6,9 +6,10 @@ PX4 `px4xplane-sitl-validation` branch. The branch keeps the accepted `5 kg`
 body-axis `-Z` virtual pitot, the tailsitter fixed-wing attitude-frame guard,
 and the latest back-transition thrust handoff tuning.
 
-The next gate is a high-margin manual RTL plus mission validation. Do not use a
-low-altitude VTOL Land approach yet; keep the approach/back-transition altitude
-high enough that a failed recovery has margin.
+The next gate separates back-transition control from RTL mission geometry.
+Validate a manual back-transition first, then validate RTL with a suitable
+mission landing pattern. Keep the approach/back-transition altitude high enough
+that a failed recovery has margin.
 
 ## Setup
 
@@ -32,7 +33,7 @@ high enough that a failed recovery has margin.
    below. qtail20 proved that stale SITL `parameters.bson` can override the
    airframe `set-default` values even when X-Plane is running the right plugin.
    - After the run, use:
-     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param VT_ARSP_TRANS --param VT_F_TRANS_DUR --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_TRIM --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_P_RMAX_POS --param FW_P_RMAX_NEG --param FW_PR_P --param FW_PR_I --param FW_R_LIM --param FW_R_RMAX --param FW_RR_P --param FW_RR_I --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param VT_FW_QC_R --param VT_FW_QC_P --param VT_QC_ALT_LOSS --param NPFG_PERIOD --param NAV_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
+     `python3 tools/check_px4_airframe_params.py <ulog> config/px4_params/5021_xplane_qtailsitter --param SYS_HAS_NUM_ASPD --param MPC_THR_HOVER --param CA_ROTOR0_AX --param CA_ROTOR1_AX --param MPC_XY_CRUISE --param MPC_Z_V_AUTO_UP --param EKF2_GPS_V_NOISE --param VT_ARSP_TRANS --param VT_F_TRANS_DUR --param FW_AIRSPD_MIN --param FW_AIRSPD_TRIM --param FW_THR_MIN --param FW_THR_TRIM --param FW_THR_SLEW_MAX --param FW_T_CLMB_MAX --param FW_T_SPDWEIGHT --param FW_P_LIM_MAX --param FW_P_RMAX_POS --param FW_P_RMAX_NEG --param FW_PR_P --param FW_PR_I --param FW_R_LIM --param FW_R_RMAX --param FW_RR_P --param FW_RR_I --param VT_FW_DIFTHR_S_R --param VT_FW_DIFTHR_S_P --param VT_FW_DIFTHR_S_Y --param VT_FW_QC_R --param VT_FW_QC_P --param VT_QC_ALT_LOSS --param NPFG_PERIOD --param NAV_LOITER_RAD --param RTL_LOITER_RAD --param VT_B_TRANS_DUR --param FD_FAIL_P`
 7. Start XPlaneTruthCapture before connecting PX4.
 
 ## Scenario
@@ -48,12 +49,20 @@ Use calm weather and model calculations per frame `6`.
 7. Fly one straight leg or a large-radius mission/loiter. The default FW
    loiter/RTL radius is now `1300 m`; do not use tight manual orbit radii for
    this gate.
-8. Use a mission VTOL Land item only with a high approach/back-transition
-   altitude. Place the approach-loiter center at least `1.2 x` its radius from
-   the landing point, and verify the vehicle has captured altitude and aligned
-   with the exit path before back-transition begins. If you want to reduce the
-   altitude later, do it only after one clean qtail26-style run.
-9. Land in MC and wait `10-15 s` after disarm before stopping PX4.
+8. From stabilized straight-and-level flight above `180 m` AGL, command one
+   manual back-transition. Do not use RTL or VTOL Land for this first
+   back-transition gate.
+9. After the manual back-transition passes, test RTL separately. PX4 VTOL
+   defaults use `RTL_TYPE=1`, which prefers an available mission landing
+   pattern. Its approach-loiter radius overrides `RTL_LOITER_RAD`. Remove the
+   mission landing pattern or give it an approach radius of at least `1300 m`
+   for this validation; never use the `75 m` radius from the failed validation
+   mission for this aircraft.
+10. For a mission VTOL Land item, use a high approach/back-transition altitude,
+    place the approach-loiter center at least `1.2 x` its radius from the
+    landing point, and verify the vehicle has captured altitude and aligned
+    with the exit path before back-transition begins.
+11. Land in MC and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
 after transition should have stabilized, motors sit at min/max for more than a
@@ -68,13 +77,14 @@ Go-To is a point-hold command. A smooth deceleration near the target is normal.
 For continuous path-following, use a mission/path workflow or send the next
 target before the aircraft reaches the current point.
 
-Keep fixed-wing waypoint spacing at least `1300 m`, avoid tight waypoint
-clusters, and do not use a `50 m` VTOL Land approach altitude for public demos.
-qtail27 proved that `75 m` RTL descent altitude is not enough margin for this
-tailsitter if auto RTL starts back-transition from fixed-wing energy. v4.0.0
-uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150` so manual RTL starts the
-recovery higher while preserving the qtail26/qtail27 accepted flight-control
-baseline.
+Keep fixed-wing waypoint spacing and all fixed-wing loiter radii at least
+`1300 m`, avoid tight waypoint clusters, and do not use a `50 m` VTOL Land
+approach altitude for public demos. The `10_59_31` validation proved that
+`RTL_LOITER_RAD=1300` does not replace a mission landing pattern's explicit
+`75 m` approach radius when `RTL_TYPE=1`. The aircraft could not fly that
+radius, triggered an uncommanded-descent quad-chute, and never entered
+back-transition. v4.0.0 uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150`;
+mission geometry remains the operator's responsibility.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
 stability. v4.0.0 hides the large rendered gear geometry while keeping the
@@ -190,7 +200,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `FW_PR_P=0.50`
 - `FW_PR_I=0.30`
 - `FW_PR_FF=0.50`
-- `FW_R_TC=1.5`
+- inherited PX4 default `FW_R_TC=0.4`
 - `FW_R_LIM=16`
 - `FW_R_RMAX=35`
 - `FW_PN_R_SLEW_MAX=10`
@@ -217,7 +227,7 @@ Before judging the run, confirm these defaults in the ULog:
 - `VT_FW_QC_R=0`
 - `NPFG_PERIOD=55.0`
 - `NPFG_DAMPING=1.0`
-- `NPFG_ROLL_TC=2.4`
+- inherited PX4 default `NPFG_ROLL_TC=0.5`
 - `NPFG_SW_DST_MLT=0.70`
 - `NAV_ACC_RAD=120`
 - `NAV_FW_ALT_RAD=10`

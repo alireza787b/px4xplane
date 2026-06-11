@@ -22,8 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   isolated roll-loop lag without actuator saturation.
 - Reduced QuadTailsitter fixed-wing roll-integrator memory, increased
   multicopter pitch-rate response for back-transition, and restored PX4's
-  fixed-wing altitude acceptance radius after validation isolated delayed bank
-  reversals and an early, misaligned back-transition entry.
+  fixed-wing altitude acceptance radius.
+- Removed two excessively sluggish QuadTailsitter roll-response overrides after
+  an in-flight parameter experiment showed that inheriting PX4's documented
+  `FW_R_TC` and `NPFG_ROLL_TC` defaults resolves the remaining path weave.
+- Documented that `RTL_TYPE=1` uses an available mission landing pattern's
+  approach radius instead of `RTL_LOITER_RAD`; the final failure in the long
+  validation flight was a quad-chute from an infeasible `75 m` mission
+  approach orbit, not a failed back-transition.
 - Extended the temporary PX4 SITL launcher so it can use an existing
   PX4-Autopilot checkout via `--px4-path` without rewriting `origin`, and added
   `--restore-official` to return that checkout to official PX4 `master`.

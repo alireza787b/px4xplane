@@ -253,7 +253,6 @@ param set-default FW_PR_P 0.50
 param set-default FW_PR_I 0.30
 param set-default FW_PR_FF 0.50
 
-param set-default FW_R_TC 1.5
 param set-default FW_R_LIM 16
 param set-default FW_R_RMAX 35
 param set-default FW_PN_R_SLEW_MAX 10
@@ -301,7 +300,6 @@ param set-default VT_FW_DIFTHR_S_Y 0.32
 
 param set-default NPFG_PERIOD 55.0
 param set-default NPFG_DAMPING 1.00
-param set-default NPFG_ROLL_TC 2.4
 param set-default NPFG_SW_DST_MLT 0.70
 param set-default NAV_ACC_RAD 120
 param set-default NAV_FW_ALT_RAD 10
