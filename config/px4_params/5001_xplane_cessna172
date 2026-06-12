@@ -164,10 +164,10 @@ param set-default FW_PN_R_SLEW_MAX 10.0
 
 # Ground steering during runway takeoff/landing.
 param set-default FW_W_EN 1
-param set-default FW_WR_P 0.55
-param set-default FW_WR_I 0.08
-param set-default FW_WR_FF 0.20
-param set-default FW_W_RMAX 20.0
+param set-default FW_WR_P 0.8
+param set-default FW_WR_I 0.12
+param set-default FW_WR_FF 0.35
+param set-default FW_W_RMAX 30.0
 
 
 ################################################################################
