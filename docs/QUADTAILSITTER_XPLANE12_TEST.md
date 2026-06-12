@@ -61,7 +61,12 @@ Use calm weather and model calculations per frame `6`.
 10. For a mission VTOL Land item, use a high approach/back-transition altitude,
     place the approach-loiter center at least `1.2 x` its radius from the
     landing point, and verify the vehicle has captured altitude and aligned
-    with the exit path before back-transition begins.
+    with the exit path before back-transition begins. Keep every fixed-wing
+    approach and back-transition target at least `30 m` above
+    `VT_FW_MIN_ALT`; with the packaged `VT_FW_MIN_ALT=30`, use at least `60 m`
+    AGL, and prefer `80-100 m` AGL for validation. Set the `LOITER_TO_ALT` and
+    following back-transition waypoint to the same safe altitude. Never set the
+    mission target equal to `VT_FW_MIN_ALT`.
 11. Land in MC and wait `10-15 s` after disarm before stopping PX4.
 
 Abort transition immediately if uncontrolled descent starts, roll/pitch diverge
@@ -85,6 +90,13 @@ approach altitude for public demos. The `10_59_31` validation proved that
 radius, triggered an uncommanded-descent quad-chute, and never entered
 back-transition. v4.0.0 uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150`;
 mission geometry remains the operator's responsibility.
+
+The `08_51_23` validation further proved that a mission target equal to
+`VT_FW_MIN_ALT` leaves no control or estimator margin. The vehicle tracked a
+`1000 m` descent orbit toward `30 m` AGL, then PX4 correctly triggered a
+minimum-altitude quad-chute at `29.96 m` before the requested back-transition
+started. This was not a back-transition control failure. Do not lower or
+disable the safety threshold to make such a mission pass.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
 stability. v4.0.0 hides the large rendered gear geometry while keeping the
@@ -367,3 +379,7 @@ The next log should be used to verify:
 - Back-transition must complete without a failure detector or altitude loss.
   Record the MC-entry attitude and the following altitude gain; a large recovery
   balloon means the transition is safe but still needs a separate tuning pass.
+- The mission's fixed-wing approach/back-transition target must be at least
+  `60 m` AGL and at least `30 m` above `VT_FW_MIN_ALT`. A direct `FW -> MC`
+  change accompanied by a fixed-wing system failure indicates a quad-chute,
+  not a commanded back-transition.
