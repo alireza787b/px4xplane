@@ -59,7 +59,7 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 
 ## Current Release Policy
 
-- Use the `v4.0.4` package with the refreshed PX4 `px4xplane-sitl-validation`
+- Use the `v4.0.5` package with the refreshed PX4 `px4xplane-sitl-validation`
   branch while the official PX4 PR is under review.
 - PX4 integration PR:
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).

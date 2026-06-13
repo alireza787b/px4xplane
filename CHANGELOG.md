@@ -9,8 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No unreleased changes._
+
+## [4.0.5] - 2026-06-13
+
 ### Changed
 
+- Restored Cessna 172 runway steering authority by returning the X-Plane
+  nosewheel command range to the validated `±20 deg` mapping and restoring the
+  matching PX4 wheel-controller gains in the packaged airframe mirror.
 - Adjusted X-Plane PX4 airframe GNSS covariance mirrors to match the final
   validation logs: slightly higher velocity covariance for all packaged
   airframes and higher fixed-wing position covariance for Cessna/TB2 rollout
