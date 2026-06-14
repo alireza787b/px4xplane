@@ -9,7 +9,7 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v4.0.2
+px4xplane: Version: v4.0.5
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
@@ -21,11 +21,14 @@ px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 
 ## PX4 Check
 
-Use the PX4 fork branch with `5002_xplane_tb2` installed in:
+Run PX4 with the validation launcher and select `xplane_tb2`:
 
-```text
-ROMFS/px4fmu_common/init.d-posix/airframes/5002_xplane_tb2
+```bash
+px4xplane --validation --reset-config
 ```
+
+The printed validation stack should show the validation branch fixes and the
+EKF-GSF / Standard VTOL guards unless you are deliberately testing `--exact-pr`.
 
 The setup script now resets the saved PX4 SITL parameter store automatically
 when the selected X-Plane airframe or its default airframe file fingerprint

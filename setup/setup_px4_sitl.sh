@@ -136,6 +136,7 @@ NO_TAILSITTER_FW_FRAME_GUARD_FLAG="--without-tailsitter-fw-frame-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=true
+NO_SYNC_MODE=false
 RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
@@ -218,6 +219,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$NO_SYNC_MODE_FLAG")
             SYNC_MODE=false
+            NO_SYNC_MODE=true
             SKIP_EKF_GSF_GUARD=true
             SKIP_VTOL_HANDOFF_GUARD=true
             SKIP_TAILSITTER_FW_FRAME_GUARD=true
@@ -976,6 +978,10 @@ prompt_for_validation_branch_fixes() {
         return
     fi
 
+    if [ "$NO_SYNC_MODE" = true ]; then
+        return
+    fi
+
     if [ "$BRANCH_NAME" != "$VALIDATION_PX4_BRANCH" ]; then
         return
     fi
@@ -1097,7 +1103,7 @@ echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
 echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
 echo "  → Tailsitter FW frame guard: included in the validation branch"
-echo "  → TECS altitude-frame guard: included in the validation branch pending a separate PX4 PR"
+echo "  → TECS altitude-frame guard: included in the validation branch; upstream PR link TBD"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
     echo "  → Existing PX4 checkout auto-detected; origin remote will be left unchanged"
 fi

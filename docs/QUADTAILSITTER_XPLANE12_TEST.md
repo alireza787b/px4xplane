@@ -88,7 +88,7 @@ approach altitude for public demos. The `10_59_31` validation proved that
 `RTL_LOITER_RAD=1300` does not replace a mission landing pattern's explicit
 `75 m` approach radius when `RTL_TYPE=1`. The aircraft could not fly that
 radius, triggered an uncommanded-descent quad-chute, and never entered
-back-transition. v4.0.0 uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150`;
+back-transition. The current package uses `RTL_RETURN_ALT=180` and `RTL_DESCEND_ALT=150`;
 mission geometry remains the operator's responsibility.
 
 The `08_51_23` validation further proved that a mission target equal to
@@ -99,7 +99,7 @@ started. This was not a back-transition control failure. Do not lower or
 disable the safety threshold to make such a mission pass.
 
 The current QuadTailsitter contact gear is intentionally fixed for physics
-stability. v4.0.0 hides the large rendered gear geometry while keeping the
+stability. The current package hides the large rendered gear geometry while keeping the
 fixed contact pads active. True animated cosmetic retractable legs remain a
 separate visual-asset slice.
 
@@ -324,7 +324,7 @@ baseline for judging this package:
 - Estimator health was clean: no baro stale, vertical velocity instability,
   accelerometer-bias warning, or pause/FPS sensor regression.
 
-v4.0.0 preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
+The current package preserves the qtail26/qtail27 bridge, ACF, and flight-control baseline.
 The only flight-param change is the RTL return/descent altitude margin for
 manual RTL from fixed-wing mode.
 
@@ -352,7 +352,7 @@ Save and send:
 The next log should be used to verify:
 
 - The ULog initial parameters match this card, especially the canted
-  `CA_ROTOR*_AX/AY/AZ` values and the v4.0.0 RTL/FW/back-transition values. If the
+  `CA_ROTOR*_AX/AY/AZ` values and the current RTL/FW/back-transition values. If the
   rotor axes are all `AX=0`, `AY=0`, `AZ=-1`, or if `FW_R_LIM` is still `32`,
   stop: the run is using stale PX4 parameters.
 - Go-To does not repeat qtail20's `14 m/s` overspeed. Target acceptance for this

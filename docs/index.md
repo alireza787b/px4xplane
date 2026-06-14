@@ -81,8 +81,9 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   branch current, uses the Tailsitter and TECS guards already included in that
   branch, and stacks the EKF-GSF and Standard VTOL guard commits locally. Use
   `px4xplane --without-ekf-gsf-guard` or
-  `px4xplane --without-vtol-handoff-guard` only for exact-branch testing
-  without the temporary guards.
+  `px4xplane --without-vtol-handoff-guard` only when selectively disabling
+  those two cherry-picked guards. Use `px4xplane --exact-pr` for exact-branch
+  testing without temporary guards.
 - For reviewer-scope checks of the exact PX4 X-Plane PR branch without
   validation-only tuning or guard commits, run `px4xplane --exact-pr`.
 - If you already maintain an official PX4 checkout, use

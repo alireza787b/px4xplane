@@ -25,11 +25,11 @@ PX4 ULog estimator topics.
    hidden with `overlay_enabled = false` in its `capture_config.ini`.
 3. Use X-Plane 12 Alia with model calculations per frame set to `6`.
 4. Start XPlaneTruthCapture before connecting PX4.
-5. Run PX4 SITL with the Alia airframe. After changing the airframe file, use
-   the setup script `distclean` option once, or otherwise reset SITL parameters,
-   so saved `parameters.bson` state cannot mask the airframe defaults. This is
-   required even if the file was updated by manually copying its contents into
-   the PX4 checkout instead of using `git pull`.
+5. Run PX4 with the validation launcher and select `xplane_alia250`:
+   - `px4xplane --validation --reset-config`
+   Confirm the printed validation stack includes the validation branch fixes and
+   the EKF-GSF / Standard VTOL guards unless you are deliberately testing
+   `--exact-pr`.
 6. Fly:
    - takeoff to about `100 m`
    - forward transition
@@ -103,7 +103,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v4.0.2` Alia milestone test,
+For the current `v4.0.5` Alia milestone test,
 verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
@@ -177,12 +177,12 @@ PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v4.0.2`
+- `px4xplane: Version: v4.0.5`
 - `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
 - `px4xplane: Motor brakes configured for motors: 00000000`
 
 The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
-only applies when `autoPropBrakes` lists motor indices. v4.0.0 keeps Alia
+only applies when `autoPropBrakes` lists motor indices. The current package keeps Alia
 lift-prop braking disabled by default because the accepted no-brake handoff
 kept more recovery margin than the brake-window test. `feather`, `hard_lock`,
 and `prop_separate` remain available for controlled A/B testing only.
@@ -198,7 +198,7 @@ copies only. PX4 SITL reads the airframe from the PX4 repository branch under
 
 If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
 unstable`, do not tune from that run until the aircraft has been restarted with
-the v4.0.0 airframe defaults and the warning state is rechecked. Keep the log:
+the current airframe defaults and the warning state is rechecked. Keep the log:
 that case is useful for validating frame-rate robustness, but it is not the
 same evidence as a clean high-FPS Alia tuning flight.
 

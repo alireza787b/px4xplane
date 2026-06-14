@@ -15,16 +15,21 @@ mission baseline.
    After the Cessna phase closes, normal demo packages can return to the Alia
    default.
 
-2. Pull the PX4 branch containing `5001_xplane_cessna172` and run one PX4
-   parameter reset after replacing the airframe file:
+2. Run PX4 with the validation launcher and select `xplane_cessna172`:
+
+   ```bash
+   px4xplane --validation --reset-config
+   ```
+
+   The printed validation stack should show the validation branch fixes and the
+   EKF-GSF / Standard VTOL guards unless you are deliberately testing
+   `--exact-pr`.
+
+3. For a fully manual developer run after changing the airframe file, reset the
+   PX4 SITL parameter store once and launch:
 
    ```bash
    make px4_sitl_default distclean
-   ```
-
-3. Launch:
-
-   ```bash
    make px4_sitl_default xplane_cessna172
    ```
 

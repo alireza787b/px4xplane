@@ -9,11 +9,12 @@ X-Plane multicopter after the Alia tuning lessons were applied.
    - `config_name = ehang184`
 2. Install XPlaneTruthCapture `v0.1.7` or newer and start recording before PX4
    connects.
-3. Run PX4 SITL with the Ehang airframe:
-   - `make px4_sitl_default xplane_ehang184`
+3. Run PX4 with the validation launcher and select `xplane_ehang184`:
+   - `px4xplane --validation --reset-config`
    - `SYS_AUTOSTART` must be `5010`
-4. After changing the airframe file, run `make distclean` once or reset SITL
-   parameters so saved state cannot mask the defaults.
+4. Confirm the printed validation stack includes the validation branch fixes and
+   the EKF-GSF / Standard VTOL guards unless you are deliberately testing
+   `--exact-pr`.
 5. Fly:
    - takeoff to about `30 m`
    - hover for at least `20 s`
@@ -75,7 +76,7 @@ Confirm these values in the ULog before judging the result:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v4.0.2`
+- `px4xplane: Version: v4.0.5`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
 - the X-Plane connection HUD shows `Airframe: Ehang 184` while waiting for PX4
 

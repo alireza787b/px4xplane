@@ -46,8 +46,10 @@ the maintained validation branch, then asks whether to stack the pending EKF-GSF
 and Standard VTOL guard PRs. The default answer is yes. The validation branch
 also includes the accepted Tailsitter attitude-frame guard and the fixed-wing
 TECS altitude-frame guard found during final Cessna 172/TB2 testing. Use
-`--exact-pr` or the explicit `--without-...-guard` flags only when you
-deliberately want the exact X-Plane branch without temporary PX4 guards.
+`--exact-pr` when you deliberately want the exact X-Plane branch without
+temporary PX4 guards. Use `--without-ekf-gsf-guard` or
+`--without-vtol-handoff-guard` only to selectively disable those two
+cherry-picked guards.
 
 ## Quick Start
 
