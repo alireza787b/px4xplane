@@ -78,7 +78,8 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   plugin package.
 - For local validation while #27533 and #27601 are pending, run
   `px4xplane --validation --reset-config`. The launcher keeps the validation
-  branch current and stacks the guard commits locally. Use
+  branch current, uses the Tailsitter and TECS guards already included in that
+  branch, and stacks the EKF-GSF and Standard VTOL guard commits locally. Use
   `px4xplane --without-ekf-gsf-guard` or
   `px4xplane --without-vtol-handoff-guard` only for exact-branch testing
   without the temporary guards.

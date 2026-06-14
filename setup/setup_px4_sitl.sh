@@ -149,6 +149,7 @@ SKIP_VTOL_HANDOFF_GUARD=false
 APPLY_TAILSITTER_FW_FRAME_GUARD=false
 SKIP_TAILSITTER_FW_FRAME_GUARD=false
 TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=false
+TECS_ALT_FRAME_GUARD_IN_BRANCH=false
 
 print_usage() {
     cat <<EOF
@@ -175,8 +176,8 @@ Options:
                   Restore the selected PX4 checkout to official PX4 master,
                   update submodules, reset saved SITL params, and exit.
   --validation    Final-validation shortcut: use px4xplane-sitl-validation,
-                  apply the EKF-GSF and Standard VTOL guard PRs, and skip the
-                  tailsitter FW frame guard because it is already in that branch.
+                  apply the EKF-GSF and Standard VTOL guard PRs, and use the
+                  validation fixes already included in that branch.
   --exact-pr      Use the exact X-Plane SITL PR branch without temporary PX4
                   guard PRs. This is for reviewer-scope checks, not final flight
                   validation.
@@ -340,6 +341,7 @@ set -- "${POSITIONAL_ARGS[@]}"
 
 if [ "$BRANCH_NAME" = "$VALIDATION_PX4_BRANCH" ]; then
     TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=true
+    TECS_ALT_FRAME_GUARD_IN_BRANCH=true
     APPLY_TAILSITTER_FW_FRAME_GUARD=false
     SKIP_TAILSITTER_FW_FRAME_GUARD=true
 fi
@@ -969,6 +971,47 @@ prompt_for_vtol_handoff_guard() {
     fi
 }
 
+prompt_for_validation_branch_fixes() {
+    if [ "$VALIDATION_MODE" = true ] || [ "$EXACT_PR_MODE" = true ]; then
+        return
+    fi
+
+    if [ "$BRANCH_NAME" != "$VALIDATION_PX4_BRANCH" ]; then
+        return
+    fi
+
+    echo ""
+    highlight "PX4 validation fixes"
+    echo "The recommended validation branch includes the accepted X-Plane airframe"
+    echo "updates plus temporary PX4-side guards used for final testing:"
+    echo "  - Tailsitter fixed-wing attitude-frame guard"
+    echo "  - Fixed-wing TECS altitude-frame handoff guard"
+    echo ""
+    echo "Use this validation branch for flight testing? (Recommended)"
+    echo "Press Enter for yes (default) or type 'n' to use the exact X-Plane PR branch without temporary guards."
+    read -t 10 -r VALIDATION_BRANCH_CHOICE
+
+    if [[ -n "$VALIDATION_BRANCH_CHOICE" && "$VALIDATION_BRANCH_CHOICE" =~ ^[Nn]$ ]]; then
+        BRANCH_NAME="px4xplane-sitl"
+        EXACT_PR_MODE=true
+        APPLY_EKF_GSF_GUARD=false
+        SKIP_EKF_GSF_GUARD=true
+        APPLY_VTOL_HANDOFF_GUARD=false
+        SKIP_VTOL_HANDOFF_GUARD=true
+        APPLY_TAILSITTER_FW_FRAME_GUARD=false
+        TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=false
+        TECS_ALT_FRAME_GUARD_IN_BRANCH=false
+        SKIP_TAILSITTER_FW_FRAME_GUARD=true
+        info "Using the exact X-Plane PR branch without temporary validation guards."
+    else
+        TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=true
+        TECS_ALT_FRAME_GUARD_IN_BRANCH=true
+        SKIP_TAILSITTER_FW_FRAME_GUARD=true
+        SYNC_MODE=true
+        info "Using the PX4 validation branch with branch-included validation guards."
+    fi
+}
+
 guard_state_text() {
     local apply="$1"
     local skip="$2"
@@ -992,6 +1035,7 @@ print_validation_selection() {
     echo "  EKF-GSF guard:     $(guard_state_text "$APPLY_EKF_GSF_GUARD" "$SKIP_EKF_GSF_GUARD")"
     echo "  VTOL handoff guard: $(guard_state_text "$APPLY_VTOL_HANDOFF_GUARD" "$SKIP_VTOL_HANDOFF_GUARD")"
     echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_IN_BRANCH")"
+    echo "  TECS alt guard:    $(guard_state_text "false" "true" "$TECS_ALT_FRAME_GUARD_IN_BRANCH")"
 
     if [ "$VALIDATION_MODE" = true ]; then
         info "--validation selected: using the validation branch and guard stack for flight testing."
@@ -1052,7 +1096,8 @@ echo "  → Branch: $BRANCH_NAME"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
 echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
-echo "  → Tailsitter FW frame guard: opt-in with --with-tailsitter-fw-frame-guard"
+echo "  → Tailsitter FW frame guard: included in the validation branch"
+echo "  → TECS altitude-frame guard: included in the validation branch pending a separate PX4 PR"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
     echo "  → Existing PX4 checkout auto-detected; origin remote will be left unchanged"
 fi
@@ -1084,6 +1129,7 @@ if ! command -v git &> /dev/null; then
 fi
 success "Git found."
 
+prompt_for_validation_branch_fixes
 prompt_for_ekf_gsf_guard
 prompt_for_vtol_handoff_guard
 print_validation_selection
