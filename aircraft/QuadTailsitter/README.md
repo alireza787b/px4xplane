@@ -4,7 +4,7 @@ This aircraft is paired with PX4 airframe `5021_xplane_qtailsitter`.
 
 ## Camera Views
 
-px4xplane v4.0.0 provides config-driven camera views under
+px4xplane v4.0.6 provides config-driven camera views under
 `PX4 X-Plane > Camera Views`. The views are not hardcoded to this aircraft;
 they are read from the active airframe's `cameraViews` line in `config.ini`.
 

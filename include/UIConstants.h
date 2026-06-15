@@ -9,7 +9,7 @@
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
  * @license MIT License
- * @version 4.0.0
+ * @version 4.0.6
  * @url https://github.com/alireza787b/px4xplane
  */
 

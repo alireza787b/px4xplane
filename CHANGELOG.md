@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.0.6] - 2026-06-15
+
+### Changed
+
+- Released the final validation launcher/docs snapshot after the PX4 SITL PR
+  closeout. The public README and docs now point to the validation workflow,
+  exact-branch workflow, and the four related PX4 guard PRs without relying on
+  stale local instructions.
+- Added the `px4xplane --validation` and `px4xplane --exact-pr` user flows to
+  the public quick-start path, with the validation branch carrying the accepted
+  Tailsitter and TECS guard commits while the EKF-GSF and Standard VTOL guard
+  PRs are still stackable at launch time.
+- Mirrored the final accepted Cessna 172 climbout validation tune into the
+  packaged PX4 parameter reference.
+- Synchronized release metadata across CMake, native makefiles, plugin UI,
+  config editor, public docs, and flight-test cards.
+
 ## [4.0.5] - 2026-06-13
 
 ### Changed
