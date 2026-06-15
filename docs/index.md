@@ -76,7 +76,15 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   This covers the front-transition pusher-thrust and pitch-setpoint handoff
   issue found during Alia validation and is intentionally separate from the
   plugin package.
-- For local validation while #27533 and #27601 are pending, run
+- Separate PX4 Tailsitter attitude-frame PR:
+  [PX4-Autopilot #27669](https://github.com/PX4/PX4-Autopilot/pull/27669).
+  This covers fixed-wing quaternion attitude error calculation for tailsitter
+  VTOLs and is included in the validation branch.
+- Separate PX4 fixed-wing TECS altitude-frame PR:
+  [PX4-Autopilot #27670](https://github.com/PX4/PX4-Autopilot/pull/27670).
+  This covers stale altitude-reference state in fixed-wing TECS and is included
+  in the validation branch.
+- For local validation while #27533, #27601, #27669, and #27670 are pending, run
   `px4xplane --validation --reset-config`. The launcher keeps the validation
   branch current, uses the Tailsitter and TECS guards already included in that
   branch, and stacks the EKF-GSF and Standard VTOL guard commits locally. Use

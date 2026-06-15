@@ -40,6 +40,10 @@ separately in
 [PX4-Autopilot PR #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
 A Standard VTOL front-transition setpoint handoff fix is tracked separately in
 [PX4-Autopilot PR #27601](https://github.com/PX4/PX4-Autopilot/pull/27601).
+The Tailsitter fixed-wing attitude-frame fix and fixed-wing TECS altitude
+reference reset are tracked in
+[PX4-Autopilot PR #27669](https://github.com/PX4/PX4-Autopilot/pull/27669) and
+[PX4-Autopilot PR #27670](https://github.com/PX4/PX4-Autopilot/pull/27670).
 Those fixes are intentionally not bundled into this plugin repository. For
 local validation while those PRs are pending, the launcher asks whether to use
 the maintained validation branch, then asks whether to stack the pending EKF-GSF
@@ -81,8 +85,8 @@ For common setup or connection errors, see
 
 For final validation while the separate PX4 guard PRs are still under review,
 use the validation shortcut. It selects `px4xplane-sitl-validation`, applies
-the EKF-GSF and Standard VTOL guard PRs, and uses the validation fixes already
-included in that branch:
+the EKF-GSF and Standard VTOL guard PRs, and uses the Tailsitter and TECS
+validation fixes already included in that branch:
 
 ```bash
 px4xplane --validation --reset-config

@@ -193,7 +193,7 @@ Options:
   --without-vtol-handoff-guard
                   Do not prompt for or apply the temporary VTOL handoff guard.
   --with-tailsitter-fw-frame-guard
-                  Local test mode: cherry-pick the experimental tailsitter
+                  Local test mode: cherry-pick the open tailsitter
                   fixed-wing quaternion attitude-frame guard before launching.
   --without-tailsitter-fw-frame-guard
                   Do not apply the temporary tailsitter FW frame guard.
@@ -990,8 +990,8 @@ prompt_for_validation_branch_fixes() {
     highlight "PX4 validation fixes"
     echo "The recommended validation branch includes the accepted X-Plane airframe"
     echo "updates plus temporary PX4-side guards used for final testing:"
-    echo "  - Tailsitter fixed-wing attitude-frame guard"
-    echo "  - Fixed-wing TECS altitude-frame handoff guard"
+    echo "  - Tailsitter fixed-wing attitude-frame guard (PX4 PR #27669)"
+    echo "  - Fixed-wing TECS altitude-frame guard (PX4 PR #27670)"
     echo ""
     echo "Use this validation branch for flight testing? (Recommended)"
     echo "Press Enter for yes (default) or type 'n' to use the exact X-Plane PR branch without temporary guards."
@@ -1102,8 +1102,8 @@ echo "  → Branch: $BRANCH_NAME"
 echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
 echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
-echo "  → Tailsitter FW frame guard: included in the validation branch"
-echo "  → TECS altitude-frame guard: included in the validation branch; upstream PR link TBD"
+echo "  → Tailsitter FW frame guard: included in the validation branch, PX4 PR #27669"
+echo "  → TECS altitude-frame guard: included in the validation branch, PX4 PR #27670"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
     echo "  → Existing PX4 checkout auto-detected; origin remote will be left unchanged"
 fi
