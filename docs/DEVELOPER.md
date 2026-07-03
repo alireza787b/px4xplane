@@ -302,8 +302,9 @@ px4xplane/
 - **Issues**: https://github.com/alireza787b/px4xplane/issues
 - **Releases**: https://github.com/alireza787b/px4xplane/releases
 - **Actions**: https://github.com/alireza787b/px4xplane/actions
-- **PX4 Fork**: https://github.com/alireza787b/PX4-Autopilot-Me
+- **Official PX4**: https://github.com/PX4/PX4-Autopilot
+- **PX4 X-Plane SITL merge**: https://github.com/PX4/PX4-Autopilot/pull/22493
 
 ---
 
-**Last Updated**: 2026-06-15 (px4xplane v4.0.6)
+**Last Updated**: 2026-07-03 (px4xplane v4.0.6)

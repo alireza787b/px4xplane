@@ -1,10 +1,11 @@
 # QuadTailsitter X-Plane 12 Final Polish Workflow
 
-This card is for the next controlled QuadTailsitter closure validation on the
-PX4 `px4xplane-sitl-validation` branch. The branch keeps the accepted `5 kg`
-6S 3115-class aircraft target, the stationary sensor/contact fixes, the
-body-axis `-Z` virtual pitot, the tailsitter fixed-wing attitude-frame guard,
-and the latest back-transition thrust handoff tuning.
+This card is for controlled QuadTailsitter closure validation with official PX4
+plus the pending validation PR stack. The package keeps the accepted `5 kg` 6S
+3115-class aircraft target, the stationary sensor/contact fixes, the body-axis
+`-Z` virtual pitot, and the latest back-transition thrust handoff tuning. Use
+the active upstream tailsitter attitude-conversion PR (#27793) through the
+launcher validation mode until it is merged.
 
 The next gate separates back-transition control from RTL mission geometry.
 Validate a manual back-transition first, then validate RTL with a suitable
@@ -22,6 +23,7 @@ that a failed recovery has margin.
    - `px4xplane --validation --reset-config`
    - select `xplane_qtailsitter`
    - `SYS_AUTOSTART` must be `5021`
+   Confirm the printed validation stack includes the tailsitter PR #27793 guard.
 5. Force a clean PX4 parameter load before the test. Do not use only `make
    clean` for this airframe after a parameter-file change.
    - preferred: choose `d` / `make distclean`, then rebuild/run

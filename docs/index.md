@@ -33,8 +33,8 @@ environment to the IP address of the machine running X-Plane:
 export PX4_SIM_HOSTNAME=<xplane-host-ip>
 ```
 
-Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
-`px4xplane` launcher can auto-detect common WSL2 host IPs, and
+Also allow inbound TCP `4560` on the X-Plane host firewall. The `px4xplane`
+launcher can auto-detect common WSL2 host IPs, and
 `px4xplane --reset-ip` clears a saved wrong IP and asks again.
 
 ## Troubleshooting
@@ -42,9 +42,10 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 - Wrong X-Plane host IP: run `px4xplane --reset-ip` and choose the correct host
   IP again.
 - Stale local PX4 checkout, submodules, or SITL parameters: run `px4xplane`.
-  The launcher syncs the selected PX4 branch by default during the temporary
-  validation phase. Use `px4xplane --sync --reset-config` when you also want to
-  clear remembered IP/config choices.
+  The launcher syncs the selected PX4 branch by default and clears stale SITL
+  parameter files when airframe defaults change. Use
+  `px4xplane --sync --reset-config` when you also want to clear remembered
+  IP/config choices.
 - Broken setup or missing launcher command: rerun the setup helper, or use
   `px4xplane --repair` if the command already exists.
 - Plugin does not appear in X-Plane: confirm the whole `px4xplane` folder is in
@@ -59,14 +60,11 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
 
 ## Current Release Policy
 
-- Use the `v4.0.6` package with the refreshed PX4 `px4xplane-sitl-validation`
-  branch while the official PX4 PR is under review.
-- PX4 integration PR:
+- Use the `v4.0.6` package with official PX4 `main`. X-Plane SITL support is
+  merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
-- Temporary helper behavior: until #22493 merges, `setup_px4_sitl.sh` and
-  plain `px4xplane` use the maintained `alireza787b/PX4-Autopilot-Me`
-  `px4xplane-sitl-validation` branch and sync it by default. Use `--no-sync`
-  only for deliberate offline/debug runs.
+- The launcher uses official PX4 by default. Use `--no-sync` only for
+  deliberate offline/debug runs.
 - Separate PX4 EKF edge-case PR:
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
   This covers the fast-VTOL transition EKF-GSF yaw-reset issue found during
@@ -76,29 +74,26 @@ Also allow inbound TCP `4560` on the X-Plane host firewall. The temporary
   This covers the front-transition pusher-thrust and pitch-setpoint handoff
   issue found during Alia validation and is intentionally separate from the
   plugin package.
-- Separate PX4 Tailsitter attitude-frame PR:
-  [PX4-Autopilot #27669](https://github.com/PX4/PX4-Autopilot/pull/27669).
-  This covers fixed-wing quaternion attitude error calculation for tailsitter
-  VTOLs and is included in the validation branch.
 - Separate PX4 fixed-wing TECS altitude-frame PR:
   [PX4-Autopilot #27670](https://github.com/PX4/PX4-Autopilot/pull/27670).
-  This covers stale altitude-reference state in fixed-wing TECS and is included
-  in the validation branch.
-- For local validation while #27533, #27601, #27669, and #27670 are pending, run
-  `px4xplane --validation --reset-config`. The launcher keeps the validation
-  branch current, uses the Tailsitter and TECS guards already included in that
-  branch, and stacks the EKF-GSF and Standard VTOL guard commits locally. Use
-  `px4xplane --without-ekf-gsf-guard` or
-  `px4xplane --without-vtol-handoff-guard` only when selectively disabling
-  those two cherry-picked guards. Use `px4xplane --exact-pr` for exact-branch
-  testing without temporary guards.
-- For reviewer-scope checks of the exact PX4 X-Plane PR branch without
-  validation-only tuning or guard commits, run `px4xplane --exact-pr`.
+  This covers stale altitude-reference state in fixed-wing TECS.
+- Active PX4 Tailsitter attitude-conversion PR:
+  [PX4-Autopilot #27793](https://github.com/PX4/PX4-Autopilot/pull/27793).
+  This supersedes the earlier local tailsitter frame-guard validation branch.
+- For local validation while #27533, #27601, #27670, and #27793 are pending, run
+  `px4xplane --validation --reset-config`. The launcher syncs official PX4
+  `main` and cherry-picks those PR heads locally for the run. Use
+  `px4xplane --without-ekf-gsf-guard`,
+  `px4xplane --without-vtol-handoff-guard`,
+  `px4xplane --without-tecs-alt-guard`, or
+  `px4xplane --without-tailsitter-fw-frame-guard` only for selective A/B tests.
+- For a clean official-PX4 baseline without pending PRs, run
+  `px4xplane --official --reset-config`.
 - If you already maintain an official PX4 checkout, use
   `px4xplane --px4-path ~/PX4-Autopilot --sync --reset-config`. The launcher
   adds/updates a separate `px4xplane` remote and does not rewrite `origin`.
 - Use `px4xplane --px4-path ~/PX4-Autopilot --restore-official` to reset that
-  checkout back to official PX4 `master` after validation.
+  checkout back to official PX4 `main` after validation.
 - The plugin runtime config is `px4xplane/64/config.ini`.
 - `config_schema.json` is editor and validator metadata only; it is not read by the plugin at runtime.
 - Use `Plugins > px4xplane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.

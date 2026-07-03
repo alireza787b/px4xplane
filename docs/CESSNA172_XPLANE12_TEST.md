@@ -21,9 +21,9 @@ mission baseline.
    px4xplane --validation --reset-config
    ```
 
-   The printed validation stack should show the validation branch fixes and the
-   EKF-GSF / Standard VTOL guards unless you are deliberately testing
-   `--exact-pr`.
+   The printed validation stack should show official PX4 plus the pending
+   EKF-GSF, Standard VTOL, TECS, and tailsitter PR guards unless you are
+   deliberately testing `--official`.
 
 3. For a fully manual developer run after changing the airframe file, reset the
    PX4 SITL parameter store once and launch:

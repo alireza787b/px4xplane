@@ -12,9 +12,9 @@ X-Plane multicopter after the Alia tuning lessons were applied.
 3. Run PX4 with the validation launcher and select `xplane_ehang184`:
    - `px4xplane --validation --reset-config`
    - `SYS_AUTOSTART` must be `5010`
-4. Confirm the printed validation stack includes the validation branch fixes and
-   the EKF-GSF / Standard VTOL guards unless you are deliberately testing
-   `--exact-pr`.
+4. Confirm the printed validation stack shows official PX4 plus the pending
+   EKF-GSF, Standard VTOL, TECS, and tailsitter PR guards unless you are
+   deliberately testing `--official`.
 5. Fly:
    - takeoff to about `30 m`
    - hover for at least `20 s`

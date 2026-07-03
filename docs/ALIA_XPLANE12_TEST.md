@@ -27,9 +27,9 @@ PX4 ULog estimator topics.
 4. Start XPlaneTruthCapture before connecting PX4.
 5. Run PX4 with the validation launcher and select `xplane_alia250`:
    - `px4xplane --validation --reset-config`
-   Confirm the printed validation stack includes the validation branch fixes and
-   the EKF-GSF / Standard VTOL guards unless you are deliberately testing
-   `--exact-pr`.
+   Confirm the printed validation stack shows official PX4 plus the pending
+   EKF-GSF, Standard VTOL, TECS, and tailsitter PR guards unless you are
+   deliberately testing `--official`.
 6. Fly:
    - takeoff to about `100 m`
    - forward transition

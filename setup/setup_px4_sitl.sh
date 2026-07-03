@@ -4,28 +4,22 @@
 #
 # Author: Alireza Ghaderi
 # LinkedIn: alireza787b
-# Updated: June 2026
+# Updated: July 2026
 # GitHub Repo: alireza787b/px4xplane
 #
 # === Purpose ===
-# This script automates the setup of PX4 Software-In-The-Loop (SITL) integration with X-Plane.
-#
-# ⚠️  TESTING PHASE - TEMPORARY WORKAROUND ⚠️
-# This script is currently in the TESTING PHASE. It clones a forked version of PX4
-# (https://github.com/alireza787b/PX4-Autopilot-Me.git) which contains X-Plane SITL support
-# that is being prepared for submission to the official PX4 repository.
-#
-# Once the Pull Request is merged into PX4/PX4-Autopilot, you will be able to use the
-# official PX4 repository directly, and this custom fork will no longer be needed.
+# This script automates the setup of PX4 Software-In-The-Loop (SITL) integration
+# with X-Plane. Official X-Plane SITL support is merged into PX4 main. The helper
+# can also run a maintained validation stack while separate PX4-side fixes are
+# pending.
 #
 # Current Status:
-# - Fork Branch: px4xplane-sitl-validation
-# - Target: Official PX4 repository (pending PR approval)
-# - Progress: https://github.com/PX4/PX4-Autopilot/pull/22493
+# - Official PX4 integration: https://github.com/PX4/PX4-Autopilot/pull/22493
+# - Validation mode: official PX4 main plus pending PX4-side PRs
 #
 # === Functionality ===
 # The script performs the following tasks:
-# 1. Clones the PX4 repository from the forked repo (customized for X-Plane).
+# 1. Uses official PX4 main by default, or official main plus validation PRs.
 # 2. Auto-syncs with remote updates (smart pull detection).
 # 3. Sets up the necessary dependencies by running the provided setup script (`ubuntu.sh`).
 # 4. Optionally sets up MAVLink Router for communication with X-Plane.
@@ -55,8 +49,8 @@
 #
 # === Customization Options ===
 # The following variables can be customized at the top of the script:
-# - `REPO_URL`: URL of the forked PX4 repository
-# - `BRANCH_NAME`: Branch to checkout (currently: px4xplane-sitl-validation)
+# - `REPO_URL`: URL of the selected PX4 repository
+# - `BRANCH_NAME`: Branch to checkout
 # - `UPSTREAM_URL`: URL of the upstream PX4 repository
 # - `DEFAULT_CLONE_PATH`: Default installation directory
 # - `PLATFORM_CHOICES`: Available airframes for X-Plane
@@ -75,28 +69,34 @@
 # - xplane_alia250: Alia-250 (eVTOL quadplane)
 # - xplane_qtailsitter: QuadTailsitter (small VTOL tailsitter)
 #
-# === Future ===
-# Once the PR is merged into the official PX4 repository, this script will be updated
-# to use the official repository, eliminating the need for the custom fork.
-#
 # For updates and more information, visit:
 # - PX4 X-Plane Integration: https://github.com/alireza787b/px4xplane
-# - This Fork: https://github.com/alireza787b/PX4-Autopilot-Me
 # - Official PX4: https://github.com/PX4/PX4-Autopilot
 
 # === Configurable Variables ===
-REPO_URL="${PX4XPLANE_PX4_REPO:-https://github.com/alireza787b/PX4-Autopilot-Me.git}"
-VALIDATION_PX4_BRANCH="${PX4XPLANE_VALIDATION_PX4_BRANCH:-px4xplane-sitl-validation}"
-DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-$VALIDATION_PX4_BRANCH}"
+OFFICIAL_PX4_REPO_URL="https://github.com/PX4/PX4-Autopilot.git"
+OFFICIAL_PX4_BRANCH="${PX4XPLANE_OFFICIAL_PX4_BRANCH:-main}"
+DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-$OFFICIAL_PX4_BRANCH}"
+REPO_URL="${PX4XPLANE_PX4_REPO:-$OFFICIAL_PX4_REPO_URL}"
 BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-$DEFAULT_PX4_BRANCH}"
+PX4_REPO_EXPLICIT=false
+PX4_BRANCH_EXPLICIT=false
 REPO_URL_WAS_OVERRIDDEN=false
-[ -n "${PX4XPLANE_PX4_REPO:-}" ] && REPO_URL_WAS_OVERRIDDEN=true
+[ -n "${PX4XPLANE_PX4_REPO:-}" ] && PX4_REPO_EXPLICIT=true && REPO_URL_WAS_OVERRIDDEN=true
+[ -n "${PX4XPLANE_PX4_BRANCH:-}" ] && PX4_BRANCH_EXPLICIT=true
 PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-origin}"
-EKF_GSF_GUARD_BRANCH="ekf2-gnss-yaw-reset-guard"
-VTOL_HANDOFF_GUARD_BRANCH="vtol-standard-throttle-handoff-xplane"
-TAILSITTER_FW_FRAME_GUARD_BRANCH="tailsitter-fw-attitude-frame-guard"
+EKF_GSF_GUARD_SOURCE_REF="${PX4XPLANE_EKF_GSF_GUARD_REF:-refs/pull/27533/head}"
+EKF_GSF_GUARD_LOCAL_REF="pr-27533-ekf-gsf-guard"
+VTOL_HANDOFF_GUARD_SOURCE_REF="${PX4XPLANE_VTOL_HANDOFF_GUARD_REF:-refs/pull/27601/head}"
+VTOL_HANDOFF_GUARD_LOCAL_REF="pr-27601-vtol-handoff-guard"
+TAILSITTER_FW_FRAME_GUARD_SOURCE_REF="${PX4XPLANE_TAILSITTER_FW_FRAME_GUARD_REF:-refs/pull/27793/head}"
+TAILSITTER_FW_FRAME_GUARD_LOCAL_REF="pr-27793-tailsitter-fw-frame-guard"
+TECS_ALT_FRAME_GUARD_SOURCE_REF="${PX4XPLANE_TECS_ALT_FRAME_GUARD_REF:-refs/pull/27670/head}"
+TECS_ALT_FRAME_GUARD_LOCAL_REF="pr-27670-tecs-alt-reference-guard"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME"
+MANAGED_CHECKOUT_NAME="${PX4XPLANE_CHECKOUT_NAME:-PX4-Autopilot}"
+LEGACY_CHECKOUT_NAME="PX4-Autopilot-Me"
 DEFAULT_CONFIG_FILE="$HOME/.px4sitl_config"
 PX4_PATH_OVERRIDE="${PX4XPLANE_PX4_PATH:-}"
 DEFAULT_FALLBACK_IP="127.0.0.1"
@@ -127,12 +127,15 @@ PX4_PATH_FLAG="--px4-path"
 RESTORE_OFFICIAL_FLAG="--restore-official"
 VALIDATION_MODE_FLAG="--validation"
 EXACT_PR_MODE_FLAG="--exact-pr"
+OFFICIAL_MODE_FLAG="--official"
 EKF_GSF_GUARD_FLAG="--with-ekf-gsf-guard"
 NO_EKF_GSF_GUARD_FLAG="--without-ekf-gsf-guard"
 VTOL_HANDOFF_GUARD_FLAG="--with-vtol-handoff-guard"
 NO_VTOL_HANDOFF_GUARD_FLAG="--without-vtol-handoff-guard"
 TAILSITTER_FW_FRAME_GUARD_FLAG="--with-tailsitter-fw-frame-guard"
 NO_TAILSITTER_FW_FRAME_GUARD_FLAG="--without-tailsitter-fw-frame-guard"
+TECS_ALT_FRAME_GUARD_FLAG="--with-tecs-alt-guard"
+NO_TECS_ALT_FRAME_GUARD_FLAG="--without-tecs-alt-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=true
@@ -143,61 +146,67 @@ UNINSTALL_MODE=false
 RESTORE_OFFICIAL_MODE=false
 VALIDATION_MODE=false
 EXACT_PR_MODE=false
+OFFICIAL_MODE=false
 APPLY_EKF_GSF_GUARD=false
 SKIP_EKF_GSF_GUARD=false
 APPLY_VTOL_HANDOFF_GUARD=false
 SKIP_VTOL_HANDOFF_GUARD=false
 APPLY_TAILSITTER_FW_FRAME_GUARD=false
 SKIP_TAILSITTER_FW_FRAME_GUARD=false
-TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=false
-TECS_ALT_FRAME_GUARD_IN_BRANCH=false
+APPLY_TECS_ALT_FRAME_GUARD=false
+SKIP_TECS_ALT_FRAME_GUARD=false
 
 print_usage() {
     cat <<EOF
 Usage: $0 [options] [install_path]
 
 Options:
-  --sync          Force-sync the selected PX4 checkout to the configured X-Plane
+  --sync          Force-sync the selected PX4 checkout to the configured PX4
                   branch remote, update submodules, and reset saved SITL
                   parameters before launching.
   --no-sync       Advanced/offline mode: do not sync the PX4 checkout before
                   launching. Saved SITL params are still reset if the selected
                   airframe defaults changed.
-  --repair        Run the full dependency/setup path and sync the PX4 fork.
+  --repair        Run the full dependency/setup path and sync the selected PX4 checkout.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
-  --px4-repo URL  Use a different PX4 fork remote for this run.
+  --px4-repo URL  Use a different PX4 remote for this run.
   --px4-branch NAME
                   Use a different PX4 branch for this run. Also available via
                   PX4XPLANE_PX4_BRANCH for scripted validation.
-  --px4-path PATH Use an existing PX4-Autopilot checkout instead of cloning
-                  ~/PX4-Autopilot-Me. The script adds/uses a separate
+  --px4-path PATH Use an existing PX4-Autopilot checkout instead of the
+                  helper-managed checkout. The script adds/uses a separate
                   px4xplane remote and does not rewrite your origin remote.
   --restore-official
-                  Restore the selected PX4 checkout to official PX4 master,
+                  Restore the selected PX4 checkout to official PX4 main,
                   update submodules, reset saved SITL params, and exit.
-  --validation    Final-validation shortcut: use px4xplane-sitl-validation,
-                  apply the EKF-GSF and Standard VTOL guard PRs, and use the
-                  validation fixes already included in that branch.
-  --exact-pr      Use the exact X-Plane SITL PR branch without temporary PX4
-                  guard PRs. This is for reviewer-scope checks, not final flight
-                  validation.
+  --validation    Use official PX4 main plus the pending PX4-side validation
+                  PRs for EKF-GSF, Standard VTOL, fixed-wing TECS, and
+                  tailsitter attitude conversion.
+  --official      Use official PX4 main without the validation stack.
+  --exact-pr      Backward-compatible alias for --official.
   --with-ekf-gsf-guard
-                  Local test mode: sync the X-Plane PR branch, then cherry-pick
-                  the open EKF-GSF yaw reset guard PR on top before launching.
+                  Local test mode: cherry-pick the open EKF-GSF yaw reset
+                  guard PR on top before launching.
   --without-ekf-gsf-guard
-                  Do not prompt for or apply the temporary EKF-GSF guard.
+                  Do not prompt for or apply the pending EKF-GSF guard.
   --with-vtol-handoff-guard
                   Local test mode: also cherry-pick the open Standard VTOL
                   front-transition setpoint handoff PR before launching.
   --without-vtol-handoff-guard
-                  Do not prompt for or apply the temporary VTOL handoff guard.
+                  Do not prompt for or apply the pending VTOL handoff guard.
   --with-tailsitter-fw-frame-guard
-                  Local test mode: cherry-pick the open tailsitter
-                  fixed-wing quaternion attitude-frame guard before launching.
+                  Local test mode: cherry-pick the active tailsitter
+                  fixed-wing quaternion attitude-frame PR before launching.
   --without-tailsitter-fw-frame-guard
-                  Do not apply the temporary tailsitter FW frame guard.
-  --uninstall     Remove the global px4xplane command and default PX4 fork checkout.
+                  Do not apply the pending tailsitter FW frame guard.
+  --with-tecs-alt-guard
+                  Local test mode: cherry-pick the fixed-wing TECS altitude
+                  reference reset PR before launching.
+  --without-tecs-alt-guard
+                  Do not apply the pending fixed-wing TECS altitude guard.
+  --uninstall     Remove the global px4xplane command, saved config, and legacy
+                  helper-managed fork checkout if present.
   --help          Show this help.
 EOF
 }
@@ -223,6 +232,7 @@ while [[ $# -gt 0 ]]; do
             SKIP_EKF_GSF_GUARD=true
             SKIP_VTOL_HANDOFF_GUARD=true
             SKIP_TAILSITTER_FW_FRAME_GUARD=true
+            SKIP_TECS_ALT_FRAME_GUARD=true
             shift
             ;;
         "$RESET_CONFIG_FLAG")
@@ -241,6 +251,7 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             REPO_URL="$2"
+            PX4_REPO_EXPLICIT=true
             REPO_URL_WAS_OVERRIDDEN=true
             SYNC_MODE=true
             shift 2
@@ -252,6 +263,7 @@ while [[ $# -gt 0 ]]; do
                 exit 1
             fi
             BRANCH_NAME="$2"
+            PX4_BRANCH_EXPLICIT=true
             SYNC_MODE=true
             shift 2
             ;;
@@ -272,25 +284,40 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$VALIDATION_MODE_FLAG")
             VALIDATION_MODE=true
-            BRANCH_NAME="$VALIDATION_PX4_BRANCH"
+            if [ "$PX4_BRANCH_EXPLICIT" = false ]; then
+                BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
+            fi
+            if [ "$PX4_REPO_EXPLICIT" = false ]; then
+                REPO_URL="$OFFICIAL_PX4_REPO_URL"
+                REPO_URL_WAS_OVERRIDDEN=true
+            fi
             APPLY_EKF_GSF_GUARD=true
             SKIP_EKF_GSF_GUARD=false
             APPLY_VTOL_HANDOFF_GUARD=true
             SKIP_VTOL_HANDOFF_GUARD=false
-            APPLY_TAILSITTER_FW_FRAME_GUARD=false
-            SKIP_TAILSITTER_FW_FRAME_GUARD=true
+            APPLY_TAILSITTER_FW_FRAME_GUARD=true
+            SKIP_TAILSITTER_FW_FRAME_GUARD=false
+            APPLY_TECS_ALT_FRAME_GUARD=true
+            SKIP_TECS_ALT_FRAME_GUARD=false
             SYNC_MODE=true
             shift
             ;;
-        "$EXACT_PR_MODE_FLAG")
+        "$OFFICIAL_MODE_FLAG"|"$EXACT_PR_MODE_FLAG")
+            OFFICIAL_MODE=true
             EXACT_PR_MODE=true
-            BRANCH_NAME="px4xplane-sitl"
+            BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
+            if [ "$PX4_REPO_EXPLICIT" = false ]; then
+                REPO_URL="$OFFICIAL_PX4_REPO_URL"
+                REPO_URL_WAS_OVERRIDDEN=true
+            fi
             APPLY_EKF_GSF_GUARD=false
             SKIP_EKF_GSF_GUARD=true
             APPLY_VTOL_HANDOFF_GUARD=false
             SKIP_VTOL_HANDOFF_GUARD=true
             APPLY_TAILSITTER_FW_FRAME_GUARD=false
             SKIP_TAILSITTER_FW_FRAME_GUARD=true
+            APPLY_TECS_ALT_FRAME_GUARD=false
+            SKIP_TECS_ALT_FRAME_GUARD=true
             SYNC_MODE=true
             shift
             ;;
@@ -324,6 +351,16 @@ while [[ $# -gt 0 ]]; do
             APPLY_TAILSITTER_FW_FRAME_GUARD=false
             shift
             ;;
+        "$TECS_ALT_FRAME_GUARD_FLAG")
+            APPLY_TECS_ALT_FRAME_GUARD=true
+            SYNC_MODE=true
+            shift
+            ;;
+        "$NO_TECS_ALT_FRAME_GUARD_FLAG")
+            SKIP_TECS_ALT_FRAME_GUARD=true
+            APPLY_TECS_ALT_FRAME_GUARD=false
+            shift
+            ;;
         "$HELP_FLAG"|"-h")
             print_usage
             exit 0
@@ -341,13 +378,6 @@ while [[ $# -gt 0 ]]; do
 done
 set -- "${POSITIONAL_ARGS[@]}"
 
-if [ "$BRANCH_NAME" = "$VALIDATION_PX4_BRANCH" ]; then
-    TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=true
-    TECS_ALT_FRAME_GUARD_IN_BRANCH=true
-    APPLY_TAILSITTER_FW_FRAME_GUARD=false
-    SKIP_TAILSITTER_FW_FRAME_GUARD=true
-fi
-
 if [ "$UNINSTALL_MODE" = true ]; then
     # Uninstall the global access command
     echo "Uninstalling global access for px4xplane..."
@@ -361,10 +391,12 @@ if [ "$UNINSTALL_MODE" = true ]; then
         echo "Global command not found."
     fi
 
-    # Attempt to remove PX4-Autopilot-Me directory and config file
-    if [ -d "$DEFAULT_CLONE_PATH/PX4-Autopilot-Me" ]; then
-        sudo rm -rf "$DEFAULT_CLONE_PATH/PX4-Autopilot-Me"
-        echo "Removed PX4-Autopilot-Me Cloned Repository."
+    # Remove the legacy helper-managed fork checkout and config file.
+    # Do not remove ~/PX4-Autopilot automatically; it may be a user's normal
+    # PX4 development checkout.
+    if [ -d "$DEFAULT_CLONE_PATH/$LEGACY_CHECKOUT_NAME" ]; then
+        sudo rm -rf "$DEFAULT_CLONE_PATH/$LEGACY_CHECKOUT_NAME"
+        echo "Removed legacy $LEGACY_CHECKOUT_NAME cloned repository."
     fi
     if [ -e "$DEFAULT_CONFIG_FILE" ]; then
         rm "$DEFAULT_CONFIG_FILE"
@@ -386,21 +418,18 @@ if [ -n "$PX4_PATH_OVERRIDE" ]; then
     USING_EXTERNAL_PX4_PATH=true
 elif [ -n "$1" ]; then
     INSTALL_PATH="$1"
-    CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
+    CLONE_PATH="$INSTALL_PATH/$MANAGED_CHECKOUT_NAME"
     CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
 else
     INSTALL_PATH="$DEFAULT_CLONE_PATH"
-    CLONE_PATH="$INSTALL_PATH/PX4-Autopilot-Me"
+    CLONE_PATH="$INSTALL_PATH/$MANAGED_CHECKOUT_NAME"
     CONFIG_FILE="$DEFAULT_CONFIG_FILE"
 
-    # If the temporary fork checkout is not present but the user already has
-    # an official PX4 checkout in HOME, reuse it with a separate px4xplane
-    # remote instead of cloning a second full repository.
-    if [ ! -d "$CLONE_PATH/.git" ] && [ -d "$HOME/PX4-Autopilot/.git" ]; then
-        AUTO_DETECTED_PX4_PATH="$HOME/PX4-Autopilot"
+    # Reuse the legacy helper-managed fork checkout if an older installation
+    # already has one. The remote is normalized during sync.
+    if [ ! -d "$CLONE_PATH/.git" ] && [ -d "$HOME/$LEGACY_CHECKOUT_NAME/.git" ]; then
+        AUTO_DETECTED_PX4_PATH="$HOME/$LEGACY_CHECKOUT_NAME"
         CLONE_PATH="$AUTO_DETECTED_PX4_PATH"
-        INSTALL_PATH="$HOME"
-        CONFIG_FILE="$DEFAULT_CONFIG_FILE"
         USING_EXTERNAL_PX4_PATH=true
     fi
 fi
@@ -688,9 +717,10 @@ reset_params_if_airframe_changed() {
 apply_guard_commits() {
     local base_ref="$1"
     local enabled="$2"
-    local guard_branch="$3"
+    local guard_local_ref="$3"
     local label="$4"
-    local guard_ref="$PX4_REMOTE_NAME/$guard_branch"
+    local guard_ref="$PX4_REMOTE_NAME/$guard_local_ref"
+    local merge_base
     local guard_commits
     local guard_commit
 
@@ -698,7 +728,13 @@ apply_guard_commits() {
         return 0
     fi
 
-    guard_commits="$(git rev-list --reverse "$base_ref..$guard_ref" 2>/dev/null || true)"
+    merge_base="$(git merge-base "$base_ref" "$guard_ref" 2>/dev/null || true)"
+    if [ -z "$merge_base" ]; then
+        warning "Could not find a merge base for $label against $base_ref."
+        return 1
+    fi
+
+    guard_commits="$(git rev-list --reverse --no-merges "$merge_base..$guard_ref" 2>/dev/null || true)"
 
     if [ -z "$guard_commits" ]; then
         warning "No $label commits found on $guard_ref."
@@ -722,6 +758,23 @@ apply_guard_commits() {
     success "Local validation branch includes $label: $(git rev-parse --short HEAD)."
 }
 
+fetch_guard_ref() {
+    local enabled="$1"
+    local source_ref="$2"
+    local local_ref="$3"
+    local label="$4"
+
+    if [ "$enabled" != true ]; then
+        return 0
+    fi
+
+    progress "Fetching $label for local validation..."
+    if ! git fetch "$PX4_REMOTE_NAME" "+$source_ref:refs/remotes/$PX4_REMOTE_NAME/$local_ref"; then
+        warning "Could not fetch $label from $source_ref."
+        return 1
+    fi
+}
+
 sync_px4_repo_to_remote() {
     local clean_untracked="${1:-false}"
     local remote_ref="$PX4_REMOTE_NAME/$BRANCH_NAME"
@@ -729,6 +782,7 @@ sync_px4_repo_to_remote() {
     local status_output
     local ahead_count
     local backup_branch
+    local current_remote_url
 
     cd "$CLONE_PATH" || return 1
 
@@ -737,7 +791,12 @@ sync_px4_repo_to_remote() {
     if ! git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1; then
         git remote add "$PX4_REMOTE_NAME" "$REPO_URL"
         info "Added $PX4_REMOTE_NAME remote: $REPO_URL"
-    elif [ "$REPO_URL_WAS_OVERRIDDEN" = true ] || [ "$PX4_REMOTE_NAME" != "origin" ]; then
+    else
+        current_remote_url="$(git remote get-url "$PX4_REMOTE_NAME" 2>/dev/null || true)"
+    fi
+
+    if git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1 && \
+       { [ "$REPO_URL_WAS_OVERRIDDEN" = true ] || [ "$PX4_REMOTE_NAME" != "origin" ] || [ "$current_remote_url" != "$REPO_URL" ]; }; then
         git remote set-url "$PX4_REMOTE_NAME" "$REPO_URL"
         info "Using $PX4_REMOTE_NAME remote: $REPO_URL"
     fi
@@ -747,30 +806,13 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    if [ "$APPLY_EKF_GSF_GUARD" = true ]; then
-        progress "Fetching EKF-GSF guard branch for local validation..."
-        if ! git fetch "$PX4_REMOTE_NAME" "+$EKF_GSF_GUARD_BRANCH:refs/remotes/$PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH"; then
-            warning "Could not fetch $PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH."
-            return 1
-        fi
-        local_branch="${BRANCH_NAME}-validation"
-    fi
+    fetch_guard_ref "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_SOURCE_REF" "$EKF_GSF_GUARD_LOCAL_REF" "EKF-GSF yaw reset guard" || return 1
+    fetch_guard_ref "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_SOURCE_REF" "$VTOL_HANDOFF_GUARD_LOCAL_REF" "Standard VTOL handoff guard" || return 1
+    fetch_guard_ref "$APPLY_TECS_ALT_FRAME_GUARD" "$TECS_ALT_FRAME_GUARD_SOURCE_REF" "$TECS_ALT_FRAME_GUARD_LOCAL_REF" "fixed-wing TECS altitude guard" || return 1
+    fetch_guard_ref "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_SOURCE_REF" "$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF" "tailsitter FW attitude-frame PR #27793" || return 1
 
-    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ]; then
-        progress "Fetching Standard VTOL handoff guard branch for local validation..."
-        if ! git fetch "$PX4_REMOTE_NAME" "+$VTOL_HANDOFF_GUARD_BRANCH:refs/remotes/$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH"; then
-            warning "Could not fetch $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH."
-            return 1
-        fi
-        local_branch="${BRANCH_NAME}-validation"
-    fi
-
-    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ]; then
-        progress "Fetching tailsitter FW attitude-frame guard branch for local validation..."
-        if ! git fetch "$PX4_REMOTE_NAME" "+$TAILSITTER_FW_FRAME_GUARD_BRANCH:refs/remotes/$PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH"; then
-            warning "Could not fetch $PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH."
-            return 1
-        fi
+    if [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || \
+       [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ]; then
         local_branch="${BRANCH_NAME}-validation"
     fi
 
@@ -779,18 +821,23 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH" >/dev/null 2>&1; then
-        warning "Remote branch $PX4_REMOTE_NAME/$EKF_GSF_GUARD_BRANCH was not found."
+    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$EKF_GSF_GUARD_LOCAL_REF" >/dev/null 2>&1; then
+        warning "Remote guard ref $PX4_REMOTE_NAME/$EKF_GSF_GUARD_LOCAL_REF was not found."
         return 1
     fi
 
-    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH" >/dev/null 2>&1; then
-        warning "Remote branch $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_BRANCH was not found."
+    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_LOCAL_REF" >/dev/null 2>&1; then
+        warning "Remote guard ref $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_LOCAL_REF was not found."
         return 1
     fi
 
-    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH" >/dev/null 2>&1; then
-        warning "Remote branch $PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_BRANCH was not found."
+    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF" >/dev/null 2>&1; then
+        warning "Remote guard ref $PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF was not found."
+        return 1
+    fi
+
+    if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$TECS_ALT_FRAME_GUARD_LOCAL_REF" >/dev/null 2>&1; then
+        warning "Remote guard ref $PX4_REMOTE_NAME/$TECS_ALT_FRAME_GUARD_LOCAL_REF was not found."
         return 1
     fi
 
@@ -817,9 +864,10 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    apply_guard_commits "$remote_ref" "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_BRANCH" "EKF-GSF yaw reset guard" || return 1
-    apply_guard_commits "$remote_ref" "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_BRANCH" "Standard VTOL handoff guard" || return 1
-    apply_guard_commits "$remote_ref" "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_BRANCH" "tailsitter FW attitude-frame guard" || return 1
+    apply_guard_commits "$remote_ref" "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_LOCAL_REF" "EKF-GSF yaw reset guard" || return 1
+    apply_guard_commits "$remote_ref" "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_LOCAL_REF" "Standard VTOL handoff guard" || return 1
+    apply_guard_commits "$remote_ref" "$APPLY_TECS_ALT_FRAME_GUARD" "$TECS_ALT_FRAME_GUARD_LOCAL_REF" "fixed-wing TECS altitude guard" || return 1
+    apply_guard_commits "$remote_ref" "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF" "tailsitter FW attitude-frame PR #27793" || return 1
 
     if [ "$clean_untracked" = true ]; then
         git clean -fd
@@ -843,7 +891,7 @@ sync_px4_repo_to_remote() {
 
 restore_px4_repo_to_official() {
     local official_remote="upstream"
-    local official_ref="$official_remote/master"
+    local official_ref="$official_remote/$OFFICIAL_PX4_BRANCH"
     local status_output
 
     if [ ! -d "$CLONE_PATH/.git" ]; then
@@ -855,15 +903,15 @@ restore_px4_repo_to_official() {
 
     if git remote get-url origin 2>/dev/null | grep -Eq 'github.com[:/]PX4/PX4-Autopilot(.git)?$'; then
         official_remote="origin"
-        official_ref="origin/master"
+        official_ref="origin/$OFFICIAL_PX4_BRANCH"
     elif ! git remote get-url "$official_remote" >/dev/null 2>&1; then
         git remote add "$official_remote" "$UPSTREAM_URL"
         info "Added upstream remote: $UPSTREAM_URL"
     fi
 
     progress "Restoring PX4 checkout to official $official_ref..."
-    if ! git fetch "$official_remote" "+master:refs/remotes/$official_remote/master"; then
-        warning "Could not fetch official PX4 master from $official_remote."
+    if ! git fetch "$official_remote" "+$OFFICIAL_PX4_BRANCH:refs/remotes/$official_remote/$OFFICIAL_PX4_BRANCH"; then
+        warning "Could not fetch official PX4 $OFFICIAL_PX4_BRANCH from $official_remote."
         return 1
     fi
 
@@ -873,8 +921,8 @@ restore_px4_repo_to_official() {
         git stash push --include-untracked -m "px4xplane auto-backup before official restore $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
     fi
 
-    if ! git checkout -B master "$official_ref"; then
-        warning "Could not switch to official PX4 master."
+    if ! git checkout -B "$OFFICIAL_PX4_BRANCH" "$official_ref"; then
+        warning "Could not switch to official PX4 $OFFICIAL_PX4_BRANCH."
         return 1
     fi
 
@@ -885,8 +933,8 @@ restore_px4_repo_to_official() {
     git submodule foreach --recursive 'git reset --hard >/dev/null 2>&1; git clean -fd >/dev/null 2>&1' >/dev/null 2>&1 || true
 
     reset_saved_sitl_parameters
-    success "PX4 checkout restored to official master at $(git rev-parse --short HEAD)."
-    info "X-Plane SITL airframes are available from the px4xplane branch until PX4 PR #22493 is merged."
+    success "PX4 checkout restored to official $OFFICIAL_PX4_BRANCH at $(git rev-parse --short HEAD)."
+    info "X-Plane SITL airframes are available in official PX4 main."
 }
 
 update_launcher_script_if_needed() {
@@ -924,6 +972,55 @@ update_launcher_script_if_needed() {
     rm -f "$temp_script"
 }
 
+enable_pending_px4_fixes() {
+    [ "$SKIP_EKF_GSF_GUARD" = true ] || APPLY_EKF_GSF_GUARD=true
+    [ "$SKIP_VTOL_HANDOFF_GUARD" = true ] || APPLY_VTOL_HANDOFF_GUARD=true
+    [ "$SKIP_TAILSITTER_FW_FRAME_GUARD" = true ] || APPLY_TAILSITTER_FW_FRAME_GUARD=true
+    [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ] || APPLY_TECS_ALT_FRAME_GUARD=true
+    SYNC_MODE=true
+}
+
+skip_pending_px4_fixes() {
+    [ "$APPLY_EKF_GSF_GUARD" = true ] || SKIP_EKF_GSF_GUARD=true
+    [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || SKIP_VTOL_HANDOFF_GUARD=true
+    [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || SKIP_TAILSITTER_FW_FRAME_GUARD=true
+    [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || SKIP_TECS_ALT_FRAME_GUARD=true
+}
+
+any_pending_px4_fix_selected() {
+    [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$SKIP_EKF_GSF_GUARD" = true ] || \
+    [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || [ "$SKIP_VTOL_HANDOFF_GUARD" = true ] || \
+    [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || [ "$SKIP_TAILSITTER_FW_FRAME_GUARD" = true ] || \
+    [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ]
+}
+
+prompt_for_pending_px4_fixes() {
+    if [ "$VALIDATION_MODE" = true ] || [ "$EXACT_PR_MODE" = true ] || [ "$NO_SYNC_MODE" = true ]; then
+        return
+    fi
+
+    echo ""
+    highlight "Pending PX4 validation fixes"
+    echo "Official PX4 already includes X-Plane SITL. A few PX4-side fixes found"
+    echo "during final validation are still separate review items:"
+    echo "  - EKF-GSF yaw reset guard: https://github.com/PX4/PX4-Autopilot/pull/27533"
+    echo "  - Standard VTOL handoff guard: https://github.com/PX4/PX4-Autopilot/pull/27601"
+    echo "  - Fixed-wing TECS altitude reset: https://github.com/PX4/PX4-Autopilot/pull/27670"
+    echo "  - Tailsitter attitude conversion: https://github.com/PX4/PX4-Autopilot/pull/27793"
+    echo ""
+    echo "Apply these locally on top of official PX4 main for this run? (Recommended)"
+    echo "Press Enter for yes (default) or type 'n' to use official PX4 main only."
+    read -t 10 -r PENDING_PX4_FIX_CHOICE
+
+    if [[ -z "$PENDING_PX4_FIX_CHOICE" || ! "$PENDING_PX4_FIX_CHOICE" =~ ^[Nn]$ ]]; then
+        enable_pending_px4_fixes
+        info "Pending PX4 validation fixes will be applied locally for this run."
+    else
+        skip_pending_px4_fixes
+        info "Using official PX4 main without pending validation fixes."
+    fi
+}
+
 prompt_for_ekf_gsf_guard() {
     if [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$SKIP_EKF_GSF_GUARD" = true ]; then
         return
@@ -931,10 +1028,7 @@ prompt_for_ekf_gsf_guard() {
 
     echo ""
     highlight "EKF-GSF yaw-reset guard"
-    echo "A separate PX4 PR fixes a fast-VTOL transition yaw-reset edge case:"
-    echo "  https://github.com/PX4/PX4-Autopilot/pull/27533"
-    echo ""
-    echo "Apply that guard locally on top of the X-Plane SITL branch? (Recommended)"
+    echo "Apply PX4 PR #27533 locally for fast-VTOL yaw-reset validation? (Recommended)"
     echo "Press Enter for yes (default) or type 'n' to run without it."
     read -t 10 -r EKF_GSF_GUARD_CHOICE
 
@@ -944,7 +1038,7 @@ prompt_for_ekf_gsf_guard() {
         info "EKF-GSF guard will be applied locally for this run."
     else
         SKIP_EKF_GSF_GUARD=true
-        info "Continuing without the temporary EKF-GSF guard."
+        info "Continuing without the EKF-GSF guard."
     fi
 }
 
@@ -955,11 +1049,7 @@ prompt_for_vtol_handoff_guard() {
 
     echo ""
     highlight "Standard VTOL transition handoff guard"
-    echo "A separate PX4 PR keeps Standard VTOL pusher thrust and pitch setpoints"
-    echo "continuous just after front transition:"
-    echo "  https://github.com/PX4/PX4-Autopilot/pull/27601"
-    echo ""
-    echo "Apply that guard locally on top of the X-Plane SITL branch? (Recommended)"
+    echo "Apply PX4 PR #27601 locally for Standard VTOL transition validation? (Recommended)"
     echo "Press Enter for yes (default) or type 'n' to run without it."
     read -t 10 -r VTOL_HANDOFF_GUARD_CHOICE
 
@@ -969,63 +1059,57 @@ prompt_for_vtol_handoff_guard() {
         info "Standard VTOL handoff guard will be applied locally for this run."
     else
         SKIP_VTOL_HANDOFF_GUARD=true
-        info "Continuing without the temporary Standard VTOL handoff guard."
+        info "Continuing without the Standard VTOL handoff guard."
     fi
 }
 
-prompt_for_validation_branch_fixes() {
-    if [ "$VALIDATION_MODE" = true ] || [ "$EXACT_PR_MODE" = true ]; then
-        return
-    fi
-
-    if [ "$NO_SYNC_MODE" = true ]; then
-        return
-    fi
-
-    if [ "$BRANCH_NAME" != "$VALIDATION_PX4_BRANCH" ]; then
+prompt_for_tailsitter_frame_guard() {
+    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || [ "$SKIP_TAILSITTER_FW_FRAME_GUARD" = true ]; then
         return
     fi
 
     echo ""
-    highlight "PX4 validation fixes"
-    echo "The recommended validation branch includes the accepted X-Plane airframe"
-    echo "updates plus temporary PX4-side guards used for final testing:"
-    echo "  - Tailsitter fixed-wing attitude-frame guard (PX4 PR #27669)"
-    echo "  - Fixed-wing TECS altitude-frame guard (PX4 PR #27670)"
-    echo ""
-    echo "Use this validation branch for flight testing? (Recommended)"
-    echo "Press Enter for yes (default) or type 'n' to use the exact X-Plane PR branch without temporary guards."
-    read -t 10 -r VALIDATION_BRANCH_CHOICE
+    highlight "Tailsitter attitude conversion fix"
+    echo "Apply active PX4 PR #27793 locally for QuadTailsitter validation? (Recommended)"
+    echo "Press Enter for yes (default) or type 'n' to run without it."
+    read -t 10 -r TAILSITTER_FRAME_GUARD_CHOICE
 
-    if [[ -n "$VALIDATION_BRANCH_CHOICE" && "$VALIDATION_BRANCH_CHOICE" =~ ^[Nn]$ ]]; then
-        BRANCH_NAME="px4xplane-sitl"
-        EXACT_PR_MODE=true
-        APPLY_EKF_GSF_GUARD=false
-        SKIP_EKF_GSF_GUARD=true
-        APPLY_VTOL_HANDOFF_GUARD=false
-        SKIP_VTOL_HANDOFF_GUARD=true
-        APPLY_TAILSITTER_FW_FRAME_GUARD=false
-        TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=false
-        TECS_ALT_FRAME_GUARD_IN_BRANCH=false
-        SKIP_TAILSITTER_FW_FRAME_GUARD=true
-        info "Using the exact X-Plane PR branch without temporary validation guards."
-    else
-        TAILSITTER_FW_FRAME_GUARD_IN_BRANCH=true
-        TECS_ALT_FRAME_GUARD_IN_BRANCH=true
-        SKIP_TAILSITTER_FW_FRAME_GUARD=true
+    if [[ -z "$TAILSITTER_FRAME_GUARD_CHOICE" || ! "$TAILSITTER_FRAME_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
+        APPLY_TAILSITTER_FW_FRAME_GUARD=true
         SYNC_MODE=true
-        info "Using the PX4 validation branch with branch-included validation guards."
+        info "Tailsitter attitude conversion fix will be applied locally for this run."
+    else
+        SKIP_TAILSITTER_FW_FRAME_GUARD=true
+        info "Continuing without the tailsitter attitude conversion fix."
+    fi
+}
+
+prompt_for_tecs_alt_guard() {
+    if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ]; then
+        return
+    fi
+
+    echo ""
+    highlight "Fixed-wing TECS altitude reset"
+    echo "Apply PX4 PR #27670 locally for Cessna/TB2 altitude-reference validation? (Recommended)"
+    echo "Press Enter for yes (default) or type 'n' to run without it."
+    read -t 10 -r TECS_ALT_GUARD_CHOICE
+
+    if [[ -z "$TECS_ALT_GUARD_CHOICE" || ! "$TECS_ALT_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
+        APPLY_TECS_ALT_FRAME_GUARD=true
+        SYNC_MODE=true
+        info "Fixed-wing TECS altitude reset will be applied locally for this run."
+    else
+        SKIP_TECS_ALT_FRAME_GUARD=true
+        info "Continuing without the fixed-wing TECS altitude reset."
     fi
 }
 
 guard_state_text() {
     local apply="$1"
     local skip="$2"
-    local included="${3:-false}"
 
-    if [ "$included" = true ]; then
-        echo "included in branch"
-    elif [ "$apply" = true ]; then
+    if [ "$apply" = true ]; then
         echo "apply"
     elif [ "$skip" = true ]; then
         echo "skip"
@@ -1040,13 +1124,13 @@ print_validation_selection() {
     echo "  PX4 remote:        $PX4_REMOTE_NAME ($REPO_URL)"
     echo "  EKF-GSF guard:     $(guard_state_text "$APPLY_EKF_GSF_GUARD" "$SKIP_EKF_GSF_GUARD")"
     echo "  VTOL handoff guard: $(guard_state_text "$APPLY_VTOL_HANDOFF_GUARD" "$SKIP_VTOL_HANDOFF_GUARD")"
-    echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_IN_BRANCH")"
-    echo "  TECS alt guard:    $(guard_state_text "false" "true" "$TECS_ALT_FRAME_GUARD_IN_BRANCH")"
+    echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD")"
+    echo "  TECS alt guard:    $(guard_state_text "$APPLY_TECS_ALT_FRAME_GUARD" "$SKIP_TECS_ALT_FRAME_GUARD")"
 
     if [ "$VALIDATION_MODE" = true ]; then
-        info "--validation selected: using the validation branch and guard stack for flight testing."
+        info "--validation selected: using official PX4 plus the pending validation PR stack."
     elif [ "$EXACT_PR_MODE" = true ]; then
-        info "--exact-pr selected: using the PR branch without temporary guard PRs."
+        info "--official/--exact-pr selected: using official PX4 without pending validation PRs."
     fi
 }
 
@@ -1081,31 +1165,26 @@ echo "╚═══════════════════════�
 echo ""
 highlight "Author: Alireza Ghaderi (@alireza787b)"
 highlight "GitHub: https://github.com/alireza787b/px4xplane"
-highlight "Updated: June 2026"
+highlight "Updated: July 2026"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
-warning "⚠️  TESTING PHASE - TEMPORARY WORKAROUND ⚠️"
+highlight "PX4 X-Plane Support"
 echo ""
-echo "This script installs X-Plane SITL support from a FORKED PX4 repository."
-echo "This is a temporary solution while the integration is being reviewed for"
-echo "official inclusion in PX4/PX4-Autopilot."
-echo ""
-info "What happens after the PR merges?"
-echo "  → You'll be able to use the official PX4 repository directly"
-echo "  → This custom fork will no longer be needed"
-echo "  → A simple 'git remote' change will migrate you to official PX4"
+echo "Official PX4 X-Plane SITL support is merged in PX4/PX4-Autopilot."
+echo "The launcher uses official PX4 by default and can optionally stack pending"
+echo "PX4 validation PRs locally for final flight-test coverage."
 echo ""
 info "Current Status:"
 echo "  → PX4 checkout: $CLONE_PATH"
-echo "  → X-Plane branch source: $PX4_REMOTE_NAME ($REPO_URL)"
+echo "  → PX4 source: $PX4_REMOTE_NAME ($REPO_URL)"
 echo "  → Branch: $BRANCH_NAME"
-echo "  → PX4 PR: https://github.com/PX4/PX4-Autopilot/pull/22493"
-echo "  → EKF-GSF guard: prompted by default while PX4 PR #27533 is pending"
-echo "  → VTOL handoff guard: prompted by default while PX4 PR #27601 is pending"
-echo "  → Tailsitter FW frame guard: included in the validation branch, PX4 PR #27669"
-echo "  → TECS altitude-frame guard: included in the validation branch, PX4 PR #27670"
+echo "  → X-Plane SITL merge: https://github.com/PX4/PX4-Autopilot/pull/22493"
+echo "  → Optional EKF-GSF guard: PX4 PR #27533"
+echo "  → Optional VTOL handoff guard: PX4 PR #27601"
+echo "  → Optional TECS altitude guard: PX4 PR #27670"
+echo "  → Optional tailsitter conversion fix: PX4 PR #27793"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
-    echo "  → Existing PX4 checkout auto-detected; origin remote will be left unchanged"
+    echo "  → Existing legacy PX4 checkout auto-detected; origin remote is preserved"
 fi
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
@@ -1135,9 +1214,13 @@ if ! command -v git &> /dev/null; then
 fi
 success "Git found."
 
-prompt_for_validation_branch_fixes
+if ! any_pending_px4_fix_selected; then
+    prompt_for_pending_px4_fixes
+fi
 prompt_for_ekf_gsf_guard
 prompt_for_vtol_handoff_guard
+prompt_for_tecs_alt_guard
+prompt_for_tailsitter_frame_guard
 print_validation_selection
 
 # === Simplified Process for Subsequent Runs ===
@@ -1303,7 +1386,7 @@ else
 
     # === Fetch Latest Changes and Normalize Branch State ===
     if ! sync_px4_repo_to_remote true; then
-        warning "Could not fully sync the PX4 fork. Continuing with the checked-out branch."
+        warning "Could not fully sync the PX4 checkout. Continuing with the checked-out branch."
     fi
 fi
 
@@ -1558,13 +1641,13 @@ echo ""
 info "Installation Summary:"
 echo "  ✓ Repository: $CLONE_PATH"
 echo "  ✓ Branch: $(cd "$CLONE_PATH" 2>/dev/null && git branch --show-current 2>/dev/null || echo "$BRANCH_NAME")"
-echo "  ✓ X-Plane remote: $PX4_REMOTE_NAME"
+echo "  ✓ PX4 remote: $PX4_REMOTE_NAME"
 echo "  ✓ Airframe: $PLATFORM"
 echo "  ✓ IP Address: ${PX4_SIM_HOSTNAME:-Not configured}"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
-warning "Remember: This is a TESTING PHASE installation using a forked repository."
-info "Once the PR merges, you can switch to the official PX4 repository."
+info "Official PX4 X-Plane SITL support is merged. Pending PX4 validation PRs are"
+info "applied only when selected in the launcher output above."
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""
 highlight "Happy Flying! 🚁✈️"
