@@ -9,7 +9,7 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v4.0.7
+px4xplane: Version: v4.0.8
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```

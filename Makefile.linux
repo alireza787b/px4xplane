@@ -14,7 +14,7 @@
 
 # Project name
 PROJECT := px4xplane
-VERSION := 4.0.7
+VERSION := 4.0.8
 
 # Compiler
 CXX := g++
@@ -183,7 +183,8 @@ post_build: $(TARGET)
 	@echo "Plugin location: $(BUILD_DIR)/px4xplane/"
 	@echo ""
 	@echo "To install to X-Plane:"
-	@echo "  cp -r $(BUILD_DIR)/px4xplane /path/to/X-Plane/Resources/plugins/"
+	@echo "  cp -r $(BUILD_DIR)/px4xplane \"/path/to/X-Plane 12/Resources/plugins/\""
+	@echo "  # or \"/path/to/X-Plane 11/Resources/plugins/\""
 	@echo "=================================================="
 
 #==============================================================================

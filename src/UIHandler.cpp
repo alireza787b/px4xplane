@@ -17,7 +17,7 @@
  * @author Alireza Ghaderi
  * @copyright Copyright (c) 2025 Alireza Ghaderi. All rights reserved.
  * @license MIT License
- * @version 4.0.7
+ * @version 4.0.8
  * @url https://github.com/alireza787b/px4xplane
  */
 
@@ -1043,7 +1043,7 @@ int UIHandler::Internal::drawMixingTabContent(int left, int top, int right, int 
 
     // ALWAYS SHOW: Configuration file location
     scrolledY = top - lineOffset + g_uiState.scrollOffset[currentTabIndex];
-    drawSmartText(left + 35, scrolledY, "Config File: X-Plane/Resources/plugins/px4xplane/64/config.ini", linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
+    drawSmartText(left + 35, scrolledY, "Config File: X-Plane 12/Resources/plugins/px4xplane/64/config.ini (or X-Plane 11)", linkColor, g_uiState.contentAreaTop, g_uiState.contentAreaBottom);
     lineOffset += getScaledLayout(Layout::LINE_HEIGHT);
 
     // ALWAYS SHOW: Connection status for HIL data

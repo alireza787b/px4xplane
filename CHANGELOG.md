@@ -11,6 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.0.8] - 2026-07-05
+
+### Changed
+
+- Polished the public README quick start after the official PX4 X-Plane docs
+  review: removed `git pull --ff-only` from the normal run snippet, kept the
+  official PX4 X-Plane page next to the supported target list, and clarified
+  that `PX4_SIM_HOSTNAME` must be exported before the normal PX4 `make`
+  command.
+- Moved the project video thumbnail near the top of the README so the latest
+  demo/playlist is visible before setup details.
+- Made the plugin copy path inline and explicit for both X-Plane 11 and
+  X-Plane 12.
+- Renamed the launcher section to make clear it is the px4xplane CLI and
+  experimental validation helper, not the required beginner path.
+
 ## [4.0.7] - 2026-07-05
 
 ### Changed

@@ -738,9 +738,11 @@ chmod +w .
    - macOS: `~/Desktop/X-Plane 12/Log.txt`  
    - Linux: `~/X-Plane 12/Log.txt`
 
-2. **Verify plugin location and files:**
+2. **Verify plugin location and files.** Use the same layout under
+   `X-Plane 11/Resources/plugins/px4xplane/` if you are using X-Plane 11.
+
    ```
-   X-Plane/Resources/plugins/px4xplane/
+   X-Plane 12/Resources/plugins/px4xplane/
    ├── 64/
    │   └── win.xpl (or lin.xpl or mac.xpl)
    ├── config.ini      # ✓ Must be present
@@ -932,7 +934,7 @@ For automated builds across platforms, the project includes:
 
 ## Version Information
 
-- **Build System Version**: 4.0.7
+- **Build System Version**: 4.0.8
 - **Supported Platforms**:
   - Windows 10+ (Visual Studio 2019/2022, MinGW)
   - macOS 10.14+ (Xcode Command Line Tools, Universal Binary support)
@@ -943,7 +945,7 @@ For automated builds across platforms, the project includes:
   - **Native Makefiles**: Makefile.linux, Makefile.macos
 - **C++ Standard**: C++17
 - **X-Plane SDK**: Latest version included (4.0.0+)
-- **Plugin Version**: 4.0.7
+- **Plugin Version**: 4.0.8
 - **Repository**: [alireza787b/px4xplane](https://github.com/alireza787b/px4xplane)
 
 ## Additional Resources
