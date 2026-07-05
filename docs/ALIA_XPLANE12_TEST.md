@@ -103,7 +103,7 @@ Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=502
 The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
 was not valid evidence for Alia tuning.
 
-For the current `v4.0.6` Alia milestone test,
+For the current `v4.0.7` Alia milestone test,
 verify these key defaults are
 active in the PX4 ULog. If they still show the previous values, reset the SITL
 parameter store and rerun before judging the package.
@@ -177,7 +177,7 @@ PX4 can update them after a run; verify estimator behavior from ULog instead.
 
 In the X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v4.0.6`
+- `px4xplane: Version: v4.0.7`
 - `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
 - `px4xplane: Motor brakes configured for motors: 00000000`
 

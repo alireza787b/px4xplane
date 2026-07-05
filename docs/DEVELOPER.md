@@ -26,8 +26,10 @@ git push origin master
 # → No release is created. Use workflow_dispatch for a manual CI build.
 
 # 5. When ready to release:
-# Update version numbers (see Versioning below)
-git add include/VersionInfo.h CMakeLists.txt Makefile.linux Makefile.macos docs/config-editor.html CHANGELOG.md
+# Update version numbers and public docs (see Versioning below)
+git add CHANGELOG.md CMakeLists.txt Makefile.linux Makefile.macos \
+  include/VersionInfo.h docs/config-editor.html README.md docs/index.md \
+  config/config.ini docs/*_XPLANE12_TEST.md aircraft/QuadTailsitter/README.md
 git commit -m "Release vX.Y.Z: description"
 git tag -a vX.Y.Z -m "Release vX.Y.Z: description"
 git push origin master && git push origin vX.Y.Z
@@ -64,7 +66,11 @@ VERSION := 4.1.0
 
 **4. `docs/config-editor.html`** - Update the displayed editor version/build.
 
-**5. `CHANGELOG.md`** - Add new section at top:
+**5. Public package docs** - Update any current-package references in
+`README.md`, `docs/index.md`, `config/config.ini`, aircraft docs, and
+flight-test cards.
+
+**6. `CHANGELOG.md`** - Add new section at top:
 ```markdown
 ## [4.1.0] - 2026-XX-XX
 
@@ -78,9 +84,11 @@ VERSION := 4.1.0
 ### Creating a Release
 
 ```bash
-# 1. Update versions (3 files above)
+# 1. Update versions and public current-package references
 # 2. Commit
-git add include/VersionInfo.h CMakeLists.txt CHANGELOG.md
+git add CHANGELOG.md CMakeLists.txt Makefile.linux Makefile.macos \
+  include/VersionInfo.h docs/config-editor.html README.md docs/index.md \
+  config/config.ini docs/*_XPLANE12_TEST.md aircraft/QuadTailsitter/README.md
 git commit -m "Release v4.1.0: Feature name"
 
 # 3. Tag and push
@@ -104,14 +112,19 @@ git push origin v4.1.0
 |---------|-----------|--------|
 | Pull request to `master` | - | Build all platforms for validation |
 | Push tag `v*.*.*` | - | Build + Create GitHub Release |
-| Manual workflow dispatch | Any | Build all platforms on demand |
+| Manual workflow dispatch in `build.yml` | Any | Build all platforms on demand |
 
 ### Build Outputs
 
-**Artifacts** (90-day retention):
+**CI artifacts** (90-day retention):
 - `px4xplane-windows.zip` (x64)
 - `px4xplane-linux.zip` (x64)
 - `px4xplane-macos.zip` (Universal: Intel + Apple Silicon)
+
+**Release assets** are versioned:
+- `px4xplane-windows-vX.Y.Z.zip`
+- `px4xplane-linux-vX.Y.Z.zip`
+- `px4xplane-macos-vX.Y.Z.zip`
 
 **Structure** (identical on all platforms):
 ```
@@ -143,12 +156,11 @@ px4xplane/
 # Example: v4.0.1 -> v4.0.2
 
 # 1. Fix bug and test
-# 2. Update versions:
-#    - VersionInfo.h: VERSION="4.0.2", BUILD="002" (increment)
-#    - CMakeLists.txt: VERSION 4.0.2
-#    - CHANGELOG.md: Add [4.0.2] section
+# 2. Update version surfaces listed above
+# 3. Confirm no stale current version remains:
+rg "4\\.0\\.1|v4\\.0\\.1|build 001"
 
-# 3. Release
+# 4. Release
 git commit -m "Release v4.0.2: Fix critical bug"
 git tag -a v4.0.2 -m "Release v4.0.2: Fix critical bug"
 git push origin master && git push origin v4.0.2
@@ -160,10 +172,7 @@ git push origin master && git push origin v4.0.2
 # Example: v4.0.x -> v4.1.0
 
 # 1. Implement feature and test
-# 2. Update versions:
-#    - VersionInfo.h: VERSION="4.1.0", BUILD="001" (reset)
-#    - CMakeLists.txt: VERSION 4.1.0
-#    - CHANGELOG.md: Add [4.1.0] section
+# 2. Update version surfaces listed above
 
 # 3. Release
 git commit -m "Release v4.1.0: New feature"
@@ -177,11 +186,8 @@ git push origin master && git push origin v4.1.0
 # Current: v4.1.0 -> Target: v5.0.0
 
 # 1. Implement breaking change
-# 2. Document migration in CHANGELOG.md (⚠️ BREAKING CHANGES section)
-# 3. Update versions:
-#    - VersionInfo.h: VERSION="5.0.0", BUILD="001" (reset)
-#    - CMakeLists.txt: VERSION 5.0.0
-#    - CHANGELOG.md: Add [5.0.0] with migration guide
+# 2. Document migration in CHANGELOG.md (BREAKING CHANGES section)
+# 3. Update version surfaces listed above
 
 # 4. Release
 git commit -m "Release v5.0.0: Breaking change description"
@@ -265,7 +271,7 @@ git push --delete origin v4.1.0
 
 ✅ **DO:**
 - Test locally before pushing to master
-- Update all 3 version files consistently
+- Update all version and public current-package references consistently
 - Write clear CHANGELOG entries
 - Use annotated tags (`git tag -a`)
 - Test plugin in X-Plane before release
@@ -307,4 +313,4 @@ px4xplane/
 
 ---
 
-**Last Updated**: 2026-07-03 (px4xplane v4.0.6)
+**Last Updated**: 2026-07-05 (px4xplane v4.0.7)

@@ -1,10 +1,13 @@
 # px4xplane Documentation
 
-This is the stable documentation entry point for the PX4-XPlane plugin, packaged aircraft, setup helper, and configuration tools.
+This is the stable documentation entry point for the PX4-XPlane plugin,
+packaged aircraft, setup helper, and configuration tools.
 
 ## Start Here
 
-- [README](../README.md)
+- [README](../README.md) - beginner quick start and release download
+- [Official PX4 X-Plane Simulation](https://docs.px4.io/main/en/sim_xplane/)
+- [Official PX4 Development Environment](https://docs.px4.io/main/en/dev_setup/dev_env.html)
 - [Build Guide](BUILD.md)
 - [Developer Guide](DEVELOPER.md)
 - [Custom Airframe Config](custom-airframe-config.md)
@@ -58,12 +61,14 @@ launcher can auto-detect common WSL2 host IPs, and
   [GitHub issue](https://github.com/alireza787b/px4xplane/issues) with the
   X-Plane `Log.txt`, PX4 terminal output, active `config.ini`, and any ULog.
 
-## Current Release Policy
+## Validation and Maintainer Notes
 
-- Use the `v4.0.6` package with official PX4 `main`. X-Plane SITL support is
+- Use the `v4.0.7` package with official PX4 `main`. X-Plane SITL support is
   merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
-- The launcher uses official PX4 by default. Use `--no-sync` only for
+- The launcher uses official PX4 `main` as the base. By default it asks whether
+  to layer the pending validation PRs locally. Use `--official` for a clean
+  official-PX4 run without pending validation PRs. Use `--no-sync` only for
   deliberate offline/debug runs.
 - Separate PX4 EKF edge-case PR:
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
@@ -96,8 +101,8 @@ launcher can auto-detect common WSL2 host IPs, and
   checkout back to official PX4 `main` after validation.
 - The plugin runtime config is `px4xplane/64/config.ini`.
 - `config_schema.json` is editor and validator metadata only; it is not read by the plugin at runtime.
-- Use `Plugins > px4xplane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
-- Use `Plugins > px4xplane > Advanced > Validate Config` after changing the active mapping in-sim.
+- Use `Plugins > PX4 X-Plane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
+- Use `Plugins > PX4 X-Plane > Advanced > Validate Config` after changing the active mapping in-sim.
 - Confirm the X-Plane aircraft, active `config_name`, and PX4 `SYS_AUTOSTART` target match before arming.
 - Run `px4xplane --sync --reset-config` before release validation when you want
   a fully fresh prompt/config cycle. Plain `px4xplane` still syncs the selected

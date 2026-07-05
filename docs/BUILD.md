@@ -932,7 +932,7 @@ For automated builds across platforms, the project includes:
 
 ## Version Information
 
-- **Build System Version**: 4.0.6
+- **Build System Version**: 4.0.7
 - **Supported Platforms**:
   - Windows 10+ (Visual Studio 2019/2022, MinGW)
   - macOS 10.14+ (Xcode Command Line Tools, Universal Binary support)
@@ -943,7 +943,7 @@ For automated builds across platforms, the project includes:
   - **Native Makefiles**: Makefile.linux, Makefile.macos
 - **C++ Standard**: C++17
 - **X-Plane SDK**: Latest version included (4.0.0+)
-- **Plugin Version**: 4.0.6
+- **Plugin Version**: 4.0.7
 - **Repository**: [alireza787b/px4xplane](https://github.com/alireza787b/px4xplane)
 
 ## Additional Resources

@@ -14,7 +14,7 @@
 
 # Project name
 PROJECT := px4xplane
-VERSION := 4.0.6
+VERSION := 4.0.7
 
 # Compiler
 CXX := g++

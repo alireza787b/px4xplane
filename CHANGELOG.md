@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.0.7] - 2026-07-05
+
+### Changed
+
+- Reworked the public quick start around the merged official PX4 X-Plane SITL
+  workflow: install/update PX4 from official docs, install the px4xplane release
+  plugin, then run the standard `make px4_sitl_default xplane_*` targets.
+- Clarified WSL2, Docker, and remote-host networking around `PX4_SIM_HOSTNAME`
+  and TCP port `4560`.
+- Reframed the launcher as a guided setup and validation helper that uses
+  official PX4 `main` as the base and can stack pending PX4 validation PRs
+  locally while they are under review.
+- Removed stale repair-path behavior that created a local `v1.14.0-dev` tag in
+  a user's selected PX4 checkout.
+- Changed the release workflow to tag-only public releases and generated
+  release notes without rewriting the repository changelog in the workflow
+  workspace.
+- Synchronized release metadata across CMake, native makefiles, plugin UI,
+  config editor, public docs, packaged config, and flight-test cards.
+
 ## [4.0.6] - 2026-06-15
 
 ### Changed

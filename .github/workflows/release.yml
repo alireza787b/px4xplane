@@ -1,12 +1,12 @@
 name: Release px4xplane
 
-# Triggers: Push version tags (v*.*.*)
-# This workflow automatically creates a GitHub Release with binaries
+# Trigger: push a version tag (v*.*.*).
+# Manual CI builds live in build.yml. Public releases are tag-only so release
+# names, artifacts, and badges stay aligned.
 on:
   push:
     tags:
       - 'v*.*.*'  # Matches v4.0.0, v4.0.1, v4.1.0, etc.
-  workflow_dispatch:  # Allow manual release creation for testing
 
 permissions:
   contents: write  # Required to create releases and upload assets
@@ -28,57 +28,52 @@ jobs:
       - name: Get version from tag
         id: get_version
         run: |
-          if [ "${{ github.ref_type }}" == "tag" ]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          else
-            VERSION="dev-$(date +'%Y%m%d-%H%M%S')"
-          fi
+          VERSION=${GITHUB_REF#refs/tags/}
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Release version: $VERSION"
 
-      - name: Generate changelog
-        id: changelog
+      - name: Generate release notes
+        id: release_notes
         run: |
-          echo "# px4xplane ${{ steps.get_version.outputs.VERSION }}" > CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "## Downloads" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "- **Windows**: px4xplane-windows-${{ steps.get_version.outputs.VERSION }}.zip" >> CHANGELOG.md
-          echo "- **Linux**: px4xplane-linux-${{ steps.get_version.outputs.VERSION }}.zip" >> CHANGELOG.md
-          echo "- **macOS**: px4xplane-macos-${{ steps.get_version.outputs.VERSION }}.zip (Universal Binary)" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "## Installation" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "1. Download the appropriate ZIP file for your platform" >> CHANGELOG.md
-          echo "2. Extract the archive" >> CHANGELOG.md
-          echo "3. Copy the **px4xplane** folder to: \`X-Plane 12/Resources/plugins/\`" >> CHANGELOG.md
-          echo "4. Launch X-Plane and verify the plugin loads (Plugins → Plugin Admin)" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "## Build Information" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "- **Commit**: ${{ github.sha }}" >> CHANGELOG.md
-          echo "- **Built**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> CHANGELOG.md
-          echo "- **Platforms**: Windows (x64), Linux (x64), macOS (Universal: Intel + Apple Silicon)" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "## Changes" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> CHANGELOG.md || echo "- Initial release" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "---" >> CHANGELOG.md
-          echo "" >> CHANGELOG.md
-          echo "**Full Documentation**: https://github.com/alireza787b/px4xplane" >> CHANGELOG.md
-          cat CHANGELOG.md
+          echo "# px4xplane ${{ steps.get_version.outputs.VERSION }}" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Downloads" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "- **Windows**: px4xplane-windows-${{ steps.get_version.outputs.VERSION }}.zip" >> RELEASE_NOTES.md
+          echo "- **Linux**: px4xplane-linux-${{ steps.get_version.outputs.VERSION }}.zip" >> RELEASE_NOTES.md
+          echo "- **macOS**: px4xplane-macos-${{ steps.get_version.outputs.VERSION }}.zip (Universal Binary)" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Installation" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "1. Download the appropriate ZIP file for your platform." >> RELEASE_NOTES.md
+          echo "2. Extract the archive." >> RELEASE_NOTES.md
+          echo "3. Copy the **px4xplane** folder to: \`X-Plane/Resources/plugins/px4xplane\`." >> RELEASE_NOTES.md
+          echo "4. Launch X-Plane and verify the plugin loads from Plugin Admin." >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Build Information" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "- **Commit**: ${{ github.sha }}" >> RELEASE_NOTES.md
+          echo "- **Built**: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> RELEASE_NOTES.md
+          echo "- **Platforms**: Windows (x64), Linux (x64), macOS (Universal: Intel + Apple Silicon)" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## Changes" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          git log --pretty=format:"- %s" $(git describe --tags --abbrev=0 HEAD^)..HEAD >> RELEASE_NOTES.md || echo "- Initial release" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "---" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "**Full Documentation**: https://github.com/alireza787b/px4xplane" >> RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
 
       - name: Create GitHub Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           name: px4xplane ${{ steps.get_version.outputs.VERSION }}
-          body_path: CHANGELOG.md
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'alpha') || contains(steps.get_version.outputs.VERSION, 'beta') || contains(steps.get_version.outputs.VERSION, 'rc') }}
-          generate_release_notes: true
 
   build-and-upload:
     name: Build ${{ matrix.platform }} for Release

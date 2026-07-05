@@ -29,7 +29,7 @@ The editor-first workflow is recommended:
 From X-Plane:
 
 ```text
-Plugins > px4xplane > Advanced > Open Config Editor
+Plugins > PX4 X-Plane > Advanced > Open Config Editor
 ```
 
 From a release package:
@@ -177,7 +177,7 @@ python3 tools/validate_config.py --list-fields
 From X-Plane:
 
 ```text
-Plugins > px4xplane > Advanced > Validate Config
+Plugins > PX4 X-Plane > Advanced > Validate Config
 ```
 
 Before judging flight behavior, confirm:

@@ -19,7 +19,7 @@
 #
 # === Functionality ===
 # The script performs the following tasks:
-# 1. Uses official PX4 main by default, or official main plus validation PRs.
+# 1. Uses official PX4 main as the base, optionally with validation PRs.
 # 2. Auto-syncs with remote updates (smart pull detection).
 # 3. Sets up the necessary dependencies by running the provided setup script (`ubuntu.sh`).
 # 4. Optionally sets up MAVLink Router for communication with X-Plane.
@@ -1171,8 +1171,8 @@ echo "────────────────────────�
 highlight "PX4 X-Plane Support"
 echo ""
 echo "Official PX4 X-Plane SITL support is merged in PX4/PX4-Autopilot."
-echo "The launcher uses official PX4 by default and can optionally stack pending"
-echo "PX4 validation PRs locally for final flight-test coverage."
+echo "The launcher uses official PX4 main as the base. It can optionally stack"
+echo "pending PX4 validation PRs locally for final flight-test coverage."
 echo ""
 info "Current Status:"
 echo "  → PX4 checkout: $CLONE_PATH"
@@ -1363,12 +1363,6 @@ else
     git fetch upstream --quiet
     git fetch upstream --tags --quiet
     success "Upstream repository configured."
-
-    # If tag issue persists, create a missing tag manually
-    if ! git tag | grep -q "v1.14.0-dev"; then
-        info "Creating missing tag v1.14.0-dev..."
-        git tag v1.14.0-dev
-    fi
 
     # === Run the ubuntu.sh Script ===
     highlight "Installing PX4 dependencies..."
@@ -1619,7 +1613,7 @@ echo "1. Launch X-Plane and load the matching aircraft:"
 info "   Selected airframe: $PLATFORM"
 echo ""
 echo "2. Start the px4xplane bridge plugin in X-Plane:"
-info "   Plugin menu → PX4 X-Plane Bridge → Enable"
+info "   Plugins -> PX4 X-Plane -> Connect to SITL"
 echo ""
 echo "3. Connect your Ground Control Station:"
 info "   QGroundControl will auto-connect to UDP:14550"
