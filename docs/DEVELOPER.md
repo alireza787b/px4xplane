@@ -50,18 +50,18 @@ git push origin master && git push origin vX.Y.Z
 
 **1. `include/VersionInfo.h`**
 ```cpp
-constexpr const char* VERSION = "4.1.0";  // Update
+constexpr const char* VERSION = "4.1.1";  // Update
 constexpr const char* BUILD = "001";      // Reset for major/minor, increment for patch
 ```
 
 **2. `CMakeLists.txt`**
 ```cmake
-project(px4xplane VERSION 4.1.0 LANGUAGES CXX)  // Update
+project(px4xplane VERSION 4.1.1 LANGUAGES CXX)  // Update
 ```
 
 **3. `Makefile.linux` and `Makefile.macos`**
 ```make
-VERSION := 4.1.0
+VERSION := 4.1.1
 ```
 
 **4. `docs/config-editor.html`** - Update the displayed editor version/build.
@@ -72,7 +72,7 @@ flight-test cards.
 
 **6. `CHANGELOG.md`** - Add new section at top:
 ```markdown
-## [4.1.0] - 2026-XX-XX
+## [4.1.1] - 2026-XX-XX
 
 ### Added
 - Feature description
@@ -89,12 +89,12 @@ flight-test cards.
 git add CHANGELOG.md CMakeLists.txt Makefile.linux Makefile.macos \
   include/VersionInfo.h docs/config-editor.html README.md docs/index.md \
   config/config.ini docs/*_XPLANE12_TEST.md aircraft/QuadTailsitter/README.md
-git commit -m "Release v4.1.0: Feature name"
+git commit -m "Release v4.1.1: Feature name"
 
 # 3. Tag and push
-git tag -a v4.1.0 -m "Release v4.1.0: Feature name"
+git tag -a v4.1.1 -m "Release v4.1.1: Feature name"
 git push origin master
-git push origin v4.1.0
+git push origin v4.1.1
 
 # 4. Monitor release
 # → https://github.com/alireza787b/px4xplane/actions
@@ -169,21 +169,21 @@ git push origin master && git push origin v4.0.2
 ### New Feature (Minor Release)
 
 ```bash
-# Example: v4.0.x -> v4.1.0
+# Example: v4.0.x -> v4.1.1
 
 # 1. Implement feature and test
 # 2. Update version surfaces listed above
 
 # 3. Release
-git commit -m "Release v4.1.0: New feature"
-git tag -a v4.1.0 -m "Release v4.1.0: New feature"
-git push origin master && git push origin v4.1.0
+git commit -m "Release v4.1.1: New feature"
+git tag -a v4.1.1 -m "Release v4.1.1: New feature"
+git push origin master && git push origin v4.1.1
 ```
 
 ### Breaking Change (Major Release)
 
 ```bash
-# Current: v4.1.0 -> Target: v5.0.0
+# Current: v4.1.1 -> Target: v5.0.0
 
 # 1. Implement breaking change
 # 2. Document migration in CHANGELOG.md (BREAKING CHANGES section)
@@ -258,8 +258,8 @@ tree build/{platform}/Release/px4xplane
 
 ```bash
 # Delete tag locally and remotely
-git tag -d v4.1.0
-git push --delete origin v4.1.0
+git tag -d v4.1.1
+git push --delete origin v4.1.1
 
 # Delete GitHub Release manually
 # Fix version numbers, recommit, re-tag
@@ -313,4 +313,4 @@ px4xplane/
 
 ---
 
-**Last Updated**: 2026-07-06 (px4xplane v4.1.0)
+**Last Updated**: 2026-07-06 (px4xplane v4.1.1)

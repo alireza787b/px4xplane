@@ -11,6 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.1.1] - 2026-07-06
+
+### Changed
+
+- Revised the SVG logo to make the PX4/SITL bridge and X-Plane aircraft/runway
+  relationship clearer at a glance.
+- Split the README quick-start aircraft-loading and plugin-connection actions
+  into separate steps.
+
 ## [4.1.0] - 2026-07-06
 
 ### Changed

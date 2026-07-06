@@ -6,7 +6,7 @@ name: Release px4xplane
 on:
   push:
     tags:
-      - 'v*.*.*'  # Matches v4.0.0, v4.0.1, v4.1.0, etc.
+      - 'v*.*.*'  # Matches v4.0.0, v4.0.1, v4.1.1, etc.
 
 permissions:
   contents: write  # Required to create releases and upload assets

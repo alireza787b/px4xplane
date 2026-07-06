@@ -1,7 +1,7 @@
 # PX4-XPlane
 
 <p align="center">
-  <img src="docs/assets/px4xplane-logo.svg" alt="PX4-XPlane logo" width="360">
+  <img src="docs/assets/px4xplane-logo.svg" alt="PX4-XPlane logo" width="420">
 </p>
 
 [![Build Status](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml/badge.svg)](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml)
@@ -13,7 +13,7 @@ PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
 writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
-The current package is `v4.1.0` with Windows, Linux, and macOS builds. It
+The current package is `v4.1.1` with Windows, Linux, and macOS builds. It
 includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
 QuadTailsitter.
 
@@ -43,11 +43,12 @@ project video archive and playlist; future videos will be added there.
    `X-Plane 12/Resources/plugins/px4xplane`.
 
 5. Copy any packaged X-Plane aircraft folders you want to test into an X-Plane
-   aircraft directory, then start X-Plane and load the matching aircraft. In
-   X-Plane, choose `Plugins > PX4 X-Plane > Airframes > ...` and select the
+   aircraft directory, then start X-Plane and load the matching aircraft.
+
+6. In X-Plane, choose `Plugins > PX4 X-Plane > Airframes > ...` and select the
    matching airframe, then click `Plugins > PX4 X-Plane > Connect to SITL`.
 
-6. Start PX4 SITL from your official PX4 checkout:
+7. Start PX4 SITL from your official PX4 checkout:
 
 ```bash
 cd ~/PX4-Autopilot
@@ -142,7 +143,7 @@ PX4 X-Plane SITL support is merged in
 [PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 Use official `PX4/PX4-Autopilot` `main` for normal SITL runs.
 
-`v4.1.0` includes the px4xplane-side fixes from the recent validation cycle:
+`v4.1.1` includes the px4xplane-side fixes from the recent validation cycle:
 sensor timing robustness, low-FPS/pause recovery, stale SITL parameter cleanup,
 airframe config validation, camera presets, Alia elevator mapping, Cessna 172
 runway steering recovery, post-merge official-PX4 launcher/docs cleanup, and
