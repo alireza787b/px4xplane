@@ -22,7 +22,7 @@ mission baseline.
    ```
 
    The printed validation stack should show official PX4 plus the pending
-   EKF-GSF, Standard VTOL, TECS, and tailsitter PR guards unless you are
+   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
    deliberately testing `--official`.
 
 3. For a fully manual developer run after changing the airframe file, reset the

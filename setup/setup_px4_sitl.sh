@@ -15,7 +15,7 @@
 #
 # Current Status:
 # - Official PX4 integration: https://github.com/PX4/PX4-Autopilot/pull/22493
-# - Validation mode: official PX4 main plus pending PX4-side PRs
+# - Validation mode: official PX4 main plus remaining pending PX4-side PRs
 #
 # === Functionality ===
 # The script performs the following tasks:
@@ -180,9 +180,9 @@ Options:
   --restore-official
                   Restore the selected PX4 checkout to official PX4 main,
                   update submodules, reset saved SITL params, and exit.
-  --validation    Use official PX4 main plus the pending PX4-side validation
-                  PRs for EKF-GSF, Standard VTOL, fixed-wing TECS, and
-                  tailsitter attitude conversion.
+  --validation    Use official PX4 main plus the remaining experimental
+                  PX4-side validation PRs for EKF-GSF, Standard VTOL, and
+                  fixed-wing TECS.
   --official      Use official PX4 main without the validation stack.
   --exact-pr      Backward-compatible alias for --official.
   --with-ekf-gsf-guard
@@ -196,10 +196,12 @@ Options:
   --without-vtol-handoff-guard
                   Do not prompt for or apply the pending VTOL handoff guard.
   --with-tailsitter-fw-frame-guard
-                  Local test mode: cherry-pick the active tailsitter
+                  Legacy local test mode: cherry-pick the tailsitter
                   fixed-wing quaternion attitude-frame PR before launching.
+                  This is normally not needed on current PX4 main because
+                  PR #27793 has merged.
   --without-tailsitter-fw-frame-guard
-                  Do not apply the pending tailsitter FW frame guard.
+                  Do not apply the legacy tailsitter FW frame guard.
   --with-tecs-alt-guard
                   Local test mode: cherry-pick the fixed-wing TECS altitude
                   reference reset PR before launching.
@@ -295,8 +297,8 @@ while [[ $# -gt 0 ]]; do
             SKIP_EKF_GSF_GUARD=false
             APPLY_VTOL_HANDOFF_GUARD=true
             SKIP_VTOL_HANDOFF_GUARD=false
-            APPLY_TAILSITTER_FW_FRAME_GUARD=true
-            SKIP_TAILSITTER_FW_FRAME_GUARD=false
+            APPLY_TAILSITTER_FW_FRAME_GUARD=false
+            SKIP_TAILSITTER_FW_FRAME_GUARD=true
             APPLY_TECS_ALT_FRAME_GUARD=true
             SKIP_TECS_ALT_FRAME_GUARD=false
             SYNC_MODE=true
@@ -975,7 +977,6 @@ update_launcher_script_if_needed() {
 enable_pending_px4_fixes() {
     [ "$SKIP_EKF_GSF_GUARD" = true ] || APPLY_EKF_GSF_GUARD=true
     [ "$SKIP_VTOL_HANDOFF_GUARD" = true ] || APPLY_VTOL_HANDOFF_GUARD=true
-    [ "$SKIP_TAILSITTER_FW_FRAME_GUARD" = true ] || APPLY_TAILSITTER_FW_FRAME_GUARD=true
     [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ] || APPLY_TECS_ALT_FRAME_GUARD=true
     SYNC_MODE=true
 }
@@ -1001,20 +1002,24 @@ prompt_for_pending_px4_fixes() {
 
     echo ""
     highlight "Pending PX4 validation fixes"
-    echo "Official PX4 already includes X-Plane SITL. A few PX4-side fixes found"
-    echo "during final validation are still separate review items:"
+    echo "Official PX4 already includes X-Plane SITL. These PX4-side fixes found"
+    echo "during final validation are still separate open review items:"
     echo "  - EKF-GSF yaw reset guard: https://github.com/PX4/PX4-Autopilot/pull/27533"
     echo "  - Standard VTOL handoff guard: https://github.com/PX4/PX4-Autopilot/pull/27601"
     echo "  - Fixed-wing TECS altitude reset: https://github.com/PX4/PX4-Autopilot/pull/27670"
+    echo ""
+    echo "Already in current PX4 main:"
     echo "  - Tailsitter attitude conversion: https://github.com/PX4/PX4-Autopilot/pull/27793"
     echo ""
-    echo "Apply these locally on top of official PX4 main for this run? (Recommended)"
-    echo "Press Enter for yes (default) or type 'n' to use official PX4 main only."
+    echo "The Standard VTOL PR currently has changes requested and the stack is for"
+    echo "development validation, not the normal user path."
+    echo "Apply the experimental stack locally for this run?"
+    echo "Type 'y' to apply it, or press Enter to use official PX4 main (default)."
     read -t 10 -r PENDING_PX4_FIX_CHOICE
 
-    if [[ -z "$PENDING_PX4_FIX_CHOICE" || ! "$PENDING_PX4_FIX_CHOICE" =~ ^[Nn]$ ]]; then
+    if [[ "$PENDING_PX4_FIX_CHOICE" =~ ^[Yy]$ ]]; then
         enable_pending_px4_fixes
-        info "Pending PX4 validation fixes will be applied locally for this run."
+        info "Experimental PX4 validation fixes will be applied locally for this run."
     else
         skip_pending_px4_fixes
         info "Using official PX4 main without pending validation fixes."
@@ -1049,38 +1054,18 @@ prompt_for_vtol_handoff_guard() {
 
     echo ""
     highlight "Standard VTOL transition handoff guard"
-    echo "Apply PX4 PR #27601 locally for Standard VTOL transition validation? (Recommended)"
-    echo "Press Enter for yes (default) or type 'n' to run without it."
+    echo "PX4 PR #27601 currently has changes requested."
+    echo "Apply it only for an intentional Standard VTOL A/B validation run?"
+    echo "Type 'y' to apply it, or press Enter to continue without it (default)."
     read -t 10 -r VTOL_HANDOFF_GUARD_CHOICE
 
-    if [[ -z "$VTOL_HANDOFF_GUARD_CHOICE" || ! "$VTOL_HANDOFF_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
+    if [[ "$VTOL_HANDOFF_GUARD_CHOICE" =~ ^[Yy]$ ]]; then
         APPLY_VTOL_HANDOFF_GUARD=true
         SYNC_MODE=true
         info "Standard VTOL handoff guard will be applied locally for this run."
     else
         SKIP_VTOL_HANDOFF_GUARD=true
         info "Continuing without the Standard VTOL handoff guard."
-    fi
-}
-
-prompt_for_tailsitter_frame_guard() {
-    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || [ "$SKIP_TAILSITTER_FW_FRAME_GUARD" = true ]; then
-        return
-    fi
-
-    echo ""
-    highlight "Tailsitter attitude conversion fix"
-    echo "Apply active PX4 PR #27793 locally for QuadTailsitter validation? (Recommended)"
-    echo "Press Enter for yes (default) or type 'n' to run without it."
-    read -t 10 -r TAILSITTER_FRAME_GUARD_CHOICE
-
-    if [[ -z "$TAILSITTER_FRAME_GUARD_CHOICE" || ! "$TAILSITTER_FRAME_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
-        APPLY_TAILSITTER_FW_FRAME_GUARD=true
-        SYNC_MODE=true
-        info "Tailsitter attitude conversion fix will be applied locally for this run."
-    else
-        SKIP_TAILSITTER_FW_FRAME_GUARD=true
-        info "Continuing without the tailsitter attitude conversion fix."
     fi
 }
 
@@ -1118,17 +1103,25 @@ guard_state_text() {
     fi
 }
 
+tailsitter_state_text() {
+    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ]; then
+        echo "apply legacy"
+    else
+        echo "merged in PX4 main"
+    fi
+}
+
 print_validation_selection() {
     highlight "Selected PX4 Validation Stack"
     echo "  PX4 branch:        $BRANCH_NAME"
     echo "  PX4 remote:        $PX4_REMOTE_NAME ($REPO_URL)"
     echo "  EKF-GSF guard:     $(guard_state_text "$APPLY_EKF_GSF_GUARD" "$SKIP_EKF_GSF_GUARD")"
     echo "  VTOL handoff guard: $(guard_state_text "$APPLY_VTOL_HANDOFF_GUARD" "$SKIP_VTOL_HANDOFF_GUARD")"
-    echo "  Tailsitter guard:  $(guard_state_text "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$SKIP_TAILSITTER_FW_FRAME_GUARD")"
+    echo "  Tailsitter fix:    $(tailsitter_state_text)"
     echo "  TECS alt guard:    $(guard_state_text "$APPLY_TECS_ALT_FRAME_GUARD" "$SKIP_TECS_ALT_FRAME_GUARD")"
 
     if [ "$VALIDATION_MODE" = true ]; then
-        info "--validation selected: using official PX4 plus the pending validation PR stack."
+        info "--validation selected: using official PX4 plus the remaining pending validation PR stack."
     elif [ "$EXACT_PR_MODE" = true ]; then
         info "--official/--exact-pr selected: using official PX4 without pending validation PRs."
     fi
@@ -1172,7 +1165,7 @@ highlight "PX4 X-Plane Support"
 echo ""
 echo "Official PX4 X-Plane SITL support is merged in PX4/PX4-Autopilot."
 echo "The launcher uses official PX4 main as the base. It can optionally stack"
-echo "pending PX4 validation PRs locally for final flight-test coverage."
+echo "remaining pending PX4 validation PRs locally for final flight-test coverage."
 echo ""
 info "Current Status:"
 echo "  → PX4 checkout: $CLONE_PATH"
@@ -1182,7 +1175,7 @@ echo "  → X-Plane SITL merge: https://github.com/PX4/PX4-Autopilot/pull/22493"
 echo "  → Optional EKF-GSF guard: PX4 PR #27533"
 echo "  → Optional VTOL handoff guard: PX4 PR #27601"
 echo "  → Optional TECS altitude guard: PX4 PR #27670"
-echo "  → Optional tailsitter conversion fix: PX4 PR #27793"
+echo "  → Tailsitter conversion fix: PX4 PR #27793 merged in current PX4 main"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
     echo "  → Existing legacy PX4 checkout auto-detected; origin remote is preserved"
 fi
@@ -1220,7 +1213,6 @@ fi
 prompt_for_ekf_gsf_guard
 prompt_for_vtol_handoff_guard
 prompt_for_tecs_alt_guard
-prompt_for_tailsitter_frame_guard
 print_validation_selection
 
 # === Simplified Process for Subsequent Runs ===

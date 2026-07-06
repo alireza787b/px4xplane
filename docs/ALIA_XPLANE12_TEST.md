@@ -28,7 +28,7 @@ PX4 ULog estimator topics.
 5. Run PX4 with the validation launcher and select `xplane_alia250`:
    - `px4xplane --validation --reset-config`
    Confirm the printed validation stack shows official PX4 plus the pending
-   EKF-GSF, Standard VTOL, TECS, and tailsitter PR guards unless you are
+   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
    deliberately testing `--official`.
 6. Fly:
    - takeoff to about `100 m`

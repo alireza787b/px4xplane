@@ -105,9 +105,9 @@ tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza7
 ```
 
 The helper installs the `px4xplane` launcher, syncs the selected PX4 checkout,
-asks about pending PX4 validation PRs, and opens the airframe menu. If you
-accept the command install prompt, future sessions can be started by typing
-`px4xplane` from any terminal.
+offers an optional experimental PX4 validation stack, and opens the airframe
+menu. If you accept the command install prompt, future sessions can be started
+by typing `px4xplane` from any terminal.
 
 For full local validation while separate PX4 fixes are still pending, use:
 
@@ -115,9 +115,9 @@ For full local validation while separate PX4 fixes are still pending, use:
 px4xplane --validation --reset-config
 ```
 
-That command uses official PX4 `main` as the base and stacks the pending PX4 PRs
-locally for the run. For a clean official-PX4 baseline without pending PRs, use
-`px4xplane --official --reset-config`.
+That command uses official PX4 `main` as the base and stacks the experimental
+PX4 PRs locally for the run. For a clean official-PX4 baseline without pending
+PRs, use `px4xplane --official --reset-config`.
 
 If you already have a PX4 checkout and do not want a second clone, pass it to
 the helper:
@@ -159,10 +159,11 @@ separate PX4 PRs:
 - [PX4-Autopilot PR #27670](https://github.com/PX4/PX4-Autopilot/pull/27670):
   fixed-wing TECS reset on altitude-reference changes.
 - [PX4-Autopilot PR #27793](https://github.com/PX4/PX4-Autopilot/pull/27793):
-  active upstream tailsitter attitude-conversion fix.
+  upstream tailsitter attitude-conversion fix, merged into PX4 `main`.
 
 Those PX4 changes are intentionally not bundled into this plugin repository.
-The launcher can stack them locally for validation while they are pending.
+The launcher can stack the remaining open PRs locally for validation while they
+are pending.
 
 ## Common Paths
 

@@ -28,8 +28,8 @@ px4xplane --validation --reset-config
 ```
 
 The printed validation stack should show official PX4 plus the pending EKF-GSF,
-Standard VTOL, TECS, and tailsitter PR guards unless you are deliberately
-testing `--official`.
+Standard VTOL, and TECS PR guards unless you are deliberately testing
+`--official`.
 
 The setup script now resets the saved PX4 SITL parameter store automatically
 when the selected X-Plane airframe or its default airframe file fingerprint

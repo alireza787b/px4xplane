@@ -67,10 +67,10 @@ launcher can auto-detect common WSL2 host IPs, and
 - Use the `v4.1.3` package with official PX4 `main`. X-Plane SITL support is
   merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
-- The launcher uses official PX4 `main` as the base. By default it asks whether
-  to layer the pending validation PRs locally. Use `--official` for a clean
-  official-PX4 run without pending validation PRs. Use `--no-sync` only for
-  deliberate offline/debug runs.
+- The launcher uses official PX4 `main` as the base. Its default is the official
+  code without pending PRs; use `--validation` only for an intentional local
+  test of the experimental PR stack. Use `--no-sync` only for deliberate
+  offline/debug runs.
 - Separate PX4 EKF edge-case PR:
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
   This covers the fast-VTOL transition EKF-GSF yaw-reset issue found during
@@ -83,16 +83,16 @@ launcher can auto-detect common WSL2 host IPs, and
 - Separate PX4 fixed-wing TECS altitude-frame PR:
   [PX4-Autopilot #27670](https://github.com/PX4/PX4-Autopilot/pull/27670).
   This covers stale altitude-reference state in fixed-wing TECS.
-- Active PX4 Tailsitter attitude-conversion PR:
+- Merged PX4 Tailsitter attitude-conversion PR:
   [PX4-Autopilot #27793](https://github.com/PX4/PX4-Autopilot/pull/27793).
-  This supersedes the earlier local tailsitter frame-guard validation branch.
-- For local validation while #27533, #27601, #27670, and #27793 are pending, run
+  This supersedes the earlier local tailsitter frame-guard validation branch and
+  is now part of official PX4 `main`.
+- For intentional local validation while #27533, #27601, and #27670 are pending, run
   `px4xplane --validation --reset-config`. The launcher syncs official PX4
-  `main` and cherry-picks those PR heads locally for the run. Use
+  `main` and cherry-picks those remaining PR heads locally for the run. Use
   `px4xplane --without-ekf-gsf-guard`,
-  `px4xplane --without-vtol-handoff-guard`,
-  `px4xplane --without-tecs-alt-guard`, or
-  `px4xplane --without-tailsitter-fw-frame-guard` only for selective A/B tests.
+  `px4xplane --without-vtol-handoff-guard`, or
+  `px4xplane --without-tecs-alt-guard` only for selective A/B tests.
 - For a clean official-PX4 baseline without pending PRs, run
   `px4xplane --official --reset-config`.
 - If you already maintain an official PX4 checkout, use

@@ -13,7 +13,7 @@ X-Plane multicopter after the Alia tuning lessons were applied.
    - `px4xplane --validation --reset-config`
    - `SYS_AUTOSTART` must be `5010`
 4. Confirm the printed validation stack shows official PX4 plus the pending
-   EKF-GSF, Standard VTOL, TECS, and tailsitter PR guards unless you are
+   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
    deliberately testing `--official`.
 5. Fly:
    - takeoff to about `30 m`
