@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.1.2] - 2026-07-06
+
+### Changed
+
+- Replaced the README logo with a dark-mode-safe badge using PX4-style control
+  nodes, a central bridge `X`, and an X-Plane-style aircraft/runway element.
+
 ## [4.1.1] - 2026-07-06
 
 ### Changed
