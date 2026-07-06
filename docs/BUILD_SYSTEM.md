@@ -348,7 +348,7 @@ make -f Makefile.macos install XPLANE_DIR=/Applications/X-Plane\ 12
 1. Launch X-Plane
 2. Check: Plugins → Plugin Admin
 3. Look for **px4xplane** in the list
-4. Menu bar should show **PX4-SITL**
+4. Menu bar should show **PX4 X-Plane**
 
 ### 4. Check Logs
 

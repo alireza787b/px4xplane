@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.1.0] - 2026-07-06
+
+### Changed
+
+- Added a minimal SVG project logo and included it in the packaged docs.
+- Added the missing X-Plane plugin menu step to the beginner quick start:
+  select the matching airframe from `Plugins > PX4 X-Plane > Airframes`, then
+  start `Connect to SITL`.
+- Clarified the startup order: starting the plugin listener first is preferred
+  for visible connection status, but PX4-first can also work; if the initial
+  PX4 build exceeds the plugin's 60-second wait window, click
+  `Connect to SITL` again after PX4 is running.
+- Simplified the plugin install path wording so X-Plane 11 and 12 are covered
+  without duplicating two noisy path lines.
+- Corrected stale build-doc references to the current `PX4 X-Plane` menu name
+  and CMake package layout.
+
 ## [4.0.8] - 2026-07-05
 
 ### Changed

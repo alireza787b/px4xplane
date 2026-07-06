@@ -51,10 +51,10 @@ launcher can auto-detect common WSL2 host IPs, and
   IP/config choices.
 - Broken setup or missing launcher command: rerun the setup helper, or use
   `px4xplane --repair` if the command already exists.
-- Plugin does not appear in X-Plane: confirm the whole `px4xplane` folder is in
-  `X-Plane 12/Resources/plugins/px4xplane` or
-  `X-Plane 11/Resources/plugins/px4xplane`, then check X-Plane `Log.txt` for
-  plugin load errors.
+- Plugin does not appear in X-Plane: confirm the whole `px4xplane` folder is
+  under the `Resources/plugins` folder of your X-Plane 11 or 12 installation,
+  for example `X-Plane 12/Resources/plugins/px4xplane`, then check X-Plane
+  `Log.txt` for plugin load errors.
 - Custom mapping behaves unexpectedly: validate `px4xplane/64/config.ini` from
   the plugin menu or with `python3 tools/validate_config.py config/config.ini`.
 - Build problems: use the [Build Guide troubleshooting section](BUILD.md#troubleshooting).
@@ -64,7 +64,7 @@ launcher can auto-detect common WSL2 host IPs, and
 
 ## Validation and Maintainer Notes
 
-- Use the `v4.0.8` package with official PX4 `main`. X-Plane SITL support is
+- Use the `v4.1.0` package with official PX4 `main`. X-Plane SITL support is
   merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 - The launcher uses official PX4 `main` as the base. By default it asks whether

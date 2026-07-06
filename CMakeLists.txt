@@ -8,7 +8,7 @@
 #==============================================================================
 
 cmake_minimum_required(VERSION 3.15)
-project(px4xplane VERSION 4.0.8 LANGUAGES CXX)
+project(px4xplane VERSION 4.1.0 LANGUAGES CXX)
 
 # C++ Standard
 set(CMAKE_CXX_STANDARD 17)
@@ -387,6 +387,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor-ui.png
         ${OUTPUT_DIR}/../docs/assets/config-editor-ui.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/assets/px4xplane-logo.svg
+        ${OUTPUT_DIR}/../docs/assets/px4xplane-logo.svg
     COMMENT "Copying config editor docs to plugin package"
 )
 
@@ -497,6 +500,9 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/assets/config-editor-ui.png
         ${OUTPUT_DIR}/../docs/assets/config-editor-ui.png
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/assets/px4xplane-logo.svg
+        ${OUTPUT_DIR}/../docs/assets/px4xplane-logo.svg
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../tools
     COMMAND ${CMAKE_COMMAND} -E copy_if_different

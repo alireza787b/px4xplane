@@ -595,7 +595,7 @@ px4xplane/
 ├── 64/
 │   └── {platform}.xpl    # win.xpl, lin.xpl, or mac.xpl
 ├── config.ini            # ✓ Already included!
-├── px4_params/           # PX4 parameter files (if built by CMake)
+├── px4_airframes/        # PX4 airframe parameter mirrors (CMake packages)
 └── README.md             # Documentation
 ```
 
@@ -630,7 +630,7 @@ X-Plane 12/Resources/plugins/px4xplane/
    - Go to: Plugins → Plugin Admin
    - Look for **px4xplane** in the list (should show as enabled)
 3. **Check Menu Bar:**
-   - You should see a **"PX4-SITL"** menu in the menu bar
+   - You should see a **"PX4 X-Plane"** menu in the menu bar
 
 **If the plugin doesn't appear, check X-Plane's Log.txt:**
 - Windows: `Documents/X-Plane 12/Log.txt`
@@ -934,7 +934,7 @@ For automated builds across platforms, the project includes:
 
 ## Version Information
 
-- **Build System Version**: 4.0.8
+- **Build System Version**: 4.1.0
 - **Supported Platforms**:
   - Windows 10+ (Visual Studio 2019/2022, MinGW)
   - macOS 10.14+ (Xcode Command Line Tools, Universal Binary support)
@@ -945,7 +945,7 @@ For automated builds across platforms, the project includes:
   - **Native Makefiles**: Makefile.linux, Makefile.macos
 - **C++ Standard**: C++17
 - **X-Plane SDK**: Latest version included (4.0.0+)
-- **Plugin Version**: 4.0.8
+- **Plugin Version**: 4.1.0
 - **Repository**: [alireza787b/px4xplane](https://github.com/alireza787b/px4xplane)
 
 ## Additional Resources

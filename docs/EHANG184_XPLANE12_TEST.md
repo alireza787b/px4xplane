@@ -76,7 +76,7 @@ Confirm these values in the ULog before judging the result:
 
 In X-Plane `Log.txt`, confirm:
 
-- `px4xplane: Version: v4.0.8`
+- `px4xplane: Version: v4.1.0`
 - `config_name = ehang184` in `px4xplane/64/config.ini`
 - the X-Plane connection HUD shows `Airframe: Ehang 184` while waiting for PX4
 

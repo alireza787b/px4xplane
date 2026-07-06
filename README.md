@@ -1,5 +1,9 @@
 # PX4-XPlane
 
+<p align="center">
+  <img src="docs/assets/px4xplane-logo.svg" alt="PX4-XPlane logo" width="360">
+</p>
+
 [![Build Status](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml/badge.svg)](https://github.com/alireza787b/px4xplane/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/alireza787b/px4xplane)](https://github.com/alireza787b/px4xplane/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -9,7 +13,7 @@ PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
 writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
-The current package is `v4.0.8` with Windows, Linux, and macOS builds. It
+The current package is `v4.1.0` with Windows, Linux, and macOS builds. It
 includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
 QuadTailsitter.
 
@@ -34,13 +38,14 @@ project video archive and playlist; future videos will be added there.
 3. Download the latest px4xplane package for your OS from
    [Releases](https://github.com/alireza787b/px4xplane/releases).
 
-4. Extract the archive and copy the complete `px4xplane` folder to
-   `X-Plane 12/Resources/plugins/px4xplane` or
-   `X-Plane 11/Resources/plugins/px4xplane`, depending on your installed
-   X-Plane version.
+4. Extract the archive and copy the complete `px4xplane` folder into the
+   `Resources/plugins` folder of your X-Plane installation, for example
+   `X-Plane 12/Resources/plugins/px4xplane`.
 
 5. Copy any packaged X-Plane aircraft folders you want to test into an X-Plane
-   aircraft directory, then start X-Plane and load the matching aircraft.
+   aircraft directory, then start X-Plane and load the matching aircraft. In
+   X-Plane, choose `Plugins > PX4 X-Plane > Airframes > ...` and select the
+   matching airframe, then click `Plugins > PX4 X-Plane > Connect to SITL`.
 
 6. Start PX4 SITL from your official PX4 checkout:
 
@@ -48,6 +53,11 @@ project video archive and playlist; future videos will be added there.
 cd ~/PX4-Autopilot
 make px4_sitl_default xplane_alia250
 ```
+
+Starting PX4 first can also work, but starting `Connect to SITL` in X-Plane
+first gives visible connection status. The first PX4 build can take longer than
+the plugin's 60-second wait window; if the plugin times out, click
+`Connect to SITL` again after PX4 is running.
 
 Available PX4 targets include `xplane_alia250`, `xplane_cessna172`,
 `xplane_tb2`, `xplane_ehang184`, and `xplane_qtailsitter`. See the official
@@ -132,7 +142,7 @@ PX4 X-Plane SITL support is merged in
 [PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 Use official `PX4/PX4-Autopilot` `main` for normal SITL runs.
 
-`v4.0.8` includes the px4xplane-side fixes from the recent validation cycle:
+`v4.1.0` includes the px4xplane-side fixes from the recent validation cycle:
 sensor timing robustness, low-FPS/pause recovery, stale SITL parameter cleanup,
 airframe config validation, camera presets, Alia elevator mapping, Cessna 172
 runway steering recovery, post-merge official-PX4 launcher/docs cleanup, and

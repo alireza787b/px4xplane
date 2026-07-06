@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 120" role="img" aria-labelledby="title desc">
+  <title id="title">PX4-XPlane logo</title>
+  <desc id="desc">A minimal PX4 to X-Plane bridge mark with an aircraft, data link, and X-shaped flight path.</desc>
+  <defs>
+    <linearGradient id="markGradient" x1="18" y1="18" x2="102" y2="102" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#16a085"/>
+      <stop offset="1" stop-color="#2775d1"/>
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="96" height="96" rx="20" fill="#101820"/>
+  <path d="M33 87 87 33" stroke="url(#markGradient)" stroke-width="7" stroke-linecap="round"/>
+  <path d="M33 33 87 87" stroke="#ffffff" stroke-opacity=".24" stroke-width="7" stroke-linecap="round"/>
+  <path d="M37 66 87 48 69 60 78 79 60 67 37 66Z" fill="#ffffff"/>
+  <circle cx="33" cy="87" r="4.5" fill="#16a085"/>
+  <circle cx="87" cy="33" r="4.5" fill="#2775d1"/>
+  <text x="126" y="70" fill="#101820" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800">PX4</text>
+  <text x="203" y="70" fill="#2775d1" font-family="Inter, Arial, sans-serif" font-size="38" font-weight="800">XPlane</text>
+  <path d="M188 58h12" stroke="#16a085" stroke-width="4" stroke-linecap="round"/>
+  <text x="132" y="103" fill="#506070" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="600" letter-spacing=".8">PX4 SITL BRIDGE FOR X-PLANE</text>
+</svg>

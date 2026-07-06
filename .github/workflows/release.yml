@@ -47,7 +47,7 @@ jobs:
           echo "" >> RELEASE_NOTES.md
           echo "1. Download the appropriate ZIP file for your platform." >> RELEASE_NOTES.md
           echo "2. Extract the archive." >> RELEASE_NOTES.md
-          echo "3. Copy the **px4xplane** folder to: \`X-Plane/Resources/plugins/px4xplane\`." >> RELEASE_NOTES.md
+          echo "3. Copy the **px4xplane** folder into the \`Resources/plugins\` folder of your X-Plane 11 or 12 installation." >> RELEASE_NOTES.md
           echo "4. Launch X-Plane and verify the plugin loads from Plugin Admin." >> RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           echo "## Build Information" >> RELEASE_NOTES.md
