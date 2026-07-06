@@ -64,7 +64,7 @@ launcher can auto-detect common WSL2 host IPs, and
 
 ## Validation and Maintainer Notes
 
-- Use the `v4.1.2` package with official PX4 `main`. X-Plane SITL support is
+- Use the `v4.1.3` package with official PX4 `main`. X-Plane SITL support is
   merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 - The launcher uses official PX4 `main` as the base. By default it asks whether

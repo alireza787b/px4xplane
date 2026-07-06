@@ -1,41 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 160" role="img" aria-labelledby="title desc">
-  <title id="title">PX4-XPlane logo</title>
-  <desc id="desc">A minimal PX4 to X-Plane SITL bridge logo with PX4 control nodes, a central X, and an X-Plane aircraft and runway element.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 124" role="img" aria-labelledby="title desc">
+  <title id="title">PX4-XPlane</title>
+  <desc id="desc">Minimal PX4 to X-Plane SITL bridge wordmark.</desc>
   <defs>
-    <linearGradient id="accent" x1="122" y1="38" x2="398" y2="122" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#17c3a5"/>
-      <stop offset=".52" stop-color="#ffffff"/>
+    <linearGradient id="x" x1="214" y1="36" x2="302" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19c7a6"/>
       <stop offset="1" stop-color="#3b82f6"/>
     </linearGradient>
   </defs>
+  <rect width="560" height="124" rx="24" fill="#0b1220"/>
+  <rect x="1.5" y="1.5" width="557" height="121" rx="22.5" fill="none" stroke="#1e293b" stroke-width="3"/>
 
-  <rect x="8" y="8" width="504" height="144" rx="26" fill="#0b1220"/>
-  <rect x="9.5" y="9.5" width="501" height="141" rx="24.5" fill="none" stroke="#1f2a44" stroke-width="3"/>
+  <text x="54" y="68" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing=".5">PX4</text>
+  <text x="331" y="68" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing=".2">X-Plane</text>
 
-  <!-- PX4-inspired control nodes. -->
-  <g transform="translate(46 32)">
-    <path d="M18 18 78 78M78 18 18 78" stroke="#17c3a5" stroke-width="5" stroke-linecap="round"/>
-    <circle cx="18" cy="18" r="8" fill="#17c3a5"/>
-    <circle cx="78" cy="18" r="8" fill="#22c55e"/>
-    <circle cx="18" cy="78" r="8" fill="#0ea5e9"/>
-    <circle cx="78" cy="78" r="8" fill="#3b82f6"/>
-    <circle cx="48" cy="48" r="7" fill="#f8fafc"/>
+  <path d="M218 36 298 88M298 36 218 88" stroke="url(#x)" stroke-width="11" stroke-linecap="round"/>
+  <path d="M177 62h28M311 62h28" stroke="#475569" stroke-width="4" stroke-linecap="round"/>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M75 88h52M101 88V76M86 76h30" stroke="#19c7a6" stroke-width="3"/>
+    <circle cx="75" cy="88" r="3.5" fill="#19c7a6" stroke="none"/>
+    <circle cx="127" cy="88" r="3.5" fill="#19c7a6" stroke="none"/>
+    <circle cx="101" cy="76" r="3.5" fill="#19c7a6" stroke="none"/>
   </g>
 
-  <!-- Central bridge X. -->
-  <path d="M221 41 299 119M299 41 221 119" stroke="url(#accent)" stroke-width="12" stroke-linecap="round"/>
-  <path d="M145 80h64M311 80h64" stroke="#334155" stroke-width="4" stroke-linecap="round" stroke-dasharray="8 10"/>
-
-  <!-- X-Plane-inspired runway and aircraft. -->
-  <g transform="translate(390 30)">
-    <path d="M12 92 44 12 76 92" fill="none" stroke="#3b82f6" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M44 24v58" stroke="#f8fafc" stroke-opacity=".7" stroke-width="3" stroke-linecap="round" stroke-dasharray="8 9"/>
-    <path d="M17 50 79 67 56 73 48 98 38 71 17 50Z" fill="#f8fafc"/>
+  <g fill="none" stroke="#3b82f6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M405 92 430 76 455 92" stroke-width="3"/>
+    <path d="M430 79v14" stroke-width="2" stroke-dasharray="4 5"/>
   </g>
 
-  <text x="146" y="57" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">PX4</text>
-  <text x="314" y="57" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800">X-Plane</text>
-  <text x="156" y="114" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="1.2">
-    MAVLINK SITL BRIDGE
-  </text>
+  <text x="221" y="107" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.6">SITL BRIDGE</text>
 </svg>

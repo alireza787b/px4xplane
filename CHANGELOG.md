@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.1.3] - 2026-07-06
+
+### Changed
+
+- Replaced the README logo with a simpler dark-mode-safe wordmark centered on
+  a single bridge `X`, with restrained PX4 control-node and X-Plane runway
+  cues.
+- Added `.mailmap` entries to normalize old Claude co-author identities in
+  contributor summaries without rewriting repository history.
+
 ## [4.1.2] - 2026-07-06
 
 ### Changed
