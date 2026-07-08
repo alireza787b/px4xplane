@@ -325,6 +325,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$EKF_GSF_GUARD_FLAG")
             APPLY_EKF_GSF_GUARD=true
+            SKIP_EKF_GSF_GUARD=false
             SYNC_MODE=true
             shift
             ;;
@@ -335,6 +336,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$VTOL_HANDOFF_GUARD_FLAG")
             APPLY_VTOL_HANDOFF_GUARD=true
+            SKIP_VTOL_HANDOFF_GUARD=false
             SYNC_MODE=true
             shift
             ;;
@@ -345,6 +347,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$TAILSITTER_FW_FRAME_GUARD_FLAG")
             APPLY_TAILSITTER_FW_FRAME_GUARD=true
+            SKIP_TAILSITTER_FW_FRAME_GUARD=false
             SYNC_MODE=true
             shift
             ;;
@@ -355,6 +358,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$TECS_ALT_FRAME_GUARD_FLAG")
             APPLY_TECS_ALT_FRAME_GUARD=true
+            SKIP_TECS_ALT_FRAME_GUARD=false
             SYNC_MODE=true
             shift
             ;;
