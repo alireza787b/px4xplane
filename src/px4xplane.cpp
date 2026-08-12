@@ -18,7 +18,9 @@
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
+#include "HILSensorFlowController.h"
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
@@ -89,6 +91,7 @@ void updateMenuItems();
 void createCameraMenuItems();
 void releaseCustomCamera();
 void initializeMessagePeriods();  // Initialize MAVLink message periods from config
+void resetFlightLoopTimers();
 float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinceLastFlightLoop, int inCounter, void* inRefcon);
 
 
@@ -584,6 +587,18 @@ void refreshAirframesMenu() {
 	}
 }
 
+void disconnectBeforeConfigurationReload()
+{
+	if (!ConnectionManager::isConnectionActiveOrWaiting()) {
+		return;
+	}
+
+	XPLMDebugString(
+		"px4xplane: Disconnecting before configuration reload to preserve HIL flow state\n");
+	resetFlightLoopTimers();
+	ConnectionManager::disconnect();
+}
+
 
 void menu_handler(void* in_menu_ref, void* in_item_ref) {
 	char debugBuf[256];
@@ -598,6 +613,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			debugLog("Show Data menu item selected - window should now be visible");
 		}
 		else if (in_item_ref == MENU_ITEM_RELOAD_CONFIG) {
+			disconnectBeforeConfigurationReload();
 			ConfigManager::loadConfiguration();
 			initializeMessagePeriods();
 			ConnectionStatusHUD::setEnabled(ConfigManager::show_connection_status_hud);
@@ -624,6 +640,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			const std::string& selectedAirframe = airframeNames[index];
 			debugLog(("Airframe selected: " + ConfigManager::getAirframeDisplayName(selectedAirframe) + " (" + selectedAirframe + ")").c_str());
 
+			disconnectBeforeConfigurationReload();
 			ConfigManager::setActiveAirframeName(selectedAirframe);
 			ConfigManager::loadConfiguration();
 			initializeMessagePeriods();
@@ -646,6 +663,7 @@ void menu_handler(void* in_menu_ref, void* in_item_ref) {
 			updateMenuItems();
 		}
 		else if (in_item_ref == MENU_ITEM_RELOAD_VALIDATE_CONFIG) {
+			disconnectBeforeConfigurationReload();
 			ConfigManager::loadConfiguration();
 			initializeMessagePeriods();
 			ConnectionStatusHUD::setEnabled(ConfigManager::show_connection_status_hud);
@@ -757,8 +775,6 @@ void createCameraMenuItems() {
  * can access the static timing variables declared later in this file.
  * The actual reset happens in toggleEnable() before disconnect.
  */
-void resetFlightLoopTimers();  // Forward declaration
-
 void toggleEnable() {
 	XPLMDebugString("px4xplane: toggleEnable() called.\n");
 	if (ConnectionManager::isConnectionActiveOrWaiting()) {
@@ -916,22 +932,14 @@ void handleAirframeSelection(const std::string& airframeName) {
 // These are loaded from ConfigManager and converted to periods
 // Using simulation time ensures consistent timing regardless of rendering FPS
 //
-// IMPORTANT: Higher rates require higher X-Plane FPS
-// - 200 Hz sensor rate needs ~150+ FPS for stability
-// - 75 Hz sensor rate works well with 60 FPS
-// - Formula: Recommended FPS = target_hz × 1.5 (for margin)
-//
-// PX4 SITL BEST PRACTICES (Gazebo/jMAVSim standards):
-// - HIL_SENSOR: 200-250 Hz (IMU/barometer - highest priority)
-// - HIL_GPS: 5-10 Hz (GPS updates - realistic rate)
-// - HIL_STATE_QUATERNION: 50 Hz (ground truth logging)
-// - HIL_RC_INPUTS: 50 Hz (RC receiver standard rate)
-//
-// NOTE: Periods are calculated from Hz rates in initializeMessagePeriods()
+// Actual rates are bounded by the X-Plane flight-loop rate. In
+// actuator_feedback mode, primary sensor traffic is also bounded by PX4
+// actuator responses so one-deep PX4 sensor queues are not overrun.
 static float TARGET_SENSOR_PERIOD = 0.005f;      // Default 200 Hz (updated from config)
 static float TARGET_GPS_PERIOD = 0.1f;           // Default 10 Hz (updated from config)
 static float TARGET_STATE_QUAT_PERIOD = 0.02f;   // Default 50 Hz (updated from config)
 static float TARGET_RC_PERIOD = 0.02f;           // Default 50 Hz (updated from config)
+static HILSensorFlowController gHILSensorFlowController;
 
 // Initialize periods from config (called once during plugin startup)
 void initializeMessagePeriods() {
@@ -939,6 +947,13 @@ void initializeMessagePeriods() {
     TARGET_GPS_PERIOD = 1.0f / (float)ConfigManager::mavlink_gps_rate_hz;
     TARGET_STATE_QUAT_PERIOD = 1.0f / (float)ConfigManager::mavlink_state_rate_hz;
     TARGET_RC_PERIOD = 1.0f / (float)ConfigManager::mavlink_rc_rate_hz;
+
+    const auto flowMode = ConfigManager::hil_sensor_flow_control == "actuator_feedback"
+        ? HILSensorFlowController::Mode::ActuatorFeedback
+        : HILSensorFlowController::Mode::Async;
+    gHILSensorFlowController.configure(
+        flowMode,
+        static_cast<uint64_t>(ConfigManager::hil_sensor_feedback_timeout_ms) * 1000ULL);
 
     char buf[300];
     snprintf(buf, sizeof(buf),
@@ -965,6 +980,13 @@ static int diagnosticRcCount = 0;
 float lastFlightTime = 0.0f;
 
 namespace {
+
+uint64_t monotonicTimeUsec()
+{
+	const auto now = std::chrono::steady_clock::now().time_since_epoch();
+	return static_cast<uint64_t>(
+		std::chrono::duration_cast<std::chrono::microseconds>(now).count());
+}
 
 struct SendTimingDiagnostics {
 	std::uint64_t intervalLate{0};
@@ -1107,6 +1129,28 @@ void resetDiagnosticCounters()
 	gLastPauseLogWallElapsed = -1000.0f;
 }
 
+bool handleSensorFlowFaultIfNeeded()
+{
+	const auto fault = gHILSensorFlowController.getFault();
+	if (fault == HILSensorFlowController::Fault::None) {
+		return false;
+	}
+
+	const char* logMessage = fault == HILSensorFlowController::Fault::MissingLockstepFlag
+		? "px4xplane: PX4 peer did not set the HIL actuator lockstep flag; "
+		  "actuator-feedback flow control requires a lockstep-enabled PX4 peer.\n"
+		: "px4xplane: PX4 actuator response timed out; disconnecting instead of "
+		  "resuming unrestricted sensor traffic.\n";
+	const char* userMessage = fault == HILSensorFlowController::Fault::MissingLockstepFlag
+		? "PX4 peer is not lockstep-enabled. Use async mode or compatible PX4 SITL."
+		: "PX4 actuator response timed out. Reconnect SITL.";
+
+	XPLMDebugString(logMessage);
+	ConnectionManager::disconnect();
+	ConnectionManager::setLastMessage(userMessage);
+	return true;
+}
+
 void clearIntervalDiagnosticCounters()
 {
 	diagnosticSensorCount = 0;
@@ -1187,6 +1231,7 @@ void resetFlightLoopTimers() {
 	lastRcSendTime = 0.0f;
 	lastDiagnosticLogTime = 0.0f;
 	lastFlightTime = 0.0f;
+	gHILSensorFlowController.reset(MAVLinkManager::getHILActuatorControlsGeneration());
 	resetDiagnosticCounters();
 	XPLMDebugString("px4xplane: Flight loop timers reset\n");
 }
@@ -1225,17 +1270,22 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 	const float magPsi = DataRefManager::getFloat("sim/flightmodel/position/mag_psi");
 	const float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed");
 	const float tas = DataRefManager::getFloat("sim/flightmodel/position/true_airspeed");
+	const auto flowDiagnostics = gHILSensorFlowController.getDiagnostics();
+	const uint64_t actuatorAgeUsec = MAVLinkManager::getHILActuatorControlsAgeUsec();
 
-	char buf[1400];
+	char buf[1800];
 	snprintf(buf, sizeof(buf),
 		"px4xplane: [BRIDGE_DIAG] sim=%.3f cb_dt=%.4f fps_p50=%.1f counter=%d "
 		"sent_hz sensor=%.1f gps=%.1f state=%.1f rc=%.1f "
 		"frame_ms min/p50/p95/max=%.2f/%.2f/%.2f/%.2f "
 		"late sensor/gps/state/rc=%llu/%llu/%llu/%llu "
 		"missed sensor/gps/state/rc=%llu/%llu/%llu/%llu "
-		"ts last_delta_ms=%.2f monotonic_fix=%llu backwards=%llu capped=%llu subframe=%llu sim_backwards=%llu "
+		"ts last_delta_ms=%.2f monotonic_fix=%llu backwards=%llu large_delta=%llu subframe=%llu sim_backwards=%llu "
 		"ned_v_ms=[%.3f,%.3f,%.3f] acc_frd_ms2=[%.3f,%.3f,%.3f] "
-		"raw_g=[%.4f,%.4f,%.4f] psi=%.2f mag_psi=%.2f ias_kt=%.2f tas_ms=%.2f\n",
+		"raw_g=[%.4f,%.4f,%.4f] psi=%.2f mag_psi=%.2f ias_kt=%.2f tas_ms=%.2f "
+		"flow=%s queued/tx/ack/blocked/timeout/protocol/max_out=%llu/%llu/%llu/%llu/%llu/%llu/%llu "
+		"tx_pending=%d outstanding=%d established=%d actuator_gen=%llu actuator_ts=%llu flags=%llu "
+		"actuator_age_us=%llu tx_pending=%zu\n",
 		currentSimTime, callbackDt, fps, counter,
 		diagnosticSensorCount / elapsed,
 		diagnosticGpsCount / elapsed,
@@ -1253,14 +1303,30 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 		timestampDiagnostics.last_delta_usec / 1000.0,
 		static_cast<unsigned long long>(timestampDiagnostics.monotonic_corrections),
 		static_cast<unsigned long long>(timestampDiagnostics.backward_resets),
-		static_cast<unsigned long long>(timestampDiagnostics.capped_deltas),
+		static_cast<unsigned long long>(timestampDiagnostics.large_deltas),
 		static_cast<unsigned long long>(timestampDiagnostics.sub_frame_fallbacks),
 		static_cast<unsigned long long>(gFrameTimingDiagnostics.totalNonMonotonicSimTime),
 		-localVz, localVx, -localVy,
 		-gAxil * DataRefManager::g_earth,
 		gSide * DataRefManager::g_earth,
 		-gNrml * DataRefManager::g_earth,
-		gAxil, gSide, gNrml, psi, magPsi, ias, tas);
+		gAxil, gSide, gNrml, psi, magPsi, ias, tas,
+		ConfigManager::hil_sensor_flow_control.c_str(),
+		static_cast<unsigned long long>(flowDiagnostics.sensors_queued),
+		static_cast<unsigned long long>(flowDiagnostics.sensors_transmitted),
+		static_cast<unsigned long long>(flowDiagnostics.actuator_acks),
+		static_cast<unsigned long long>(flowDiagnostics.blocked_samples),
+		static_cast<unsigned long long>(flowDiagnostics.response_timeouts),
+		static_cast<unsigned long long>(flowDiagnostics.protocol_faults),
+		static_cast<unsigned long long>(flowDiagnostics.max_outstanding_sensors),
+		flowDiagnostics.transmission_pending ? 1 : 0,
+		flowDiagnostics.sensor_outstanding ? 1 : 0,
+		flowDiagnostics.feedback_established ? 1 : 0,
+		static_cast<unsigned long long>(MAVLinkManager::getHILActuatorControlsGeneration()),
+		static_cast<unsigned long long>(MAVLinkManager::hilActuatorControlsData.timestamp),
+		static_cast<unsigned long long>(MAVLinkManager::hilActuatorControlsData.flags),
+		static_cast<unsigned long long>(actuatorAgeUsec),
+		ConnectionManager::getPendingSendBytes());
 	XPLMDebugString(buf);
 
 	lastDiagnosticLogTime = currentSimTime;
@@ -1361,10 +1427,23 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Get current simulation time (frame-rate independent!)
 	float currentSimTime = XPLMGetDataf(XPLMFindDataRef("sim/time/total_flight_time_sec"));
 	recordFrameTiming(currentSimTime, inElapsedSinceLastCall);
+	DataRefManager::SIM_Timestep =
+		(std::isfinite(inElapsedSinceLastCall) && inElapsedSinceLastCall > 0.0f)
+		? inElapsedSinceLastCall : 0.0f;
 
 	if (isSimPausedOrStalled(currentSimTime, inElapsedSinceLastCall)) {
 		handleSimPausedOrStalled(currentSimTime, inElapsedSinceLastCall);
 		ConnectionManager::receiveData();
+		const uint64_t pendingToken = gHILSensorFlowController.getPendingCompletionToken();
+		gHILSensorFlowController.observeTransmission(
+			ConnectionManager::isSendComplete(pendingToken), monotonicTimeUsec());
+		gHILSensorFlowController.observeActuator(
+			MAVLinkManager::getHILActuatorControlsGeneration(),
+			MAVLinkManager::hilActuatorControlsData.timestamp,
+			MAVLinkManager::hilActuatorControlsData.flags);
+		if (handleSensorFlowFaultIfNeeded()) {
+			return -1.0f;
+		}
 		return -1.0f;
 	}
 	resumeAfterSimPause(currentSimTime);
@@ -1382,15 +1461,47 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		lastDiagnosticLogTime = 0.0f;
 	}
 
-	// ==================================================================================
-	// SENSOR DATA - Direct sendHILSensor() at target rate
-	// ==================================================================================
+	// Consume and apply the response to the previous sensor update before sending
+	// another one. X-Plane still advances freely, so this is flow control rather
+	// than strict physics lockstep.
+	ConnectionManager::receiveData();
+	if (!ConnectionManager::isConnected()) {
+		return -1.0f;
+	}
+	const uint64_t wallTimeUsec = monotonicTimeUsec();
+	const uint64_t pendingToken = gHILSensorFlowController.getPendingCompletionToken();
+	gHILSensorFlowController.observeTransmission(
+		ConnectionManager::isSendComplete(pendingToken), wallTimeUsec);
+	gHILSensorFlowController.observeActuator(
+		MAVLinkManager::getHILActuatorControlsGeneration(),
+		MAVLinkManager::hilActuatorControlsData.timestamp,
+		MAVLinkManager::hilActuatorControlsData.flags);
+	if (handleSensorFlowFaultIfNeeded()) {
+		return -1.0f;
+	}
+	DataRefManager::overrideActuators();
+
+	bool sensorSentThisFrame = false;
 
 	// Send sensor data at target rate
-	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD) {
+	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD &&
+		gHILSensorFlowController.canSendSensor(wallTimeUsec)) {
+		const auto sensorSend = MAVLinkManager::sendHILSensor(0);
+		if (!sensorSend) {
+			return -1.0f;
+		}
+
+		gHILSensorFlowController.markSensorQueued(
+			MAVLinkManager::getHILActuatorControlsGeneration(),
+			sensorSend.timestamp_usec,
+			sensorSend.completion_token,
+			wallTimeUsec);
+		gHILSensorFlowController.observeTransmission(
+			ConnectionManager::isSendComplete(sensorSend.completion_token),
+			wallTimeUsec);
 		recordSendTiming(lastSensorSendTime, currentSimTime, TARGET_SENSOR_PERIOD, gSensorTimingDiagnostics);
-		MAVLinkManager::sendHILSensor(0);
 		diagnosticSensorCount++;
+		sensorSentThisFrame = true;
 
 		// Statistics tracking for debugging
 		static int sensorMessageCount = 0;
@@ -1416,9 +1527,16 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 		lastSensorSendTime = currentSimTime;
 	}
+	if (handleSensorFlowFaultIfNeeded()) {
+		return -1.0f;
+	}
 
-	// Send GPS data at target rate (20 Hz) - one message per eligible frame
-	if ((currentSimTime - lastGpsSendTime) >= TARGET_GPS_PERIOD) {
+	const bool secondaryMessagesAllowed =
+		ConfigManager::hil_sensor_flow_control == "async" || sensorSentThisFrame;
+
+	// Keep secondary sensor timestamps behind the primary PX4 clock update when
+	// actuator-feedback flow control is waiting for a response.
+	if (secondaryMessagesAllowed && (currentSimTime - lastGpsSendTime) >= TARGET_GPS_PERIOD) {
 		recordSendTiming(lastGpsSendTime, currentSimTime, TARGET_GPS_PERIOD, gGpsTimingDiagnostics);
 		MAVLinkManager::sendHILGPS();
 		diagnosticGpsCount++;
@@ -1426,7 +1544,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	}
 
 	// Optional: Send state quaternion data (10 Hz)
-	if ((currentSimTime - lastStateQuatSendTime) >= TARGET_STATE_QUAT_PERIOD) {
+	if (secondaryMessagesAllowed && (currentSimTime - lastStateQuatSendTime) >= TARGET_STATE_QUAT_PERIOD) {
 		recordSendTiming(lastStateQuatSendTime, currentSimTime, TARGET_STATE_QUAT_PERIOD, gStateTimingDiagnostics);
 		MAVLinkManager::sendHILStateQuaternion();
 		diagnosticStateCount++;
@@ -1434,7 +1552,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	}
 
 	// Optional: Send RC data (10 Hz)
-	if ((currentSimTime - lastRcSendTime) >= TARGET_RC_PERIOD) {
+	if (secondaryMessagesAllowed && (currentSimTime - lastRcSendTime) >= TARGET_RC_PERIOD) {
 		recordSendTiming(lastRcSendTime, currentSimTime, TARGET_RC_PERIOD, gRcTimingDiagnostics);
 		MAVLinkManager::sendHILRCInputs();
 		diagnosticRcCount++;
@@ -1442,14 +1560,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	}
 
 
-	// Continuously receive and process actuator data
-	ConnectionManager::receiveData();
-
-	// Actuator overrides
-	DataRefManager::overrideActuators();
-
-	// Update the SITL timestep with the loop callback rate
-	DataRefManager::SIM_Timestep = inElapsedSinceLastCall;
+	ConnectionManager::flushSendQueue();
 	logBridgeDiagnostics(currentSimTime, inElapsedSinceLastCall, inCounter);
 
 	lastFlightTime = currentSimTime;

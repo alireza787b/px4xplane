@@ -74,13 +74,17 @@ jobs:
       # Step 3: Configure CMake
       - name: Configure CMake
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DPX4XPLANE_BUILD_TESTS=ON
 
       # Step 4: Build project
       - name: Build project
         run: |
           cd build
           ${{ matrix.build_command }}
+
+      - name: Run offline tests
+        run: |
+          ctest --test-dir build -C Release --output-on-failure
 
       # Step 5: Verify build output
       - name: Verify build artifacts

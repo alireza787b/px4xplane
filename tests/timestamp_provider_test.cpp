@@ -41,13 +41,13 @@ int main()
     assert(sameFrame == second + 1ULL);
 
     g_xplaneTimeSec = 101.02f;
-    const uint64_t capped = TimestampProvider::getTimestampUsec();
-    assert(capped > sameFrame);
-    assert((capped - sameFrame) <= 100001ULL);
+    const uint64_t afterLargeDelta = TimestampProvider::getTimestampUsec();
+    assert(afterLargeDelta > sameFrame);
+    assert((afterLargeDelta - sameFrame) >= 999000ULL);
 
     const auto diagnostics = TimestampProvider::getDiagnostics();
     assert(diagnostics.sub_frame_fallbacks >= 1);
-    assert(diagnostics.capped_deltas >= 1);
+    assert(diagnostics.large_deltas >= 1);
 
     return 0;
 }

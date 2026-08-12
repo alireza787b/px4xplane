@@ -11,7 +11,16 @@ class DataRefProvider;
 
 class MAVLinkManager {
 public:
-    static void sendHILSensor(uint8_t sensor_id);
+    struct HILSensorSendResult {
+        uint64_t timestamp_usec{0};
+        uint64_t completion_token{0};
+
+        explicit operator bool() const {
+            return timestamp_usec > 0 && completion_token > 0;
+        }
+    };
+
+    static HILSensorSendResult sendHILSensor(uint8_t sensor_id);
     static void sendHILGPS();
     static void sendHILStateQuaternion();
     static void sendHILRCInputs();
@@ -21,6 +30,7 @@ public:
     static void receiveHILActuatorControls(uint8_t* buffer, int size);
     static bool hasFreshHILActuatorControls(uint64_t timeout_usec);
     static uint64_t getHILActuatorControlsAgeUsec();
+    static uint64_t getHILActuatorControlsGeneration();
     static Eigen::Vector3f computeAcceleration();
     static void setAccelerationData(mavlink_hil_sensor_t& hil_sensor);
     static void reset();  // CRITICAL: Reset all static state on disconnect
@@ -40,6 +50,7 @@ public:
 
 
 private:
+    static uint64_t hilActuatorControlsGeneration;
     static std::random_device rd;
     static std::mt19937 gen;
     static std::normal_distribution<float> noiseDistribution;

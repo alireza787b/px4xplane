@@ -122,8 +122,8 @@ public:
     static float barometer_filter_alpha;   // Alpha value for barometric pressure filtering
 
     // Deprecated: this flag is no longer used for timestamp generation.
-    // Timestamps now use TimestampProvider which automatically tracks X-Plane
-    // time deltas with high precision, fixing EKF2 time_slip issues.
+    // Timestamps now use TimestampProvider to avoid float-time quantization.
+    // Sensor/actuator scheduling is handled separately by the flight loop.
     // Retained for backward compatibility - may be removed in future version.
     static bool USE_XPLANE_TIME;
 
@@ -177,6 +177,8 @@ public:
     static int mavlink_gps_rate_hz;          // HIL_GPS rate
     static int mavlink_state_rate_hz;        // HIL_STATE_QUATERNION rate
     static int mavlink_rc_rate_hz;           // HIL_RC_INPUTS rate
+    static std::string hil_sensor_flow_control; // async or actuator_feedback
+    static int hil_sensor_feedback_timeout_ms;  // Fault timeout while awaiting PX4 output
     static float gps_horizontal_accuracy_m;  // HIL_GPS eph, meters
     static float gps_vertical_accuracy_m;    // HIL_GPS epv, meters
 

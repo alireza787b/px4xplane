@@ -63,11 +63,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${OUTPUT_DIR})
 set(SOURCES
     src/AccelCalibration.cpp
     src/ActuatorSafety.cpp
+    src/ByteSendQueue.cpp
     src/ConfigManager.cpp
     src/configReader.cpp
     src/ConnectionManager.cpp
     src/ConnectionStatusHUD.cpp
     src/DataRefManager.cpp
+    src/HILSensorFlowController.cpp
     src/MAVLinkManager.cpp
     src/px4xplane.cpp
     src/TimeManager.cpp
@@ -81,12 +83,14 @@ option(PX4XPLANE_BUILD_TESTS "Build offline px4xplane unit tests" OFF)
 set(HEADERS
     include/AccelCalibration.h
     include/ActuatorSafety.h
+    include/ByteSendQueue.h
     include/ConfigManager.h
     include/configReader.h
     include/ConnectionManager.h
     include/ConnectionStatusHUD.h
     include/DataRefManager.h
     include/DataRefProvider.h
+    include/HILSensorFlowController.h
     include/MAVLinkManager.h
     include/TimeManager.h
     include/TimestampProvider.h
@@ -561,6 +565,14 @@ message(STATUS "==========================================================")
 if(PX4XPLANE_BUILD_TESTS)
     enable_testing()
 
+    function(px4xplane_enable_test_assertions target_name)
+        if(MSVC)
+            target_compile_options(${target_name} PRIVATE /UNDEBUG)
+        else()
+            target_compile_options(${target_name} PRIVATE -UNDEBUG)
+        endif()
+    endfunction()
+
     add_executable(actuator_safety_test
         tests/actuator_safety_test.cpp
         src/ActuatorSafety.cpp
@@ -568,7 +580,28 @@ if(PX4XPLANE_BUILD_TESTS)
     target_include_directories(actuator_safety_test PRIVATE
         ${CMAKE_SOURCE_DIR}/include
     )
+    px4xplane_enable_test_assertions(actuator_safety_test)
     add_test(NAME actuator_safety_test COMMAND actuator_safety_test)
+
+    add_executable(byte_send_queue_test
+        tests/byte_send_queue_test.cpp
+        src/ByteSendQueue.cpp
+    )
+    target_include_directories(byte_send_queue_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    px4xplane_enable_test_assertions(byte_send_queue_test)
+    add_test(NAME byte_send_queue_test COMMAND byte_send_queue_test)
+
+    add_executable(hil_sensor_flow_controller_test
+        tests/hil_sensor_flow_controller_test.cpp
+        src/HILSensorFlowController.cpp
+    )
+    target_include_directories(hil_sensor_flow_controller_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    px4xplane_enable_test_assertions(hil_sensor_flow_controller_test)
+    add_test(NAME hil_sensor_flow_controller_test COMMAND hil_sensor_flow_controller_test)
 
     add_executable(timestamp_provider_test
         tests/timestamp_provider_test.cpp
@@ -582,6 +615,7 @@ if(PX4XPLANE_BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}/lib/Eigen
         ${CMAKE_SOURCE_DIR}/config
     )
+    px4xplane_enable_test_assertions(timestamp_provider_test)
     if(WIN32)
         target_compile_definitions(timestamp_provider_test PRIVATE
             IBM=1 XPLM200=1 XPLM210=1 XPLM300=1 XPLM301=1 XPLM302=1 XPLM303=1 XPLM400=1

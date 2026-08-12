@@ -19,6 +19,7 @@
 
 // Define and initialize the static member
 MAVLinkManager::HILActuatorControlsData MAVLinkManager::hilActuatorControlsData = {};
+uint64_t MAVLinkManager::hilActuatorControlsGeneration = 0;
 
 // CRITICAL BUG FIX (January 2025): Timing state reset flag
 // Signals all sensor functions to reset their function-scope static timing variables
@@ -800,9 +801,9 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
  * @see setPressureData
  * @see setMagneticFieldData
  */
-void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
+MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 
-	if (!ConnectionManager::isConnected()) return;
+	if (!ConnectionManager::isConnected()) return {};
 
 	static uint64_t lastSensorTime = 0;
 	static int sensorCount = 0;
@@ -886,7 +887,7 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 	mavlink_msg_hil_sensor_encode(1, 1, &msg, &hil_sensor);
 	uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
 	int len = mavlink_msg_to_send_buffer(buffer, &msg);
-	ConnectionManager::sendData(buffer, len);
+	const uint64_t completionToken = ConnectionManager::sendData(buffer, len);
 
 	// Debug first message sent confirmation
 	if (sensorCount == 1 && ConfigManager::debug_log_sensor_timing) {
@@ -897,6 +898,10 @@ void MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
 			len, MAVLINK_MSG_ID_HIL_SENSOR);
 		XPLMDebugString(buf);
 	}
+
+	return completionToken > 0
+		? HILSensorSendResult{hil_sensor.time_usec, completionToken}
+		: HILSensorSendResult{};
 }
 
 
@@ -1308,6 +1313,7 @@ void MAVLinkManager::processHILActuatorControlsMessage(const mavlink_message_t& 
 	MAVLinkManager::hilActuatorControlsData.receive_time_usec = TimeManager::getCurrentTimeUsec();
 	MAVLinkManager::hilActuatorControlsData.mode = hil_actuator_controls.mode;
 	MAVLinkManager::hilActuatorControlsData.flags = hil_actuator_controls.flags;
+	++MAVLinkManager::hilActuatorControlsGeneration;
 
 	// Directly use the received controls
 	for (int i = 0; i < 16; i++) {
@@ -1346,6 +1352,10 @@ uint64_t MAVLinkManager::getHILActuatorControlsAgeUsec() {
 	return now - receiveTime;
 }
 
+uint64_t MAVLinkManager::getHILActuatorControlsGeneration() {
+	return hilActuatorControlsGeneration;
+}
+
 /**
  * @brief Resets all MAVLinkManager static state to clean values.
  *
@@ -1373,6 +1383,8 @@ uint64_t MAVLinkManager::getHILActuatorControlsAgeUsec() {
 void MAVLinkManager::reset() {
 	// Zero actuator controls data (most critical for control commands)
 	hilActuatorControlsData = {};
+	hilActuatorControlsGeneration = 0;
+	mavlink_reset_channel_status(MAVLINK_COMM_0);
 
 	// CRITICAL: Set flag to reset all function-scope timing state
 	// This prevents timestamp jumps that cause PX4 lockstep_scheduler to hang

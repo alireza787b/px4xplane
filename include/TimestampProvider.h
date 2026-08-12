@@ -15,9 +15,12 @@
  * causing EKF2 time_slip accumulation and fusion failures.
  *
  * SOLUTION:
- * Track time using X-Plane DELTA times (small values preserve float precision),
- * accumulated into a 64-bit integer base. This provides microsecond precision
- * for multi-hour flights while staying synchronized with X-Plane simulation time.
+ * Track the frame-to-frame changes available from X-Plane's float time dataref
+ * and accumulate them into a 64-bit integer base. This avoids multiplying an
+ * increasingly large float by one million on every message while staying
+ * synchronized with X-Plane simulation time. It does not recover precision
+ * already lost in the source dataref, provide sensor/actuator flow control, or
+ * implement strict simulation lockstep.
  *
  * USAGE:
  *   uint64_t timestamp = TimestampProvider::getTimestampUsec();
@@ -35,7 +38,7 @@ public:
         uint64_t last_output_usec{0};
         uint64_t monotonic_corrections{0};
         uint64_t backward_resets{0};
-        uint64_t capped_deltas{0};
+        uint64_t large_deltas{0};
         uint64_t sub_frame_fallbacks{0};
     };
 
@@ -43,7 +46,7 @@ public:
      * @brief Get current timestamp in microseconds for HIL messages.
      *
      * Returns a monotonically increasing timestamp that progresses at
-     * simulation time rate, suitable for PX4 lockstep synchronization.
+     * simulation time rate, suitable for HIL message timestamps.
      * Starts from 1,000,000 on first call after initialization/reset.
      *
      * @return uint64_t Timestamp in microseconds since connection start
@@ -89,11 +92,11 @@ private:
     static uint64_t s_lastDeltaUsec;            // Last frame delta (diagnostic only)
     static uint64_t s_monotonicCorrections;     // Count of enforced monotonic increments
     static uint64_t s_backwardResets;           // Count of X-Plane time regressions
-    static uint64_t s_cappedDeltas;             // Count of large deltas capped to MAX_DELTA_SEC
+    static uint64_t s_largeDeltas;              // Count of unusually large simulation deltas
     static uint64_t s_subFrameFallbacks;        // Count of same-frame monotonic timestamps
 
     // Timing constraints
-    static constexpr double MAX_DELTA_SEC = 0.1;        // Max valid delta (100ms) - cap large gaps
+    static constexpr double LARGE_DELTA_SEC = 0.1;      // Diagnostic threshold; deltas are preserved
     static constexpr double MIN_DELTA_SEC = 0.0001;     // Min valid delta (100us) - use system clock below this
     static constexpr uint64_t DRIFT_LOG_INTERVAL_USEC = 10000000;  // Log drift every 10 seconds
 };
