@@ -2,8 +2,9 @@
  * @file TimestampProvider.cpp
  * @brief High-precision timestamp generation for PX4 HIL messages.
  *
- * Fixes EKF2 time_slip issues caused by float precision loss when converting
- * X-Plane's total_flight_time_sec (32-bit float) to microseconds.
+ * Prevents the timestamp quantization caused by converting X-Plane's
+ * total_flight_time_sec (32-bit float) directly to microseconds. Sensor
+ * scheduling and PX4 flow control are separate concerns.
  *
  * @see TimestampProvider.h for detailed documentation
  */
@@ -25,13 +26,13 @@ int64_t TimestampProvider::s_driftUsec = 0;
 uint64_t TimestampProvider::s_lastDeltaUsec = 0;
 uint64_t TimestampProvider::s_monotonicCorrections = 0;
 uint64_t TimestampProvider::s_backwardResets = 0;
-uint64_t TimestampProvider::s_cappedDeltas = 0;
+uint64_t TimestampProvider::s_largeDeltas = 0;
 uint64_t TimestampProvider::s_subFrameFallbacks = 0;
 
 uint64_t TimestampProvider::getTimestampUsec() {
     // Get current X-Plane simulation time
-    // NOTE: This is a float dataref, but we only use it for DELTA calculation.
-    // Small deltas (frame-to-frame) preserve float precision even at large absolute values.
+    // NOTE: This is a float dataref. Delta accumulation avoids repeatedly
+    // scaling its large absolute value, but cannot recover source precision.
     double currentXPlaneTimeSec = static_cast<double>(
         DataRefManager::getFloat("sim/time/total_flight_time_sec")
     );
@@ -83,18 +84,18 @@ uint64_t TimestampProvider::getTimestampUsec() {
         return getTimestampUsec();
     }
 
-    // Handle pause or large frame skip
-    // Cap to MAX_DELTA_SEC to prevent timestamp jumps that confuse EKF2
-    if (deltaSec > MAX_DELTA_SEC) {
-        ++s_cappedDeltas;
+    // Preserve the complete simulation-time delta. Truncating a host stall or
+    // slow frame would make PX4 integrate less time than X-Plane advanced and
+    // creates estimator time-slip. The threshold is diagnostic only.
+    if (deltaSec > LARGE_DELTA_SEC) {
+        ++s_largeDeltas;
         if (ConfigManager::debug_log_sensor_timing) {
             char buf[256];
             snprintf(buf, sizeof(buf),
-                "px4xplane: [TIMESTAMP] Large delta capped: %.3f -> %.3f sec (pause/skip detected)\n",
-                deltaSec, MAX_DELTA_SEC);
+                "px4xplane: [TIMESTAMP] Large simulation delta preserved: %.3f sec\n",
+                deltaSec);
             XPLMDebugString(buf);
         }
-        deltaSec = MAX_DELTA_SEC;
     }
 
     // Handle very small deltas (multiple calls within the same X-Plane frame).
@@ -158,7 +159,7 @@ void TimestampProvider::reset() {
     s_lastDeltaUsec = 0;
     s_monotonicCorrections = 0;
     s_backwardResets = 0;
-    s_cappedDeltas = 0;
+    s_largeDeltas = 0;
     s_subFrameFallbacks = 0;
 
     if (ConfigManager::debug_log_sensor_timing) {
@@ -178,7 +179,7 @@ TimestampProvider::Diagnostics TimestampProvider::getDiagnostics() {
     diagnostics.last_output_usec = s_lastOutputUsec;
     diagnostics.monotonic_corrections = s_monotonicCorrections;
     diagnostics.backward_resets = s_backwardResets;
-    diagnostics.capped_deltas = s_cappedDeltas;
+    diagnostics.large_deltas = s_largeDeltas;
     diagnostics.sub_frame_fallbacks = s_subFrameFallbacks;
     return diagnostics;
 }

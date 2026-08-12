@@ -167,6 +167,8 @@ int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
 int ConfigManager::mavlink_gps_rate_hz = 20;        // HIL_GPS
 int ConfigManager::mavlink_state_rate_hz = 10;      // HIL_STATE_QUATERNION
 int ConfigManager::mavlink_rc_rate_hz = 10;         // HIL_RC_INPUTS
+std::string ConfigManager::hil_sensor_flow_control = "async";
+int ConfigManager::hil_sensor_feedback_timeout_ms = 500;
 float ConfigManager::gps_horizontal_accuracy_m = 1.5f;
 float ConfigManager::gps_vertical_accuracy_m = 1.0f;
 
@@ -272,6 +274,9 @@ void ConfigManager::loadConfiguration() {
     mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 20);
     mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 10);
     mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 10);
+    hil_sensor_flow_control = ini.GetValue("", "hil_sensor_flow_control", "async");
+    hil_sensor_feedback_timeout_ms =
+        (int)ini.GetLongValue("", "hil_sensor_feedback_timeout_ms", 500);
     gps_horizontal_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_horizontal_accuracy_m", 1.5));
     gps_vertical_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_vertical_accuracy_m", 1.0));
 
@@ -291,6 +296,15 @@ void ConfigManager::loadConfiguration() {
     if (mavlink_rc_rate_hz < 1 || mavlink_rc_rate_hz > 200) {
         XPLMDebugString("px4xplane: [WARNING] Invalid RC rate, using default 10 Hz\n");
         mavlink_rc_rate_hz = 10;
+    }
+    if (hil_sensor_flow_control != "async" &&
+        hil_sensor_flow_control != "actuator_feedback") {
+        XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor flow control, using async\n");
+        hil_sensor_flow_control = "async";
+    }
+    if (hil_sensor_feedback_timeout_ms < 100 || hil_sensor_feedback_timeout_ms > 5000) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor feedback timeout, using 500 ms\n");
+        hil_sensor_feedback_timeout_ms = 500;
     }
     if (!std::isfinite(gps_horizontal_accuracy_m) || gps_horizontal_accuracy_m < 0.1f ||
         gps_horizontal_accuracy_m > 50.0f) {
@@ -327,11 +341,13 @@ void ConfigManager::loadConfiguration() {
     }
 
     // Log MAVLink rates
-    char rateBuf[256];
+    char rateBuf[320];
     snprintf(rateBuf, sizeof(rateBuf),
-        "px4xplane: MAVLink rates - SENSOR:%dHz GPS:%dHz STATE:%dHz RC:%dHz GPS_ACC:%.1fm/%.1fm\n",
+        "px4xplane: MAVLink rates - SENSOR:%dHz GPS:%dHz STATE:%dHz RC:%dHz "
+        "FLOW:%s TIMEOUT:%dms GPS_ACC:%.1fm/%.1fm\n",
         mavlink_sensor_rate_hz, mavlink_gps_rate_hz,
         mavlink_state_rate_hz, mavlink_rc_rate_hz,
+        hil_sensor_flow_control.c_str(), hil_sensor_feedback_timeout_ms,
         gps_horizontal_accuracy_m, gps_vertical_accuracy_m);
     XPLMDebugString(rateBuf);
 

@@ -151,6 +151,23 @@
         reload_policy: "reconnect_before_flight",
         description: "Target HIL_SENSOR rate. Actual rate is bounded by X-Plane callback rate."
       },
+      hil_sensor_flow_control: {
+        type: "string",
+        default: "async",
+        enum: ["async", "actuator_feedback"],
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "HIL_SENSOR scheduling policy. actuator_feedback allows one primary sensor sample per received PX4 actuator generation; it is flow control and does not pause X-Plane physics."
+      },
+      hil_sensor_feedback_timeout_ms: {
+        type: "int",
+        default: 500,
+        min: 100,
+        max: 5000,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Response timeout while actuator_feedback mode waits for lockstep-enabled PX4 output. The plugin disconnects on timeout instead of adding another outstanding sensor sample."
+      },
       mavlink_gps_rate_hz: {
         type: "int",
         default: 20,
