@@ -81,10 +81,15 @@ export PX4_SIM_HOSTNAME=<xplane-host-ip>
 make px4_sitl_default xplane_alia250
 ```
 
-For common WSL2 setups where X-Plane runs on Windows and PX4 runs inside WSL:
+For WSL2, use localhost in mirrored networking mode and the current Windows
+host gateway in NAT-compatible modes:
 
 ```bash
-export PX4_SIM_HOSTNAME=$(ip route | awk '/default/ {print $3; exit}')
+if [[ "$(wslinfo --networking-mode 2>/dev/null)" == "mirrored" ]]; then
+  export PX4_SIM_HOSTNAME=127.0.0.1
+else
+  export PX4_SIM_HOSTNAME=$(ip route | awk '/default/ {print $3; exit}')
+fi
 ```
 
 Run that `export` before the normal PX4 `make px4_sitl_default xplane_*`
@@ -134,8 +139,10 @@ official PX4 `main`, run:
 px4xplane --px4-path ~/PX4-Autopilot --restore-official
 ```
 
-If a wrong host IP was saved, rerun with `px4xplane --reset-ip`. For common
-setup or connection errors, see [Troubleshooting](docs/index.md#troubleshooting).
+The launcher refreshes automatically detected WSL addresses when the WSL
+network changes. Addresses entered manually remain saved; clear one with
+`px4xplane --reset-ip`. For common setup or connection errors, see
+[Troubleshooting](docs/index.md#troubleshooting).
 
 ## Status
 

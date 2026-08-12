@@ -552,7 +552,14 @@ normalize_ip_input() {
 }
 
 detect_wsl_host_ip() {
+    local networking_mode="${1:-unknown}"
     local detected
+
+    if [ "$networking_mode" = "mirrored" ]; then
+        echo "$DEFAULT_FALLBACK_IP"
+        return 0
+    fi
+
     detected="$(ip route 2>/dev/null | awk '/^default / {print $3; exit}')"
 
     if is_valid_ipv4 "$detected"; then
@@ -562,14 +569,35 @@ detect_wsl_host_ip() {
     fi
 }
 
+detect_wsl_networking_mode() {
+    local mode=""
+
+    if command -v wslinfo >/dev/null 2>&1; then
+        mode="$(wslinfo --networking-mode 2>/dev/null | head -n 1 | tr -d '\r' | tr '[:upper:]' '[:lower:]')"
+    fi
+
+    case "$mode" in
+        mirrored|nat|virtioproxy)
+            echo "$mode"
+            ;;
+        *)
+            echo "unknown"
+            ;;
+    esac
+}
+
 choose_px4_sim_ip() {
     local environment="$1"
     local auto_ip="$2"
     local default_ip="$3"
     local saved_ip="$4"
-    local prompt_text="$5"
+    local saved_source="$5"
+    local prompt_text="$6"
     local input
     local candidate=""
+    local candidate_source="auto"
+    local preferred_ip=""
+    local preferred_source="auto"
 
     auto_ip="$(normalize_ip_input "$auto_ip")"
     default_ip="$(normalize_ip_input "$default_ip")"
@@ -583,17 +611,33 @@ choose_px4_sim_ip() {
     if [ "$RESET_IP_MODE" = true ]; then
         info "Saved IP reset requested; ignoring previous PX4_SIM_HOSTNAME."
         saved_ip=""
+        saved_source=""
     elif [ -n "$saved_ip" ]; then
         if is_valid_ipv4 "$saved_ip"; then
-            info "Previous configuration found: $saved_ip"
+            if [ "$saved_source" = "manual" ]; then
+                preferred_ip="$saved_ip"
+                preferred_source="manual"
+                info "Previous manual PX4_SIM_HOSTNAME found: $saved_ip"
+            elif [ "$saved_ip" = "$auto_ip" ]; then
+                preferred_ip="$saved_ip"
+                preferred_source="auto"
+            else
+                warning "Saved auto IP '$saved_ip' no longer matches the current $environment IP '$auto_ip'; using current detection."
+            fi
         else
             warning "Saved PX4_SIM_HOSTNAME '$saved_ip' is invalid and will be ignored."
             saved_ip=""
+            saved_source=""
         fi
     fi
 
+    if [ -z "$preferred_ip" ]; then
+        preferred_ip="$auto_ip"
+        preferred_source="auto"
+    fi
+
     echo "$prompt_text"
-    echo "  Current/default: ${saved_ip:-$auto_ip}"
+    echo "  Current/default: $preferred_ip ($preferred_source)"
     echo "  Auto-detected:   $auto_ip"
     echo ""
     echo "Press Enter to use current/default, type 'a' for auto, 'r' to reset to default,"
@@ -604,30 +648,37 @@ choose_px4_sim_ip() {
 
     case "$input" in
         "")
-            candidate="${saved_ip:-$auto_ip}"
+            candidate="$preferred_ip"
+            candidate_source="$preferred_source"
             ;;
         [Aa])
             candidate="$auto_ip"
+            candidate_source="auto"
             ;;
         [Rr]|reset|RESET|default|DEFAULT)
             candidate="$default_ip"
+            candidate_source="auto"
             ;;
         *)
             candidate="$input"
+            candidate_source="manual"
             ;;
     esac
 
     if ! is_valid_ipv4 "$candidate"; then
         warning "Invalid IP '$candidate'. Falling back to $auto_ip."
         candidate="$auto_ip"
+        candidate_source="auto"
     fi
 
     if ! is_valid_ipv4 "$candidate"; then
         warning "Fallback IP '$candidate' is invalid. Using $DEFAULT_FALLBACK_IP."
         candidate="$DEFAULT_FALLBACK_IP"
+        candidate_source="auto"
     fi
 
     CHOSEN_PX4_SIM_IP="$candidate"
+    CHOSEN_PX4_SIM_IP_SOURCE="$candidate_source"
 }
 
 last_config_value() {
@@ -1419,14 +1470,20 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     echo ""
 
     # Try to auto-detect the Windows IP from WSL
-    AUTO_DETECTED_IP="$(detect_wsl_host_ip)"
+    WSL_NETWORKING_MODE="$(detect_wsl_networking_mode)"
+    AUTO_DETECTED_IP="$(detect_wsl_host_ip "$WSL_NETWORKING_MODE")"
     SAVED_IP="$(last_config_value PX4_SIM_HOSTNAME)"
+    SAVED_IP_SOURCE="$(last_config_value PX4_SIM_HOST_SOURCE)"
 
-    echo "💡 Tip: Find your Windows IP by running 'ipconfig' in PowerShell."
-    echo "   Look for 'Ethernet adapter vEthernet (WSL)' or similar."
+    info "WSL networking mode: $WSL_NETWORKING_MODE"
+    if [ "$WSL_NETWORKING_MODE" = "mirrored" ]; then
+        info "Mirrored networking uses Windows localhost (127.0.0.1)."
+    else
+        info "NAT/compatible networking uses the current Windows host gateway from the WSL route table."
+    fi
     echo ""
     highlight "PX4/X-Plane network target"
-    choose_px4_sim_ip "WSL host" "$AUTO_DETECTED_IP" "$AUTO_DETECTED_IP" "$SAVED_IP" "Choose the Windows host IPv4 address for X-Plane."
+    choose_px4_sim_ip "WSL host" "$AUTO_DETECTED_IP" "$AUTO_DETECTED_IP" "$SAVED_IP" "$SAVED_IP_SOURCE" "Choose the Windows host IPv4 address for X-Plane."
     PX4_SIM_HOSTNAME="$CHOSEN_PX4_SIM_IP"
     info "Using PX4_SIM_HOSTNAME: $PX4_SIM_HOSTNAME"
 else
@@ -1437,6 +1494,7 @@ else
 
     # Check if user had previous configuration
     SAVED_IP="$(last_config_value PX4_SIM_HOSTNAME)"
+    SAVED_IP_SOURCE="$(last_config_value PX4_SIM_HOST_SOURCE)"
     AUTO_DETECTED_IP="127.0.0.1"
 
     info "Auto-detected IP: $AUTO_DETECTED_IP (localhost)"
@@ -1447,7 +1505,7 @@ else
     echo "   If X-Plane runs on a different machine, enter that machine's IP address."
     echo ""
     highlight "PX4/X-Plane network target"
-    choose_px4_sim_ip "native Linux" "$AUTO_DETECTED_IP" "$DEFAULT_FALLBACK_IP" "$SAVED_IP" "Choose the X-Plane host IPv4 address."
+    choose_px4_sim_ip "native Linux" "$AUTO_DETECTED_IP" "$DEFAULT_FALLBACK_IP" "$SAVED_IP" "$SAVED_IP_SOURCE" "Choose the X-Plane host IPv4 address."
     PX4_SIM_HOSTNAME="$CHOSEN_PX4_SIM_IP"
     info "Using PX4_SIM_HOSTNAME: $PX4_SIM_HOSTNAME"
 fi
@@ -1469,6 +1527,7 @@ PREVIOUS_AIRFRAME_HASH="$(last_config_value LAST_AIRFRAME_HASH)"
 
 # Save the IP; the selected platform and airframe fingerprint are appended after selection.
 echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
+echo "PX4_SIM_HOST_SOURCE=${CHOSEN_PX4_SIM_IP_SOURCE:-auto}" >> "$CONFIG_FILE"
 export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
 success "IP address configured: $PX4_SIM_HOSTNAME"
 

@@ -37,8 +37,10 @@ export PX4_SIM_HOSTNAME=<xplane-host-ip>
 ```
 
 Also allow inbound TCP `4560` on the X-Plane host firewall. The `px4xplane`
-launcher can auto-detect common WSL2 host IPs, and
-`px4xplane --reset-ip` clears a saved wrong IP and asks again.
+launcher distinguishes mirrored and NAT-compatible WSL2 networking, refreshes
+automatically detected addresses when the WSL network changes, and preserves
+explicitly entered remote-host addresses. `px4xplane --reset-ip` clears a
+manual address and asks again.
 
 ## Troubleshooting
 
