@@ -70,6 +70,7 @@ set(SOURCES
     src/ConnectionStatusHUD.cpp
     src/DataRefManager.cpp
     src/HILSensorFlowController.cpp
+    src/HILSensorResampler.cpp
     src/MAVLinkManager.cpp
     src/px4xplane.cpp
     src/TimeManager.cpp
@@ -91,6 +92,7 @@ set(HEADERS
     include/DataRefManager.h
     include/DataRefProvider.h
     include/HILSensorFlowController.h
+    include/HILSensorResampler.h
     include/MAVLinkManager.h
     include/TimeManager.h
     include/TimestampProvider.h
@@ -602,6 +604,17 @@ if(PX4XPLANE_BUILD_TESTS)
     )
     px4xplane_enable_test_assertions(hil_sensor_flow_controller_test)
     add_test(NAME hil_sensor_flow_controller_test COMMAND hil_sensor_flow_controller_test)
+
+    add_executable(hil_sensor_resampler_test
+        tests/hil_sensor_resampler_test.cpp
+        src/HILSensorFlowController.cpp
+        src/HILSensorResampler.cpp
+    )
+    target_include_directories(hil_sensor_resampler_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+    )
+    px4xplane_enable_test_assertions(hil_sensor_resampler_test)
+    add_test(NAME hil_sensor_resampler_test COMMAND hil_sensor_resampler_test)
 
     add_executable(timestamp_provider_test
         tests/timestamp_provider_test.cpp

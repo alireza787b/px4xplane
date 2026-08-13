@@ -481,7 +481,7 @@ size_t ConnectionManager::getPendingSendBytes() {
 }
 
 
-void ConnectionManager::receiveData() {
+void ConnectionManager::receiveData(uint32_t initialWaitUsec) {
     if (!connected) return;
 
     if (!flushSendQueue()) {
@@ -499,8 +499,9 @@ void ConnectionManager::receiveData() {
         FD_ZERO(&readSet);
         FD_SET(newsockfd, &readSet);
         struct timeval timeout;
-        timeout.tv_sec = 0; // Zero seconds
-        timeout.tv_usec = 0; // Zero microseconds
+        const uint32_t waitUsec = passes == 0 ? initialWaitUsec : 0;
+        timeout.tv_sec = static_cast<long>(waitUsec / 1000000U);
+        timeout.tv_usec = static_cast<long>(waitUsec % 1000000U);
 
         // Use select to check if there is data available to read
 #if IBM
