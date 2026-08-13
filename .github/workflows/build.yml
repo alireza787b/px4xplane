@@ -106,7 +106,7 @@ jobs:
             ls -la build/mac/Release/px4xplane/64/
             test -f build/mac/Release/px4xplane/64/mac.xpl
             file build/mac/Release/px4xplane/64/mac.xpl
-            lipo -verify_arch x86_64 arm64 build/mac/Release/px4xplane/64/mac.xpl
+            lipo build/mac/Release/px4xplane/64/mac.xpl -verify_arch x86_64 arm64
           fi
           echo "✓ Build artifacts verified successfully"
 
