@@ -58,6 +58,7 @@ diagnostic use:
 - prop-brake policy fields
 - accelerometer calibration/offset fields
 - MAVLink target message rates
+- HIL sensor flow-control mode and feedback deadlines
 
 Some of these values are technically reparsed by `Reload Config`, but changing
 them while armed or mid-flight is not supported. Disconnect PX4 SITL, reload,

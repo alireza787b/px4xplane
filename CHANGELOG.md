@@ -11,6 +11,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.2.0] - 2026-08-13
+
+### Added
+
+- Added bounded actuator-feedback scheduling for primary HIL sensor messages,
+  including explicit bootstrap, transmission, response, protocol, timestamp,
+  and queue-overflow failure handling.
+- Added offline tests for byte-queue completion, actuator-feedback sequencing,
+  and long-frame sensor resampling, and enabled them in cross-platform CI.
+- Added compact bridge diagnostics for feedback and resampler health.
+
+### Fixed
+
+- Split long X-Plane frame intervals into primary IMU substeps no longer than
+  15 ms while preserving the complete elapsed simulation time. This prevents
+  PX4 from receiving a full long-frame delta velocity with a constrained EKF
+  integration interval, which caused false vertical-velocity excursions.
+- Kept magnetometer, pressure, differential-pressure, and temperature updates
+  on real X-Plane frame endpoints instead of synthesizing secondary sensor
+  measurements between frames.
+- Made socket writes non-blocking and bounded the per-frame feedback pump so
+  PX4 flow control cannot stall the X-Plane flight-loop thread.
+
+### Changed
+
+- Made `actuator_feedback` the default HIL sensor scheduling mode for both new
+  and existing configs that do not explicitly select a mode. The `async` mode
+  remains available for controlled compatibility testing.
+- Restored the release config to the Alia 250 default with diagnostics disabled.
+
 ## [4.1.3] - 2026-07-06
 
 ### Changed

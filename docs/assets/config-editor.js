@@ -153,11 +153,11 @@
       },
       hil_sensor_flow_control: {
         type: "string",
-        default: "async",
+        default: "actuator_feedback",
         enum: ["async", "actuator_feedback"],
         group: "mavlink_rates",
         reload_policy: "reconnect_before_flight",
-        description: "HIL_SENSOR scheduling policy. actuator_feedback allows one primary sensor sample per received PX4 actuator generation and safely interpolates long frame intervals; it is flow control and does not pause X-Plane physics."
+        description: "HIL_SENSOR scheduling policy. actuator_feedback is the release default: it allows one primary sensor sample per received PX4 actuator generation and safely interpolates long frame intervals. async is for controlled compatibility tests and does not provide bounded-interval protection."
       },
       hil_sensor_feedback_timeout_ms: {
         type: "int",

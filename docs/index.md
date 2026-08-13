@@ -59,6 +59,9 @@ manual address and asks again.
   `Log.txt` for plugin load errors.
 - Custom mapping behaves unexpectedly: validate `px4xplane/64/config.ini` from
   the plugin menu or with `python3 tools/validate_config.py config/config.ini`.
+- Actuator-feedback or sensor-queue fault: update to current official PX4
+  `main`, restore the packaged `actuator_feedback` setting, reduce X-Plane load,
+  and reconnect. The bridge fails closed rather than dropping simulation time.
 - Build problems: use the [Build Guide troubleshooting section](BUILD.md#troubleshooting).
 - Unresolved runtime issue: open a
   [GitHub issue](https://github.com/alireza787b/px4xplane/issues) with the
@@ -66,7 +69,7 @@ manual address and asks again.
 
 ## Validation and Maintainer Notes
 
-- Use the `v4.1.3` package with official PX4 `main`. X-Plane SITL support is
+- Use the `v4.2.0` package with official PX4 `main`. X-Plane SITL support is
   merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 - The launcher uses official PX4 `main` as the base. Its default is the official

@@ -167,7 +167,7 @@ int ConfigManager::mavlink_sensor_rate_hz = 200;    // HIL_SENSOR (IMU + baro)
 int ConfigManager::mavlink_gps_rate_hz = 20;        // HIL_GPS
 int ConfigManager::mavlink_state_rate_hz = 10;      // HIL_STATE_QUATERNION
 int ConfigManager::mavlink_rc_rate_hz = 10;         // HIL_RC_INPUTS
-std::string ConfigManager::hil_sensor_flow_control = "async";
+std::string ConfigManager::hil_sensor_flow_control = "actuator_feedback";
 int ConfigManager::hil_sensor_feedback_timeout_ms = 500;
 int ConfigManager::hil_sensor_feedback_startup_timeout_ms = 10000;
 float ConfigManager::gps_horizontal_accuracy_m = 1.5f;
@@ -275,7 +275,7 @@ void ConfigManager::loadConfiguration() {
     mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 20);
     mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 10);
     mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 10);
-    hil_sensor_flow_control = ini.GetValue("", "hil_sensor_flow_control", "async");
+    hil_sensor_flow_control = ini.GetValue("", "hil_sensor_flow_control", "actuator_feedback");
     hil_sensor_feedback_timeout_ms =
         (int)ini.GetLongValue("", "hil_sensor_feedback_timeout_ms", 500);
     hil_sensor_feedback_startup_timeout_ms =
@@ -302,8 +302,8 @@ void ConfigManager::loadConfiguration() {
     }
     if (hil_sensor_flow_control != "async" &&
         hil_sensor_flow_control != "actuator_feedback") {
-        XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor flow control, using async\n");
-        hil_sensor_flow_control = "async";
+        XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor flow control, using actuator_feedback\n");
+        hil_sensor_flow_control = "actuator_feedback";
     }
     if (hil_sensor_feedback_timeout_ms < 100 || hil_sensor_feedback_timeout_ms > 5000) {
         XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor feedback timeout, using 500 ms\n");

@@ -149,6 +149,15 @@ PX4 actuator outputs are normalized floating-point setpoints, so px4xplane curre
 `autoPropBrakes`
 : X-Plane engine indices that can be braked or feathered when commanded low. Use only when validated for the airframe.
 
+`hil_sensor_flow_control`
+: Primary HIL sensor scheduling policy. Keep the release default, `actuator_feedback`, for normal PX4 SITL use. It permits one primary sensor sample per PX4 actuator response and splits long X-Plane frame intervals into bounded IMU substeps without inventing extra X-Plane physics states. `async` is intended only for controlled compatibility comparisons.
+
+`hil_sensor_feedback_timeout_ms`
+: Deadline for a queued sensor transmission or the corresponding PX4 actuator response after feedback is established. A timeout disconnects the bridge instead of allowing stale or unbounded sensor traffic.
+
+`hil_sensor_feedback_startup_timeout_ms`
+: Deadline for establishing the initial PX4 actuator-feedback handshake. Keep the default unless a measured startup trace demonstrates that another value is required.
+
 ## Reload Policy
 
 Safe live-reload fields are limited to compact diagnostics, HUD visibility, FPS warning settings, and camera definitions.
@@ -161,7 +170,7 @@ Treat these as setup-time fields:
 - aircraft match tokens
 - prop-brake configuration
 - accelerometer calibration/offset fields
-- MAVLink target rates
+- MAVLink target rates and HIL sensor flow-control settings
 
 For setup-time fields, disconnect PX4 SITL, save the new `config.ini`, replace `px4xplane/64/config.ini`, reload config in X-Plane, reconnect PX4, and then fly. Do not change actuator mappings while armed.
 
@@ -187,6 +196,12 @@ Before judging flight behavior, confirm:
 - The connection HUD has no aircraft/config mismatch warning.
 - PX4 started the intended `SYS_AUTOSTART` target.
 - QGroundControl actuator outputs match the expected channel order.
+
+For timing investigations, temporarily enable `diagnostic_log_enabled` and
+inspect `BRIDGE_DIAG` in X-Plane `Log.txt`. Healthy `actuator_feedback` operation
+shows `established=1`, `max_out=1`, zero timeout/protocol counters, no resampler
+fault, and a steady-state pending count of zero. Reduce simulator load if the
+bridge reports that PX4 feedback cannot drain the bounded queue.
 
 ## Test in Steps
 
