@@ -121,7 +121,13 @@ jobs:
           brew install zip || true
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+        shell: bash
+        run: |
+          cmake_args=(-B build -DCMAKE_BUILD_TYPE=Release)
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            cmake_args+=('-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64')
+          fi
+          cmake "${cmake_args[@]}"
 
       - name: Build project
         run: |
@@ -161,6 +167,11 @@ jobs:
             echo "Contents of px4xplane/64/:"
             ls -la px4xplane/64/ || echo "Directory px4xplane/64/ does not exist"
             exit 1
+          fi
+
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            file px4xplane/64/mac.xpl
+            lipo -verify_arch x86_64 arm64 px4xplane/64/mac.xpl
           fi
 
           echo "✓ Plugin structure verified"

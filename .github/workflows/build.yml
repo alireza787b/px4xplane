@@ -73,8 +73,13 @@ jobs:
 
       # Step 3: Configure CMake
       - name: Configure CMake
+        shell: bash
         run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release -DPX4XPLANE_BUILD_TESTS=ON
+          cmake_args=(-B build -DCMAKE_BUILD_TYPE=Release -DPX4XPLANE_BUILD_TESTS=ON)
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            cmake_args+=('-DCMAKE_OSX_ARCHITECTURES=x86_64;arm64')
+          fi
+          cmake "${cmake_args[@]}"
 
       # Step 4: Build project
       - name: Build project
@@ -100,9 +105,8 @@ jobs:
           elif [ "${{ runner.os }}" == "macOS" ]; then
             ls -la build/mac/Release/px4xplane/64/
             test -f build/mac/Release/px4xplane/64/mac.xpl
-            # Verify Universal Binary
             file build/mac/Release/px4xplane/64/mac.xpl
-            lipo -info build/mac/Release/px4xplane/64/mac.xpl || true
+            lipo -verify_arch x86_64 arm64 build/mac/Release/px4xplane/64/mac.xpl
           fi
           echo "✓ Build artifacts verified successfully"
 
