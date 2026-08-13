@@ -149,7 +149,7 @@
         max: 500,
         group: "mavlink_rates",
         reload_policy: "reconnect_before_flight",
-        description: "Target HIL_SENSOR rate. Actual rate is bounded by X-Plane callback rate."
+        description: "Target HIL_SENSOR capture rate. In actuator_feedback mode, long callback intervals may produce additional bounded interpolation samples to protect primary IMU integration."
       },
       hil_sensor_flow_control: {
         type: "string",
@@ -157,7 +157,7 @@
         enum: ["async", "actuator_feedback"],
         group: "mavlink_rates",
         reload_policy: "reconnect_before_flight",
-        description: "HIL_SENSOR scheduling policy. actuator_feedback allows one primary sensor sample per received PX4 actuator generation; it is flow control and does not pause X-Plane physics."
+        description: "HIL_SENSOR scheduling policy. actuator_feedback allows one primary sensor sample per received PX4 actuator generation and safely interpolates long frame intervals; it is flow control and does not pause X-Plane physics."
       },
       hil_sensor_feedback_timeout_ms: {
         type: "int",

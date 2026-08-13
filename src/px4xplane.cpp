@@ -19,6 +19,7 @@
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
 #include "HILSensorFlowController.h"
+#include "HILSensorResampler.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -932,14 +933,15 @@ void handleAirframeSelection(const std::string& airframeName) {
 // These are loaded from ConfigManager and converted to periods
 // Using simulation time ensures consistent timing regardless of rendering FPS
 //
-// Actual rates are bounded by the X-Plane flight-loop rate. In
-// actuator_feedback mode, primary sensor traffic is also bounded by PX4
-// actuator responses so one-deep PX4 sensor queues are not overrun.
+// Secondary message rates are bounded by the X-Plane flight-loop rate. In
+// actuator_feedback mode, long primary-sensor frame intervals are split into
+// bounded interpolated samples while preserving one-response-per-sensor flow.
 static float TARGET_SENSOR_PERIOD = 0.005f;      // Default 200 Hz (updated from config)
 static float TARGET_GPS_PERIOD = 0.1f;           // Default 10 Hz (updated from config)
 static float TARGET_STATE_QUAT_PERIOD = 0.02f;   // Default 50 Hz (updated from config)
 static float TARGET_RC_PERIOD = 0.02f;           // Default 50 Hz (updated from config)
 static HILSensorFlowController gHILSensorFlowController;
+static HILSensorResampler gHILSensorResampler;
 
 // Initialize periods from config (called once during plugin startup)
 void initializeMessagePeriods() {
@@ -1069,9 +1071,9 @@ void maybeLogRateLimitWarning(float currentSimTime, float frameP50Ms)
 	appendLimitedRate(limited, sizeof(limited), "state", ConfigManager::mavlink_state_rate_hz, frameHz);
 	appendLimitedRate(limited, sizeof(limited), "rc", ConfigManager::mavlink_rc_rate_hz, frameHz);
 
-	char buf[320];
+	char buf[512];
 	snprintf(buf, sizeof(buf),
-		"px4xplane: [BRIDGE_RATE_WARNING] target rate exceeds observed frame rate: frame_p50=%.1fHz limited=%s; bridge sends at most one sample per X-Plane frame\n",
+		"px4xplane: [BRIDGE_RATE_WARNING] target rate exceeds observed frame rate: frame_p50=%.1fHz limited=%s; secondary streams remain frame-limited while primary IMU safety substeps are generated only for long frames\n",
 		frameHz, limited[0] ? limited : "none");
 	XPLMDebugString(buf);
 
@@ -1166,6 +1168,105 @@ bool handleSensorFlowFaultIfNeeded()
 	return true;
 }
 
+constexpr uint64_t SENSOR_FLOW_PUMP_BUDGET_USEC = 2000;
+constexpr uint32_t SENSOR_FLOW_POLL_SLICE_USEC = 500;
+
+void observeSensorFlow(uint32_t waitUsec = 0)
+{
+	ConnectionManager::receiveData(waitUsec);
+	if (!ConnectionManager::isConnected()) {
+		return;
+	}
+
+	const uint64_t nowUsec = monotonicTimeUsec();
+	const uint64_t pendingToken = gHILSensorFlowController.getPendingCompletionToken();
+	gHILSensorFlowController.observeTransmission(
+		ConnectionManager::isSendComplete(pendingToken), nowUsec);
+	gHILSensorFlowController.observeActuator(
+		MAVLinkManager::getHILActuatorControlsGeneration(),
+		MAVLinkManager::hilActuatorControlsData.timestamp,
+		MAVLinkManager::hilActuatorControlsData.flags);
+}
+
+bool handleSensorResamplerFaultIfNeeded()
+{
+	const auto fault = gHILSensorResampler.getFault();
+	if (fault == HILSensorResampler::Fault::None) {
+		return false;
+	}
+
+	const char* logMessage = fault == HILSensorResampler::Fault::BacklogOverflow
+		? "px4xplane: Primary sensor interpolation backlog overflow; disconnecting instead of dropping simulation time.\n"
+		: "px4xplane: Primary sensor interpolation timestamp fault; disconnecting.\n";
+	const char* userMessage = fault == HILSensorResampler::Fault::BacklogOverflow
+		? "PX4 sensor feedback cannot keep up. Reduce simulator load and reconnect."
+		: "PX4 sensor timestamp fault. Reconnect SITL.";
+
+	XPLMDebugString(logMessage);
+	ConnectionManager::disconnect();
+	ConnectionManager::setLastMessage(userMessage);
+	return true;
+}
+
+bool drainScheduledHILSensorSamples(bool& sensorSentThisFrame)
+{
+	const uint64_t startUsec = monotonicTimeUsec();
+
+	while (ConnectionManager::isConnected() && gHILSensorResampler.hasPending()) {
+		const uint64_t nowUsec = monotonicTimeUsec();
+		if (!gHILSensorFlowController.canSendSensor(nowUsec)) {
+			if (handleSensorFlowFaultIfNeeded()) {
+				return false;
+			}
+
+			const uint64_t elapsedUsec = nowUsec - startUsec;
+			if (elapsedUsec >= SENSOR_FLOW_PUMP_BUDGET_USEC) {
+				break;
+			}
+
+			const uint64_t remainingUsec = SENSOR_FLOW_PUMP_BUDGET_USEC - elapsedUsec;
+			const uint32_t waitUsec = static_cast<uint32_t>((std::min)(
+				remainingUsec, static_cast<uint64_t>(SENSOR_FLOW_POLL_SLICE_USEC)));
+			observeSensorFlow(waitUsec);
+			continue;
+		}
+
+		const ScheduledHILSensorSample scheduled = gHILSensorResampler.front();
+		const auto sensorSend = MAVLinkManager::sendHILSensorAt(
+			scheduled.sample, scheduled.timestamp_usec, 0,
+			scheduled.frame_endpoint);
+		if (!sensorSend) {
+			return false;
+		}
+
+		const uint64_t queuedUsec = monotonicTimeUsec();
+		gHILSensorFlowController.markSensorQueued(
+			MAVLinkManager::getHILActuatorControlsGeneration(),
+			sensorSend.timestamp_usec,
+			sensorSend.completion_token,
+			queuedUsec);
+		gHILSensorFlowController.observeTransmission(
+			ConnectionManager::isSendComplete(sensorSend.completion_token),
+			queuedUsec);
+		gHILSensorResampler.popFront();
+
+		++diagnosticSensorCount;
+		sensorSentThisFrame = true;
+
+		// Bootstrap samples do not yet have a response to wait for. Poll without
+		// blocking so the first eligible PX4 response establishes feedback as
+		// soon as it arrives. Once established, the next loop iteration waits
+		// within the fixed per-frame budget before sending another sample.
+		if (gHILSensorResampler.hasPending()) {
+			observeSensorFlow();
+		}
+	}
+
+	return ConnectionManager::isConnected() &&
+		!handleSensorFlowFaultIfNeeded() &&
+		!handleSensorResamplerFaultIfNeeded();
+}
+
 void clearIntervalDiagnosticCounters()
 {
 	diagnosticSensorCount = 0;
@@ -1247,6 +1348,7 @@ void resetFlightLoopTimers() {
 	lastDiagnosticLogTime = 0.0f;
 	lastFlightTime = 0.0f;
 	gHILSensorFlowController.reset(MAVLinkManager::getHILActuatorControlsGeneration());
+	gHILSensorResampler.reset();
 	resetDiagnosticCounters();
 	XPLMDebugString("px4xplane: Flight loop timers reset\n");
 }
@@ -1286,9 +1388,10 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 	const float ias = DataRefManager::getFloat("sim/flightmodel/position/indicated_airspeed");
 	const float tas = DataRefManager::getFloat("sim/flightmodel/position/true_airspeed");
 	const auto flowDiagnostics = gHILSensorFlowController.getDiagnostics();
+	const auto resampleDiagnostics = gHILSensorResampler.getDiagnostics();
 	const uint64_t actuatorAgeUsec = MAVLinkManager::getHILActuatorControlsAgeUsec();
 
-	char buf[1800];
+	char buf[2200];
 	snprintf(buf, sizeof(buf),
 		"px4xplane: [BRIDGE_DIAG] sim=%.3f cb_dt=%.4f fps_p50=%.1f counter=%d "
 		"sent_hz sensor=%.1f gps=%.1f state=%.1f rc=%.1f "
@@ -1300,6 +1403,7 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 		"raw_g=[%.4f,%.4f,%.4f] psi=%.2f mag_psi=%.2f ias_kt=%.2f tas_ms=%.2f "
 		"flow=%s queued/tx/ack/bootstrap/blocked/bootstrap_to/tx_to/response_to/protocol/max_out=%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu "
 		"tx_pending=%d outstanding=%d established=%d actuator_gen=%llu actuator_ts=%llu flags=%llu "
+		"resample frames/split/generated/consumed/pending/max_pending/max_dt_us/fault=%llu/%llu/%llu/%llu/%zu/%zu/%llu/%d "
 		"actuator_age_us=%llu tx_pending=%zu\n",
 		currentSimTime, callbackDt, fps, counter,
 		diagnosticSensorCount / elapsed,
@@ -1343,6 +1447,14 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 		static_cast<unsigned long long>(MAVLinkManager::getHILActuatorControlsGeneration()),
 		static_cast<unsigned long long>(MAVLinkManager::hilActuatorControlsData.timestamp),
 		static_cast<unsigned long long>(MAVLinkManager::hilActuatorControlsData.flags),
+		static_cast<unsigned long long>(resampleDiagnostics.frames_captured),
+		static_cast<unsigned long long>(resampleDiagnostics.split_frames),
+		static_cast<unsigned long long>(resampleDiagnostics.samples_generated),
+		static_cast<unsigned long long>(resampleDiagnostics.samples_consumed),
+		resampleDiagnostics.pending_samples,
+		resampleDiagnostics.max_pending_samples,
+		static_cast<unsigned long long>(resampleDiagnostics.max_generated_interval_usec),
+		static_cast<int>(resampleDiagnostics.fault),
 		static_cast<unsigned long long>(actuatorAgeUsec),
 		ConnectionManager::getPendingSendBytes());
 	XPLMDebugString(buf);
@@ -1451,14 +1563,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	if (isSimPausedOrStalled(currentSimTime, inElapsedSinceLastCall)) {
 		handleSimPausedOrStalled(currentSimTime, inElapsedSinceLastCall);
-		ConnectionManager::receiveData();
-		const uint64_t pendingToken = gHILSensorFlowController.getPendingCompletionToken();
-		gHILSensorFlowController.observeTransmission(
-			ConnectionManager::isSendComplete(pendingToken), monotonicTimeUsec());
-		gHILSensorFlowController.observeActuator(
-			MAVLinkManager::getHILActuatorControlsGeneration(),
-			MAVLinkManager::hilActuatorControlsData.timestamp,
-			MAVLinkManager::hilActuatorControlsData.flags);
+		observeSensorFlow();
 		if (handleSensorFlowFaultIfNeeded()) {
 			return -1.0f;
 		}
@@ -1482,18 +1587,11 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 	// Consume and apply the response to the previous sensor update before sending
 	// another one. X-Plane still advances freely, so this is flow control rather
 	// than strict physics lockstep.
-	ConnectionManager::receiveData();
+	observeSensorFlow();
 	if (!ConnectionManager::isConnected()) {
 		return -1.0f;
 	}
 	const uint64_t wallTimeUsec = monotonicTimeUsec();
-	const uint64_t pendingToken = gHILSensorFlowController.getPendingCompletionToken();
-	gHILSensorFlowController.observeTransmission(
-		ConnectionManager::isSendComplete(pendingToken), wallTimeUsec);
-	gHILSensorFlowController.observeActuator(
-		MAVLinkManager::getHILActuatorControlsGeneration(),
-		MAVLinkManager::hilActuatorControlsData.timestamp,
-		MAVLinkManager::hilActuatorControlsData.flags);
 	if (handleSensorFlowFaultIfNeeded()) {
 		return -1.0f;
 	}
@@ -1501,8 +1599,32 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	bool sensorSentThisFrame = false;
 
-	// Send sensor data at target rate
-	if ((currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD &&
+	const bool actuatorFeedback =
+		ConfigManager::hil_sensor_flow_control == "actuator_feedback";
+	const bool sensorCaptureDue =
+		(currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD;
+
+	if (actuatorFeedback) {
+		if (sensorCaptureDue) {
+			const uint64_t frameTimestampUsec = TimestampProvider::getTimestampUsec();
+			const HILSensorSample frameSample = MAVLinkManager::captureHILSensorSample(0);
+			if (!gHILSensorResampler.appendFrame(frameTimestampUsec, frameSample)) {
+				handleSensorResamplerFaultIfNeeded();
+				return -1.0f;
+			}
+
+			recordSendTiming(lastSensorSendTime, currentSimTime,
+				TARGET_SENSOR_PERIOD, gSensorTimingDiagnostics);
+			lastSensorSendTime = currentSimTime;
+		}
+
+		if (!drainScheduledHILSensorSamples(sensorSentThisFrame)) {
+			return -1.0f;
+		}
+
+		// Apply the newest response produced by any same-frame safety substeps.
+		DataRefManager::overrideActuators();
+	} else if (sensorCaptureDue &&
 		gHILSensorFlowController.canSendSensor(wallTimeUsec)) {
 		const auto sensorSend = MAVLinkManager::sendHILSensor(0);
 		if (!sensorSend) {
@@ -1517,40 +1639,18 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		gHILSensorFlowController.observeTransmission(
 			ConnectionManager::isSendComplete(sensorSend.completion_token),
 			wallTimeUsec);
-		recordSendTiming(lastSensorSendTime, currentSimTime, TARGET_SENSOR_PERIOD, gSensorTimingDiagnostics);
-		diagnosticSensorCount++;
+		recordSendTiming(lastSensorSendTime, currentSimTime,
+			TARGET_SENSOR_PERIOD, gSensorTimingDiagnostics);
+		++diagnosticSensorCount;
 		sensorSentThisFrame = true;
-
-		// Statistics tracking for debugging
-		static int sensorMessageCount = 0;
-		static float sumRate = 0.0f;
-		sensorMessageCount++;
-
-		float actualDt_sec = currentSimTime - lastSensorSendTime;
-		if (actualDt_sec > 0.0f) {
-			float actualRate = 1.0f / actualDt_sec;
-			sumRate += actualRate;
-		}
-
-		// Log statistics every 1000 messages (~5 seconds at 200Hz)
-		if (ConfigManager::debug_log_sensor_timing && sensorMessageCount % 1000 == 0) {
-			float avgRate = sumRate / 1000.0f;
-			char buf[256];
-			snprintf(buf, sizeof(buf),
-				"px4xplane: [%.1fs] HIL_SENSOR: %d msgs, avg %.1f Hz (target %d Hz)\n",
-				currentSimTime, sensorMessageCount, avgRate, ConfigManager::mavlink_sensor_rate_hz);
-			XPLMDebugString(buf);
-			sumRate = 0.0f;
-		}
-
 		lastSensorSendTime = currentSimTime;
 	}
 	if (handleSensorFlowFaultIfNeeded()) {
 		return -1.0f;
 	}
 
-	const bool secondaryMessagesAllowed =
-		ConfigManager::hil_sensor_flow_control == "async" || sensorSentThisFrame;
+	const bool secondaryMessagesAllowed = !actuatorFeedback ||
+		(sensorSentThisFrame && !gHILSensorResampler.hasPending());
 
 	// Keep secondary sensor timestamps behind the primary PX4 clock update when
 	// actuator-feedback flow control is waiting for a response.

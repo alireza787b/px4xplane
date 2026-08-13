@@ -801,9 +801,41 @@ Eigen::Vector3f MAVLinkManager::computeAcceleration() {
  * @see setPressureData
  * @see setMagneticFieldData
  */
-MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensor(uint8_t sensor_id = 0) {
+HILSensorSample MAVLinkManager::captureHILSensorSample(uint8_t sensor_id) {
+	mavlink_hil_sensor_t hil_sensor = {};
+	setAccelerationData(hil_sensor);
+	setGyroData(hil_sensor);
+	setPressureData(hil_sensor, sensor_id);
+	setMagneticFieldData(hil_sensor);
+	hil_sensor.temperature = dataRefFloat("sim/cockpit2/temperature/outside_air_temp_degc");
 
-	if (!ConnectionManager::isConnected()) return {};
+	HILSensorSample sample;
+	sample.xacc = hil_sensor.xacc;
+	sample.yacc = hil_sensor.yacc;
+	sample.zacc = hil_sensor.zacc;
+	sample.xgyro = hil_sensor.xgyro;
+	sample.ygyro = hil_sensor.ygyro;
+	sample.zgyro = hil_sensor.zgyro;
+	sample.xmag = hil_sensor.xmag;
+	sample.ymag = hil_sensor.ymag;
+	sample.zmag = hil_sensor.zmag;
+	sample.abs_pressure = hil_sensor.abs_pressure;
+	sample.diff_pressure = hil_sensor.diff_pressure;
+	sample.pressure_alt = hil_sensor.pressure_alt;
+	sample.temperature = hil_sensor.temperature;
+	return sample;
+}
+
+MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensor(uint8_t sensor_id) {
+	const uint64_t timestampUsec = TimestampProvider::getTimestampUsec();
+	return sendHILSensorAt(captureHILSensorSample(sensor_id), timestampUsec, sensor_id);
+}
+
+MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensorAt(
+	const HILSensorSample& sample, uint64_t timestamp_usec, uint8_t sensor_id,
+	bool include_secondary_sensors) {
+
+	if (!ConnectionManager::isConnected() || timestamp_usec == 0) return {};
 
 	static uint64_t lastSensorTime = 0;
 	static int sensorCount = 0;
@@ -820,11 +852,7 @@ MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensor(uint8_t sensor
 	mavlink_message_t msg;
 	mavlink_hil_sensor_t hil_sensor = {};  // Zero-initialize to prevent garbage values
 
-	// Get high-precision timestamp using delta-based accumulation
-	// This fixes the float precision loss that caused EKF2 time_slip errors
-	// (X-Plane's float total_flight_time_sec loses precision after ~16.7 seconds)
-	uint64_t base_time_usec = TimestampProvider::getTimestampUsec();
-	hil_sensor.time_usec = base_time_usec;
+	hil_sensor.time_usec = timestamp_usec;
 
 	// Ensure timestamp is still monotonically increasing (safety check)
 	if (hil_sensor.time_usec <= lastSensorTime) {
@@ -833,12 +861,19 @@ MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensor(uint8_t sensor
 
 	hil_sensor.id = uint8_t(sensor_id);
 
-	setAccelerationData(hil_sensor);
-	setGyroData(hil_sensor);
-	setPressureData(hil_sensor, sensor_id);  // Pass sensor_id for independent barometer noise
-	setMagneticFieldData(hil_sensor);
-
-	hil_sensor.temperature = dataRefFloat("sim/cockpit2/temperature/outside_air_temp_degc");
+	hil_sensor.xacc = sample.xacc;
+	hil_sensor.yacc = sample.yacc;
+	hil_sensor.zacc = sample.zacc;
+	hil_sensor.xgyro = sample.xgyro;
+	hil_sensor.ygyro = sample.ygyro;
+	hil_sensor.zgyro = sample.zgyro;
+	hil_sensor.xmag = sample.xmag;
+	hil_sensor.ymag = sample.ymag;
+	hil_sensor.zmag = sample.zmag;
+	hil_sensor.abs_pressure = sample.abs_pressure;
+	hil_sensor.diff_pressure = sample.diff_pressure;
+	hil_sensor.pressure_alt = sample.pressure_alt;
+	hil_sensor.temperature = sample.temperature;
 
 	uint32_t fields_updated = 0;
 	fields_updated |= (1 << 0);  // HIL_SENSOR_UPDATED_XACC
@@ -847,15 +882,18 @@ MAVLinkManager::HILSensorSendResult MAVLinkManager::sendHILSensor(uint8_t sensor
 	fields_updated |= (1 << 3);  // HIL_SENSOR_UPDATED_XGYRO
 	fields_updated |= (1 << 4);  // HIL_SENSOR_UPDATED_YGYRO
 	fields_updated |= (1 << 5);  // HIL_SENSOR_UPDATED_ZGYRO
-	fields_updated |= (1 << 6);  // HIL_SENSOR_UPDATED_XMAG
-	fields_updated |= (1 << 7);  // HIL_SENSOR_UPDATED_YMAG
-	fields_updated |= (1 << 8);  // HIL_SENSOR_UPDATED_ZMAG
-	fields_updated |= (1 << 9);  // HIL_SENSOR_UPDATED_ABS_PRESSURE
-	fields_updated |= (1 << 10); // HIL_SENSOR_UPDATED_DIF_PRESSURE
-	// PX4 simulator_mavlink currently treats bit 11 as part of the baro source
-	// availability mask, even though it derives altitude from abs_pressure.
-	fields_updated |= (1 << 11); // HIL_SENSOR_UPDATED_PRESSURE_ALT
-	fields_updated |= (1 << 12); // HIL_SENSOR_UPDATED_TEMPERATURE
+
+	if (include_secondary_sensors) {
+		fields_updated |= (1 << 6);  // HIL_SENSOR_UPDATED_XMAG
+		fields_updated |= (1 << 7);  // HIL_SENSOR_UPDATED_YMAG
+		fields_updated |= (1 << 8);  // HIL_SENSOR_UPDATED_ZMAG
+		fields_updated |= (1 << 9);  // HIL_SENSOR_UPDATED_ABS_PRESSURE
+		fields_updated |= (1 << 10); // HIL_SENSOR_UPDATED_DIF_PRESSURE
+		// PX4 simulator_mavlink currently treats bit 11 as part of the baro source
+		// availability mask, even though it derives altitude from abs_pressure.
+		fields_updated |= (1 << 11); // HIL_SENSOR_UPDATED_PRESSURE_ALT
+		fields_updated |= (1 << 12); // HIL_SENSOR_UPDATED_TEMPERATURE
+	}
 
 	hil_sensor.fields_updated = fields_updated;
 
@@ -1507,13 +1545,14 @@ void MAVLinkManager::setGyroData(mavlink_hil_sensor_t& hil_sensor) {
  * secondary live pressure source instead of the primary height truth source.
  *
  * This function implements independent RNG streams for sensor IDs 0 and 1, but
- * the SITL bridge sends one HIL_SENSOR message per frame. X-Plane provides one
- * altitude source, and adding a second correlated barometer does not add useful
- * redundancy in lockstep simulation.
+ * the SITL bridge sends one physical sensor capture per frame. Safety
+ * interpolation may generate intermediate IMU-only HIL_SENSOR messages from
+ * adjacent captures. X-Plane provides one altitude source, and adding a second
+ * correlated barometer does not add useful redundancy in this simulation.
  *
  * Troubleshooting barometer switching:
  * 1. Verify CAL_BARO1_PRIO=0 in the airframe defaults.
- * 2. Check only one sendHILSensor() call per frame in the flight loop.
+ * 2. Check that only sensor ID 0 is enabled for the primary stream.
  * 3. Check GPS/baro covariance before changing EKF2_BARO_GATE.
  *
  * @param hil_sensor Reference to the HIL_SENSOR message where pressure data is set.

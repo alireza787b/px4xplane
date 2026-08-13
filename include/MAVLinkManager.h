@@ -6,6 +6,7 @@
 #include "../lib/XYZgeomag/src/XYZgeomag.hpp"
 #include <random>
 #include <cmath>  // for trigonometric functions and M_PI
+#include "HILSensorResampler.h"
 
 class DataRefProvider;
 
@@ -21,6 +22,11 @@ public:
     };
 
     static HILSensorSendResult sendHILSensor(uint8_t sensor_id);
+    static HILSensorSample captureHILSensorSample(uint8_t sensor_id);
+    static HILSensorSendResult sendHILSensorAt(const HILSensorSample& sample,
+                                               uint64_t timestamp_usec,
+                                               uint8_t sensor_id,
+                                               bool include_secondary_sensors = true);
     static void sendHILGPS();
     static void sendHILStateQuaternion();
     static void sendHILRCInputs();

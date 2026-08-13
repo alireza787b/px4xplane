@@ -24,7 +24,7 @@ public:
     static bool flushSendQueue();
     static bool isSendComplete(uint64_t completionToken);
     static size_t getPendingSendBytes();
-    static void receiveData();
+    static void receiveData(uint32_t initialWaitUsec = 0);
     static bool isConnected();
     static const std::string& getStatus();
     static const std::string& getPeerEndpoint();
