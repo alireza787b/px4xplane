@@ -13,6 +13,8 @@ public:
 
     enum class Fault {
         None,
+        BootstrapTimeout,
+        TransmissionTimeout,
         ResponseTimeout,
         MissingLockstepFlag
     };
@@ -21,7 +23,10 @@ public:
         uint64_t sensors_queued{0};
         uint64_t sensors_transmitted{0};
         uint64_t actuator_acks{0};
+        uint64_t bootstrap_sensors{0};
         uint64_t blocked_samples{0};
+        uint64_t bootstrap_timeouts{0};
+        uint64_t transmission_timeouts{0};
         uint64_t response_timeouts{0};
         uint64_t protocol_faults{0};
         uint64_t max_outstanding_sensors{0};
@@ -31,9 +36,11 @@ public:
     };
 
     explicit HILSensorFlowController(Mode mode = Mode::Async,
-                                     uint64_t responseTimeoutUsec = 500000);
+                                     uint64_t responseTimeoutUsec = 500000,
+                                     uint64_t bootstrapTimeoutUsec = 10000000);
 
-    void configure(Mode mode, uint64_t responseTimeoutUsec);
+    void configure(Mode mode, uint64_t responseTimeoutUsec,
+                   uint64_t bootstrapTimeoutUsec);
     void reset(uint64_t actuatorGeneration = 0);
     void observeTransmission(bool complete, uint64_t nowUsec);
     void observeActuator(uint64_t actuatorGeneration, uint64_t actuatorTimestampUsec,
@@ -48,10 +55,18 @@ public:
 private:
     Mode _mode{Mode::Async};
     uint64_t _responseTimeoutUsec{500000};
+    uint64_t _bootstrapTimeoutUsec{10000000};
     uint64_t _generationAtSend{0};
+    uint64_t _lastObservedActuatorGeneration{0};
+    uint64_t _queuedActuatorGeneration{0};
     uint64_t _sensorTimestampUsec{0};
+    uint64_t _queuedSensorTimestampUsec{0};
     uint64_t _completionToken{0};
+    uint64_t _transmissionQueueTimeUsec{0};
     uint64_t _sensorSendTimeUsec{0};
+    uint64_t _bootstrapStartTimeUsec{0};
+    bool _bootstrapStarted{false};
+    bool _bootstrapSensorCompleted{false};
     bool _transmissionPending{false};
     bool _sensorOutstanding{false};
     uint64_t _outstandingSensorCount{0};

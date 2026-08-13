@@ -166,7 +166,16 @@
         max: 5000,
         group: "mavlink_rates",
         reload_policy: "reconnect_before_flight",
-        description: "Response timeout while actuator_feedback mode waits for lockstep-enabled PX4 output. The plugin disconnects on timeout instead of adding another outstanding sensor sample."
+        description: "Socket-transmission and actuator-response timeout after actuator_feedback mode starts a sample exchange. The plugin disconnects on timeout instead of adding another outstanding sensor sample."
+      },
+      hil_sensor_feedback_startup_timeout_ms: {
+        type: "int",
+        default: 10000,
+        min: 1000,
+        max: 60000,
+        group: "mavlink_rates",
+        reload_policy: "reconnect_before_flight",
+        description: "Deadline for PX4 to publish the first lockstep actuator response while startup sensor samples are streamed. The plugin disconnects instead of silently remaining asynchronous."
       },
       mavlink_gps_rate_hz: {
         type: "int",

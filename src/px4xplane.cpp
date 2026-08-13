@@ -953,7 +953,8 @@ void initializeMessagePeriods() {
         : HILSensorFlowController::Mode::Async;
     gHILSensorFlowController.configure(
         flowMode,
-        static_cast<uint64_t>(ConfigManager::hil_sensor_feedback_timeout_ms) * 1000ULL);
+        static_cast<uint64_t>(ConfigManager::hil_sensor_feedback_timeout_ms) * 1000ULL,
+        static_cast<uint64_t>(ConfigManager::hil_sensor_feedback_startup_timeout_ms) * 1000ULL);
 
     char buf[300];
     snprintf(buf, sizeof(buf),
@@ -1136,14 +1137,28 @@ bool handleSensorFlowFaultIfNeeded()
 		return false;
 	}
 
-	const char* logMessage = fault == HILSensorFlowController::Fault::MissingLockstepFlag
-		? "px4xplane: PX4 peer did not set the HIL actuator lockstep flag; "
-		  "actuator-feedback flow control requires a lockstep-enabled PX4 peer.\n"
-		: "px4xplane: PX4 actuator response timed out; disconnecting instead of "
-		  "resuming unrestricted sensor traffic.\n";
-	const char* userMessage = fault == HILSensorFlowController::Fault::MissingLockstepFlag
-		? "PX4 peer is not lockstep-enabled. Use async mode or compatible PX4 SITL."
-		: "PX4 actuator response timed out. Reconnect SITL.";
+	const char* logMessage = nullptr;
+	const char* userMessage = nullptr;
+	switch (fault) {
+	case HILSensorFlowController::Fault::BootstrapTimeout:
+		logMessage = "px4xplane: PX4 actuator-feedback startup timed out; disconnecting instead of continuing in async mode.\n";
+		userMessage = "PX4 actuator feedback did not start. Reconnect SITL.";
+		break;
+	case HILSensorFlowController::Fault::TransmissionTimeout:
+		logMessage = "px4xplane: HIL sensor socket transmission timed out; disconnecting.\n";
+		userMessage = "PX4 sensor transmission timed out. Reconnect SITL.";
+		break;
+	case HILSensorFlowController::Fault::ResponseTimeout:
+		logMessage = "px4xplane: PX4 actuator response timed out; disconnecting instead of resuming unrestricted sensor traffic.\n";
+		userMessage = "PX4 actuator response timed out. Reconnect SITL.";
+		break;
+	case HILSensorFlowController::Fault::MissingLockstepFlag:
+		logMessage = "px4xplane: PX4 peer did not set the HIL actuator lockstep flag; actuator-feedback flow control requires a lockstep-enabled PX4 peer.\n";
+		userMessage = "PX4 peer is not lockstep-enabled. Use async mode or compatible PX4 SITL.";
+		break;
+	case HILSensorFlowController::Fault::None:
+		return false;
+	}
 
 	XPLMDebugString(logMessage);
 	ConnectionManager::disconnect();
@@ -1283,7 +1298,7 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 		"ts last_delta_ms=%.2f monotonic_fix=%llu backwards=%llu large_delta=%llu subframe=%llu sim_backwards=%llu "
 		"ned_v_ms=[%.3f,%.3f,%.3f] acc_frd_ms2=[%.3f,%.3f,%.3f] "
 		"raw_g=[%.4f,%.4f,%.4f] psi=%.2f mag_psi=%.2f ias_kt=%.2f tas_ms=%.2f "
-		"flow=%s queued/tx/ack/blocked/timeout/protocol/max_out=%llu/%llu/%llu/%llu/%llu/%llu/%llu "
+		"flow=%s queued/tx/ack/bootstrap/blocked/bootstrap_to/tx_to/response_to/protocol/max_out=%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu/%llu "
 		"tx_pending=%d outstanding=%d established=%d actuator_gen=%llu actuator_ts=%llu flags=%llu "
 		"actuator_age_us=%llu tx_pending=%zu\n",
 		currentSimTime, callbackDt, fps, counter,
@@ -1315,7 +1330,10 @@ void logBridgeDiagnostics(float currentSimTime, float callbackDt, int counter) {
 		static_cast<unsigned long long>(flowDiagnostics.sensors_queued),
 		static_cast<unsigned long long>(flowDiagnostics.sensors_transmitted),
 		static_cast<unsigned long long>(flowDiagnostics.actuator_acks),
+		static_cast<unsigned long long>(flowDiagnostics.bootstrap_sensors),
 		static_cast<unsigned long long>(flowDiagnostics.blocked_samples),
+		static_cast<unsigned long long>(flowDiagnostics.bootstrap_timeouts),
+		static_cast<unsigned long long>(flowDiagnostics.transmission_timeouts),
 		static_cast<unsigned long long>(flowDiagnostics.response_timeouts),
 		static_cast<unsigned long long>(flowDiagnostics.protocol_faults),
 		static_cast<unsigned long long>(flowDiagnostics.max_outstanding_sensors),

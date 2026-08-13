@@ -169,6 +169,7 @@ int ConfigManager::mavlink_state_rate_hz = 10;      // HIL_STATE_QUATERNION
 int ConfigManager::mavlink_rc_rate_hz = 10;         // HIL_RC_INPUTS
 std::string ConfigManager::hil_sensor_flow_control = "async";
 int ConfigManager::hil_sensor_feedback_timeout_ms = 500;
+int ConfigManager::hil_sensor_feedback_startup_timeout_ms = 10000;
 float ConfigManager::gps_horizontal_accuracy_m = 1.5f;
 float ConfigManager::gps_vertical_accuracy_m = 1.0f;
 
@@ -277,6 +278,8 @@ void ConfigManager::loadConfiguration() {
     hil_sensor_flow_control = ini.GetValue("", "hil_sensor_flow_control", "async");
     hil_sensor_feedback_timeout_ms =
         (int)ini.GetLongValue("", "hil_sensor_feedback_timeout_ms", 500);
+    hil_sensor_feedback_startup_timeout_ms =
+        (int)ini.GetLongValue("", "hil_sensor_feedback_startup_timeout_ms", 10000);
     gps_horizontal_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_horizontal_accuracy_m", 1.5));
     gps_vertical_accuracy_m = static_cast<float>(ini.GetDoubleValue("", "gps_vertical_accuracy_m", 1.0));
 
@@ -305,6 +308,11 @@ void ConfigManager::loadConfiguration() {
     if (hil_sensor_feedback_timeout_ms < 100 || hil_sensor_feedback_timeout_ms > 5000) {
         XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor feedback timeout, using 500 ms\n");
         hil_sensor_feedback_timeout_ms = 500;
+    }
+    if (hil_sensor_feedback_startup_timeout_ms < 1000 ||
+        hil_sensor_feedback_startup_timeout_ms > 60000) {
+        XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor feedback startup timeout, using 10000 ms\n");
+        hil_sensor_feedback_startup_timeout_ms = 10000;
     }
     if (!std::isfinite(gps_horizontal_accuracy_m) || gps_horizontal_accuracy_m < 0.1f ||
         gps_horizontal_accuracy_m > 50.0f) {
@@ -341,13 +349,14 @@ void ConfigManager::loadConfiguration() {
     }
 
     // Log MAVLink rates
-    char rateBuf[320];
+    char rateBuf[384];
     snprintf(rateBuf, sizeof(rateBuf),
         "px4xplane: MAVLink rates - SENSOR:%dHz GPS:%dHz STATE:%dHz RC:%dHz "
-        "FLOW:%s TIMEOUT:%dms GPS_ACC:%.1fm/%.1fm\n",
+        "FLOW:%s TIMEOUT:%dms STARTUP_TIMEOUT:%dms GPS_ACC:%.1fm/%.1fm\n",
         mavlink_sensor_rate_hz, mavlink_gps_rate_hz,
         mavlink_state_rate_hz, mavlink_rc_rate_hz,
         hil_sensor_flow_control.c_str(), hil_sensor_feedback_timeout_ms,
+        hil_sensor_feedback_startup_timeout_ms,
         gps_horizontal_accuracy_m, gps_vertical_accuracy_m);
     XPLMDebugString(rateBuf);
 
