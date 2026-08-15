@@ -13,7 +13,7 @@ PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
 writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
-The current package is `v4.2.0` with Windows, Linux, and macOS builds. It
+The current package is `v4.2.1` with Windows, Linux, and macOS builds. It
 includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
 QuadTailsitter.
 
@@ -38,8 +38,10 @@ project video archive and playlist; future videos will be added there.
 3. Download the latest px4xplane package for your OS from
    [Releases](https://github.com/alireza787b/px4xplane/releases).
 
-4. Extract the archive and copy the complete `px4xplane` folder into the
-   `Resources/plugins` folder of your X-Plane installation, for example
+4. Close X-Plane. If upgrading, back up custom configs and remove the existing
+   `px4xplane` plugin folder; do not merge old and new package files. Extract
+   the archive and copy its complete `px4xplane` folder into X-Plane's
+   `Resources/plugins` folder, for example
    `X-Plane 12/Resources/plugins/px4xplane`.
 
 5. Copy any packaged X-Plane aircraft folders you want to test into an X-Plane
@@ -150,12 +152,14 @@ PX4 X-Plane SITL support is merged in
 [PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 Use official `PX4/PX4-Autopilot` `main` for normal SITL runs.
 
-`v4.2.0` adds bounded HIL sensor scheduling for uneven or low X-Plane frame
-rates. The plugin now establishes actuator-feedback flow control, keeps at most
+`v4.2.1` uses bounded HIL sensor scheduling for uneven or low X-Plane frame
+rates. The plugin establishes actuator-feedback flow control, keeps at most
 one primary sample outstanding, and splits long frame intervals into bounded
 IMU substeps while preserving elapsed simulation time. It disconnects on a
 feedback, timestamp, or backlog fault instead of silently corrupting estimator
-timing. Existing airframe mappings and PX4 parameters are unchanged.
+timing. Legacy configs that explicitly selected `async` now migrate to the safe
+mode; unbounded developer comparisons require the explicit `async_unsafe`
+value. Existing airframe mappings and PX4 parameters are unchanged.
 
 Several PX4-side fixes found during final X-Plane validation are tracked in
 separate PX4 PRs:

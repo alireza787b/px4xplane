@@ -1,6 +1,7 @@
 // ConfigManager.cpp
 
 #include "ConfigManager.h"
+#include "HILSensorFlowController.h"
 #include "XPLMUtilities.h"
 #include "XPLMDataAccess.h"
 #include "XPLMPlugin.h"
@@ -194,6 +195,7 @@ void ConfigManager::loadConfiguration() {
     actuatorConfigs.clear();
     cameraViews.clear();
     aircraft_match_tokens.clear();
+    hil_sensor_flow_control = "actuator_feedback";
 
     // Initialize the SimpleIni object and set it to handle Unicode
     CSimpleIniA ini;
@@ -275,7 +277,11 @@ void ConfigManager::loadConfiguration() {
     mavlink_gps_rate_hz = (int)ini.GetLongValue("", "mavlink_gps_rate_hz", 20);
     mavlink_state_rate_hz = (int)ini.GetLongValue("", "mavlink_state_rate_hz", 10);
     mavlink_rc_rate_hz = (int)ini.GetLongValue("", "mavlink_rc_rate_hz", 10);
-    hil_sensor_flow_control = ini.GetValue("", "hil_sensor_flow_control", "actuator_feedback");
+    const std::string configuredSensorFlow =
+        ini.GetValue("", "hil_sensor_flow_control", "actuator_feedback");
+    const auto sensorFlowSelection =
+        HILSensorFlowController::resolveConfig(configuredSensorFlow);
+    hil_sensor_flow_control = sensorFlowSelection.canonicalName;
     hil_sensor_feedback_timeout_ms =
         (int)ini.GetLongValue("", "hil_sensor_feedback_timeout_ms", 500);
     hil_sensor_feedback_startup_timeout_ms =
@@ -300,10 +306,20 @@ void ConfigManager::loadConfiguration() {
         XPLMDebugString("px4xplane: [WARNING] Invalid RC rate, using default 10 Hz\n");
         mavlink_rc_rate_hz = 10;
     }
-    if (hil_sensor_flow_control != "async" &&
-        hil_sensor_flow_control != "actuator_feedback") {
-        XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor flow control, using actuator_feedback\n");
-        hil_sensor_flow_control = "actuator_feedback";
+    if (sensorFlowSelection.resolution ==
+        HILSensorFlowController::ConfigResolution::MigratedLegacyAsync) {
+        XPLMDebugString(
+            "px4xplane: [WARNING] Legacy hil_sensor_flow_control=async was migrated to "
+            "actuator_feedback. Use async_unsafe only for controlled timing comparisons.\n");
+    } else if (sensorFlowSelection.resolution ==
+               HILSensorFlowController::ConfigResolution::InvalidFallback) {
+        XPLMDebugString(
+            "px4xplane: [WARNING] Invalid HIL sensor flow control, using actuator_feedback\n");
+    }
+    if (sensorFlowSelection.mode == HILSensorFlowController::Mode::UnsafeAsync) {
+        XPLMDebugString(
+            "px4xplane: [WARNING] UNSAFE asynchronous HIL sensor mode enabled; primary IMU "
+            "intervals are not bounded. Do not use this mode for flight validation.\n");
     }
     if (hil_sensor_feedback_timeout_ms < 100 || hil_sensor_feedback_timeout_ms > 5000) {
         XPLMDebugString("px4xplane: [WARNING] Invalid HIL sensor feedback timeout, using 500 ms\n");

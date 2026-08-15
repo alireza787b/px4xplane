@@ -99,6 +99,30 @@ class ValidateConfigTest(unittest.TestCase):
         self.assertIn("airspeedSource", schema["airframe_fields"])
         self.assertIn("body_axis", schema["airframe_fields"]["airspeedSource"]["enum"])
         self.assertEqual(schema["global_fields"]["config_name"]["reload_policy"], "reconnect_before_flight")
+        self.assertEqual(
+            schema["global_fields"]["hil_sensor_flow_control"]["enum"],
+            ["actuator_feedback", "async_unsafe"],
+        )
+
+    def test_legacy_async_is_not_exported_as_a_supported_mode(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = Path(tmp_dir) / "config.ini"
+            path.write_text(
+                "\n".join(
+                    [
+                        "config_name = Aircraft",
+                        "hil_sensor_flow_control = async",
+                        "",
+                        "[Aircraft]",
+                        "channel0 = sim/test/ref, float, 0, [0 1]",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+
+            messages = [str(issue) for issue in validate_config.validate_config(path)]
+
+        self.assertTrue(any("expected one of: actuator_feedback, async_unsafe" in message for message in messages))
 
 
 if __name__ == "__main__":

@@ -34,6 +34,10 @@ assert.strictEqual(config.globals.config_name, "Alia250");
 assert.strictEqual(config.sections.length, 1);
 assert.strictEqual(editor.parseMappings(config.sections[0].keys.channel4).length, 2);
 assert(editor.DEFAULT_SCHEMA.airframe_fields.airspeedSource.enum.includes("body_axis"));
+assert.deepStrictEqual(
+  editor.DEFAULT_SCHEMA.global_fields.hil_sensor_flow_control.enum,
+  ["actuator_feedback", "async_unsafe"]
+);
 assert.strictEqual(editor.parseCameras("Forward|1|0|0|0|0|0|0.9; Down|0|0|-1|-90|0|0|0.8").length, 2);
 assert(editor.serializeCameras([{ label: "Chase", forward: "-8", right: "0", up: "2", pitch: "-8", heading: "0", roll: "0", zoom: "0.7" }]).includes("Chase|-8"));
 assert.deepStrictEqual(editor.parseIndices("[0 2 3]"), [0, 2, 3]);
@@ -87,6 +91,10 @@ assert.deepStrictEqual(
 assert.deepStrictEqual(
   Object.keys(editor.DEFAULT_SCHEMA.airframe_fields).sort(),
   Object.keys(repoSchema.airframe_fields).sort()
+);
+assert.deepStrictEqual(
+  editor.DEFAULT_SCHEMA.global_fields.hil_sensor_flow_control,
+  repoSchema.global_fields.hil_sensor_flow_control
 );
 
 console.log("config editor tests passed");
