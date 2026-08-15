@@ -11,6 +11,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [4.2.1] - 2026-08-15
+
+### Fixed
+
+- Migrated the legacy explicit `hil_sensor_flow_control=async` value to the
+  bounded `actuator_feedback` policy so an old `config.ini` cannot silently
+  restore unbounded primary IMU intervals after a plugin upgrade.
+- Made actuator feedback the controller's fail-safe internal default and added
+  direct regression coverage for safe, legacy, invalid, and developer-only
+  flow selections.
+
+### Changed
+
+- Renamed the intentional unbounded comparison mode to `async_unsafe` and
+  added prominent runtime and HUD warnings when it is selected.
+- Clarified clean plugin replacement and estimator-timing troubleshooting so
+  stale binaries and configs are not mixed into a new installation.
+
 ## [4.2.0] - 2026-08-13
 
 ### Added

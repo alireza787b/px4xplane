@@ -942,6 +942,7 @@ static float TARGET_STATE_QUAT_PERIOD = 0.02f;   // Default 50 Hz (updated from 
 static float TARGET_RC_PERIOD = 0.02f;           // Default 50 Hz (updated from config)
 static HILSensorFlowController gHILSensorFlowController;
 static HILSensorResampler gHILSensorResampler;
+static bool gActuatorFeedbackEnabled = true;
 
 // Initialize periods from config (called once during plugin startup)
 void initializeMessagePeriods() {
@@ -950,9 +951,10 @@ void initializeMessagePeriods() {
     TARGET_STATE_QUAT_PERIOD = 1.0f / (float)ConfigManager::mavlink_state_rate_hz;
     TARGET_RC_PERIOD = 1.0f / (float)ConfigManager::mavlink_rc_rate_hz;
 
-    const auto flowMode = ConfigManager::hil_sensor_flow_control == "actuator_feedback"
-        ? HILSensorFlowController::Mode::ActuatorFeedback
-        : HILSensorFlowController::Mode::Async;
+    const auto flowSelection =
+        HILSensorFlowController::resolveConfig(ConfigManager::hil_sensor_flow_control);
+    const auto flowMode = flowSelection.mode;
+    gActuatorFeedbackEnabled = flowMode == HILSensorFlowController::Mode::ActuatorFeedback;
     gHILSensorFlowController.configure(
         flowMode,
         static_cast<uint64_t>(ConfigManager::hil_sensor_feedback_timeout_ms) * 1000ULL,
@@ -1143,7 +1145,7 @@ bool handleSensorFlowFaultIfNeeded()
 	const char* userMessage = nullptr;
 	switch (fault) {
 	case HILSensorFlowController::Fault::BootstrapTimeout:
-		logMessage = "px4xplane: PX4 actuator-feedback startup timed out; disconnecting instead of continuing in async mode.\n";
+		logMessage = "px4xplane: PX4 actuator-feedback startup timed out; disconnecting instead of continuing with unbounded sensor traffic.\n";
 		userMessage = "PX4 actuator feedback did not start. Reconnect SITL.";
 		break;
 	case HILSensorFlowController::Fault::TransmissionTimeout:
@@ -1156,7 +1158,7 @@ bool handleSensorFlowFaultIfNeeded()
 		break;
 	case HILSensorFlowController::Fault::MissingLockstepFlag:
 		logMessage = "px4xplane: PX4 peer did not set the HIL actuator lockstep flag; actuator-feedback flow control requires a lockstep-enabled PX4 peer.\n";
-		userMessage = "PX4 peer is not lockstep-enabled. Use async mode or compatible PX4 SITL.";
+		userMessage = "PX4 peer is not lockstep-enabled. Use compatible PX4 SITL or developer-only async_unsafe mode.";
 		break;
 	case HILSensorFlowController::Fault::None:
 		return false;
@@ -1532,7 +1534,9 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 		// Connection succeeded - reset wait timer and update HUD
 		ConnectionStatusHUD::updateStatus(
 			ConnectionStatusHUD::Status::CONNECTED,
-			"Ready to fly!"
+			gActuatorFeedbackEnabled
+				? "Ready to fly - bounded sensor flow"
+				: "WARNING: connected with unsafe async sensor flow"
 		);
 		waitElapsedTime = 0.0f;
 		wasWaitingForConnection = false;
@@ -1599,8 +1603,7 @@ float MyFlightLoopCallback(float inElapsedSinceLastCall, float inElapsedTimeSinc
 
 	bool sensorSentThisFrame = false;
 
-	const bool actuatorFeedback =
-		ConfigManager::hil_sensor_flow_control == "actuator_feedback";
+	const bool actuatorFeedback = gActuatorFeedbackEnabled;
 	const bool sensorCaptureDue =
 		(currentSimTime - lastSensorSendTime) >= TARGET_SENSOR_PERIOD;
 

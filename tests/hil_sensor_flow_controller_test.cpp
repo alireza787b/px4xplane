@@ -8,8 +8,29 @@ int main()
     constexpr uint64_t timeoutUsec = 500000;
     constexpr uint64_t bootstrapTimeoutUsec = 10000000;
 
+    const auto safeConfig = HILSensorFlowController::resolveConfig("actuator_feedback");
+    assert(safeConfig.mode == HILSensorFlowController::Mode::ActuatorFeedback);
+    assert(safeConfig.resolution == HILSensorFlowController::ConfigResolution::Accepted);
+    assert(std::string_view(safeConfig.canonicalName) == "actuator_feedback");
+
+    const auto unsafeConfig = HILSensorFlowController::resolveConfig("async_unsafe");
+    assert(unsafeConfig.mode == HILSensorFlowController::Mode::UnsafeAsync);
+    assert(unsafeConfig.resolution == HILSensorFlowController::ConfigResolution::Accepted);
+    assert(std::string_view(unsafeConfig.canonicalName) == "async_unsafe");
+
+    const auto legacyConfig = HILSensorFlowController::resolveConfig("async");
+    assert(legacyConfig.mode == HILSensorFlowController::Mode::ActuatorFeedback);
+    assert(legacyConfig.resolution ==
+           HILSensorFlowController::ConfigResolution::MigratedLegacyAsync);
+    assert(std::string_view(legacyConfig.canonicalName) == "actuator_feedback");
+
+    const auto invalidConfig = HILSensorFlowController::resolveConfig("typo");
+    assert(invalidConfig.mode == HILSensorFlowController::Mode::ActuatorFeedback);
+    assert(invalidConfig.resolution ==
+           HILSensorFlowController::ConfigResolution::InvalidFallback);
+
     HILSensorFlowController async(
-        HILSensorFlowController::Mode::Async, timeoutUsec, bootstrapTimeoutUsec);
+        HILSensorFlowController::Mode::UnsafeAsync, timeoutUsec, bootstrapTimeoutUsec);
     assert(async.canSendSensor(0));
     async.markSensorQueued(0, 1000000, 1, 0);
     assert(async.canSendSensor(1));

@@ -1,14 +1,27 @@
 #pragma once
 
 #include <cstdint>
+#include <string_view>
 
 class HILSensorFlowController {
 public:
     static constexpr uint64_t LOCKSTEP_ACTUATOR_FLAG = 1ULL;
 
     enum class Mode {
-        Async,
+        UnsafeAsync,
         ActuatorFeedback
+    };
+
+    enum class ConfigResolution {
+        Accepted,
+        MigratedLegacyAsync,
+        InvalidFallback
+    };
+
+    struct ConfigSelection {
+        Mode mode;
+        const char* canonicalName;
+        ConfigResolution resolution;
     };
 
     enum class Fault {
@@ -35,9 +48,11 @@ public:
         bool feedback_established{false};
     };
 
-    explicit HILSensorFlowController(Mode mode = Mode::Async,
+    explicit HILSensorFlowController(Mode mode = Mode::ActuatorFeedback,
                                      uint64_t responseTimeoutUsec = 500000,
                                      uint64_t bootstrapTimeoutUsec = 10000000);
+
+    static ConfigSelection resolveConfig(std::string_view configuredMode);
 
     void configure(Mode mode, uint64_t responseTimeoutUsec,
                    uint64_t bootstrapTimeoutUsec);
@@ -53,7 +68,7 @@ public:
     Diagnostics getDiagnostics() const;
 
 private:
-    Mode _mode{Mode::Async};
+    Mode _mode{Mode::ActuatorFeedback};
     uint64_t _responseTimeoutUsec{500000};
     uint64_t _bootstrapTimeoutUsec{10000000};
     uint64_t _generationAtSend{0};

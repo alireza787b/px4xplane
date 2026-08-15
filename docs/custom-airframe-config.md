@@ -150,7 +150,7 @@ PX4 actuator outputs are normalized floating-point setpoints, so px4xplane curre
 : X-Plane engine indices that can be braked or feathered when commanded low. Use only when validated for the airframe.
 
 `hil_sensor_flow_control`
-: Primary HIL sensor scheduling policy. Keep the release default, `actuator_feedback`, for normal PX4 SITL use. It permits one primary sensor sample per PX4 actuator response and splits long X-Plane frame intervals into bounded IMU substeps without inventing extra X-Plane physics states. `async` is intended only for controlled compatibility comparisons.
+: Primary HIL sensor scheduling policy. Keep the release default, `actuator_feedback`, for normal PX4 SITL use. It permits one primary sensor sample per PX4 actuator response and splits long X-Plane frame intervals into bounded IMU substeps without inventing extra X-Plane physics states. `async_unsafe` is only for controlled developer comparisons and has no bounded-interval protection. A legacy `async` value is migrated to `actuator_feedback` at runtime.
 
 `hil_sensor_feedback_timeout_ms`
 : Deadline for a queued sensor transmission or the corresponding PX4 actuator response after feedback is established. A timeout disconnects the bridge instead of allowing stale or unbounded sensor traffic.

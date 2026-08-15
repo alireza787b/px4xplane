@@ -57,6 +57,11 @@ manual address and asks again.
   under the `Resources/plugins` folder of your X-Plane 11 or 12 installation,
   for example `X-Plane 12/Resources/plugins/px4xplane`, then check X-Plane
   `Log.txt` for plugin load errors.
+- High accelerometer bias or unstable velocity with stationary X-Plane truth:
+  close X-Plane, replace the complete plugin folder with the current release,
+  and confirm `Log.txt` reports `v4.2.1` and `FLOW:actuator_feedback`. Do not
+  raise `EKF2_ABL_LIM` or run PX4 level calibration to mask a bridge-timing
+  fault. Remove stale SITL parameter BSON files before the next baseline run.
 - Custom mapping behaves unexpectedly: validate `px4xplane/64/config.ini` from
   the plugin menu or with `python3 tools/validate_config.py config/config.ini`.
 - Actuator-feedback or sensor-queue fault: update to current official PX4
@@ -69,7 +74,7 @@ manual address and asks again.
 
 ## Validation and Maintainer Notes
 
-- Use the `v4.2.0` package with official PX4 `main`. X-Plane SITL support is
+- Use the `v4.2.1` package with official PX4 `main`. X-Plane SITL support is
   merged in
   [PX4-Autopilot #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
 - The launcher uses official PX4 `main` as the base. Its default is the official

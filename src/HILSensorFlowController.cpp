@@ -1,5 +1,25 @@
 #include "HILSensorFlowController.h"
 
+HILSensorFlowController::ConfigSelection
+HILSensorFlowController::resolveConfig(std::string_view configuredMode)
+{
+    if (configuredMode == "actuator_feedback") {
+        return {Mode::ActuatorFeedback, "actuator_feedback", ConfigResolution::Accepted};
+    }
+
+    if (configuredMode == "async_unsafe") {
+        return {Mode::UnsafeAsync, "async_unsafe", ConfigResolution::Accepted};
+    }
+
+    if (configuredMode == "async") {
+        return {Mode::ActuatorFeedback, "actuator_feedback",
+                ConfigResolution::MigratedLegacyAsync};
+    }
+
+    return {Mode::ActuatorFeedback, "actuator_feedback",
+            ConfigResolution::InvalidFallback};
+}
+
 HILSensorFlowController::HILSensorFlowController(Mode mode,
                                                  uint64_t responseTimeoutUsec,
                                                  uint64_t bootstrapTimeoutUsec)
@@ -105,7 +125,7 @@ void HILSensorFlowController::observeActuator(uint64_t actuatorGeneration,
 
 bool HILSensorFlowController::canSendSensor(uint64_t nowUsec)
 {
-    if (_mode == Mode::Async) {
+    if (_mode == Mode::UnsafeAsync) {
         return true;
     }
 
@@ -158,7 +178,7 @@ void HILSensorFlowController::markSensorQueued(uint64_t actuatorGeneration,
                                                uint64_t nowUsec)
 {
     ++_diagnostics.sensors_queued;
-    if (_mode == Mode::Async) {
+    if (_mode == Mode::UnsafeAsync) {
         return;
     }
 

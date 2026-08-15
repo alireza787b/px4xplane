@@ -154,10 +154,10 @@
       hil_sensor_flow_control: {
         type: "string",
         default: "actuator_feedback",
-        enum: ["async", "actuator_feedback"],
+        enum: ["actuator_feedback", "async_unsafe"],
         group: "mavlink_rates",
         reload_policy: "reconnect_before_flight",
-        description: "HIL_SENSOR scheduling policy. actuator_feedback is the release default: it allows one primary sensor sample per received PX4 actuator generation and safely interpolates long frame intervals. async is for controlled compatibility tests and does not provide bounded-interval protection."
+        description: "HIL_SENSOR scheduling policy. actuator_feedback is the release default: it allows one primary sensor sample per received PX4 actuator generation and safely interpolates long frame intervals. async_unsafe is a developer-only comparison mode without bounded-interval protection. The legacy async value is migrated to actuator_feedback at runtime."
       },
       hil_sensor_feedback_timeout_ms: {
         type: "int",
