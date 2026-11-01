@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.ref6.lock
+installation/
+runs/
+bench-report.json

@@ -1,0 +1,325 @@
+#!/usr/bin/env python3
+"""Ref6 installation and evidence gates. No PX4 or plugin source edits."""
+import argparse
+import fcntl
+import configparser
+import hashlib
+import io
+import ipaddress
+import json
+import math
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
+
+from locate_inputs import path
+
+HERE = Path(__file__).resolve().parent
+NAME = 'QuadTailsitterRef6'
+BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
+TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
+VERSION = '2026-11-01.ref6.2'
+
+
+def require(condition, message):
+    if not condition:
+        raise ValueError(message)
+
+
+def digest(file):
+    return hashlib.sha256(file.read_bytes()).hexdigest()
+
+
+def read_config(text):
+    parser = configparser.ConfigParser(interpolation=None, strict=True)
+    parser.optionxform = str
+    try:
+        parser.read_string('[global]\n' + text.lstrip('\ufeff'))
+    except configparser.Error as error:
+        raise ValueError('Invalid/ambiguous plugin config: '+str(error)) from error
+    return parser
+
+
+def config_semantics(text):
+    parser = read_config(text)
+    return {section: dict(parser[section]) for section in parser.sections()}
+
+
+def comments(text):
+    return sorted(line.strip() for line in text.splitlines() if line.lstrip().startswith((';', '#')))
+
+
+def bundle_check(bundle=HERE):
+    required = ['profile.sh', 'parameters.json', 'design.json', 'diagnostics.bundle', 'diagnostic-sha.txt',
+                f'aircraft/{NAME}/{NAME}.acf']
+    for relative in required:
+        require((bundle/relative).is_file(), 'Missing bundle file: ' + relative)
+    require((bundle/'diagnostic-sha.txt').read_text().strip() == TARGET, 'Diagnostic pin mismatch')
+    design = json.loads((bundle/'design.json').read_text())
+    require(design.get('name') == NAME and design.get('acf_sha256') ==
+            digest(bundle/f'aircraft/{NAME}/{NAME}.acf'), 'Design name/ACF hash mismatch')
+    expected = json.loads((bundle/'parameters.json').read_text())['parameters']
+    actual = profile_params(bundle/'profile.sh')
+    require(actual.keys() == expected.keys() and all(math.isclose(float(actual[k]), float(expected[k]),
+            rel_tol=1e-8, abs_tol=1e-9) for k in actual), 'Profile/parameters.json mismatch')
+    source = bundle/'aircraft'/NAME
+    require(not any(p.is_symlink() for p in source.rglob('*')), 'Aircraft symlinks refused')
+    acf_text = (source/(NAME+'.acf')).read_text(encoding='utf-8')
+    require(re.findall(r'^P acf/_num_engn\s+(\S+)\s*$', acf_text, re.MULTILINE) == ['4'],
+            'Ref6 structural check requires exactly four engines')
+    return source
+
+
+def profile_params(profile):
+    values = {}
+    for line in profile.read_text().splitlines():
+        if not line.strip() or line.lstrip().startswith('#'):
+            continue
+        if re.fullmatch(r'\s*param show [A-Z][A-Z0-9_]*\s*', line):
+            continue
+        match = re.fullmatch(r'\s*param set(?:-default)? ([A-Z][A-Z0-9_]*) ([-+0-9.eE]+)\s*', line)
+        require(match is not None, 'Profile must contain literal param set commands only: ' + line)
+        values[match[1]] = match[2]
+    require(bool(values), 'Empty profile')
+    require('SYS_AUTOSTART' not in values or float(values['SYS_AUTOSTART']) == 5021,
+            'Ref6 must retain airframe 5021')
+    return values
+
+
+def stopped():
+    # Linux detection is insufficient for Windows X-Plane under WSL.
+    result = subprocess.run(['pgrep', '-if', r'(^|/)(X-Plane[^/ ]*|X-Plane\.exe)( |$)'],
+                            capture_output=True, text=True)
+    require(result.returncode in (0, 1), 'Cannot inspect local processes')
+    require(result.returncode != 0, 'X-Plane is running; quit before installation/rollback')
+    if shutil.which('tasklist.exe'):
+        windows = subprocess.run(['tasklist.exe', '/FO', 'CSV', '/NH'], capture_output=True, text=True)
+        require(windows.returncode == 0, 'Windows process detection failed; quit X-Plane and retry')
+        require('x-plane' not in windows.stdout.lower(), 'Windows X-Plane is running; quit first')
+    else:
+        require(input('Cannot detect Windows X-Plane. Quit it, then type XPLANE CLOSED: ').strip()
+                == 'XPLANE CLOSED', 'Installation/rollback cancelled')
+
+
+def atomic(file, data):
+    fd, raw = tempfile.mkstemp(prefix='.ref6-', dir=file.parent)
+    temporary = Path(raw)
+    try:
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(data)
+            stream.flush()
+            os.fsync(stream.fileno())
+        shutil.copymode(file, temporary)
+        os.replace(temporary, file)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def install(root, config, state, bundle=HERE):
+    source = bundle_check(bundle)
+    require(config.is_file() and not config.is_symlink(), 'Missing or symlink config.ini')
+    require((root/'Aircraft').is_dir(), 'Missing X-Plane Aircraft directory')
+    destination = root/'Aircraft'/NAME
+    if (state/'receipt.json').exists():
+        receipt = json.loads((state/'receipt.json').read_text())
+        require(not receipt.get('restored'), 'Installation was restored; use a NEW state directory')
+        require(receipt['config'] == str(config) and receipt['aircraft'] == str(destination),
+                'State belongs to another installation')
+        verify_install(receipt, bundle)
+        print('Already installed; unchanged')
+        return
+    require(not destination.exists(), 'Refusing existing Ref6 aircraft folder; nothing overwritten')
+    require(not state.exists(), 'State directory already exists; inspect partial transaction first')
+    original = config.read_bytes()
+    parser = read_config(original.decode('utf-8-sig'))
+    require(NAME not in parser, 'Ref6 config section already exists')
+    require('QuadTailsitter' in parser, 'Missing source QuadTailsitter config section')
+    # Validate with a real INI parser, but serialize ONLY the added section.
+    # Preserve the user's other sections, comments and global formatting.
+    addition = configparser.ConfigParser(interpolation=None)
+    addition.optionxform = str
+    addition[NAME] = dict(parser['QuadTailsitter'])
+    addition[NAME]['aircraftMatch'] = NAME
+    output = io.StringIO()
+    addition.write(output)
+    text = original.decode('utf-8-sig')
+    first_section = re.search(r'^\s*\[', text, re.MULTILINE)
+    require(first_section is not None, 'Missing airframe sections')
+    header, sections = text[:first_section.start()], text[first_section.start():]
+    header, count = re.subn(r'^(\s*config_name\s*=)[^\r\n]*',
+                           lambda match: match[1]+' '+NAME, header, flags=re.MULTILINE)
+    require(count == 1, 'Require exactly one global config_name')
+    newline = '\r\n' if b'\r\n' in original else '\n'
+    suffix = output.getvalue().replace('\n', newline)
+    updated = (header+sections+newline+suffix).encode('utf-8')
+    if original.startswith(b'\xef\xbb\xbf'):
+        updated = b'\xef\xbb\xbf'+updated
+    state.mkdir(parents=True)
+    (state/'config.original').write_bytes(original)
+    receipt = {'version': VERSION, 'config': str(config), 'aircraft': str(destination),
+               'original_sha256': hashlib.sha256(original).hexdigest(),
+               'config_sha256': hashlib.sha256(updated).hexdigest(),
+               'acf_sha256': digest(source/(NAME+'.acf')), 'restored': False,
+               'config_semantics': config_semantics(updated.decode('utf-8-sig')),
+               'config_comments': comments(updated.decode('utf-8-sig'))}
+    (state/'receipt.json').write_text(json.dumps(receipt, indent=2)+'\n')
+    created = False
+    try:
+        destination.mkdir()
+        created = True
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+        require(config.read_bytes() == original, 'Config changed during copy; refusing overwrite')
+        atomic(config, updated)
+    except BaseException:
+        if digest(config) == receipt['config_sha256']:
+            atomic(config, original)
+        if created:
+            shutil.rmtree(destination)
+        raise
+    print('Installed separately:', destination, '\nRollback receipt:', state/'receipt.json')
+
+
+def verify_install(receipt, bundle=HERE):
+    acf = Path(receipt['aircraft'])/(NAME+'.acf')
+    config = Path(receipt['config'])
+    if digest(config) != receipt['config_sha256']:
+        require(config_semantics(config.read_text(encoding='utf-8-sig')) == receipt.get('config_semantics'),
+                'Config values changed since install; select Ref6 and inspect the config')
+    require(digest(acf) == receipt['acf_sha256'] == digest(bundle/'aircraft'/NAME/acf.name),
+            'Installed/bundle ACF hash mismatch')
+    return acf
+
+
+def rollback(state):
+    receipt_file = state/'receipt.json'
+    receipt = json.loads(receipt_file.read_text())
+    config = Path(receipt['config'])
+    original = (state/'config.original').read_bytes()
+    require(hashlib.sha256(original).hexdigest() == receipt['original_sha256'], 'Backup hash mismatch')
+    current = digest(config)
+    unchanged = current in (receipt['original_sha256'], receipt['config_sha256'])
+    if not unchanged:
+        text = config.read_text(encoding='utf-8-sig')
+        try:
+            unchanged = (config_semantics(text) == receipt.get('config_semantics') and
+                         comments(text) == receipt.get('config_comments'))
+        except ValueError:
+            unchanged = False
+    require(unchanged, 'Config edited after install; refusing to discard edits. Merge backup manually')
+    if current != receipt['original_sha256']:
+        atomic(config, original)
+    receipt['restored'] = True
+    atomic(receipt_file, (json.dumps(receipt, indent=2)+'\n').encode())
+    print('Config restored. Ref6 aircraft retained; original aircraft never modified.')
+
+
+def loaded_truth(session, receipt, bundle=HERE):
+    acf = verify_install(receipt, bundle).resolve()
+    manifest = json.loads((session/'manifest.json').read_text(encoding='utf-8-sig'))
+    require(manifest.get('plugin') == 'XPlaneTruthCapture', 'Wrong truth plugin')
+    version = manifest.get('version', '')
+    require(re.fullmatch(r'0\.1\.[0-9]+', version) is not None and int(version.split('.')[2]) >= 9,
+            'Require compatible TruthCapture 0.1.9 or newer 0.1.x')
+    require(manifest.get('aircraft_name') == NAME+'.acf', 'Truth manifest is not the new named ACF')
+    require(path(manifest.get('aircraft_path', '')).resolve() == acf,
+            'Truth manifest loaded aircraft path mismatch')
+    require(manifest.get('aircraft_sha256', digest(acf)) == digest(acf), 'Truth manifest ACF hash mismatch')
+    return {'manifest': manifest, 'acf_path': str(acf), 'acf_sha256': digest(acf),
+            'hash_scope': 'On-disk ACF at recorder-reported loaded path; not simulator memory'}
+
+
+def ipv4(value):
+    address = ipaddress.IPv4Address(value)
+    require(not (address.is_unspecified or address.is_multicast or str(address) == '255.255.255.255'),
+            'Require explicit unicast IPv4')
+    return str(address)
+
+
+def recovery_truth(run, source):
+    identity = json.loads((run/'identity.json').read_text())
+    require(source.resolve() == path((run/'truth-source.txt').read_text()).resolve(),
+            'Recovery must use the original flight capture session')
+    manifest = json.loads((source/'manifest.json').read_text(encoding='utf-8-sig'))
+    require(manifest == identity['manifest'], 'Recovery capture manifest changed since preflight')
+    require(digest(Path(identity['acf_path'])) == identity['acf_sha256'], 'Recovery ACF hash changed')
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('mode', choices=['check', 'install', 'bench', 'hover', 'A', 'flight', 'collect', 'restore'])
+    parser.add_argument('--xplane', type=path)
+    parser.add_argument('--config', type=path)
+    parser.add_argument('--state', type=path, default=HERE/'installation')
+    parser.add_argument('--repo', type=path, default=Path.home()/'PX4-Autopilot-Me')
+    parser.add_argument('--run', type=path)
+    parser.add_argument('--truth', type=path)
+    parser.add_argument('--host', type=ipv4)
+    parser.add_argument('--qgc', type=ipv4)
+    parser.add_argument('--bench-measurements', type=path)
+    args = parser.parse_args()
+    # Serialize this bundle's install, rollback, flight and evidence operations.
+    with (HERE/'.ref6.lock').open('a') as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        dispatch(args)
+
+
+def dispatch(args):
+    args.state = args.state.resolve()
+    if args.mode == 'check':
+        bundle_check()
+        subprocess.run(['git', '-C', str(args.repo), 'cat-file', '-e', BASE+'^{commit}'], check=True)
+        subprocess.run(['git', '-C', str(args.repo), 'bundle', 'verify', str(HERE/'diagnostics.bundle')], check=True)
+        print('Ref6', VERSION, 'checks passed; no installation or flight performed')
+    elif args.mode == 'install':
+        require(args.xplane and args.config, '--xplane and --config required')
+        stopped()
+        install(args.xplane.resolve(), args.config.resolve(), args.state)
+    elif args.mode == 'restore':
+        if args.run:
+            from flight import no_px4
+            from source_state import restore
+            no_px4()
+            restore(args.repo.resolve(), args.run/'source-original.json')
+        else:
+            stopped()
+            rollback(args.state)
+    elif args.mode == 'bench':
+        from gates import report
+        bundle_check()
+        report(args.bench_measurements)
+    elif args.mode in ('flight', 'hover', 'A'):
+        from gates import report
+        bundle_check()
+        report(args.bench_measurements)
+        print('Mode', args.mode, '; SAME pinned diagnostic firmware.')
+        print('UNVALIDATED SITL ONLY. Calibration and hover results are pending. No readiness claim.')
+        print('Observe the hover checkpoint before any transition. No EKF overrides.')
+        if args.mode != 'flight':
+            print('HOVER ONLY: do not transition in this run.')
+        else:
+            print('FULL SITL EXPERIMENT: transition only after controlled hover; abort on increasing oscillation.')
+        require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
+                == 'SITL EXPERIMENT', 'Experiment cancelled')
+        from flight import flight
+        flight(args)
+    else:
+        from flight import no_px4
+        from collect import collect
+        from attach_truth import attach
+        no_px4()
+        require(args.run and args.run.is_dir() and (args.run/'identity.json').is_file(), '--run must identify a Ref6 run')
+        if args.truth:
+            recovery_truth(args.run.resolve(), args.truth.resolve())
+            attach(args.truth.resolve(), args.run.resolve())
+        collect(args.run.resolve())
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError, EOFError) as error:
+        sys.exit('ERROR: '+str(error))

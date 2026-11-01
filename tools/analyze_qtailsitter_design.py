@@ -114,7 +114,7 @@ class CaptureFrames:
 
 def estimate_wing_area_m2(values: Dict[str, str]) -> Dict[str, float]:
     raw_area_ft2 = 0.0
-    mirrored_area_ft2 = 0.0
+    main_area_ft2 = 0.0
     wing_count = int(as_float(values, "_wing/count", 0))
     for index in range(wing_count):
         semilen = as_float(values, f"_wing/{index}/_semilen_SEG")
@@ -124,11 +124,17 @@ def estimate_wing_area_m2(values: Dict[str, str]) -> Dict[str, float]:
             continue
         area_ft2 = semilen * (croot + ctip) * 0.5
         raw_area_ft2 += area_ft2
-        right_multiplier = as_float(values, f"_wing/{index}/_is_right_mult", 0.0)
-        mirrored_area_ft2 += area_ft2 * (2.0 if right_multiplier > 0.0 else 1.0)
+        # Plane Maker serializes left and right panels separately. The sign is
+        # an orientation, not an instruction to create another mirrored panel.
+        if index < 4:
+            main_area_ft2 += area_ft2
     return {
         "raw_area_m2": raw_area_ft2 * FT_TO_M * FT_TO_M,
-        "mirrored_area_m2": mirrored_area_ft2 * FT_TO_M * FT_TO_M,
+        "panel_area_m2": raw_area_ft2 * FT_TO_M * FT_TO_M,
+        "main_panel_area_m2": main_area_ft2 * FT_TO_M * FT_TO_M,
+        "secondary_panel_area_m2": (raw_area_ft2 - main_area_ft2) * FT_TO_M * FT_TO_M,
+        # Retained for consumers of the previous JSON format; no extra mirror.
+        "mirrored_area_m2": raw_area_ft2 * FT_TO_M * FT_TO_M,
     }
 
 
@@ -138,7 +144,7 @@ def aircraft_summary(values: Dict[str, str], clmax: float) -> Dict[str, object]:
     mass_kg = empty_lb * LB_TO_KG
     weight_n = mass_kg * G
     areas = estimate_wing_area_m2(values)
-    area_m2 = areas["mirrored_area_m2"] or areas["raw_area_m2"]
+    area_m2 = areas["main_panel_area_m2"]
     wing_loading = weight_n / area_m2 if area_m2 > 0.0 else 0.0
     stall_mps = math.sqrt((2.0 * weight_n) / (RHO0 * area_m2 * clmax)) if area_m2 > 0.0 and clmax > 0.0 else 0.0
 
@@ -237,10 +243,14 @@ def truth_summary(capture: Path) -> Dict[str, object]:
             thrust = parse_float_array(row.get("sim/flightmodel/engine/POINT_thrust", ""))
             if thrust:
                 values["total_thrust_n"].append(sum(thrust[:4]))
-            rpm = parse_float_array(row.get("sim/flightmodel/engine/ENGN_rpm", ""))
+            rotation = parse_float_array(row.get("sim/flightmodel2/engines/prop_rotation_speed_rad_sec", ""))
+            rpm = ([speed * 60 / (2 * math.pi) for speed in rotation] if rotation else
+                   parse_float_array(row.get("sim/flightmodel/engine/ENGN_rpm", "")))
             if rpm:
                 values["max_prop_rpm"].append(max(abs(v) for v in rpm[:4]))
             throttle = parse_float_array(row.get("sim/flightmodel2/engines/throttle_used_ratio", ""))
+            if not throttle:
+                throttle = parse_float_array(row.get("sim/flightmodel/engine/ENGN_thro_use", ""))
             if throttle:
                 values["max_throttle_used"].append(max(throttle[:4]))
 

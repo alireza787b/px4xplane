@@ -1,3 +1,5 @@
+import csv
+import math
 import tempfile
 import unittest
 from pathlib import Path
@@ -51,6 +53,31 @@ class AirframeToolTest(unittest.TestCase):
         self.assertGreater(aircraft["wing"]["selected_area_m2"], 0.1)
         self.assertGreater(aircraft["propulsion"]["hover_per_motor_thrust_n"], 10.0)
         self.assertGreater(aircraft["propulsion"]["props"][0]["diameter_in"], 9.0)
+        self.assertAlmostEqual(aircraft["wing"]["selected_area_m2"], 0.2812, places=4)
+
+    def test_panel_orientation_does_not_duplicate_area(self):
+        values = {"_wing/count": "2"}
+        for index, orientation in enumerate((-1, 1)):
+            for name, value in (("_semilen_SEG", 1), ("_Croot", 1),
+                                ("_Ctip", 1), ("_is_right_mult", orientation)):
+                values[f"_wing/{index}/{name}"] = str(value)
+        area = design.estimate_wing_area_m2(values)
+        self.assertAlmostEqual(area["panel_area_m2"], 2 * 0.3048 ** 2)
+        self.assertEqual(area["panel_area_m2"], area["mirrored_area_m2"])
+
+    def test_truth_uses_physical_prop_speed_not_governor_command(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory)
+            row = {"sim/flightmodel2/engines/prop_rotation_speed_rad_sec": "1000;1000;1000;1000",
+                   "sim/cockpit2/engine/actuators/prop_rotation_speed_rad_sec": "9999;9999;9999;9999",
+                   "sim/flightmodel/engine/ENGN_thro_use": "0.2;0.3;0.4;0.5"}
+            with (path / "frames.csv").open("w") as output:
+                writer = csv.DictWriter(output, fieldnames=list(row))
+                writer.writeheader()
+                writer.writerow(row)
+            result = design.truth_summary(path)
+        self.assertAlmostEqual(result["max_prop_rpm"]["p50"], 1000 * 60 / (2 * math.pi))
+        self.assertEqual(result["max_throttle_used"]["p50"], .5)
 
 
 if __name__ == "__main__":
