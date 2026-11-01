@@ -30,6 +30,8 @@ class ReferenceTest(unittest.TestCase):
                 self.assertEqual(as_float(candidate, f'_wing/{i}/_semilen_SEG'), 0)
             self.assertLess(doc["estimated_electrical_budget_w"], doc["battery_nominal_budget_w"])
             self.assertFalse(doc["flight_validated"])
+            self.assertEqual(doc['acf_sha256'], 'c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918',
+                             'R7 is parameter-only: preserve the recorded R6 aircraft bytes')
             self.assertTrue((out / "aircraft/QuadTailsitterRef6/Airfoil/NACA 2412 (popular).afl").is_file())
             for i in range(4):
                 self.assertEqual(as_float(candidate, f"_prop/{i}/_num_blades"), 2)
@@ -85,7 +87,10 @@ class ReferenceTest(unittest.TestCase):
             reference.build(self.source, Path(tmp))
             params, _ = reference.parameter_profile(parse_acf(Path(tmp) / 'aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf'))
         self.assertEqual(sum(params[f"CA_ROTOR{i}_KM"] for i in range(4)), 0)
-        self.assertEqual(params['MPC_THR_HOVER'], .25)
+        self.assertEqual(params['MPC_THR_HOVER'], .26)
+        self.assertEqual(params['MC_PITCHRATE_P'], .12)
+        self.assertEqual(params['MC_PITCHRATE_I'], .015)
+        self.assertEqual(params['MC_PITCHRATE_D'], .0012)
         self.assertGreaterEqual(params['MC_PITCHRATE_P'], .01)
         self.assertEqual(params['MC_PITCHRATE_K'], 1)
         self.assertEqual(params['MC_ROLLRATE_P'], .031815)

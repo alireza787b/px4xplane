@@ -16,15 +16,16 @@ correction. This is a configuration repair, not a newly proven PX4 bug.
 The old 6 kg model settled near 0.71 normalized hover command. The compact
 candidate is 2 kg with 0.60 m projected span, 0.10 m chord and four 500 W shaft
 power caps. Plane Maker's power field is horsepower, not kW. The hover seed is
-now 0.25 from the r5 measured HTE, corrected for unintended 250 g payload that
-has now been removed. Original motor orientations/rotation signs and official
-rotor direction vectors are restored. See REPORT.md for the failure evidence,
-pitch-gain trial and limits of the motor peak-thrust claim.
+now 0.26 from the successful r6 2 kg hover/GoTo/Land log. Original motor
+orientations/rotation signs and official rotor direction vectors are retained.
+R7 changes only pitch-rate P from 0.06 to 0.12 and the hover seed from 0.25 to
+0.26. I/D, attitude/position guidance, aircraft, FW and TECS values stay unchanged.
+See REPORT.md for the 8 m GoTo overshoot, rate lag and next-test criteria.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
-Roll and FW gains are held fixed from r5; MC pitch has an explicit response-based
-trial increase and yaw gains compensate restored modeled cant authority.
+Roll, yaw and FW gains remain at r6 values. MC pitch has one explicit P-only
+trial increase; no blanket retune is inferred from a stationary hover.
 Read design.json and sizing.json for assumptions and envelope screening. Real
 control authority, trim, stability and landing remain simulator validation gates.
 
@@ -34,9 +35,10 @@ From the same installed debug folder:
 
 ```bash
 bash run.sh update
-bash run.sh flight --yes-debug
+bash run.sh A
 ```
 
+This revision repeats MC hover, one GoTo and Land. Do not transition yet.
 Update checks local managed-file hashes, downloads a checksum-verified manifest
 and ZIP, and updates in place with one rollback journal. It preserves
 flight runs and credentials. Local edits are not discarded. PX4 must be stopped.

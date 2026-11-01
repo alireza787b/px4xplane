@@ -1,114 +1,143 @@
-# R6: Short Test A After R5 Hover Failure
+# R7 Review: MC Hover Passed, GoTo Pitch Tracking Needs Work
 
-Experimental SITL only. Revision 2026-11-01.ref6.6. No PX4 core change,
-private dive, production plugin change or hardware tune is included.
+Revision 2026-11-01.ref6.7. Experimental SITL only; no production-readiness,
+optimal-gain, hardware-suitability or all-weather/platform guarantee.
 
-## What The Uploaded Evidence Shows
+## Evidence Identity
 
-Archive SHA256: 24df8b40f2a6f303c96b3ffe470e8fb64acae2162fa61a6a4031c497347aefaa.
-Recorded runner r5, diagnostic source 9cfe130a8d8e0c25f88e044141c523247ca53d48.
-It stayed in MC throughout; this was not a failed back-transition.
+- ZIP SHA256: 3d88f2ccc5a1384aac9780713c0d9a801b4e1e1281e4070956fe20326ac601ba.
+- Recorded runner r6, mode A; PX4 diagnostic commit
+  9cfe130a8d8e0c25f88e044141c523247ca53d48, base f90b40d61e.
+- ACF SHA256 c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918.
+- Same original motor orientations, quadrant/channel ordering and prop signs.
+- Actual mass 2.000000477 kg, fixed payload zero, measured wind zero.
+- All recorded VTOL states were MC (3). No FW or transition occurred.
 
-| Observation | Evidence |
+The user used QGC takeoff, not the 10 m console scenario: recorded target altitude
+was 1513.079 m MSL, approximately 19 m over the local origin. This does not
+invalidate the flight, but absolute climb duration is not a like-for-like 10 m
+comparison. Use the console takeoff next time to keep the scenario repeatable.
+
+## What Worked
+
+| Measurement | Result |
 | --- | --- |
-| Actual mass was not 2 kg | Truth m_total median 2.250000715 kg, fixed payload 0.250000179 kg |
-| Liftoff was delayed | Takeoff request 40.041 s; EKF height above 0.5 m at 61.325 s: 21.284 s later |
-| Hover value was too low | r5 seed 0.153; HTE median 0.298227 at boot 65-85 s |
-| Pitch response became unstable | Increasing pitch-rate/attitude error and horizontal departure before crash; see hover.svg |
-| A reversal is not established | Pre-divergence pitch acceleration has positive correlation with requested pitch torque in selected windows |
-| Generator changed directions | Original engine psi +5,+5,-5,-5 degrees was overwritten with zero in r4/r5 |
-| Channel order / rotation were preserved | Channel i remained engine i; prop signs remained +,+,-,- |
+| Takeoff request / takeoff detected | 15.606 / 17.590 s boot |
+| Quiet hover attitude error RMS | 0.153 degrees, window 43.16-53.16 s |
+| Quiet hover pitch rate error RMS | 0.00831 rad/s |
+| GoTo command / Land command | 54.160 / 91.558 s |
+| Touchdown / disarm | 111.035 / 112.553 s |
+| Landing attitude error RMS | 0.525 degrees, window 93.56-109.04 s |
+| Independent truth altitude clock-fit RMS | 0.00189 m, no vertical offset fitted |
+| EKF vertical velocity versus aligned truth RMS | 0.00321 m/s |
+| Accelerometer bias maxima, absolute, x/y/z | approximately 0.00186 / 0.00416 / 0.00989 m/s2 |
+| Health messages | Startup heading-reference wait; no recurring in-flight bias/velocity/compass fault |
 
-Closed-loop correlation is not a proven plant identification or proof that all
-axes are correct. It supports investigating response authority rather than
-blindly inverting signs. Original orientations are restored independently of
-that inference: the performance redesign did not require changing them.
+These confirm that this run's mass correction, basic hover and Land worked.
+They do not prove the EKF pipeline is perfect for every flight condition. No
+EKF thresholds, sensor scaling or PX4 core changes are justified by this record.
 
-## Implemented Changes
+## What Still Needs Improvement
 
-1. Preserve original ACF engine and blade orientation fields and propeller
-   rotation signs verbatim. Motor quadrant order and channel mapping stay
-   unchanged. Compact hub distances remain +/-0.30 m and +/-0.15 m.
-2. Restore the existing official 5021 rotor direction vectors, not a newly
-   invented Euler conversion. CT=6.5 remains; positions follow the compact ACF.
-   Physical sign/force validation remains pending, not claimed completed.
-3. Set fixed-payload capacity to zero for this comparison. X-Plane's previous
-   half-capacity default silently added 250 g. Empty mass stays 2 kg.
-   Runtime mass must still be checked in the next truth capture.
-4. MPC_THR_HOVER=0.25: measured HTE 0.298227 mass-corrected by
-   (2/2.250000715)^(3/2). Propeller and power cap are unchanged. This is an
-   evidence-based starting estimate, NOT a guaranteed hover equilibrium.
-5. Trial MC pitch effective P rises from 0.00922 to 0.06, K=1,
-   I=0.015, D=0.0012. Selected pre-divergence closed-loop acceleration/torque
-   regressions suggest approximately 40-84 rad/s2 per normalized output, giving
-   nominal rate bandwidth around 2.4-5 rad/s rather than below 1 rad/s.
-   Confounding feedback, delay, restored cant and aerodynamic moments limit
-   this estimate; it is not validated optimal PID. FW tuning is not declared fixed.
-6. Hold r5 MC roll and FW gains fixed. Recomputing them from the revised hover
-   seed would silently increase gains on unrelated axes. Restored modeled yaw
-   lever is about 2.54 times reaction torque alone, so r5 yaw P/I/D are reduced
-   by the inverse lever ratio. This compensates the modeled cant contribution;
-   physical response remains to be measured. Independent review caught this
-   previously missing cant term before packaging.
-7. `bash run.sh A` is a 10 m hover/Land simulation. No redundant typed-consent
-   prompt and no auto-arm. Bench details stay in JSON; one NOT VERIFIED line
-   replaces the misleading multi-line PENDING/FAIL display without measurements.
+The GoTo was about 57.34 m. Cross-track error was 0.286 m RMS, maximum absolute
+0.547 m: the main issue was NOT a gross lateral route error. Along-track
+overshoot was about 8.00 m. It returned to within approximately 0.62 m of the
+target before Land. In the 55.16-89.16 s comparison window:
 
-Compact geometry, CG candidate, surrogate propeller and 500 W shaft cap remain.
-No extra aircraft or folders. Authentication, identity checks, original-config
-backup and automatic upload remain: removing those risks wrong-file tests or
-unauthenticated uploads, not better control. The configured token is reused.
+| Measurement | Result |
+| --- | --- |
+| Pitch rate command-tracking error RMS | 0.1483 rad/s |
+| Roll / yaw rate error RMS | 0.01615 / 0.02770 rad/s |
+| Attitude command error RMS / peak | 17.05 / 35.70 degrees, predominantly pitch |
+| Pitch rate cross-correlation lag | 1.38 s, correlation 0.780 |
+| Motor commands | Large remaining headroom; approximately 0.228-0.290 in 55-85 s |
+| Allocator torque achievement | 100% in the reviewed 55-85 s window |
 
-## Motor Peak Thrust Is Propeller-Specific
+The axial propeller pitch-moment proxy sum(-hub_Z * thrust), after independent
+truth-clock alignment, correlates with requested torque at 0.996, with best
+fit lag about 0.125 s. It omits cant-side forces, aerodynamic and gyroscopic
+moments. Therefore the much longer rate-tracking lag should not be described as
+a measured 1.38 s motor transport delay. Neither correlation identifies rigid
+body inertia, crossover frequency or phase margin.
 
-The [MAD BSC3120 1000KV chart](https://webmail.mad-motor.com/products/bsc-3120-fpv-drone-motor)
-shows 5.889 kgf at 25 V, 105.44 A, 2636 W input and 15,785 rpm, with a
-10x5x3 propeller. The graph header states 24 V while its table states 25 V.
-This is not a 500 W or 10x8 two-blade datum. It establishes neither a continuous
-thermal rating nor a safe burst duration for our installation.
+Independent review reproduced the weak pitch tracking and found integral/P
+cancellation during some reversals, but not integral-limit windup: peak integral
+approximately 0.0188 versus the 0.30 limit. There is no evidence-based reason to
+raise integral limits, invert axes, reorder motors, change CG, or add ballast.
 
-Our 500 W/motor shaft cap is deliberately derated for this comparison, not a
-faithful model of the motor's full burst capability. Do not claim it reproduces
-the manufacturer's peak. The [APC 10x8E reference](https://www.apcprop.com/files/PER3_10x8E.dat)
-predicts 30.923 N (about 3.15 kgf) at 13,000 rpm and 734.98 W static shaft power;
-already above our 500 W cap. A motor maximum does not override propeller RPM
-limits or determine thrust without its matching load point. Shaft power,
-thrust and RPM are not inflated to force a 5 kgf result.
+## Changes For The Next Test
 
-[Plane Maker](https://developer.x-plane.com/manuals/planemaker/) documents engine
-power in horsepower: 500 W is serialized as 500/745.699872 hp. This correction
-remains. Prop geometry, automatic simulator inertia and wing-only CG assumptions
-still require measurement. No hardware suitability or perfect-flight claim.
+Only TWO parameter values change from r6:
 
-## Verification And Next Evidence
+| Parameter | R6 | R7 | Reason |
+| --- | ---: | ---: | --- |
+| MC_PITCHRATE_P | 0.06 | 0.12 | Controlled P-only intermediate step for weak pitch-rate tracking |
+| MPC_THR_HOVER | 0.25 | 0.26 | Actual 2 kg HTE medians: hover 0.2657, GoTo 0.2613, Land 0.2603 |
 
-Host tests cover orientation/rotation preservation, geometry, payload,
-profile consistency, allocator math, update rollback, capture and upload.
-A compiled test of pinned PX4 routines checks the restored canted
-torque/thrust-Z subset has full rank. Rank is not physical sign validation.
-No actual X-Plane flight occurs on this server.
+Pitch I=0.015, D=0.0012 and K=1 stay unchanged. So do roll/yaw gains, attitude
+and position loops, acceleration/jerk/speed limits, aircraft bytes, CG, propeller,
+power cap, EKF, FW, TECS and transitions. A 0.18 P trial was considered; independent
+review recommended the smaller 0.12 step because headroom and correlations do
+not establish gain margin. This is not a proven optimal gain.
 
-Independent code/evidence review found no reason to reorder motors or invert
-pitch. It also noted that identical serialized engine angles for motors 0/1 do
-not by themselves prove the opposite official horizontal axis vectors physically
-match: the X-Plane interpretation must still be measured. We restore the existing
-baseline convention, not claim that this correspondence is newly verified.
+The parameter descriptions now correctly state that VT_F_TRANS_THR and
+VT_ARSP_BLEND are not effective tailsitter throttle/blending knobs in this pinned
+code. Their values are unchanged; no effect is falsely credited to them.
 
-Reproduce the small evidence review (numpy/pyulog required):
+The workflow remains the same: update the existing folder, reuse upload setup,
+same aircraft, automatic truth/archive/upload after shutdown. No new core fix,
+plugin binary, calibration bypass, aircraft variant or token step is required.
 
-```bash
-PYTHONPATH=/tmp/qtune-review-20261101 python3 tools/analyze_qtailsitter_hover.py LOG.zip NEW_OUTPUT_FOLDER
-```
+## Next Test And Acceptance
 
-It streams truth and writes metrics.json plus hover.svg, without extracting
-the whole archive or assuming truth/PX4 clocks align.
+`bash run.sh A`: console takeoff to 10 m, 20 seconds of stable hover, one QGC
+GoTo 40-60 m away at the same altitude, let it settle for 15 seconds, then Land.
+A return GoTo is optional only if the first is controlled. Do not change speed
+or gains in flight. Land/disarm, shutdown, wait for UPLOAD VERIFIED.
 
-Next: no wind, reload the same updated Ref6, start truth recording, Connect to
-SITL, `bash run.sh A`, commander takeoff. Observe 20 seconds only if controlled;
-commander land, disarm, shutdown. No transition. Upload retains inputs, source,
-ULog, console and this run's truth window. Stop the simulation on growing
-departure and preserve evidence; do not force arm or relax EKF limits.
+Compare against the same phase definitions: pitch-rate error and reversal
+settling should improve, along-track overshoot should decrease, and hover,
+cross-track, altitude and landing must not degrade. Reject new sustained
+oscillation, growing attitude error or motor/allocator saturation. A flight
+which merely arrives eventually is not enough. Stop uncontrolled simulation;
+do not force arm or relax estimator limits.
 
-Original aircraft, official PX4 and other airframes remain untouched. Review
-the new hover response before scheduling FW flight. Measured evidence takes
-precedence over the previous unvalidated model-based expectations.
+## FW And Back-Transition Plan
+
+This log cannot tune an unflown mode. Read-only review of the pinned source found:
+
+| Area | Verified code behavior / next requirement |
+| --- | --- |
+| Differential rate control | FW roll uses MC-body yaw authority; pitch stays pitch. R/P/Y differential factors 0.55/0.90/0.32 apply after FW control. Do not blindly copy MC gains or invert axes. |
+| Airspeed scaling | Inherited FW_ARSP_SCALE_EN=1 scales PID by roughly (26/max(CAS,17))^2: 1.53 at 21, 1.08 at 25, 0.585 at 34 m/s. Rotor-only authority versus collective/speed remains unmeasured. |
+| Front transition | VT_F_TRANS_DUR=10 gives a 9 deg/s attitude schedule. Thrust comes from MC control; VT_F_TRANS_THR is not used by this tailsitter path. Completion uses attitude and finite CAS, not a Standard-VTOL blend schedule. |
+| Back-transition | VT_B_TRANS_DUR=5 schedules 18 deg/s and can force MC entry after 5 s without a speed exit gate. VT_B_TRANS_RAMP is not its 0.5 s internal thrust blend. A timed mode change does not prove physical recovery. |
+| Energy control | FW trim 0.25 and climb/sink capability are provisional. Throttle slew 0.2/s and minimum collective require examination with real FW evidence. Do not invent TECS tuning from hover. |
+| Landing/recovery | MC Land success does not validate normal back-transition or quad-chute recovery. Retain NAV_FORCE_VT behavior; disabled optional quad-chute angle/altitude-loss guards are not new protection. |
+
+After MC tracking passes, identify FW roll/pitch response near 26 m/s with small
+separate demands and full truth/rate/torque/collective/allocator logging. A
+recoverable FW-initialized SITL scenario can isolate this from front-transition
+behavior; it is not implemented as a beginner command yet. Then test one
+straight front transition at ample clearance, followed by a separately reviewed
+altitude-held back-transition with room to stop. Establish upright MC recovery
+and settled hold BEFORE requesting Land. A combined mission/RTL/landing demo
+is premature while the inner-loop and FW response are still unknown.
+
+No additional PX4 PR is supported by this flight. All changes remain on the
+experimental px4xplane validation branch, not the production or official PR branch.
+
+## Reproduction And References
+
+`tools/analyze_qtailsitter_tracking.py LOG.zip NEW_OUTPUT_DIR` requires numpy and
+pyulog. It verifies phase identities, derives command-based windows, computes
+metrics, fits truth time without extrapolation, and writes rates.svg/tracking.svg.
+It reads the ZIP without extracting full artifacts. Closed-loop data is explicitly
+not labeled open-loop identification. Raw source/evidence remain preserved.
+
+- [PX4 MC tuning guide](https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html): inner rate loop before outer control.
+- [PX4 back-transition guide](https://docs.px4.io/main/en/config_vtol/vtol_back_transition_tuning.html).
+- Pinned source: src/modules/vtol_att_control/tailsitter.cpp; src/modules/fw_rate_control/FixedwingRateControl.cpp; src/lib/rate_control/rate_control.cpp.
+- Automatic simulator inertia and the 500 W derated 10x8 surrogate still need
+  characterization. Manufacturer 5.889 kgf is for 10x5x3 at 2636 W electrical input,
+  not our propeller/power point; no full-burst motor fidelity claim is made.

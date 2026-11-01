@@ -209,10 +209,8 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         params[name] = value
         reasons[name] = reason
 
-    # Use the latest compact flight, not the old large-airframe similarity seed.
-    # The recorder revealed 250 g unintended fixed payload; correct that mass.
-    hover_seed = .2982272505760193 * (MASS_KG/2.250000715)**1.5
-    add("MPC_THR_HOVER", round(hover_seed, 3), "R5 HTE median 0.298227 at actual 2.250001kg, boot 65..85s; mass-corrected to 2kg with unchanged prop/power. Verify new settled value; not an arbitrary 40% command.")
+    # Actual 2 kg R6 hover/GoTo/Land HTE ranged around 0.26, without ballast.
+    add("MPC_THR_HOVER", .26, "R6 measured HTE: hover median 0.2657, GoTo 0.2613, Land 0.2603 at actual 2kg. Rounded starting seed; estimator remains enabled.")
     for index in range(4):
         engine = f"_engn/{index}"
         add(f"CA_ROTOR{index}_PX", -as_float(values, f"{engine}/_part_z") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
@@ -245,9 +243,9 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
                 'R5 yaw gains reduced by reaction-only/restored-cant yaw lever ratio; the new cant adds modeled authority. Trial compensation, not measured physical validation.')
         for suffix,value in (('P',p),('I',integral),('D',d),('K',1),('FF',0)):
             add(f'MC_{axis}RATE_{suffix}',round(value,6),reason)
-    for suffix,value in (('P',.06),('I',.015),('D',.0012),('K',1)):
+    for suffix,value in (('P',.12),('I',.015),('D',.0012),('K',1)):
         add('MC_PITCHRATE_'+suffix,value,
-            'R5 pitch response was too slow with effective P=0.00922; pre-divergence closed-loop acceleration/torque regression suggests 40..84rad/s^2 per normalized output. Trial P=0.06 targets roughly 2.4..5rad/s; not a validated open-loop identification. Restored cant may change response.')
+            'R6 GoTo pitch-rate lag ~1.38s and error ~0.15rad/s RMS with motor headroom. Trial P-only step 0.06->0.12; I,D,K unchanged. Closed-loop evidence is not an identified optimum or a phase-margin guarantee.')
     add('MC_PITCHRATE_FF',0,'No identified pitch rate feedforward.')
     for axis,p,integral in (('RR',.287079,.02),('PR',.007684,.001921)):
         add(f'FW_{axis}_P',p,'R5 FW seed held unchanged; this revision tests MC only, not a validated FW tune.')
@@ -255,11 +253,13 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         add(f'FW_{axis}_D',0,'No identified fixed-wing derivative term for this compact model.')
         add(f'FW_{axis}_FF',0,'No identified rate feedforward for this compact model; avoid inherited large-airframe feedforward.')
     add("FW_THR_MAX", 1, "Use the physically power-limited engine envelope, not the old 9.6kW model's 50% cap.")
-    add("VT_F_TRANS_THR", .4, "Provisional acceleration seed with physical motor-power cap; not a measured transition schedule.")
+    add("VT_F_TRANS_THR", .4, "Retained prior value; the pinned tailsitter transition uses MC thrust, not this Standard-VTOL throttle parameter. It is not a tailsitter acceleration tune.")
     add("FW_THR_TRIM", .25, "Provisional level-flight drag/power seed, not a calibrated trim point.")
     for name,value in (('FW_AIRSPD_STALL',17),('FW_AIRSPD_MIN',21),('FW_AIRSPD_TRIM',26),
                        ('FW_AIRSPD_MAX',34),('VT_ARSP_BLEND',20),('VT_ARSP_TRANS',25)):
-        add(name,value,'Sizing-screen envelope at 2kg with CLmax1.0..1.2 uncertainty; actual stall/trim and transition lift must be measured.')
+        reason=('Retained prior value; the pinned tailsitter has no Standard-VTOL airspeed blending schedule controlled by this parameter.' if name=='VT_ARSP_BLEND' else
+                'Sizing-screen envelope at 2kg with CLmax1.0..1.2 uncertainty; actual stall/trim and transition lift must be measured.')
+        add(name,value,reason)
     return params, reasons
 
 
@@ -295,7 +295,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-01.ref6.6", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-01.ref6.7", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

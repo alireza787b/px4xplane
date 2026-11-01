@@ -1,11 +1,12 @@
-# Next Test A: 10 m Hover And Land
+# Next Test A: Hover, One GoTo, Land
 
 SITL only. Same folder, same QuadTailsitterRef6 aircraft. No new PX4 control
 patch or plugin binary. No transition in this test. See REPORT.md for changes.
 
-## 1. Close X-Plane And Update In WSL
+## 1. Update In WSL
 
-Stop PX4, then:
+Stop PX4. For this parameter-only update X-Plane may stay open with the SAME
+Ref6 on the ground. Then:
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -13,13 +14,13 @@ bash run.sh update
 cat VERSION.txt
 ```
 
-Expected: `2026-11-01.ref6.6`. The installed ACF updates automatically; do not
+Expected: `2026-11-01.ref6.7`. This update changes parameters, not the ACF; do not
 copy another aircraft or edit config.ini. Your existing upload setup is kept.
 If the updater reports local edits, send that error rather than deleting files.
 
-## 2. Open X-Plane
+## 2. Prepare X-Plane
 
-- Load Aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf; no wind.
+- Keep or load Aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf; no wind.
 - Check Weight and Balance: total 2 kg, payload zero. Do not add ballast.
 - Start TruthCapture recording.
 - Plugins > PX4 X-Plane > Airframes > QuadTailsitterRef6, then Connect to SITL.
@@ -41,7 +42,11 @@ commander check
 commander takeoff
 ```
 
-At 10 m, observe 20 seconds ONLY if controlled. No transition. Then:
+At 10 m, observe 20 seconds ONLY if controlled. No transition.
+In QGC click Go To about 40-60 m away on clear, level terrain, keeping the SAME
+altitude. One command only; no speed changes. Let it approach and settle for
+15 seconds. If stable, a second Go To back near the start is useful but optional.
+Then, in the PX4 console:
 
 ```text
 commander land
@@ -57,7 +62,10 @@ Leave TruthCapture recording. Logs and truth snapshot upload automatically.
 Wait for UPLOAD VERIFIED, then tell me the test finished. No manual ZIP needed.
 For a failed upload: `bash run.sh retry-uploads`.
 
-If attitude diverges, stop the simulation and preserve the failed interval with
+Compare pitch reversals and braking with your previous run; do not just judge
+whether it eventually arrives. If new sustained oscillation or growing attitude
+error appears, stop rather than forcing another GoTo. If attitude diverges,
+stop the simulation and preserve the failed interval with
 shutdown. Do not force arm or increase EKF limits. Bench NOT VERIFIED means
 measurements remain pending, not a measured failure. This is not a flight-ready
 or hardware profile. Full-flight steps remain in COMMANDS.md for later testing.
