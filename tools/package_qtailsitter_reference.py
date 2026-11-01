@@ -29,7 +29,7 @@ def package(output_root, archive_dir, review_dir=None):
     (output / 'VERSION.txt').write_text(document['revision'] + '\n')
     tools = output / 'build_tools'
     tools.mkdir()
-    for name in ('build_qtailsitter_reference.py', 'analyze_qtailsitter_design.py'):
+    for name in ('build_qtailsitter_reference.py', 'analyze_qtailsitter_design.py', 'qtailsitter_sizing.py'):
         shutil.copy2(ROOT / 'tools' / name, tools / name)
     commit = subprocess.check_output(['git', '-C', str(ROOT), 'rev-parse', 'HEAD'], text=True).strip()
     (output / 'SOURCE.md').write_text(

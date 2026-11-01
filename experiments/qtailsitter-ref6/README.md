@@ -13,11 +13,15 @@ uses PX4's default common CT scale 6.5. A host test compiles the recorded PX4
 matrix, filter and normalization routines to reproduce the failure and check the
 correction. This is a configuration repair, not a newly proven PX4 bug.
 
-The previous hover seed used shaft-power fraction in place of controller
-normalized thrust. MPC_THR_HOVER is now 0.71 from settled Ref6 flight evidence;
-the thrust estimator remains enabled. Geometry and other gains are unchanged.
-The profile is still experimental: real control authority, stability and landing
-must pass the next recorded simulator flight.
+The old 6 kg model settled near 0.71 normalized hover command. The compact
+candidate is 2 kg with 0.60 m projected span, 0.10 m chord and four 500 W shaft
+power caps. Plane Maker's power field is horsepower, not kW. The hover seed is
+now 0.153 by propeller power similarity, NOT a measured compact-model value.
+CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
+disabled explicitly. Component inertia informs initial rate gains, but X-Plane
+automatic inertia remains enabled because its manual serialization is unverified.
+Read design.json and sizing.json for assumptions and envelope screening. Real
+control authority, trim, stability and landing remain simulator validation gates.
 
 ## Daily Commands
 
@@ -30,9 +34,11 @@ bash run.sh flight --yes-debug
 
 Update checks local managed-file hashes, downloads a checksum-verified manifest
 and ZIP, and updates in place with one rollback journal. It preserves
-installation receipts, flight runs and credentials. Local edits are not
-discarded. PX4 must be stopped. Updates changing the ACF are rejected for explicit
-asset-install review; this correction does not change the ACF.
+flight runs and credentials. Local edits are not discarded. PX4 must be stopped.
+For ACF changes X-Plane must also be closed: the same installed ACF and its
+receipt are updated together with managed files under a rollback journal.
+Local aircraft edits or an inconsistent receipt stop the update. One prior
+managed version, including replaced installed bytes, is retained for recovery.
 
 On WSL2 NAT, the runner detects the current Windows gateway and QGC host. The
 TruthCapture output root comes from the recorded X-Plane installation. Override

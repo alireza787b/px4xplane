@@ -2,12 +2,15 @@
 
 Use the SAME debug folder and installed Ref6 aircraft. The one-time bootstrap
 upgrade command is supplied in Telegram; after that, updates use run.sh update.
-This profile repairs missing MC-yaw/FW-roll allocation and corrects the hover
-seed. It is NOT a production tune or a hardware configuration.
+This revision replaces the experimental model in place with the compact 2 kg
+BSC3120/10x8 candidate and calculated initial gains. It retains the allocation
+repair. It is NOT a production tune or a hardware configuration.
 
 ## 1. Update, Then Configure Upload Once
 
-PX4 must be stopped. X-Plane can remain open for this parameter-only update.
+Stop PX4 and QUIT X-Plane before updating: this revision changes the ACF.
+The update checks the installed aircraft hash and updates its receipt. It does
+not replace the original QuadTailsitter aircraft or your plugin binary.
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -44,15 +47,19 @@ Reconnect the plugin if the build outlasts its connection wait.
 ## 4. PX4 Console, One Command at a Time
 
 Wait for REF6 PARAMETER GATE PASSED and Ready for takeoff. Confirm QGC connected.
+For the FIRST compact-model run use `bash run.sh hover --yes-debug` instead of
+flight. Take off, observe hover, Land and shutdown WITHOUT a transition. The new
+propulsion, inertia and CG must be checked from truth before full flight.
 
 ```text
 commander check
 commander takeoff
 ```
 
-Use THIS console takeoff, not a different QGC altitude request, so the commanded
-altitude is unambiguous: 180 m. At 2 m/s, the climb itself takes approximately
-90 seconds. The earlier prolonged ground delay is a separate hover-seed issue.
+Use THIS console takeoff, not a different QGC altitude request: the target is
+50 m for hover and 180 m for flight. At 2 m/s, a 180 m climb itself takes about
+90 seconds. The new 0.153 hover seed is a similarity estimate, not measured on
+this compact aircraft; it must not be interpreted as a validated throttle value.
 Observe 20 seconds of controlled hover before continuing. Abort if yaw/roll
 oscillations grow, the estimator warns persistently, or the aircraft is unstable.
 

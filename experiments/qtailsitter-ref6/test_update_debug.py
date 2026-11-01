@@ -233,12 +233,77 @@ class UpdateTests(unittest.TestCase):
         self.assert_original()
 
     def test_acf_changes_additions_and_removal_require_asset_install(self):
-        for files in ({**self.new, ACF: b'new acf'},
-                      {k: v for k, v in self.new.items() if k != ACF},
+        for files in ({k: v for k, v in self.new.items() if k != ACF},
                       {**self.new, updater.AIRCRAFT + 'second.acf': b'new'}):
             with self.assertRaisesRegex(ValueError, 'asset install'):
                 self.invoke(files=files)
             self.assert_original()
+
+    def asset_fixture(self):
+        installed = self.parent / 'X-Plane 12/Aircraft/QuadTailsitterRef6'
+        installed.mkdir(parents=True)
+        acf = installed / 'QuadTailsitterRef6.acf'
+        acf.write_bytes(self.old[ACF])
+        receipt = self.bundle/'installation/receipt.json'
+        receipt.write_text(json.dumps({'aircraft': str(installed), 'acf_sha256': sha(self.old[ACF]),
+                                      'version': 'v1', 'restored': False, 'config': 'untouched'}))
+        return acf, receipt
+
+    def test_asset_update_same_location_and_receipt(self):
+        acf, receipt = self.asset_fixture()
+        with patch.object(updater, 'assets_stopped') as stopped:
+            self.invoke(files={**self.new, ACF: b'compact aircraft'})
+        stopped.assert_called_once()
+        self.assertEqual(acf.read_bytes(), b'compact aircraft')
+        revised = json.loads(receipt.read_text())
+        self.assertEqual(revised['acf_sha256'], sha(b'compact aircraft'))
+        self.assertEqual(revised['version'], 'v2')
+        self.assertEqual(revised['config'], 'untouched')
+        self.assertEqual((self.bundle/'.previous-managed/installed/0').read_bytes(), self.old[ACF])
+
+    def test_asset_failure_rolls_back_model_receipt_and_managed_files(self):
+        acf, receipt = self.asset_fixture()
+        original_receipt = receipt.read_bytes()
+        original = updater.atomic_file
+        def fail(source, target, stage):
+            if source.name == 'ref6.py' and 'payload' in source.parts:
+                raise OSError('injected write failure')
+            return original(source, target, stage)
+        with patch.object(updater, 'assets_stopped'), patch.object(updater, 'atomic_file', side_effect=fail):
+            with self.assertRaisesRegex(OSError, 'injected'):
+                self.invoke(files={**self.new, ACF: b'compact aircraft'})
+        self.assertEqual(acf.read_bytes(), self.old[ACF])
+        self.assertEqual(receipt.read_bytes(), original_receipt)
+        self.assertEqual((self.bundle/'ref6.py').read_bytes(), self.old['ref6.py'])
+
+    def test_edited_installed_aircraft_refused(self):
+        acf, receipt = self.asset_fixture()
+        acf.write_bytes(b'user edit')
+        with self.assertRaisesRegex(ValueError, 'local edits'):
+            self.invoke(files={**self.new, ACF: b'compact aircraft'})
+        self.assertEqual(acf.read_bytes(), b'user edit')
+        self.assertEqual((self.bundle/'ref6.py').read_bytes(), self.old['ref6.py'])
+
+    def test_restart_recovers_installed_and_managed_pending_update(self):
+        acf, receipt = self.asset_fixture()
+        original_receipt = receipt.read_bytes()
+        with patch.object(updater, 'assets_stopped'):
+            self.invoke(files={**self.new, ACF: b'compact aircraft'})
+            journal_path = self.bundle/'.previous-managed/journal.json'
+            journal = json.loads(journal_path.read_text())
+            journal['state'] = 'pending'
+            journal_path.write_text(json.dumps(journal))
+            with tempfile.TemporaryDirectory(dir=self.parent) as stage:
+                updater.recover(self.bundle, Path(stage))
+        self.assertEqual(acf.read_bytes(), self.old[ACF])
+        self.assertEqual(receipt.read_bytes(), original_receipt)
+        self.assertEqual((self.bundle/'ref6.py').read_bytes(), self.old['ref6.py'])
+        self.assertEqual(json.loads(journal_path.read_text())['state'], 'rolled-back')
+
+    def test_uninstalled_bundle_can_update_aircraft_without_external_writes(self):
+        (self.bundle/'installation/receipt.json').unlink()
+        self.invoke(files={**self.new, ACF: b'compact aircraft'})
+        self.assertEqual((self.bundle/ACF).read_bytes(), b'compact aircraft')
 
     def test_symlink_in_current_bundle_and_checksum_refused(self):
         path = self.bundle / 'ref6.py'

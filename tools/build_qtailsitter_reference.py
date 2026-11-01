@@ -12,14 +12,15 @@ import re
 import shutil
 
 from analyze_qtailsitter_design import FT_TO_M, LB_TO_KG, G, parse_acf, as_float, estimate_wing_area_m2
+import qtailsitter_sizing as sizing
 
 NAME = "QuadTailsitterRef6"
-MASS_KG = 6.0
-MAIN_AREA_M2 = 0.331
+MASS_KG = sizing.MASS
+MAIN_AREA_M2 = sizing.AREA
 DIAMETER_M = 0.254
 PITCH_M = 0.2032
 RPM_LIMIT = 13000
-MOTOR_KW = 0.75
+MOTOR_KW = 0.5
 EFFICIENCY = 0.85
 AUX_W = 50
 # Manufacturer analytical data, not thrust-stand measurements or an X-Plane fit.
@@ -32,6 +33,76 @@ APC_URL = "https://www.apcprop.com/files/PER3_10x8E.dat"
 BEM_STATIC_RPM = 12000
 BEM_STATIC_THRUST_N = 23.954
 BEM_STATIC_POWER_W = 573.45
+
+
+def compact_geometry(values, result):
+    chord_scale = sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M)
+    root_y = sizing.NP_Y / FT_TO_M
+    for i in range(4):
+        p = f'_wing/{i}'
+        old_x = as_float(values, p+'/_part_x')
+        old_y = as_float(values, p+'/_part_y')
+        old_z = as_float(values, p+'/_part_z')
+        xs = [abs(float(v)-old_x) for k,v in values.items() if k.startswith(p+'/_geo_xyz/') and k.endswith(',0')]
+        scale = (sizing.SPAN / 2 / FT_TO_M) / max(xs)
+        for field in ('_Croot', '_Ctip'):
+            result[p+'/'+field] = number(sizing.CHORD / FT_TO_M)
+        for j in range(11):
+            result[f'{p}/_chord_for_RIB/{j}'] = number(sizing.CHORD / FT_TO_M)
+        result[p+'/_semilen_SEG'] = number(as_float(values,p+'/_semilen_SEG')*scale)
+        result[p+'/_part_y'] = number(root_y)
+        result[p+'/_part_z'] = number(old_z*scale)
+        for key,value in values.items():
+            match = re.fullmatch(re.escape(p)+r'/_geo_xyz/(\d+),(\d+),([012])', key)
+            if not match:
+                continue
+            station, section, axis = map(int, match.groups())
+            if station >= int(as_float(values,p+'/_s_dim')) or section >= int(as_float(values,p+'/_r_dim')):
+                continue
+            if axis == 0:
+                result[key] = number(float(value)*scale)
+            elif axis == 1:
+                # Unused mesh entries remain zero, not displaced into geometry.
+                result[key] = number(root_y + (float(value)-old_y)*chord_scale)
+            else:
+                xkey=key[:-1]+'0'
+                x=as_float(values,xkey)
+                center=old_z+abs(x-old_x)*math.tan(math.radians(as_float(values,p+'/_sweep_design')))
+                result[key]=number(center*scale+(float(value)-center)*chord_scale)
+        # 500 W is converted to Plane Maker's horsepower field. It is NOT 0.5
+        # in this serialized field; the previous builder's kW assumption was wrong.
+        result[f'_engn/{i}/_power_max_limit'] = number(sizing.MOTOR_HP)
+    # Remove inherited secondary aerodynamic panels rather than silently carrying
+    # their old trim contribution into a smaller tailless reference.
+    for i in (8,9,10,11):
+        p=f'_wing/{i}'
+        for key in values:
+            if (key.startswith(p+'/_geo_xyz/') or key.startswith(p+'/_chord_for_RIB/')) and not key.endswith(('_count', '/count')):
+                result[key]=number(0)
+        for field in ('_semilen_SEG','_Croot','_Ctip'):
+            result[p+'/'+field]=number(0)
+    hubs=((.3,-.15),(-.3,.15),(-.3,-.15),(.3,.15))
+    for i,(x,z) in enumerate(hubs):
+        for group in (f'_engn/{i}',f'_blad/{i}',f'_body/{16+i}'):
+            for axis,value in (('x',x),('y',sizing.HUB_Y),('z',z)):
+                result[group+'/_part_'+axis]=number(value/FT_TO_M)
+    # Compact the inherited fuselage and non-motor fairing. Propeller meshes
+    # and motor nacelles keep their physical dimensions.
+    for i in (0,21):
+        p=f'_body/{i}'
+        for key,value in values.items():
+            if (key.startswith(p+'/_geo_xyz/') and not key.endswith('_count')) or key in (p+'/_part_x',p+'/_part_y',p+'/_part_z',p+'/_part_rad'):
+                result[key]=number(float(value)*.6)
+    for i in range(4):
+        for field in ('_gear_x','_gear_y','_gear_z','_leg_len'):
+            key=f'_gear/{i}/{field}'
+            result[key]=number(as_float(values,key)*.6)
+    result['acf/_cgY']=number(sizing.CG_Y/FT_TO_M)
+    result['acf/_cgZ']=number(0)
+    result['acf/_fixed_ref/0,1']=number(sizing.CG_Y/FT_TO_M)
+    result['acf/_fixed_max/0']=number(.5/LB_TO_KG)
+    result['acf/_m_max']=number(2.5/LB_TO_KG)
+    result['acf/_battery_watt_hr_max']=number(22.2*3)
 
 
 def sha256(path: Path) -> str:
@@ -66,45 +137,15 @@ def replacements_for(values: dict[str, str], blade_chord_scale: float) -> dict[s
     area = estimate_wing_area_m2(values)["main_panel_area_m2"]
     if area <= 0 or not 1 <= blade_chord_scale <= 5:
         raise ValueError("Invalid source wing area or blade chord scale")
-    ratio = MAIN_AREA_M2 / area
     result = {
         "acf/_m_empty": number(MASS_KG / LB_TO_KG),
-        "acf/_m_max": number(MASS_KG / LB_TO_KG),
-        "acf/_fixed_max/0": number(0),
         "acf/_engine_rev_time_sec": number(0.1),
         "acf/_rotor_mi_rat": number(1400 / 2700),
         "acf/_fadec_EQ_rpm_limit": "1",
         "acf/_use_manual_prop_inc": "1",
     }
     for index in range(4):
-        wing = f"_wing/{index}"
-        for key in ("_Croot", "_Ctip"):
-            result[f"{wing}/{key}"] = number(as_float(values, f"{wing}/{key}") * ratio)
-        for rib in range(int(as_float(values, f"{wing}/_chord_for_RIB/count"))):
-            key = f"{wing}/_chord_for_RIB/{rib}"
-            result[key] = number(as_float(values, key) * ratio)
-        # Preserve the quarter-chord line and panel sweep. Stored mesh uses
-        # absolute aircraft coordinates (feet), with chord along Y at 90 deg.
-        px = as_float(values, f"{wing}/_part_x")
-        py = as_float(values, f"{wing}/_part_y")
-        pz = as_float(values, f"{wing}/_part_z")
-        sweep = math.radians(as_float(values, f"{wing}/_sweep_design"))
-        for key, value in values.items():
-            match = re.fullmatch(re.escape(wing) + r"/_geo_xyz/(\d+),(\d+),([012])", key)
-            if not match:
-                continue
-            station, section, axis = map(int, match.groups())
-            if station >= int(as_float(values, f"{wing}/_s_dim")) or section >= int(as_float(values, f"{wing}/_r_dim")):
-                continue
-            if axis == 1:
-                result[key] = number(py + (float(value) - py) * ratio)
-            elif axis == 2:
-                x = as_float(values, f"{wing}/_geo_xyz/{station},{section},0")
-                center_z = pz + abs(x - px) * math.tan(sweep)
-                result[key] = number(center_z + (float(value) - center_z) * ratio)
-
         engine = f"_engn/{index}"
-        result[f"{engine}/_power_max_limit"] = number(MOTOR_KW)
         result[f"{engine}/_RSC_redline_ENGN"] = number(RPM_LIMIT)
         result[f"{engine}/_RSC_max_pwr_ENGN"] = number(RPM_LIMIT)
         # A deliberately uncanted reference avoids inheriting an unverified
@@ -157,6 +198,7 @@ def replacements_for(values: dict[str, str], blade_chord_scale: float) -> dict[s
                 result[prefix + ",0"] = number(as_float(values, prefix + ",0") * radial_scale)
                 result[prefix + ",1"] = number(y * math.cos(angle) - z * math.sin(angle))
                 result[prefix + ",2"] = number(y * math.sin(angle) + z * math.cos(angle))
+    compact_geometry(values, result)
     return result
 
 
@@ -171,7 +213,8 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     # Ref6 flight 2026-11-01, boot 138..155s: median commanded hover thrust
     # 0.7107 at 6kg. The original power-fraction seed delayed liftoff and
     # saturated the estimator's allowed adaptation range.
-    add("MPC_THR_HOVER", .71, "Measured Ref6 normalized hover thrust, boot 138..155s in flight-8yc79oye. Estimator remains enabled; not a universal airframe value.")
+    hover_seed = .7107 * (MASS_KG/6)**1.5 * (.75/sizing.MOTOR_HP)
+    add("MPC_THR_HOVER", round(hover_seed, 3), "Initial similarity estimate from measured 6kg hover, fixed prop and power-led P~T^1.5, corrected horsepower units. New model MUST be measured; not 40% forced through a parameter.")
     for index in range(4):
         engine = f"_engn/{index}"
         add(f"CA_ROTOR{index}_PX", -as_float(values, f"{engine}/_part_z") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
@@ -183,15 +226,35 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         add(f"CA_ROTOR{index}_CT", 6.5, "PX4 default common allocation scale. CT=2 with this KM fell below the allocator's 0.05 weak-axis cutoff. Common scaling is removed by normalized allocation; not a measured maximum thrust.")
         km = BEM_STATIC_POWER_W / (BEM_STATIC_RPM * math.pi / 30) / BEM_STATIC_THRUST_N
         add(f"CA_ROTOR{index}_KM", direction * km, "BEM static Q/T prediction; rotation sign and actual Q/T must pass bench test.")
-    # Restore the known quiet-hover gains, rather than transfer increased gains
-    # from a propulsion system with different dynamics. Other stock 5021 gains
-    # remain visible in the captured airframe and parameter export.
-    for name, value in (("MC_ROLLRATE_P", .10), ("MC_PITCHRATE_P", .115),
-                        ("MC_ROLLRATE_D", .0008), ("FW_RR_P", .10)):
-        add(name, value, "Known quiet-hover baseline seed; not a claim of a tuned Ref6 controller.")
+    # First-pass rigid-body gains: desired angular bandwidth / normalized
+    # moment slope. Keep these explicitly separate from identified flight gains.
+    tensor = sizing.screen()['inertia_tensor_xplane_kg_m2']
+    inertia_mc = (tensor[2][2], tensor[0][0], tensor[1][1])
+    thrust_slope = (2/3) * (MASS_KG*G/4) / hover_seed
+    km = BEM_STATIC_POWER_W/(BEM_STATIC_RPM*math.pi/30)/BEM_STATIC_THRUST_N
+    moment_slopes = (math.sqrt(2)*.3*thrust_slope,
+                     math.sqrt(2)*.3*thrust_slope, 4*km*thrust_slope)
+    for axis, inertia, slope, bandwidth in zip(('ROLL','PITCH','YAW'), inertia_mc, moment_slopes, (4.,4.,2.)):
+        p = inertia*bandwidth/slope
+        # PX4's displayed P minimum is 0.01. Preserve the effective model gain
+        # with the documented global K multiplier, rather than violating it.
+        k = min(1., p/.01)
+        for suffix, value in (('P',p/k),('I',min(p*.25,.02)/k),('D',p*.02/k),('K',k),('FF',0)):
+            add(f'MC_{axis}RATE_{suffix}', round(value,6),
+                'Unvalidated rigid-body seed from component inertia, normalized mixer moment slope and conservative bandwidth; see sizing.json. Not a system-identified gain.')
+    for axis, inertia, slope, scale in (('RR',inertia_mc[2],moment_slopes[2],.55),
+                                       ('PR',inertia_mc[1],moment_slopes[1],.90)):
+        p = inertia*3/(slope*scale)
+        add(f'FW_{axis}_P',round(p,6),'Unvalidated 3rad/s rate seed using differential-thrust scale and component inertia; verify in flight.')
+        add(f'FW_{axis}_I',round(min(p*.25,.02),6),'Slow integral seed; not a flight identification.')
+        add(f'FW_{axis}_D',0,'No identified fixed-wing derivative term for this compact model.')
+        add(f'FW_{axis}_FF',0,'No identified rate feedforward for this compact model; avoid inherited large-airframe feedforward.')
     add("FW_THR_MAX", 1, "Use the physically power-limited engine envelope, not the old 9.6kW model's 50% cap.")
-    add("VT_F_TRANS_THR", .55, "Provisional 1.65kW aggregate shaft-power request; validate acceleration before FW release.")
-    add("FW_THR_TRIM", .30, "Provisional trim seed (900W shaft); measure drag/power in level flight before optimization.")
+    add("VT_F_TRANS_THR", .4, "Provisional acceleration seed with physical motor-power cap; not a measured transition schedule.")
+    add("FW_THR_TRIM", .25, "Provisional level-flight drag/power seed, not a calibrated trim point.")
+    for name,value in (('FW_AIRSPD_STALL',17),('FW_AIRSPD_MIN',21),('FW_AIRSPD_TRIM',26),
+                       ('FW_AIRSPD_MAX',34),('VT_ARSP_BLEND',20),('VT_ARSP_TRANS',25)):
+        add(name,value,'Sizing-screen envelope at 2kg with CLmax1.0..1.2 uncertainty; actual stall/trim and transition lift must be measured.')
     return params, reasons
 
 
@@ -212,24 +275,25 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
             shutil.copytree(path, target / path.name)
         elif path.suffix.lower() == ".png":
             shutil.copy2(path, target / path.name.replace("QuadTailsitter", NAME))
-    params, reasons = parameter_profile(values)
+    generated_values = parse_acf(acf)
+    params, reasons = parameter_profile(generated_values)
     profile = ["#!/bin/sh", "# SITL ONLY: experimental Ref6. Never install on real hardware."]
     for name, value in params.items():
         profile.extend((f"# {reasons[name]}", f"param set {name} {value:.9g}", f"param show {name}"))
     (output / "profile.sh").write_text("\n".join(profile) + "\n")
     (output / "parameters.json").write_text(json.dumps({"parameters": params, "reasons": reasons}, indent=2) + "\n")
-    hubs = [(as_float(values, f"_engn/{i}/_part_x") * FT_TO_M,
-             as_float(values, f"_engn/{i}/_part_z") * FT_TO_M) for i in range(4)]
+    hubs = [(as_float(generated_values, f"_engn/{i}/_part_x") * FT_TO_M,
+             as_float(generated_values, f"_engn/{i}/_part_z") * FT_TO_M) for i in range(4)]
     gap = min(math.dist(a, b) for i, a in enumerate(hubs) for b in hubs[i + 1:]) - DIAMETER_M
     if gap <= 0:
         raise ValueError("Propeller disks overlap")
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "revision": "2026-11-01.ref6.4", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-01.ref6.5", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
-        "main_chord_scale": MAIN_AREA_M2 / estimate_wing_area_m2(values)["main_panel_area_m2"],
+        "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),
         "propeller_diameter_m": DIAMETER_M, "propeller_pitch_m": PITCH_M,
         "blade_chord_scale": blade_chord_scale, "rpm_limit": RPM_LIMIT,
         "shaft_power_budget_w": MOTOR_KW * 4000,
@@ -242,7 +306,11 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
         "engine_free_rev_time_s": .1,
         "prop_material_density_assumption_kg_m3": 1400,
         "response_assumptions": "0.1s engine-only free rev and 1400kg/m3 composite proxy. Loaded response is NOT identified by these settings; measure RPM/thrust rise and fall.",
-        "inertia": "X-Plane automatic inertia retained; runtime verification required. Zero manual fields do not mean zero inertia.",
+        "inertia": "Component tensor calculated in sizing.json; X-Plane automatic inertia retained because serialized manual-inertia units are unverified. Runtime comparison is a release gate, not claimed completed.",
+        "cg_xplane_m": sizing.screen()['cg_xplane_m'],
+        "motor_model": "MAD BSC3120 1000KV, 6S reference; 10x8 prop combination not manufacturer tested",
+        "acf_power_max_limit_units": "horsepower per Plane Maker manual; 500W/745.699872 serialized, not kW",
+        "geometry_tradeoff": "Inherited secondary panels disabled to avoid uncontrolled trim contributions; complete-aircraft neutral point still requires measurement.",
         "propulsion_calibration": "PENDING X-Plane measurement. Geometric 10x8 candidate, NOT an APC replica or calibrated model.",
         "bem_screening": {"rpm": BEM_STATIC_RPM, "thrust_n": BEM_STATIC_THRUST_N, "shaft_power_w": BEM_STATIC_POWER_W,
                           "valid_for_blade_chord_scale": 2.6, "uncertainty_allowance_fraction": .2,
@@ -252,6 +320,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
         "release_gates": ["actual mass and CG", "allocation force/moment signs", "actual RPM ceiling and shaft power", "static thrust and Q/T", "loaded acceleration/deceleration", "hover", "FW rate tracking", "back-transition", "Land descent and disarm"],
     }
     (output / "design.json").write_text(json.dumps(doc, indent=2) + "\n")
+    (output / "sizing.json").write_text(json.dumps(sizing.screen(), indent=2)+'\n')
     return doc
 
 

@@ -55,10 +55,11 @@ public:
  void normalizeControlAllocationMatrix()
 ''' + method(inverse, 'ControlAllocationPseudoInverse::normalizeControlAllocationMatrix') + '''
 };
-Matrix effectiveness(float ct) {
+Matrix effectiveness(float ct, bool compact=false) {
  ActuatorEffectivenessRotors::Geometry g;
  float x[]={.219456f,-.219456f,.219456f,-.219456f};
  float y[]={.42672f,-.42672f,-.42672f,.42672f};
+ if(compact) for(int k=0;k<4;k++) {x[k]=(x[k]>0 ? .15f:-.15f);y[k]=(y[k]>0 ? .3f:-.3f);}
  for(int k=0;k<4;k++) { g.rotors[k].position=Vector3f(x[k],y[k],-.04572f);
   g.rotors[k].axis=Vector3f(0,0,-1); g.rotors[k].thrust_coef=ct;
   g.rotors[k].moment_ratio=(k<2 ? 1.f:-1.f)*.019050555f; }
@@ -84,6 +85,17 @@ int main() {
  matrix::Matrix<float,16,6> mix; matrix::geninv(corrected,mix);
  auto projection=corrected*mix;
  for(int k : {0,1,2,5}) assert(fabsf(projection(k,k)-1.f)<1e-4f);
+ Matrix compact=effectiveness(6.5f,true); weakFilter(compact);
+ ControlAllocationPseudoInverse c;
+ matrix::geninv(compact,c._mix);
+ c.updateControlAllocationMatrixScale(); c.normalizeControlAllocationMatrix();
+ // PX4 uses a shared roll/pitch normalization: different arm lengths do NOT
+ // imply twice the pitch moment per normalized command for this rectangle.
+ auto normalized=compact*c._mix;
+ const float expected_rp=2.f*sqrtf(2.f)*.15f*6.5f;
+ assert(fabsf(normalized(0,0)-expected_rp)<1e-4f);
+ assert(fabsf(normalized(1,1)-expected_rp)<1e-4f);
+ assert(fabsf(normalized(2,2)-4.f*.019050555f*6.5f)<1e-4f);
 }
 '''
         with tempfile.TemporaryDirectory() as directory:

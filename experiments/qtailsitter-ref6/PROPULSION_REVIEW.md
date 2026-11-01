@@ -1,5 +1,11 @@
 # Ref6 independent propulsion review
 
+Historical 6 kg design review, retained for the reproducible propeller BEM
+method only. The CURRENT compact revision uses a 2 kg mass and 500 W shaft
+cap per motor, not the 750 W assumption below. Geometry, hover and vehicle
+inertia numbers below are historical, not the current aircraft specification.
+Use design.json, sizing.json and REPORT.md for current assumptions and limits.
+
 2026-11-01. Bounded analytical review only. No ACF, repository, plugin,
 installation, or controller changes made. No X-Plane test performed by this
 reviewer. These are test candidates, not a calibrated X-Plane model or a

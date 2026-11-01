@@ -177,7 +177,8 @@ def aircraft_summary(values: Dict[str, str], clmax: float) -> Dict[str, object]:
                 "yaw_deg": as_float(values, f"_engn/{index}/_part_psi"),
                 "pitch_deg": as_float(values, f"_engn/{index}/_part_the"),
                 "redline_rpm": redline_rpm,
-                "power_max_kw": as_float(values, f"_engn/{index}/_power_max_limit"),
+                "power_max_hp": as_float(values, f"_engn/{index}/_power_max_limit"),
+                "power_max_kw": as_float(values, f"_engn/{index}/_power_max_limit") * .745699872,
             }
         )
 

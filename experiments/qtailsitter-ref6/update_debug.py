@@ -2,12 +2,15 @@
 """Update a Ref6 bundle in place. The caller MUST already own .ref6.lock.
 
 HTTPS authenticates the manifest; its SHA256 authenticates the ZIP. Neither
-checksum file is a signature. No installation, run data or credentials are owned.
+checksum file is a signature. Only receipted aircraft bytes are installed;
+flight runs and credentials are never updated.
 """
 import argparse
+import csv
 import fcntl
 import hashlib
 import ipaddress
+import io
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -31,7 +34,7 @@ diagnostics.bundle diagnostic-sha.txt QUICKSTART.md README.md COMMANDS.md
 profile.sh parameters.json design.json VERSION.txt SOURCE.md REPORT.md'''.split())
 ROOT_FILES = ROOT_FILES | frozenset(('upload_debug.py', 'test_upload_debug.py',
                                     'test_live_snapshot.py', 'test_allocator_contract.py',
-                                    'test_shutdown_workflow.py'))
+                                    'test_shutdown_workflow.py', 'sizing.json'))
 AIRCRAFT = 'aircraft/QuadTailsitterRef6/'
 
 
@@ -55,6 +58,7 @@ def managed(name):
             or (name.startswith('evidence/') and Path(name).suffix in
                 ('.svg', '.json', '.py', '.cpp', '.hpp', '.patch'))
             or name in ('build_tools/build_qtailsitter_reference.py',
+                        'build_tools/qtailsitter_sizing.py',
                         'build_tools/analyze_qtailsitter_design.py'))
 
 
@@ -179,7 +183,8 @@ def stopped():
 
 def atomic_file(source, destination, stage):
     destination.parent.mkdir(parents=True, exist_ok=True)
-    fd, name = tempfile.mkstemp(prefix='write-', dir=stage)
+    # The installation may be on Windows/another filesystem; replace locally.
+    fd, name = tempfile.mkstemp(prefix='.ref6-write-', dir=destination.parent)
     temporary = Path(name)
     try:
         with os.fdopen(fd, 'wb') as output, source.open('rb') as stream:
@@ -198,6 +203,48 @@ def journal_write(backup, journal, stage):
     atomic_file(source, backup / 'journal.json', stage)
 
 
+def assets_stopped():
+    result = subprocess.run(['pgrep', '-x', r'X-Plane(-x86_64|\.exe)?'], capture_output=True, text=True)
+    require(result.returncode == 1, 'Quit X-Plane before the aircraft update')
+    if shutil.which('tasklist.exe'):
+        result = subprocess.run(['tasklist.exe', '/FO', 'CSV', '/NH'], capture_output=True, text=True)
+        require(result.returncode == 0, 'Cannot inspect Windows processes')
+        names = {row[0].casefold() for row in csv.reader(io.StringIO(result.stdout)) if row}
+        require('x-plane.exe' not in names, 'Quit Windows X-Plane before updating')
+    else:
+        require(input('Quit X-Plane, then type XPLANE CLOSED: ').strip() == 'XPLANE CLOSED',
+                'Aircraft update cancelled')
+
+
+def installed_assets(bundle, payload, old_acf, new_acf, version, prepared, stage):
+    require(set(old_acf) == set(new_acf) and len(old_acf) == 1,
+            'Aircraft additions/removals are not supported by an in-place update')
+    receipt_path = checked_path(bundle, 'installation/receipt.json')
+    # An uninstalled bundle owns no external aircraft.
+    if not receipt_path.exists():
+        return []
+    receipt = json.loads(receipt_path.read_text())
+    require(not receipt.get('restored'), 'Installation restored; reinstall before updating assets')
+    name = next(iter(old_acf))
+    acf = Path(receipt['aircraft']) / Path(name).name
+    require(acf.is_absolute() and acf.resolve(strict=True) == acf and not acf.is_symlink(),
+            'Installed ACF path must be absolute and not a symlink')
+    require(digest(acf) == receipt['acf_sha256'] == old_acf[name],
+            'Installed aircraft has local edits or differs from this bundle')
+    assets_stopped()
+    revised = {**receipt, 'version': version, 'acf_sha256': new_acf[name]}
+    receipt_source = stage / 'receipt-new.json'
+    receipt_source.write_text(json.dumps(revised, indent=2)+'\n')
+    assets = []
+    for index, (target, source) in enumerate(((acf, payload/name), (receipt_path, receipt_source))):
+        saved = prepared / 'installed' / str(index)
+        saved.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(target, saved)
+        assets.append({'target': str(target), 'backup': str(index),
+                       'old': digest(saved), 'new': digest(source)})
+    return assets
+
+
 def recover(bundle, stage):
     backup = checked_path(bundle, '.previous-managed')
     if not backup.exists():
@@ -207,6 +254,16 @@ def recover(bundle, stage):
     require(journal['state'] in ('pending', 'complete', 'rolled-back'), 'Invalid update journal')
     if journal['state'] != 'pending':
         return
+    assets = journal.get('installed', [])
+    if assets:
+        assets_stopped()
+    for asset in assets:
+        target = Path(asset['target'])
+        require(target.is_absolute() and target.resolve(strict=True) == target,
+                'Invalid installed rollback path')
+        require(digest(target) in (asset['old'], asset['new']), 'Edited installed file blocks rollback')
+        require(asset['backup'] in ('0', '1') and
+                digest(backup/'installed'/asset['backup']) == asset['old'], 'Corrupt installed backup')
     old, new = journal['old'], journal['new']
     for name in old.keys() | new.keys():
         require(name == 'SHA256SUMS' or managed(name), 'Unmanaged rollback path')
@@ -217,6 +274,8 @@ def recover(bundle, stage):
             source = checked_path(backup / 'files', name)
             require(digest(source) == old[name], 'Corrupt rollback file: ' + name)
     # Validate the entire rollback before changing any destination.
+    for asset in assets:
+        atomic_file(backup/'installed'/asset['backup'], Path(asset['target']), stage)
     for name in sorted(old.keys() | new.keys(), key=lambda n: n == 'SHA256SUMS'):
         path = checked_path(bundle, name)
         if name in old:
@@ -261,8 +320,8 @@ def update(bundle, manifest_url, *, allow_loopback_http=False):
                 == manifest['version'], 'Manifest/internal version mismatch')
         old_acf = {n: h for n, h in old.items() if n.lower().endswith('.acf')}
         new_acf = {n: h for n, h in new.items() if n.lower().endswith('.acf')}
-        require(bool(old_acf) and new_acf == old_acf,
-                'ACF changes/additions/removals need an asset install; update refused')
+        require(bool(old_acf) and set(new_acf) == set(old_acf),
+                'ACF additions/removals need an asset install; update refused')
         new['SHA256SUMS'] = digest(payload / 'SHA256SUMS')
         for name in new.keys() - old.keys():
             require(not checked_path(bundle, name).exists(), 'Unowned file collision: ' + name)
@@ -278,13 +337,19 @@ def update(bundle, manifest_url, *, allow_loopback_http=False):
             destination.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(bundle / name, destination)
             require(digest(destination) == old[name], 'Managed file changed during backup: ' + name)
-        journal = {'state': 'pending', 'old': old, 'new': new}
+        assets = installed_assets(bundle, payload, old_acf, new_acf, manifest['version'], prepared, stage) if old_acf != new_acf else []
+        journal = {'state': 'pending', 'old': old, 'new': new, 'installed': assets}
         journal_write(prepared, journal, stage)
         if backup.exists():
             require(not any(p.is_symlink() for p in backup.rglob('*')), 'Symlink in rollback directory')
             shutil.rmtree(backup)
         os.replace(prepared, backup)
         try:
+            if assets:
+                name = next(iter(new_acf))
+                for asset, source in zip(assets, (payload/name, stage/'receipt-new.json')):
+                    require(digest(Path(asset['target'])) == asset['old'], 'Installed file changed during update')
+                    atomic_file(source, Path(asset['target']), stage)
             for name in sorted(new, key=lambda n: n == 'SHA256SUMS'):
                 if old.get(name) != new[name]:
                     atomic_file(payload / name, checked_path(bundle, name), stage)

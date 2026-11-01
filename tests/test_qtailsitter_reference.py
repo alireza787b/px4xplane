@@ -21,9 +21,12 @@ class ReferenceTest(unittest.TestCase):
             out = Path(tmp)
             doc = reference.build(self.source, out)
             candidate = parse_acf(out / "aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf")
-            self.assertAlmostEqual(as_float(candidate, "acf/_m_empty") * reference.LB_TO_KG, 6)
-            self.assertAlmostEqual(estimate_wing_area_m2(candidate)["main_panel_area_m2"], .331, places=7)
-            self.assertGreater(doc["minimum_planar_prop_clearance_m"], .18)
+            self.assertAlmostEqual(as_float(candidate, "acf/_m_empty") * reference.LB_TO_KG, 2)
+            self.assertAlmostEqual(estimate_wing_area_m2(candidate)["main_panel_area_m2"], reference.sizing.AREA, places=7)
+            self.assertGreater(doc["minimum_planar_prop_clearance_m"], .04)
+            self.assertAlmostEqual(as_float(candidate, 'acf/_cgY') * reference.FT_TO_M, reference.sizing.CG_Y)
+            for i in (8, 9, 10, 11):
+                self.assertEqual(as_float(candidate, f'_wing/{i}/_semilen_SEG'), 0)
             self.assertLess(doc["estimated_electrical_budget_w"], doc["battery_nominal_budget_w"])
             self.assertFalse(doc["flight_validated"])
             self.assertTrue((out / "aircraft/QuadTailsitterRef6/Airfoil/NACA 2412 (popular).afl").is_file())
@@ -32,6 +35,12 @@ class ReferenceTest(unittest.TestCase):
                 self.assertAlmostEqual(as_float(candidate, f"_blad/{i}/_semilen_SEG") * reference.FT_TO_M * 2, .254)
                 self.assertEqual(as_float(candidate, f"_engn/{i}/_part_psi"), 0)
                 self.assertEqual(as_float(candidate, f"_engn/{i}/_RSC_redline_ENGN"), 13000)
+                self.assertAlmostEqual(as_float(candidate, f'_engn/{i}/_power_max_limit') * 745.699872, 500, places=5)
+                self.assertAlmostEqual(as_float(candidate, f'_wing/{i}/_Croot') * reference.FT_TO_M, .1)
+                mesh_x = [abs(float(v)) * reference.FT_TO_M for k, v in candidate.items()
+                          if k.startswith(f'_wing/{i}/_geo_xyz/') and k.endswith(',0')]
+                self.assertAlmostEqual(max(mesh_x)*2, .6, places=6)
+                self.assertEqual(candidate[f'_wing/{i}/_geo_xyz/i_count'], '20')
                 for rib in range(11):
                     self.assertAlmostEqual(as_float(candidate, f"_wing/{i}/_chord_for_RIB/{rib}"),
                                            as_float(candidate, f"_wing/{i}/_Croot"))
@@ -40,6 +49,9 @@ class ReferenceTest(unittest.TestCase):
             # Stored visual blade sections must rotate in the same direction
             # as their physical incidence, not the opposite direction.
             original = parse_acf(self.source)
+            for key, value in original.items():
+                if key.endswith(('_count', '/count')):
+                    self.assertEqual(candidate[key], value, key)
             def angle(v, station):
                 p = f"_blad/0/_geo_xyz/{station},"
                 return math.atan2(as_float(v, p+'5,2') - as_float(v, p+'0,2'),
@@ -62,15 +74,19 @@ class ReferenceTest(unittest.TestCase):
             reference.number(float("nan"))
 
     def test_rotation_and_allocation_pairing(self):
-        params, _ = reference.parameter_profile(parse_acf(self.source))
+        with tempfile.TemporaryDirectory() as tmp:
+            reference.build(self.source, Path(tmp))
+            params, _ = reference.parameter_profile(parse_acf(Path(tmp) / 'aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf'))
         self.assertEqual(sum(params[f"CA_ROTOR{i}_KM"] for i in range(4)), 0)
-        self.assertEqual(params['MPC_THR_HOVER'], .71)
+        self.assertEqual(params['MPC_THR_HOVER'], .153)
+        self.assertGreaterEqual(params['MC_PITCHRATE_P'], .01)
+        self.assertLess(params['MC_PITCHRATE_K'], 1)
         for i in range(4):
             self.assertEqual(params[f"CA_ROTOR{i}_CT"], 6.5)
             self.assertGreater(abs(params[f"CA_ROTOR{i}_CT"] * params[f"CA_ROTOR{i}_KM"]), .05)
             self.assertEqual(params[f"CA_ROTOR{i}_AZ"], -1)
-            self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PX"]), .219456, places=6)
-            self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PY"]), .42672, places=6)
+            self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PX"]), .15, places=6)
+            self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PY"]), .3, places=6)
 
     def test_package_manifest_and_overwrite_refusal(self):
         with tempfile.TemporaryDirectory() as directory:
