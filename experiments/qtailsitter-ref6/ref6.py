@@ -3,6 +3,7 @@
 import argparse
 import fcntl
 import configparser
+import csv
 import hashlib
 import io
 import ipaddress
@@ -22,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
 BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
 TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
-VERSION = '2026-11-01.ref6.2'
+VERSION = '2026-11-01.ref6.3'
 
 
 def require(condition, message):
@@ -91,15 +92,18 @@ def profile_params(profile):
 
 
 def stopped():
-    # Linux detection is insufficient for Windows X-Plane under WSL.
-    result = subprocess.run(['pgrep', '-if', r'(^|/)(X-Plane[^/ ]*|X-Plane\.exe)( |$)'],
+    # Match executable names, NOT arguments: this installer itself receives
+    # an X-Plane path and must not mistake that path for a running simulator.
+    # Linux detection alone is insufficient for Windows X-Plane under WSL.
+    result = subprocess.run(['pgrep', '-x', r'X-Plane(-x86_64|\.exe)?'],
                             capture_output=True, text=True)
     require(result.returncode in (0, 1), 'Cannot inspect local processes')
     require(result.returncode != 0, 'X-Plane is running; quit before installation/rollback')
     if shutil.which('tasklist.exe'):
         windows = subprocess.run(['tasklist.exe', '/FO', 'CSV', '/NH'], capture_output=True, text=True)
         require(windows.returncode == 0, 'Windows process detection failed; quit X-Plane and retry')
-        require('x-plane' not in windows.stdout.lower(), 'Windows X-Plane is running; quit first')
+        names = {row[0].casefold() for row in csv.reader(io.StringIO(windows.stdout)) if row}
+        require('x-plane.exe' not in names, 'Windows X-Plane is running; quit first')
     else:
         require(input('Cannot detect Windows X-Plane. Quit it, then type XPLANE CLOSED: ').strip()
                 == 'XPLANE CLOSED', 'Installation/rollback cancelled')

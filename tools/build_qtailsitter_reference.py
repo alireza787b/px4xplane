@@ -225,7 +225,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "revision": "2026-11-01.ref6.2", "flight_validated": False,
+        "name": NAME, "revision": "2026-11-01.ref6.3", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": MAIN_AREA_M2 / estimate_wing_area_m2(values)["main_panel_area_m2"],

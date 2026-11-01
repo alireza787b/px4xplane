@@ -20,7 +20,7 @@ bash run.sh check
 ```
 
 If the home folder already exists, stop: do not mix two versions. Check its
-`VERSION.txt` against the delivered version before reusing it.
+`VERSION.txt` against the delivered version (`2026-11-01.ref6.3`) before reusing it.
 
 ## 2. Install the Separate Aircraft
 

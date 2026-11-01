@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -52,6 +53,16 @@ class Ref6Tests(unittest.TestCase):
         self.assertEqual(ref6.verify_install(receipt, self.bundle).name, ref6.NAME+'.acf')
         self.assertIn(b'; original comments\r\n', first)
         self.assertIn(b'[QuadTailsitter]\r\nchannel0 = motor\r\n', first)
+
+    def test_process_arguments_are_not_simulator_executables(self):
+        process = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(10)',
+                                    '/mnt/h/X-Plane 12'])
+        try:
+            with patch('ref6.shutil.which', return_value=None), patch('builtins.input', return_value='XPLANE CLOSED'):
+                ref6.stopped()
+        finally:
+            process.terminate()
+            process.wait(timeout=5)
 
     def test_install_preserves_bom_and_comments(self):
         self.config.write_bytes(b'\xef\xbb\xbf'+self.original)
