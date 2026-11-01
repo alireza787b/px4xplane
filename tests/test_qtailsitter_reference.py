@@ -25,6 +25,7 @@ class ReferenceTest(unittest.TestCase):
             self.assertAlmostEqual(estimate_wing_area_m2(candidate)["main_panel_area_m2"], reference.sizing.AREA, places=7)
             self.assertGreater(doc["minimum_planar_prop_clearance_m"], .04)
             self.assertAlmostEqual(as_float(candidate, 'acf/_cgY') * reference.FT_TO_M, reference.sizing.CG_Y)
+            self.assertEqual(as_float(candidate, 'acf/_fixed_max/0'), 0)
             for i in (8, 9, 10, 11):
                 self.assertEqual(as_float(candidate, f'_wing/{i}/_semilen_SEG'), 0)
             self.assertLess(doc["estimated_electrical_budget_w"], doc["battery_nominal_budget_w"])
@@ -33,7 +34,13 @@ class ReferenceTest(unittest.TestCase):
             for i in range(4):
                 self.assertEqual(as_float(candidate, f"_prop/{i}/_num_blades"), 2)
                 self.assertAlmostEqual(as_float(candidate, f"_blad/{i}/_semilen_SEG") * reference.FT_TO_M * 2, .254)
-                self.assertEqual(as_float(candidate, f"_engn/{i}/_part_psi"), 0)
+                original = parse_acf(self.source)
+                for group in ('_engn', '_blad'):
+                    for axis in ('phi','psi','the'):
+                        key=f'{group}/{i}/_part_{axis}'
+                        if key in original:
+                            self.assertEqual(candidate[key],original[key],key)
+                self.assertEqual(candidate[f'_prop/{i}/_prop_dir'], original[f'_prop/{i}/_prop_dir'])
                 self.assertEqual(as_float(candidate, f"_engn/{i}/_RSC_redline_ENGN"), 13000)
                 self.assertAlmostEqual(as_float(candidate, f'_engn/{i}/_power_max_limit') * 745.699872, 500, places=5)
                 self.assertAlmostEqual(as_float(candidate, f'_wing/{i}/_Croot') * reference.FT_TO_M, .1)
@@ -78,13 +85,20 @@ class ReferenceTest(unittest.TestCase):
             reference.build(self.source, Path(tmp))
             params, _ = reference.parameter_profile(parse_acf(Path(tmp) / 'aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf'))
         self.assertEqual(sum(params[f"CA_ROTOR{i}_KM"] for i in range(4)), 0)
-        self.assertEqual(params['MPC_THR_HOVER'], .153)
+        self.assertEqual(params['MPC_THR_HOVER'], .25)
         self.assertGreaterEqual(params['MC_PITCHRATE_P'], .01)
-        self.assertLess(params['MC_PITCHRATE_K'], 1)
+        self.assertEqual(params['MC_PITCHRATE_K'], 1)
+        self.assertEqual(params['MC_ROLLRATE_P'], .031815)
+        self.assertEqual(params['FW_RR_P'], .287079)
+        self.assertEqual(params['FW_PR_P'], .007684)
+        self.assertLess(params['MC_YAWRATE_P'], .105262)
+        original_axes=((- .078,.040,-.996),(.078,-.040,-.996),(-.078,-.040,-.996),(.078,.040,-.996))
         for i in range(4):
+            for axis,value in zip(('AX','AY','AZ'),original_axes[i]):
+                self.assertEqual(params[f'CA_ROTOR{i}_{axis}'], value)
             self.assertEqual(params[f"CA_ROTOR{i}_CT"], 6.5)
             self.assertGreater(abs(params[f"CA_ROTOR{i}_CT"] * params[f"CA_ROTOR{i}_KM"]), .05)
-            self.assertEqual(params[f"CA_ROTOR{i}_AZ"], -1)
+            self.assertEqual(params[f"CA_ROTOR{i}_AZ"], -.996)
             self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PX"]), .15, places=6)
             self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PY"]), .3, places=6)
 

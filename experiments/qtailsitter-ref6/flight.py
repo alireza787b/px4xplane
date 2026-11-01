@@ -84,7 +84,8 @@ def flight(args):
         shutil.copy2(xplog, run/'inputs/Log-before.txt')
         shutil.copy2(receipt['config'], run/'inputs/config.ini')
         shutil.copy2(identity['acf_path'], run/'inputs'/Path(identity['acf_path']).name)
-        (run/'startup.sh').write_text(startup(run/'profile.sh', 180 if args.mode == 'flight' else 50))
+        altitude = 180 if args.mode == 'flight' else (10 if args.mode == 'A' else 50)
+        (run/'startup.sh').write_text(startup(run/'profile.sh', altitude))
         changed = False
         initial = None
         try:

@@ -16,10 +16,15 @@ correction. This is a configuration repair, not a newly proven PX4 bug.
 The old 6 kg model settled near 0.71 normalized hover command. The compact
 candidate is 2 kg with 0.60 m projected span, 0.10 m chord and four 500 W shaft
 power caps. Plane Maker's power field is horsepower, not kW. The hover seed is
-now 0.153 by propeller power similarity, NOT a measured compact-model value.
+now 0.25 from the r5 measured HTE, corrected for unintended 250 g payload that
+has now been removed. Original motor orientations/rotation signs and official
+rotor direction vectors are restored. See REPORT.md for the failure evidence,
+pitch-gain trial and limits of the motor peak-thrust claim.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
+Roll and FW gains are held fixed from r5; MC pitch has an explicit response-based
+trial increase and yaw gains compensate restored modeled cant authority.
 Read design.json and sizing.json for assumptions and envelope screening. Real
 control authority, trim, stability and landing remain simulator validation gates.
 

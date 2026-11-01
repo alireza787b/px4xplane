@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
 BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
 TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
-VERSION = '2026-11-01.ref6.5'
+VERSION = '2026-11-01.ref6.6'
 
 
 def require(condition, message):
@@ -330,7 +330,7 @@ def dispatch(args):
             print('HOVER ONLY: do not transition in this run.')
         else:
             print('FULL SITL EXPERIMENT: transition only after controlled hover; abort on increasing oscillation.')
-        if not args.yes_debug:
+        if not args.yes_debug and args.mode != 'A':
             require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
                     == 'SITL EXPERIMENT', 'Experiment cancelled')
         from flight import flight

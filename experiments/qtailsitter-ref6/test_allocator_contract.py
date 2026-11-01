@@ -55,13 +55,14 @@ public:
  void normalizeControlAllocationMatrix()
 ''' + method(inverse, 'ControlAllocationPseudoInverse::normalizeControlAllocationMatrix') + '''
 };
-Matrix effectiveness(float ct, bool compact=false) {
+Matrix effectiveness(float ct, bool compact=false, bool cant=false) {
  ActuatorEffectivenessRotors::Geometry g;
  float x[]={.219456f,-.219456f,.219456f,-.219456f};
  float y[]={.42672f,-.42672f,-.42672f,.42672f};
  if(compact) for(int k=0;k<4;k++) {x[k]=(x[k]>0 ? .15f:-.15f);y[k]=(y[k]>0 ? .3f:-.3f);}
  for(int k=0;k<4;k++) { g.rotors[k].position=Vector3f(x[k],y[k],-.04572f);
-  g.rotors[k].axis=Vector3f(0,0,-1); g.rotors[k].thrust_coef=ct;
+  float ax[]={-.078f,.078f,-.078f,.078f}, ay[]={.040f,-.040f,-.040f,.040f};
+  g.rotors[k].axis=cant ? Vector3f(ax[k],ay[k],-.996f):Vector3f(0,0,-1); g.rotors[k].thrust_coef=ct;
   g.rotors[k].moment_ratio=(k<2 ? 1.f:-1.f)*.019050555f; }
  Matrix m; m.setZero();
  ActuatorEffectivenessRotors::computeEffectivenessMatrix(g,m,0); return m;
@@ -96,6 +97,20 @@ int main() {
  assert(fabsf(normalized(0,0)-expected_rp)<1e-4f);
  assert(fabsf(normalized(1,1)-expected_rp)<1e-4f);
  assert(fabsf(normalized(2,2)-4.f*.019050555f*6.5f)<1e-4f);
+ Matrix restored=effectiveness(6.5f,true,true); weakFilter(restored);
+ matrix::Matrix<float,16,6> restored_mix; matrix::geninv(restored,restored_mix);
+ auto restored_projection=restored*restored_mix;
+ // Four motors cannot independently control all six wrench components.
+ // Prove the torque/thrust-Z subset itself remains full rank after restoration.
+ for(int k : {0,1,2,5}) {
+   assert(restored.row(k).norm_squared()>0);
+ }
+ matrix::Matrix<float,4,4> subset;
+ int axes[]={0,1,2,5};
+ for(int i=0;i<4;i++) for(int j=0;j<4;j++) subset(i,j)=restored(axes[i],j);
+ matrix::Matrix<float,4,4> subset_inverse; matrix::geninv(subset,subset_inverse);
+ auto identity=subset*subset_inverse;
+ for(int i=0;i<4;i++) assert(fabsf(identity(i,i)-1.f)<1e-4f);
 }
 '''
         with tempfile.TemporaryDirectory() as directory:

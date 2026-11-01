@@ -12,11 +12,11 @@ Simulation experiment only. Do not use on hardware. No stability guarantee.
    estimate, and no arming warnings. Abort on any discrepancy; never force arm.
 4. After structural/identity checks and explicit SITL experiment consent, type
    `commander takeoff`. Wait for takeoff completion and observe 20 seconds of hover.
-   Confirm takeoff altitude 180 m for `flight` or 50 m for `hover`. Initial checkpoint:
+   Confirm takeoff altitude 10 m for `A`, 180 m for `flight` or 50 m for `hover`. Initial checkpoint:
    no growing oscillation, roughly less than 5 degrees roll/pitch variation and
    altitude within 5 m after settling. Abort on tilt growth, estimator warnings,
    saturation or loss of control. Do not transition unless hover is controlled.
-5. In `hover` mode, skip to landing. In `flight` mode only, at 180 m clearance,
+5. In `A` or `hover` mode, skip to landing. In `flight` mode only, at 180 m clearance,
    type `commander transition` ONCE. Wait for confirmed FW state; observe at least
    20 seconds. Do not repeatedly toggle because a command seems delayed.
    QGC Hold uses the inherited 1300 m orbit, not an optimized Ref6 radius. For path

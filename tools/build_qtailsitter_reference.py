@@ -100,7 +100,9 @@ def compact_geometry(values, result):
     result['acf/_cgY']=number(sizing.CG_Y/FT_TO_M)
     result['acf/_cgZ']=number(0)
     result['acf/_fixed_ref/0,1']=number(sizing.CG_Y/FT_TO_M)
-    result['acf/_fixed_max/0']=number(.5/LB_TO_KG)
+    # X-Plane populated half of this payload capacity on the previous run:
+    # 2 kg empty + 0.25 kg fixed. Keep the first comparison at the design mass.
+    result['acf/_fixed_max/0']=number(0)
     result['acf/_m_max']=number(2.5/LB_TO_KG)
     result['acf/_battery_watt_hr_max']=number(22.2*3)
 
@@ -148,10 +150,8 @@ def replacements_for(values: dict[str, str], blade_chord_scale: float) -> dict[s
         engine = f"_engn/{index}"
         result[f"{engine}/_RSC_redline_ENGN"] = number(RPM_LIMIT)
         result[f"{engine}/_RSC_max_pwr_ENGN"] = number(RPM_LIMIT)
-        # A deliberately uncanted reference avoids inheriting an unverified
-        # compound cant convention. Allocation uses the same vertical axes.
-        result[f"{engine}/_part_psi"] = number(0)
-        result[f"{engine}/_part_the"] = number(90)
+        # Preserve the source aircraft's engine orientations verbatim. Do not
+        # remove cant while changing propulsion performance.
         prop = f"_prop/{index}"
         result[f"{prop}/_num_blades"] = number(2)
         result[f"{prop}/_des_rpm_prp"] = number(12000)
@@ -209,44 +209,49 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         params[name] = value
         reasons[name] = reason
 
-    # The controller consumes normalized thrust, not shaft-power fraction.
-    # Ref6 flight 2026-11-01, boot 138..155s: median commanded hover thrust
-    # 0.7107 at 6kg. The original power-fraction seed delayed liftoff and
-    # saturated the estimator's allowed adaptation range.
-    hover_seed = .7107 * (MASS_KG/6)**1.5 * (.75/sizing.MOTOR_HP)
-    add("MPC_THR_HOVER", round(hover_seed, 3), "Initial similarity estimate from measured 6kg hover, fixed prop and power-led P~T^1.5, corrected horsepower units. New model MUST be measured; not 40% forced through a parameter.")
+    # Use the latest compact flight, not the old large-airframe similarity seed.
+    # The recorder revealed 250 g unintended fixed payload; correct that mass.
+    hover_seed = .2982272505760193 * (MASS_KG/2.250000715)**1.5
+    add("MPC_THR_HOVER", round(hover_seed, 3), "R5 HTE median 0.298227 at actual 2.250001kg, boot 65..85s; mass-corrected to 2kg with unchanged prop/power. Verify new settled value; not an arbitrary 40% command.")
     for index in range(4):
         engine = f"_engn/{index}"
         add(f"CA_ROTOR{index}_PX", -as_float(values, f"{engine}/_part_z") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
         add(f"CA_ROTOR{index}_PY", as_float(values, f"{engine}/_part_x") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
         add(f"CA_ROTOR{index}_PZ", -(as_float(values, f"{engine}/_part_y") - as_float(values, "acf/_cgY")) * FT_TO_M, "Actual hub height relative to CG.")
-        for axis, value in (("AX", 0), ("AY", 0), ("AZ", -1)):
-            add(f"CA_ROTOR{index}_{axis}", value, "Uncanted reference; verify actual force axes before flight.")
+        # Retain the pinned official airframe's direction vectors. These are
+        # its existing cant model, not a newly inferred X-Plane Euler transform.
+        directions = ((-.078,.040,-.996),(.078,-.040,-.996),
+                      (-.078,-.040,-.996),(.078,.040,-.996))
+        for axis, value in zip(('AX','AY','AZ'), directions[index]):
+            add(f"CA_ROTOR{index}_{axis}", value, "Unchanged direction vector from pinned official 5021_xplane_qtailsitter; source engine angles and motor order retained. Physical sign validation remains required.")
         direction = as_float(values, f"_prop/{index}/_prop_dir")
         add(f"CA_ROTOR{index}_CT", 6.5, "PX4 default common allocation scale. CT=2 with this KM fell below the allocator's 0.05 weak-axis cutoff. Common scaling is removed by normalized allocation; not a measured maximum thrust.")
         km = BEM_STATIC_POWER_W / (BEM_STATIC_RPM * math.pi / 30) / BEM_STATIC_THRUST_N
         add(f"CA_ROTOR{index}_KM", direction * km, "BEM static Q/T prediction; rotation sign and actual Q/T must pass bench test.")
-    # First-pass rigid-body gains: desired angular bandwidth / normalized
-    # moment slope. Keep these explicitly separate from identified flight gains.
-    tensor = sizing.screen()['inertia_tensor_xplane_kg_m2']
-    inertia_mc = (tensor[2][2], tensor[0][0], tensor[1][1])
-    thrust_slope = (2/3) * (MASS_KG*G/4) / hover_seed
+    # Hold unrelated gains fixed: revising a hover estimate must not silently
+    # retune every axis. The previous rigid-body/cant-free model was insufficient.
     km = BEM_STATIC_POWER_W/(BEM_STATIC_RPM*math.pi/30)/BEM_STATIC_THRUST_N
-    moment_slopes = (math.sqrt(2)*.3*thrust_slope,
-                     math.sqrt(2)*.3*thrust_slope, 4*km*thrust_slope)
-    for axis, inertia, slope, bandwidth in zip(('ROLL','PITCH','YAW'), inertia_mc, moment_slopes, (4.,4.,2.)):
-        p = inertia*bandwidth/slope
-        # PX4's displayed P minimum is 0.01. Preserve the effective model gain
-        # with the documented global K multiplier, rather than violating it.
-        k = min(1., p/.01)
-        for suffix, value in (('P',p/k),('I',min(p*.25,.02)/k),('D',p*.02/k),('K',k),('FF',0)):
-            add(f'MC_{axis}RATE_{suffix}', round(value,6),
-                'Unvalidated rigid-body seed from component inertia, normalized mixer moment slope and conservative bandwidth; see sizing.json. Not a system-identified gain.')
-    for axis, inertia, slope, scale in (('RR',inertia_mc[2],moment_slopes[2],.55),
-                                       ('PR',inertia_mc[1],moment_slopes[1],.90)):
-        p = inertia*3/(slope*scale)
-        add(f'FW_{axis}_P',round(p,6),'Unvalidated 3rad/s rate seed using differential-thrust scale and component inertia; verify in flight.')
-        add(f'FW_{axis}_I',round(min(p*.25,.02),6),'Slow integral seed; not a flight identification.')
+    yaw_levers=[]
+    for i in range(4):
+        ax,ay,az=(params[f'CA_ROTOR{i}_A{a}'] for a in ('X','Y','Z'))
+        norm=math.sqrt(ax*ax+ay*ay+az*az)
+        px,py=(params[f'CA_ROTOR{i}_P{a}'] for a in ('X','Y'))
+        yaw_levers.append(abs((px*ay-py*ax-params[f'CA_ROTOR{i}_KM']*az)/norm))
+    yaw_scale=km/(sum(yaw_levers)/4)
+    gains={'ROLL':(.031815,.007954,.000636),
+           'YAW':tuple(v*yaw_scale for v in (.105262,.02,.002105))}
+    for axis,(p,integral,d) in gains.items():
+        reason=('R5 roll gains held unchanged; hover-estimate correction does not retune this axis.' if axis=='ROLL' else
+                'R5 yaw gains reduced by reaction-only/restored-cant yaw lever ratio; the new cant adds modeled authority. Trial compensation, not measured physical validation.')
+        for suffix,value in (('P',p),('I',integral),('D',d),('K',1),('FF',0)):
+            add(f'MC_{axis}RATE_{suffix}',round(value,6),reason)
+    for suffix,value in (('P',.06),('I',.015),('D',.0012),('K',1)):
+        add('MC_PITCHRATE_'+suffix,value,
+            'R5 pitch response was too slow with effective P=0.00922; pre-divergence closed-loop acceleration/torque regression suggests 40..84rad/s^2 per normalized output. Trial P=0.06 targets roughly 2.4..5rad/s; not a validated open-loop identification. Restored cant may change response.')
+    add('MC_PITCHRATE_FF',0,'No identified pitch rate feedforward.')
+    for axis,p,integral in (('RR',.287079,.02),('PR',.007684,.001921)):
+        add(f'FW_{axis}_P',p,'R5 FW seed held unchanged; this revision tests MC only, not a validated FW tune.')
+        add(f'FW_{axis}_I',integral,'R5 FW integral held unchanged.')
         add(f'FW_{axis}_D',0,'No identified fixed-wing derivative term for this compact model.')
         add(f'FW_{axis}_FF',0,'No identified rate feedforward for this compact model; avoid inherited large-airframe feedforward.')
     add("FW_THR_MAX", 1, "Use the physically power-limited engine envelope, not the old 9.6kW model's 50% cap.")
@@ -290,7 +295,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-01.ref6.5", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-01.ref6.6", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),
@@ -311,6 +316,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
         "motor_model": "MAD BSC3120 1000KV, 6S reference; 10x8 prop combination not manufacturer tested",
         "acf_power_max_limit_units": "horsepower per Plane Maker manual; 500W/745.699872 serialized, not kW",
         "geometry_tradeoff": "Inherited secondary panels disabled to avoid uncontrolled trim contributions; complete-aircraft neutral point still requires measurement.",
+        "direction_contract": "Original ACF engine/blade orientations and propeller rotation signs retained, same channel-to-engine mapping and quadrant ordering. Allocation direction vectors from pinned official airframe. No new axis inversion introduced.",
         "propulsion_calibration": "PENDING X-Plane measurement. Geometric 10x8 candidate, NOT an APC replica or calibrated model.",
         "bem_screening": {"rpm": BEM_STATIC_RPM, "thrust_n": BEM_STATIC_THRUST_N, "shaft_power_w": BEM_STATIC_POWER_W,
                           "valid_for_blade_chord_scale": 2.6, "uncertainty_allowance_fraction": .2,

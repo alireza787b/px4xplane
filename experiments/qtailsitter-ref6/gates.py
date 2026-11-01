@@ -38,7 +38,10 @@ def report(measurements=None):
         result.update(measurements_path=str(Path(measurements).resolve()), measurements_sha256=digest(Path(measurements)))
     output = HERE/'bench-report.json'
     output.write_text(json.dumps(result, indent=2)+'\n')
-    print('BENCH report:', output)
-    for key, passed in result['gates'].items():
-        print('  '+key+': '+('PASS (operator evidence)' if passed else 'PENDING/FAIL'))
+    if measurements:
+        print('BENCH report:', output)
+        for key, passed in result['gates'].items():
+            print('  '+key+': '+('PASS (operator evidence)' if passed else 'NOT VERIFIED'))
+    else:
+        print('Bench measurements not yet verified; details saved to bench-report.json (not a measured failure).')
     return result
