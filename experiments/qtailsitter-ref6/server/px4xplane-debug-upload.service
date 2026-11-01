@@ -1,0 +1,22 @@
+[Unit]
+Description=Private bounded PX4 X-Plane debug evidence intake
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=px4xplane-debug-upload
+StateDirectoryMode=0700
+EnvironmentFile=/etc/px4xplane-debug-upload.env
+ExecStart=/usr/bin/python3 -B -u /opt/px4xplane-debug-upload/upload_server.py
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+RestrictSUIDSGID=yes
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

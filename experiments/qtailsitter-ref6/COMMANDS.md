@@ -35,7 +35,9 @@ Simulation experiment only. Do not use on hardware. No stability guarantee.
    15 seconds after settling, preserve that interval and stop the experiment; do
    not repeatedly change modes/gains. Otherwise let controlled landing complete
    and confirm disarmed, then `shutdown`.
-8. Stop TruthCapture AFTER PX4 exits and BEFORE confirming collection. Preserve
-   all failures as evidence. For an uncontrolled simulation, stop the experiment
+8. After shutdown, leave TruthCapture running: the runner snapshots this run's
+   complete rows and uploads automatically. No Enter press is required. Wait for
+   UPLOAD VERIFIED; failures retain a local pending ZIP. Preserve all failures.
+   For an uncontrolled simulation, stop the experiment
    using simulator pause/PX4 shutdown as appropriate; do not interpret a stopped
    process as a successful landing.

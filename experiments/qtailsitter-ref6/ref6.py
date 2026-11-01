@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
 BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
 TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
-VERSION = '2026-11-01.ref6.3'
+VERSION = '2026-11-01.ref6.4'
 
 
 def require(condition, message):
@@ -67,6 +67,11 @@ def bundle_check(bundle=HERE):
     actual = profile_params(bundle/'profile.sh')
     require(actual.keys() == expected.keys() and all(math.isclose(float(actual[k]), float(expected[k]),
             rel_tol=1e-8, abs_tol=1e-9) for k in actual), 'Profile/parameters.json mismatch')
+    for index in range(4):
+        ct = float(expected.get(f'CA_ROTOR{index}_CT', 0))
+        km = float(expected.get(f'CA_ROTOR{index}_KM', 0))
+        require(math.isfinite(ct * km) and abs(ct * km) > .05,
+                'Ref6 yaw/FW-roll allocation would be removed by the weak-axis cutoff; reject this profile')
     source = bundle/'aircraft'/NAME
     require(not any(p.is_symlink() for p in source.rglob('*')), 'Aircraft symlinks refused')
     acf_text = (source/(NAME+'.acf')).read_text(encoding='utf-8')
@@ -254,7 +259,9 @@ def recovery_truth(run, source):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['check', 'install', 'bench', 'hover', 'A', 'flight', 'collect', 'restore'])
+    parser.add_argument('mode', choices=['check', 'install', 'bench', 'hover', 'A', 'flight',
+                                       'collect', 'restore', 'update', 'configure-upload',
+                                       'disable-upload', 'retry-uploads'])
     parser.add_argument('--xplane', type=path)
     parser.add_argument('--config', type=path)
     parser.add_argument('--state', type=path, default=HERE/'installation')
@@ -264,6 +271,10 @@ def main():
     parser.add_argument('--host', type=ipv4)
     parser.add_argument('--qgc', type=ipv4)
     parser.add_argument('--bench-measurements', type=path)
+    parser.add_argument('--no-upload', action='store_true', help='Disable upload for this run only')
+    parser.add_argument('--yes-debug', action='store_true', help='Explicitly accept the unvalidated SITL experiment without a prompt')
+    parser.add_argument('--manifest-url', default='https://de2.joomtalk.ir/OuZsF0TGp1L7DRBjnf_nsGSDc_4wW2gy/ref6-debug-current.json')
+    parser.add_argument('--upload-url', default='https://de2.joomtalk.ir/px4xplane-debug/upload')
     args = parser.parse_args()
     # Serialize this bundle's install, rollback, flight and evidence operations.
     with (HERE/'.ref6.lock').open('a') as lock:
@@ -273,7 +284,20 @@ def main():
 
 def dispatch(args):
     args.state = args.state.resolve()
-    if args.mode == 'check':
+    if args.mode == 'update':
+        from update_debug import update
+        print('Updated SAME debug folder to', update(HERE, args.manifest_url))
+        print('Next: bash run.sh flight (fresh process uses the new profile).')
+    elif args.mode == 'configure-upload':
+        from upload_debug import configure
+        configure(url=args.upload_url)
+    elif args.mode == 'disable-upload':
+        from upload_debug import disable
+        disable()
+    elif args.mode == 'retry-uploads':
+        from upload_debug import retry_pending
+        retry_pending(HERE/'runs')
+    elif args.mode == 'check':
         bundle_check()
         subprocess.run(['git', '-C', str(args.repo), 'cat-file', '-e', BASE+'^{commit}'], check=True)
         subprocess.run(['git', '-C', str(args.repo), 'bundle', 'verify', str(HERE/'diagnostics.bundle')], check=True)
@@ -306,20 +330,41 @@ def dispatch(args):
             print('HOVER ONLY: do not transition in this run.')
         else:
             print('FULL SITL EXPERIMENT: transition only after controlled hover; abort on increasing oscillation.')
-        require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
-                == 'SITL EXPERIMENT', 'Experiment cancelled')
+        if not args.yes_debug:
+            require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
+                    == 'SITL EXPERIMENT', 'Experiment cancelled')
         from flight import flight
+        if args.host is None:
+            release = Path('/proc/sys/kernel/osrelease').read_text().lower()
+            if 'microsoft' in release:
+                route = subprocess.check_output(['ip', '-4', 'route', 'show', 'default'], text=True).split()
+                require('via' in route, 'Cannot detect Windows gateway; pass --host explicitly')
+                args.host = ipv4(route[route.index('via')+1])
+            else:
+                args.host = '127.0.0.1'
+        args.qgc = args.qgc or args.host
+        if args.truth is None:
+            receipt = json.loads((args.state/'receipt.json').read_text())
+            args.truth = Path(receipt['aircraft']).parents[1]/'Output/XPlaneTruthCapture'
+        print('SIM host:', args.host, '| QGC host:', args.qgc, '| Truth:', args.truth)
         flight(args)
     else:
         from flight import no_px4
         from collect import collect
-        from attach_truth import attach
+        from attach_truth import attach, snapshot_live
         no_px4()
         require(args.run and args.run.is_dir() and (args.run/'identity.json').is_file(), '--run must identify a Ref6 run')
         if args.truth:
             recovery_truth(args.run.resolve(), args.truth.resolve())
-            attach(args.truth.resolve(), args.run.resolve())
-        collect(args.run.resolve())
+            initial = json.loads((args.run/'truth-preflight.json').read_text())
+            if initial.get('version') == 1:
+                snapshot_live(args.truth.resolve(), args.run.resolve(), initial)
+            else:
+                attach(args.truth.resolve(), args.run.resolve())
+        archive = collect(args.run.resolve())
+        if not args.no_upload:
+            from upload_debug import upload
+            upload(archive)
 
 
 if __name__ == '__main__':

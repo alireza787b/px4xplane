@@ -64,7 +64,10 @@ class ReferenceTest(unittest.TestCase):
     def test_rotation_and_allocation_pairing(self):
         params, _ = reference.parameter_profile(parse_acf(self.source))
         self.assertEqual(sum(params[f"CA_ROTOR{i}_KM"] for i in range(4)), 0)
+        self.assertEqual(params['MPC_THR_HOVER'], .71)
         for i in range(4):
+            self.assertEqual(params[f"CA_ROTOR{i}_CT"], 6.5)
+            self.assertGreater(abs(params[f"CA_ROTOR{i}_CT"] * params[f"CA_ROTOR{i}_KM"]), .05)
             self.assertEqual(params[f"CA_ROTOR{i}_AZ"], -1)
             self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PX"]), .219456, places=6)
             self.assertAlmostEqual(abs(params[f"CA_ROTOR{i}_PY"]), .42672, places=6)

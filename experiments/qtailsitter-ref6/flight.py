@@ -9,8 +9,9 @@ import socket
 import subprocess
 import tempfile
 
-from attach_truth import active_session, attach
+from attach_truth import active_session, begin_snapshot, snapshot_live
 from collect import collect
+from upload_debug import settings, upload
 from ref6 import HERE, BASE, TARGET, VERSION, bundle_check, digest, loaded_truth, profile_params, require
 from locate_inputs import path
 from source_state import git, save, restore
@@ -42,6 +43,10 @@ def flight(args):
     for tool in ('git', 'make', 'script', 'pgrep'):
         require(shutil.which(tool), 'Missing tool: '+tool)
     repo = args.repo.resolve()
+    upload_enabled = not getattr(args, 'no_upload', False) and settings() is not None
+    require(upload_enabled or getattr(args, 'no_upload', False),
+            'Configure debug upload once with configure-upload, or explicitly use --no-upload for an offline run')
+    print('DEBUG AUTO-UPLOAD:', 'ON (private server)' if upload_enabled else 'OFF; configure-upload once to enable')
     no_px4()
     key = __import__('hashlib').sha256(str(repo).encode()).hexdigest()[:16]
     with open(Path(tempfile.gettempdir())/('px4-qtail-'+key+'.lock'), 'a') as lock:
@@ -65,6 +70,7 @@ def flight(args):
                          'repo': str(repo), 'host': args.host, 'qgc': args.qgc,
                          'profile_sha256': digest(HERE/'profile.sh'),
                          'design_sha256': digest(HERE/'design.json')})
+        identity['debug_upload_enabled'] = upload_enabled
         (run/'identity.json').write_text(json.dumps(identity, indent=2)+'\n')
         (run/'truth-source.txt').write_text(str(truth)+'\n')
         shutil.copy2(HERE/'profile.sh', run/'profile.sh')
@@ -80,6 +86,7 @@ def flight(args):
         shutil.copy2(identity['acf_path'], run/'inputs'/Path(identity['acf_path']).name)
         (run/'startup.sh').write_text(startup(run/'profile.sh', 180 if args.mode == 'flight' else 50))
         changed = False
+        initial = None
         try:
             git(repo, 'bundle', 'verify', str(HERE/'diagnostics.bundle'))
             git(repo, '-c', 'fetch.recurseSubmodules=false', 'fetch', '--no-tags',
@@ -96,7 +103,8 @@ def flight(args):
             # A build can outlast the original recording. Recheck identity and growth.
             require(active_session(truth) == truth, 'Recording changed during build')
             loaded_truth(truth, receipt)
-            (run/'truth-preflight.json').write_text(json.dumps({'frames_bytes': (truth/'frames.csv').stat().st_size}))
+            initial = begin_snapshot(truth)
+            (run/'truth-preflight.json').write_text(json.dumps(initial, indent=2)+'\n')
             env = os.environ.copy()
             for key in ('PX4_NET_INTERFACE', 'PX4_TEST_TUNING', 'PX4_PARAM_FILE'):
                 env.pop(key, None)
@@ -106,13 +114,13 @@ def flight(args):
                                   '-s', str(run/'startup.sh'), str(build/'etc')])
             print('Run:', run, '\nFollow COMMANDS.md. QGC: Windows UDP 14550; no router.', flush=True)
             result = subprocess.run(['script', '-q', '-e', '-c', command, str(run/'console.txt')], env=env)
+            (run/'session.json').write_text(json.dumps({'px4_exit_code': result.returncode,
+                'parameter_gate_passed': 'REF6 PARAMETER GATE PASSED' in
+                    (run/'console.txt').read_text(errors='replace')})+'\n')
             no_px4()
             require(result.returncode == 0, 'PX4 session exited unsuccessfully; evidence retained')
             require('REF6 PARAMETER GATE PASSED' in (run/'console.txt').read_text(errors='replace'),
                     'Startup parameter gate not observed; do not treat as a valid flight')
-            input('Stop TruthCapture recording, then press Enter: ')
-            loaded_truth(truth, receipt)
-            attach(truth, run)
         finally:
             print('Evidence retained:', run, flush=True)
             try:
@@ -121,8 +129,21 @@ def flight(args):
             except OSError as error:
                 print('Could not copy final X-Plane log:', error)
             no_px4()
+            if initial is not None and not (run/'truth').exists():
+                try:
+                    loaded_truth(truth, receipt)
+                    snapshot_live(truth, run, initial)
+                    print('Truth snapshot complete; recorder may keep running. No manual stop needed.')
+                except (OSError, ValueError) as error:
+                    (run/'truth-snapshot-error.json').write_text(json.dumps({'error': str(error)})+'\n')
+                    print('Truth snapshot failed; incomplete evidence retained:', error)
             try:
                 if changed:
                     restore(repo, run/'source-original.json')
             finally:
-                collect(run)
+                archive = collect(run)
+                if upload_enabled:
+                    try:
+                        upload(archive)
+                    except (OSError, ValueError) as error:
+                        print('Auto-upload failed; local archive retained:', error)

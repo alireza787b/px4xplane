@@ -167,11 +167,11 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         params[name] = value
         reasons[name] = reason
 
-    # BEM hover estimate uses T~n^2 and P~n^3 near the 12k reference. This is
-    # a seed for a model validation flight, not a fitted motor throttle map.
-    hover_n = BEM_STATIC_RPM * math.sqrt((MASS_KG * G / 4) / BEM_STATIC_THRUST_N)
-    hover_power = BEM_STATIC_POWER_W * (hover_n / BEM_STATIC_RPM) ** 3
-    add("MPC_THR_HOVER", round(hover_power / (MOTOR_KW * 1000), 3), "BEM static shaft-power fraction at sea level; throttle map/density require measured hover.")
+    # The controller consumes normalized thrust, not shaft-power fraction.
+    # Ref6 flight 2026-11-01, boot 138..155s: median commanded hover thrust
+    # 0.7107 at 6kg. The original power-fraction seed delayed liftoff and
+    # saturated the estimator's allowed adaptation range.
+    add("MPC_THR_HOVER", .71, "Measured Ref6 normalized hover thrust, boot 138..155s in flight-8yc79oye. Estimator remains enabled; not a universal airframe value.")
     for index in range(4):
         engine = f"_engn/{index}"
         add(f"CA_ROTOR{index}_PX", -as_float(values, f"{engine}/_part_z") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
@@ -180,6 +180,7 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         for axis, value in (("AX", 0), ("AY", 0), ("AZ", -1)):
             add(f"CA_ROTOR{index}_{axis}", value, "Uncanted reference; verify actual force axes before flight.")
         direction = as_float(values, f"_prop/{index}/_prop_dir")
+        add(f"CA_ROTOR{index}_CT", 6.5, "PX4 default common allocation scale. CT=2 with this KM fell below the allocator's 0.05 weak-axis cutoff. Common scaling is removed by normalized allocation; not a measured maximum thrust.")
         km = BEM_STATIC_POWER_W / (BEM_STATIC_RPM * math.pi / 30) / BEM_STATIC_THRUST_N
         add(f"CA_ROTOR{index}_KM", direction * km, "BEM static Q/T prediction; rotation sign and actual Q/T must pass bench test.")
     # Restore the known quiet-hover gains, rather than transfer increased gains
@@ -225,7 +226,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "revision": "2026-11-01.ref6.3", "flight_validated": False,
+        "name": NAME, "revision": "2026-11-01.ref6.4", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": MAIN_AREA_M2 / estimate_wing_area_m2(values)["main_panel_area_m2"],

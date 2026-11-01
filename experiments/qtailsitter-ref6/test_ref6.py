@@ -26,8 +26,12 @@ class Ref6Tests(unittest.TestCase):
         (self.source/(ref6.NAME+'.acf')).write_text('I\n1200 Version\nP acf/_num_engn 4\n')
         (self.bundle/'design.json').write_text(json.dumps({'name': ref6.NAME,
             'acf_sha256': ref6.digest(self.source/(ref6.NAME+'.acf'))}))
-        (self.bundle/'parameters.json').write_text(json.dumps({'parameters': {'MC_ROLLRATE_D': .001}}))
-        (self.bundle/'profile.sh').write_text('#!/bin/sh\nparam set MC_ROLLRATE_D 0.001\n')
+        params = {'MC_ROLLRATE_D': .001}
+        for i in range(4):
+            params[f'CA_ROTOR{i}_CT'] = 6.5
+            params[f'CA_ROTOR{i}_KM'] = .01905 if i < 2 else -.01905
+        (self.bundle/'parameters.json').write_text(json.dumps({'parameters': params}))
+        (self.bundle/'profile.sh').write_text('#!/bin/sh\n'+''.join(f'param set {k} {v}\n' for k,v in params.items()))
         (self.bundle/'diagnostics.bundle').write_bytes(b'fixture')
         (self.bundle/'diagnostic-sha.txt').write_text(ref6.TARGET+'\n')
         self.root = self.base/'X-Plane 12'
@@ -287,7 +291,7 @@ class Ref6Tests(unittest.TestCase):
         (self.bundle/'bench-report.json').write_text('{}')
         (self.root/'Log.txt').write_text('fixture')
         args = __import__('argparse').Namespace(host='127.0.0.1', qgc='127.0.0.1', truth=truth,
-            repo=self.base/'repo', state=self.state, mode='hover', bench_measurements=None)
+            repo=self.base/'repo', state=self.state, mode='hover', bench_measurements=None, no_upload=True)
         identity = {'manifest': {'system_path': str(self.root)},
                     'acf_path': str(Path(receipt['aircraft'])/(ref6.NAME+'.acf'))}
         def fake_git(repo, *parts):
@@ -305,7 +309,7 @@ class Ref6Tests(unittest.TestCase):
 
     def test_hover_aliases_accept_pending_report_without_measurements(self):
         for mode in ('hover', 'A', 'flight'):
-            with patch('sys.argv', ['ref6.py', mode]), patch('ref6.bundle_check'), \
+            with patch('sys.argv', ['ref6.py', mode, '--host', '127.0.0.1', '--truth', str(self.base/'truth')]), patch('ref6.bundle_check'), \
                  patch('gates.report', return_value={'bench_review_complete': False}) as report, \
                  patch('builtins.input', return_value='SITL EXPERIMENT'), patch('flight.flight') as launch:
                 ref6.main()

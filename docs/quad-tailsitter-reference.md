@@ -70,14 +70,33 @@ universal ACF wing-classification rule.
 5. Confirm both transitions and Land. Do not disable emergency braking or relax
    EKF gates to make the acceptance test appear successful.
 
-The generated gains start from the known quiet-hover baseline. Throttle hover,
-cruise and transition settings are explicit provisional seeds, not a completed
+The generated rate gains start from the known quiet-hover baseline. Hover thrust
+is now the measured Ref6 normalized-thrust seed, 0.71, not a shaft-power fraction.
+All four common CT scales are explicitly 6.5, matching PX4's default common
+allocation scale: with KM approximately 0.01905, CT=2 fell below the allocator's
+0.05 weak-axis cutoff and removed MC-yaw/FW-roll control. The pinned-source host
+test reproduces that cutoff and verifies common-scale normalization and restored
+controllability. This is a self-introduced configuration error, not a new PX4 bug.
+Cruise and transition settings remain explicit provisional seeds, not a completed
 system identification. The bundle records effective parameter history because
 the ULog initial snapshot may precede startup overrides.
 
-The latest supplied flight selected Land but retained emergency braking and
-climbed. A successful redesigned hover will not by itself prove that this
-landing-state behavior is fixed. Keep that investigation independent.
+An earlier flight selected Land but retained emergency braking and climbed.
+The latest Ref6 flight instead ended in quad-chute with the missing control axis.
+Neither validates a commanded normal back transition or landing.
+
+## Private Debug Loop
+
+Keep one bundle folder and one Ref6 aircraft. `run.sh update` verifies and updates
+managed files in place with one rollback journal; it preserves receipts and runs.
+`run.sh configure-upload` stores the owner's private token once outside the
+bundle. `run.sh flight --yes-debug` resolves the WSL2 NAT host and truth root.
+After shutdown, it snapshots complete truth rows without stopping the recorder,
+archives the closed ULog and uploads to the private bounded server. A verified
+checksum receipt is required; failed transfers remain pending locally.
+Use `retry-uploads`, `disable-upload` and `--no-upload` as documented. None of this
+changes the production plugin or official PX4 startup. Never ship credentials or
+enable this private uploader in a production release.
 
 ## Sources and Limits
 

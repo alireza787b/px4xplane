@@ -16,6 +16,8 @@ def collect(run):
               'truth_requested': (run/'truth-source.txt').exists(),
               'truth_attached': (run/'truth/frames.csv').is_file(),
               'note': 'Flight success and GCS reception require ULog review; process exit is not a pass.'}
+    if (run/'session.json').is_file():
+        status['session'] = json.loads((run/'session.json').read_text())
     (run/'collection.json').write_text(json.dumps(status, indent=2)+'\n')
     paths = sorted(p for p in run.rglob('*') if p.is_file() and not p.is_symlink() and p.name != 'SHA256SUMS')
     before = {p: (p.stat().st_size, p.stat().st_mtime_ns) for p in paths}
@@ -43,6 +45,7 @@ def collect(run):
         print('WARNING: no ULog was recorded; this is not a usable flight result.')
     if status['truth_requested'] and not status['truth_attached']:
         print('WARNING: requested TruthCapture evidence is MISSING. ZIP is incomplete for actuator-response review.')
+    return archive
 
 
 if __name__ == '__main__':
