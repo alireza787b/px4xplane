@@ -1,46 +1,54 @@
-# Ref6 Operator Gates
+# R9 Operator Commands
 
-Simulation experiment only. Do not use on hardware. No stability guarantee.
+See QUICKSTART.md for the current MC-only lateral test. SITL only.
 
-1. Wait for `REF6 PARAMETER GATE PASSED`. If absent or any parameter gate fails,
-   do not arm. The startup script requests shutdown on comparison failure.
-2. Run `mavlink status`, `listener vehicle_status -n 1`, `param show SYS_AUTOSTART`
-   and `param show`. Verify 5021 and the recorded `profile.sh` values. Verify QGC
-   heartbeat and `gcs_connection_lost: False`; a running MAVLink endpoint alone
-   is insufficient. Verify Ref6 selected and recorded in the truth manifest.
-3. Verify upright initial attitude, correct motor responses, position/altitude
-   estimate, and no arming warnings. Abort on any discrepancy; never force arm.
-4. After structural/identity checks and explicit SITL experiment consent, type
-   `commander takeoff`. Wait for takeoff completion and observe 20 seconds of hover.
-   Confirm takeoff altitude 10 m for `A`, 180 m for `flight` or 50 m for `hover`. Initial checkpoint:
-   no growing oscillation, roughly less than 5 degrees roll/pitch variation and
-   altitude within 5 m after settling. Abort on tilt growth, estimator warnings,
-   saturation or loss of control. Do not transition unless hover is controlled.
-5. In `A` or `hover` mode, skip to landing. In `flight` mode only, at 180 m clearance,
-   type `commander transition` ONCE. Wait for confirmed FW state; observe at least
-   FIVE seconds for the current R8 first exposure. Do not repeatedly toggle
-   because a command seems delayed. Use QUICKSTART.md for the current scenario.
-   QGC Hold uses the inherited 1300 m orbit, not an optimized Ref6 radius. Do not
-   complete an orbit or issue new GoTos in this first short FW trial.
-   Do not change speed or gains. While on a settled shallow bank or wings-level,
-   with at least 180 m clearance, type `commander transition` ONCE for MC, then
-   `listener vtol_vehicle_status -n 1`. Wait for upright recovery; observe 20 seconds.
-   Back-rotation is now scheduled over 15 seconds. Require actual upright
-   recovery and horizontal speed below about 1 m/s before Land.
-   A timer-ended mode change is not proof of recovery. These are unvalidated SITL
-   experiments, not release approvals. Preserve the first failure rather than
-   attempting a prolonged uncontrolled recovery.
-6. Abort on increasing attitude error, yaw sign error, motor saturation, uncontrolled
-   descent or estimator warnings. Do not override EKF or repeat prolonged recovery.
-7. Once upright and controlled: `commander land`, then
-   `listener vehicle_status -n 1`. Verify land state and sustained descent; no RTL.
-   Run `listener trajectory_setpoint -n 1` as well. If descent fails to begin within
-   15 seconds after settling, preserve that interval and stop the experiment; do
-   not repeatedly change modes/gains. Otherwise let controlled landing complete
-   and confirm disarmed, then `shutdown`.
-8. After shutdown, leave TruthCapture running: the runner snapshots this run's
-   complete rows and uploads automatically. No Enter press is required. Wait for
-   UPLOAD VERIFIED; failures retain a local pending ZIP. Preserve all failures.
-   For an uncontrolled simulation, stop the experiment
-   using simulator pause/PX4 shutdown as appropriate; do not interpret a stopped
-   process as a successful landing.
+WSL:
+
+```bash
+cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
+bash run.sh update
+cat VERSION.txt
+bash run.sh hover --yes-debug
+```
+
+PX4 console, after parameter gate and Ready for takeoff:
+
+```text
+param show MC_ROLLRATE_P
+param show MPC_YAW_MODE
+commander check
+commander takeoff
+```
+
+Expect gain 0.060, fixed-yaw mode 5 and 50 m takeoff height. In QGC make a
+10-15 m SIDEWAYS GoTo, settle, then return, settle. Do not transition or use RTL.
+
+```text
+commander land
+```
+
+After touchdown and automatic disarm, or to end a failed simulation:
+
+```text
+shutdown
+```
+
+Wait for UPLOAD VERIFIED. TruthCapture need not be stopped manually. If needed:
+
+```bash
+bash run.sh retry-uploads
+```
+
+Diagnostics, if movement/descent is unexpected:
+
+```text
+mavlink status
+listener vehicle_status -n 1
+listener vehicle_local_position -n 1
+listener vehicle_rates_setpoint -n 1
+listener trajectory_setpoint -n 1
+```
+
+Land is `commander land`, not `commander mode land`. Hold, when specifically
+requested in a later scenario, is `commander mode auto:loiter`, not
+`commander hold`. Do not repeatedly toggle modes or relax health checks.

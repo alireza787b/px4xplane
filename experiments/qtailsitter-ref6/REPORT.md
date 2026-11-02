@@ -1,153 +1,194 @@
-# R8: MC Results And First Short FW/Back-Transition Trial
+# QuadTailsitter R8 Failure Review And R9 Recommendation
 
-2026-11-02.ref6.8. Experimental SITL only. No production, hardware or perfect-
-flight claim. Official PX4, production plugin and the original aircraft are
-unchanged. Same diagnostic pin and same experimental aircraft/folder.
+Date: 2026-11-02. Experimental SITL only; not a hardware tune or release approval.
 
-## Latest Evidence
+## Bottom Line
 
-ZIP SHA256 e7a95ae888bc62d03eee78d629ba5cd1eb6057bfd190a384a13f89a650ed408e.
-Runner r7, PX4 logging-only diagnostic 9cfe130a8d8e0c25f88e044141c523247ca53d48,
-official base f90b40d61e. ACF SHA256
-c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918.
-Actual mass 2.000000477 kg; payload zero; wind zero; no ULog dropouts.
-All VTOL states were MC: this log contains no transition/FW validation.
+The best-supported immediate correction is faster MC roll-rate tracking:
+MC_ROLLRATE_P 0.031815 -> 0.060, with I/D/K unchanged. Validate it with heading-
+held sideways GoTos, then Land. Do not weaken emergency braking or change EKF
+limits to hide the symptoms.
 
-| Metric | Result |
-| --- | --- |
-| First GoTo length / overshoot | 63.51 m / 2.274 m |
-| Second GoTo length / overshoot | 68.39 m / 3.023 m |
-| Cross-track RMS, legs 1 / 2 | 0.298 / 1.025 m |
-| First-leg pitch-rate error RMS | 0.0422 rad/s, previously 0.1483 |
-| First-leg attitude error RMS | 4.858 degrees, previously 17.049 |
-| Second-leg attitude error RMS | 8.788 degrees; still room for improvement |
-| First-leg horizontal velocity error RMS | approximately 0.730 m/s, previously 2.478 |
-| Independent estimator-vs-truth vertical velocity RMS | 0.00252 m/s |
-| Truth-clock altitude-fit RMS | 0.00562 m, no vertical bias fitted |
-| Health | No recurring bias/velocity/compass warning after startup heading wait |
-| RTL / Land target / landed detection / disarm | 133.567 / 187.817 / 286.812 / 288.33 s boot |
+This is NOT a complete fix for FW/back-transition. They remain failed validation
+items with separate dynamics. A successful stationary hover did not establish
+that the roll axis could reject the large disturbance after back-transition.
 
-The five QGC GoTo deliveries are retries of TWO horizontal targets, not five
-separate manoeuvres. The analysis now groups consecutive same-target deliveries
-within two seconds, allowing 0.1 m altitude retransmission variation. Raw events
-remain in metrics. RTL stays in nav_state 5 while its internal target becomes
-Land: the analysis uses target type, not only the nav_state 18 shortcut.
+## Evidence Identity
 
-The first-leg comparisons use the same [first GoTo +1,+35] time window rule.
-Routes, heights and hover seeds differ, so this is improvement consistent with
-the pitch-P change, not an isolated causal identification or an optimum claim.
+- Uploaded ZIP: ed53038d2fdbee81049c0be0ace425dd395ec338a2256934998f5be1d8690863.
+- Runner: 2026-11-02.ref6.8; ULog 2026-11-02/08_38_55.ulg.
+- PX4 diagnostic pin: 9cfe130a8d8e0c25f88e044141c523247ca53d48.
+- Official base: f90b40d61e56405513dfcd8e194287ac60d3a6ae.
+- Loaded-path ACF hash: c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918.
+- Actual simulator mass 2.000000477 kg, zero payload and wind. No ULog dropouts.
+- This run ended airborne/armed. It is not a landing pass.
 
-## Why It Looked Slow
+## Recorded Sequence
 
-The inherited MC limits are intentionally conservative: cruise 3.5 m/s, maximum
-4 m/s, horizontal acceleration 0.7 m/s2, jerk 0.7 m/s3, automatic climb 2 m/s,
-automatic descent 1.4 m/s, and yaw-rate/acceleration limits 25 deg/s and 8 deg/s2.
-Heading mode also controls when heading changes are requested; slow direction
-changes are not automatically weak motor authority.
+All times below are PX4 boot seconds, not video or wall-clock time.
 
-The GoTo reached approximately 3.97 m/s: the configured limit was active. RTL
-commanded 1623.994 m MSL, 129.916 m above home, then a long descent near 1.4 m/s.
-The RTL-climb phase was predominantly vertical; Land began while still about
-64 m horizontally from home, so the Land phase also includes horizontal return.
-The 1.394 m/s median is NOT touchdown speed: descent slows near the ground and
-truth vertical speed approaches zero before landed detection.
+| Event | Time | Evidence |
+| --- | ---: | --- |
+| Front transition begins | 112.906 | VTOL state 1 |
+| FW begins | 126.186 | VTOL state 4 |
+| Normal back-transition begins | 163.355 | VTOL state 2, not quad-chute |
+| MC mode begins | 178.368 | Timer exit, not pitch criterion |
+| Land begins | 211.828 | nav_state 18; accepted |
+| End of log | 381.530 status sample | Still no landing/disarm |
 
-We can increase cruise/acceleration/climb/descent limits later, after FW recovery
-and torque tracking are characterized. Changing them now would confound the next
-mode-handoff test. Slow GoTo cruise does not directly set back-transition pitch
-rotation or establish stopping distance. No RTL is used in the next short test,
-avoiding another unnecessary return-altitude climb.
+The QGC takeoff target was approximately 104.5 m above home, not the requested
+180 m console scenario. FW lasted 37.17 s, not five. Those differences are
+recorded, but do not excuse the failed control/recovery.
 
-## R8 Parameter Changes
+## Three Distinct Problems
 
-No MC gains, position limits, EKF settings, motor mapping/orientation, rotation
-signs, CG, mass, geometry or propulsion bytes change. Their successful baseline
-is retained. FW PID seeds use the same physical rotor axes and the pinned PX4
-frame transforms, accounting for downstream differential-thrust scale:
+### 1. FW Roll Is Not Properly Damped
 
-    FW rates = (-MC yaw, MC pitch, MC roll)
-    MC motor torque = (S_Y*FW yaw, S_P*FW pitch, -S_R*FW roll)
+The correctly transformed FW bank varies approximately -14.2 to +29.0 degrees.
+Physical MC yaw is the FW roll axis: its rate oscillation peaks around 0.4 Hz,
+with approximately 0.378 rad/s tracking-error RMS in the established FW window.
 
-The two roll sign changes cancel. Keep all gains positive; do not reverse any
-motor or axis. A compiled contract executes the actual pinned source's rate
-transform, torque back-transform and differential routing, not just a hand-drawn
-diagram. It verifies the unsaturated coefficient mapping for P/I/D separately.
+The disturbance starts during front transition, before the FW rate controller
+takes over. Thus the new FW gain coefficients alone cannot explain its onset.
+Constant normalized MC/FW coefficients do not guarantee equal physical response:
+collective, prop inflow, Q/T, attitude-loop gains and filtering differ.
 
-| FW family | MC source / scale | P | I | D |
-| --- | --- | ---: | ---: | ---: |
-| FW_RR | MC yaw / 0.55 | 0.075360 | 0.014318 | 0.001507 |
-| FW_PR | MC pitch / 0.90 | 0.133333 | 0.016667 | 0.001333 |
-| FW_YR | MC roll / 0.32 | 0.099422 | 0.024856 | 0.001987 |
+The R8 source-frame/normalized-gain contract is correct, but it was not a flight
+stability guarantee. A simple local FW model fits much worse than the MC roll
+model; it does not justify claiming an optimal FW gain from this recording.
+Cant-vector/actual prop-force correspondence is still an open physical-model
+validation item. No motor orientation/sign reversal or new aircraft geometry
+is justified by this log.
 
-- FW_ARSP_SCALE_EN=0 removes the aerodynamic-surface inverse-speed-squared rate
-  output multiplier. This aircraft has no movable control surfaces. Propeller
-  authority still depends on collective/inflow, so constant gains are only a
-  starting trial, not universal rotor performance compensation.
-- FW_USE_AIRSPD=1 retains pitot airspeed for TECS, coordination and transition.
-  It is NOT disabled to hide an airspeed problem.
-- FW_THR_MIN=0.08 uses the same normalized collective baseline as MPC_THR_MIN,
-  avoiding zero-collective commands in the first FW trial. It is NOT a verified
-  physical idle thrust, per-motor minimum, or sufficient torque margin.
-- VT_B_TRANS_DUR=15 reduces requested back-rotation from 18 to 6 deg/s. With the
-  unchanged MC pitch attitude gain 0.58 and IDEAL instantaneous rate tracking,
-  ramp-end lag is 90/(0.58*T)*(1-exp(-0.58*T)) degrees: about 15.5 at 10 s and
-  10.4 at 15 s, against the -0.26 rad exit threshold (~14.9 degrees). This explains
-  the trial choice; it is not a flight prediction. More time means more travel.
-- Differential scales 0.55/0.90/0.32, zero rate FF, zero roll-to-yaw torque FF
-  and enabled airspeed use are written explicitly, not silently inherited.
+### 2. Back-Transition Did Not Recover By Its Exit Criterion
 
-Cruise remains 26 m/s, transition CAS 25, front duration 10 s, bank limit 16
-degrees, NPFG period 55, loiter radius 1300 m, trim throttle 0.25 and max throttle
-1. TECS/NPFG performance is not inferred from MC data or retuned speculatively.
+It ends at 178.368 s because the 15 s timer expired. Logged exit pitch is
+-0.92157 rad (-52.8 degrees), versus an angle criterion around -14.9 degrees.
 
-### Limits Of The Transfer
+MC attitude/rate control was already active DURING back-transition, from
+163.355 s. There is not a new MC rate-controller start at the final mode label.
+The final label releases transition attitude guidance into ordinary MC guidance
+while the vehicle is still tilted and moving rapidly.
 
-This equates normalized unsaturated PID coefficients, NOT complete dynamics.
-FW compression, clipping, integral reset/limits and aerodynamic damping differ.
-MC yaw has a 2 Hz torque-output filter not reproduced by transferred FW roll.
-FW integral ceilings in motor axes differ from MC; they are NOT raised to force
-equivalence. FW pitch outer-loop gain 1/0.6=1.67 also differs from MC 0.58.
-The MC result is therefore a defensible seed, not verified FW stability.
+The second-by-second CSV includes requested/actual pitch, pitch rate, torque,
+motor range, speed and altitude. For example:
 
-The existing tailsitter back-transition still exits on angle OR duration, with
-no speed gate. The inherited VT_B_TRANS_RAMP parameter does not control its
-internal 0.5 s thrust blend. Timer-only exit is not accepted as successful
-recovery merely because it eventually lands. Logging-only tail_diag identifies
-the exit reason. No new PX4 bug or PR is asserted here.
+| Boot s | MC pitch actual / requested deg | Pitch rate actual / requested rad/s | Horizontal speed m/s |
+| --- | --- | --- | ---: |
+| 165 | -80.6 / -76.4 | -0.012 / +0.126 | 33.1 |
+| 170 | -66.4 / -46.4 | +0.116 / +0.205 | 23.3 |
+| 175 | -54.0 / -16.4 | -0.159 / +0.375 | 10.4 |
+| 178 | -51.9 / -0.5 | +0.023 / +0.503 | 12.0 |
+| 181 | +12.0 / +27.3 | +0.551 / +0.215 | 6.3 |
 
-## Next Trial
+It climbs roughly 45 m during recovery. Pitch demand exists; the aircraft is
+not simply being told to remain in a dive. Increasing the duration again alone
+is not a demonstrated solution. FW roll damping and pitch authority through
+changing inflow/collective need to be separated before accepting recovery.
 
-Read QUICKSTART.md. Set no wind and choose flat terrain with 150-200 m actual
-AGL and a kilometre-scale clear recovery area. Use console takeoff to 180 m,
-settled MC hold, one front transition, FIVE seconds established FW, then one
-explicit normal MC transition. Do not complete an orbit or invoke RTL. Do not
-issue Land until upright MC, residual horizontal speed below approximately
-1 m/s, near-level vertical speed and 20 seconds of settled hold.
+### 3. MC Lateral Oscillation Repeatedly Interrupts Land
 
-Stop escalation for growing oscillation, large uncontrolled attitude error,
-sustained motor/allocator saturation, invalid airspeed, established FW CAS below
-21 m/s, or approximately 20 m altitude loss. These are experiment limits, not
-proven recovery guarantees. Save failures; no force-arm, sensor bypass or new
-in-flight tuning. A quad-chute recovery is not a normal back-transition pass.
+Late MC roll is roughly +/-30 degrees, with setpoint repeatedly reaching the
+30-degree tilt limit, at about 0.15-0.2 Hz. Roll-rate error is about 0.21 rad/s
+RMS and closed-loop correlation lag approximately 0.48 s. Pitch-rate error in
+the Land window is much smaller, approximately 0.047 rad/s.
 
-After shutdown, the existing runner snapshots truth and uploads automatically.
-Required evidence already includes actual/desired attitude and rates, virtual
-MC/FW torque, allocated torque/thrust, motor/RPM/shaft power, airspeed, gain
-compression and tail_diag. Review pitch/roll reversal, actual handoff thrust,
-TECS speed/height requests, and the angle-versus-timer exit. Only after this
-short exposure passes should FW time extend to 15-20 seconds and gentle turns.
+This is sustained oscillation/limit-cycle behavior, not a critically damped
+response. It is not just a visual roll reading or an unused elevator issue.
 
-## Reproduction And References
+Diagnostics record 33 emergency-braking activations, all horizontal-speed reason.
+The trigger checks trajectory speed above 1.3 * MPC_XY_VEL_MAX = 5.2 m/s.
+Braking reseeds the trajectory from measured position/velocity and requests
+all-axis stopping. Release requires the trajectory to slow sufficiently.
 
-`tools/analyze_qtailsitter_tracking.py LOG.zip NEW_OUTPUT_DIR` (numpy/pyulog)
-streams truth, retains raw retry events, handles RTL Land targets, fits time
-without extrapolation, and writes metrics.json/rates.svg/tracking.svg.
+During Land, raw requested descent stays +1.4 m/s downward, but braking is active
+in 70.2% of diagnostic samples. Mean measured descent while active is -0.0094 m/s
+(almost zero), versus +0.375 m/s outside braking. Therefore Land WAS accepted;
+its descent is repeatedly interrupted by the lateral-control/braking cycle.
+This does not prove whether braking initially starts or only sustains that cycle.
 
-- [PX4 controller diagrams](https://docs.px4.io/v1.18/en/flight_stack/controller_diagrams): frames and aerodynamic airspeed scaling; documented disable option for non-surface-dependent controls.
-- [PX4 MC rate/attitude tuning](https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html).
-- [PX4 back-transition tuning](https://docs.px4.io/main/en/config_vtol/vtol_back_transition_tuning.html).
-- Actual behavior is checked against pinned source, not assumed from generic
-  Standard-VTOL guidance: FixedwingRateControl.cpp, tailsitter.cpp, rate_control.cpp.
-- Independent Astra review checked frame/gain-transfer limits and back timing;
-  a separate evidence review checked MC metrics, command retries and RTL phases.
-  These are agent reviews, not human PX4 maintainer approval.
+The braking behavior exists in official f90, not a private behavioral addition
+inside diagnostic commit 9cfe. No evidence of transferred FW integral, in-flight
+estimator reset or minutes-long stale filter state was found. MC roll integral
+is small and motors have headroom; upper motor clipping does not explain the
+persistent late-MC motion.
+
+## Estimator And Plugin Checks
+
+- Quaternion disagreement with logged groundtruth: 0.567 degrees RMS.
+- Angular-rate disagreement: about 0.0073 rad/s RMS per axis.
+- Accel-bias component RMS approximately 0.0072 / 0.0138 / 0.0098 m/s2.
+- Independently aligned CSV vertical-velocity disagreement: 0.0157 m/s RMS.
+- Constant truth-minus-boot offset 222.11369 s; interior altitude-fit RMS 0.0028 m.
+- Actual mapped ENGN_thro_use channels track motor commands: about 0.0023 RMS.
+
+The CSV ends before the final ULog samples: comparisons use overlapping coverage,
+not extrapolated truth. Cockpit throttle_ratio and ENGN_thro are zero while
+ENGN_thro_use changes: only the actual configured actuator dataref is meaningful
+for this mapping check. A frozen cockpit display must not be treated as a failed
+motor command.
+
+Groundtruth topics share the plugin's transform, so agreement alone cannot prove
+every sensor path correct. These independent checks do not show an EKF/pipeline
+failure sufficient to explain this recording. No production plugin or PX4-core
+change is supported by the present evidence.
+
+## Why This Gain, Not Another Broad Retune
+
+Four 25 s MC windows give consistent local roll-acceleration/torque models,
+roughly 64-67 rad/s2 per normalized torque with an apparent 0.12 s fitted delay.
+Smoothed acceleration fit R2 is 0.93-0.97. Delay partly depends on smoothing.
+
+Fixed recorded-rate-demand replays predict:
+
+| MC roll P | Replay rate-error RMS across four windows, rad/s |
+| ---: | --- |
+| 0.031815 | 0.222-0.239 |
+| 0.040 | 0.186-0.199 |
+| 0.060 | 0.135-0.142 |
+| 0.080 | 0.105-0.110 |
+
+Choose 0.060 for an accelerated SITL trial: a substantial measurable step, rather
+than changing all loops at once. The larger 0.080 candidate can remain a later
+option. These are IN-SAMPLE local rate-model screens, not full X-Plane simulation,
+open-loop identification, closed-position-loop stability or a flight guarantee.
+The model omits changing aerodynamics, allocation limits and position/braking
+feedback. Measured next-flight results decide.
+
+An independent Astra agent checked the control-state/landing chain and the
+bounded tuning choice, including the fixed-yaw enum. This is an agent review,
+not human PX4-maintainer approval.
+
+## R9 Changes And Next Test
+
+- MC_ROLLRATE_P becomes 0.060. MC roll I 0.007954, D 0.000636 and K 1 unchanged.
+- Every FW coefficient is frozen at R8; particularly FW_YR_P remains 0.099422.
+  No automatic MC-to-FW gain propagation during this isolated test.
+- No ACF, mass/CG, propulsion, rotor mapping, EKF, speed or braking-limit change.
+- Existing hover scenario adds checked MPC_YAW_MODE=5 for heading-held lateral
+  GoTos; 4 would turn toward the waypoint first. The override is separately
+  recorded and isolated to this run. Base gain profile is not given a new yaw mode.
+- No new PX4 PR, main-branch tuning, hardware firmware or production release.
+
+Run the same-folder update and hover command in QUICKSTART.md. Console takeoff
+to 50 m, settle, 10-15 m sideways GoTo, settle, return, settle, then Land at current
+position. This is a short test of the previously under-exercised axis, not a
+request for another long uncontrolled full flight. Shutdown automatically
+captures truth and uploads the evidence.
+
+Following the MC result, revise FW roll separately using actual differential
+torque/response at cruise, then verify pitch recovery across back-transition.
+Do not approve another timer-only recovery as success. Reconsider rotor cant,
+thrust linearization or geometry only if force/moment evidence supports them.
+
+## Reproduce And References
+
+tools/analyze_qtailsitter_handoff.py ZIP NEW_OUTPUT_DIR requires numpy/pyulog.
+It writes frame-correct FW/recovery/Land/braking plots, metrics, a one-second
+back-transition table and local gain screens without extracting the large ZIP.
+The output must be a new directory; raw captures remain preserved.
+
+- [PX4 MC PID tuning](https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter): tune the inner rate loop before outer attitude/position loops.
+- [Exact official braking logic](https://github.com/PX4/PX4-Autopilot/blob/f90b40d61e56405513dfcd8e194287ac60d3a6ae/src/modules/flight_mode_manager/tasks/Auto/FlightTaskAuto.cpp): _checkEmergencyBraking, all-axis stopping and raw Land setpoints.
+- [Exact yaw-mode enum](https://github.com/PX4/PX4-Autopilot/blob/f90b40d61e56405513dfcd8e194287ac60d3a6ae/src/modules/flight_mode_manager/tasks/Auto/FlightTaskAuto.hpp): yaw_fixed=5.
+- [Exact tailsitter transition](https://github.com/PX4/PX4-Autopilot/blob/f90b40d61e56405513dfcd8e194287ac60d3a6ae/src/modules/vtol_att_control/tailsitter.cpp): MC control during transitions and angle-or-timer exit.

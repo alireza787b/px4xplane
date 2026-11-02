@@ -10,6 +10,9 @@ from unittest.mock import patch
 
 import attach_truth
 import flight
+import argparse
+import io
+from contextlib import redirect_stdout
 import gates
 import ref6
 import source_state
@@ -180,6 +183,21 @@ class Ref6Tests(unittest.TestCase):
         self.assertIn('param compare SYS_AUTOSTART 5021', startup)
         self.assertIn('shutdown', startup)
         self.assertIn('-u 18571 -o 14550 -t "$REF6_QGC"', startup)
+
+    def test_lateral_hover_scenario_has_checked_fixed_yaw(self):
+        text = flight.startup(self.bundle/'profile.sh', 50, yaw_fixed=True)
+        self.assertIn('param set MPC_YAW_MODE 5\n', text)
+        self.assertIn('param compare MPC_YAW_MODE 5', text)
+        self.assertIn('param compare MIS_TAKEOFF_ALT 50', text)
+        self.assertNotIn('param set MPC_YAW_MODE', flight.startup(self.bundle/'profile.sh', 180))
+
+    def test_update_points_to_current_lateral_scenario(self):
+        args = argparse.Namespace(state=self.state, mode='update', manifest_url='https://example.invalid/current')
+        output = io.StringIO()
+        with patch('update_debug.update', return_value=ref6.VERSION), redirect_stdout(output):
+            ref6.dispatch(args)
+        self.assertIn('Next: bash run.sh hover --yes-debug', output.getvalue())
+        self.assertNotIn('Next: bash run.sh flight', output.getvalue())
 
     def test_profile_dynamic_values_refused(self):
         (self.bundle/'profile.sh').write_text('param set MC_ROLLRATE_D $VALUE\n')

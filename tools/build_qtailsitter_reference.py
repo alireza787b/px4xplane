@@ -236,10 +236,10 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         px,py=(params[f'CA_ROTOR{i}_P{a}'] for a in ('X','Y'))
         yaw_levers.append(abs((px*ay-py*ax-params[f'CA_ROTOR{i}_KM']*az)/norm))
     yaw_scale=km/(sum(yaw_levers)/4)
-    gains={'ROLL':(.031815,.007954,.000636),
+    gains={'ROLL':(.060,.007954,.000636),
            'YAW':tuple(v*yaw_scale for v in (.105262,.02,.002105))}
     for axis,(p,integral,d) in gains.items():
-        reason=('R5 roll gains held unchanged; hover-estimate correction does not retune this axis.' if axis=='ROLL' else
+        reason=('R8 post-back MC roll rate error ~0.21rad/s RMS with ~0.48s closed-loop correlation lag, motor headroom and small integral. P-only trial 0.031815->0.060; four local delayed-model replays suggest ~40% less rate error. I,D,K unchanged. In-sample screens are not a closed-position-loop stability guarantee; validate lateral MC motion before FW.' if axis=='ROLL' else
                 'R5 yaw gains reduced by reaction-only/restored-cant yaw lever ratio; the new cant adds modeled authority. Trial compensation, not measured physical validation.')
         for suffix,value in (('P',p),('I',integral),('D',d),('K',1),('FF',0)):
             add(f'MC_{axis}RATE_{suffix}',round(value,6),reason)
@@ -251,11 +251,15 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
     # downstream differential scaling. This equates unsaturated normalized PID
     # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
-    for fw,mc,scale in (('RR','YAW',.55),('PR','PITCH',.90),('YR','ROLL',.32)):
-        for term in ('P','I','D'):
-            value=params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K']/scale
+    # Freeze the failed R8 FW trial during the isolated R9 MC-roll experiment.
+    # In particular, do not silently copy the new MC roll P into FW yaw.
+    fw_baseline={'RR':(.075360,.014318,.001507),
+                 'PR':(.133333,.016667,.001333),
+                 'YR':(.099422,.024856,.001987)}
+    for fw,coefficients in fw_baseline.items():
+        for term,value in zip(('P','I','D'),coefficients):
             add(f'FW_{fw}_{term}',round(value,6),
-                f'Initial rotor-only normalized-effort seed from MC {mc} {term}, divided by differential scale {scale}. Exact frame mapping checked against pinned source; not measured FW tuning. No airspeed-squared gain multiplier.')
+                'Frozen R8 FW trial coefficient, NOT a validated tune. Do not propagate the isolated R9 MC-roll change. FW/back-transition are on hold pending lateral MC validation.')
         add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
     for axis,scale in (('R',.55),('P',.90),('Y',.32)):
         add(f'VT_FW_DIFTHR_S_{axis}',scale,'Unchanged pinned 5021 differential torque scaling, explicit for rate-seed reproducibility.')
@@ -307,7 +311,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.8", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.9", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

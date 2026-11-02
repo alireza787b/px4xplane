@@ -20,15 +20,17 @@ now 0.26 from the successful r6 2 kg hover/GoTo/Land log. Original motor
 orientations/rotation signs and official rotor direction vectors are retained.
 R7's two-GoTo/RTL capture confirms better MC tracking: first-leg pitch-rate
 error approximately 0.042 rad/s RMS, with 2.3/3.0 m along-track overshoots.
-R8 retains that MC baseline and prepares only a five-second FW exposure plus
-normal back-transition. FW PID coefficients follow the exact pinned frame and
-differential scaling; aerodynamic airspeed-squared rate scaling is disabled,
-airspeed use remains enabled, and back-rotation duration is now 15 seconds.
-These are unvalidated experimental seeds, not a proven FW tune. See REPORT.md.
+R8 failed FW/back recovery: FW bank oscillated around 0.4 Hz; the back-transition
+ended by timer while still pitched -52.8 degrees; subsequent MC roll/position
+oscillation repeatedly triggered emergency braking and interrupted landing.
+R9 changes only MC_ROLLRATE_P from 0.031815 to 0.060. Four local rate-response
+screens support this trial, not a full-flight stability claim. Every FW gain
+remains frozen at R8, including FW_YR_P: the MC update must not silently retune
+FW yaw. Next test is MC-only with lateral GoTos and fixed heading. See REPORT.md.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
-All MC gains and speed/jerk/position limits remain at the tested r7 values.
+Other MC gains and all speed/jerk/position limits remain at the r7 values.
 FW compression/filter/collective differences limit normalized PID equivalence.
 Read design.json and sizing.json for assumptions and envelope screening. Real
 control authority, trim, stability and landing remain simulator validation gates.
@@ -39,12 +41,14 @@ From the same installed debug folder:
 
 ```bash
 bash run.sh update
-bash run.sh flight --yes-debug
+bash run.sh hover --yes-debug
 ```
 
-Follow QUICKSTART.md: controlled hover at 180 m, one front transition, five
-seconds FW, one normal back-transition, settled MC, then Land at current position.
-Do not use RTL or a prolonged FW orbit in this first handoff characterization.
+Follow QUICKSTART.md: console takeoff to 50 m, sideways GoTo and return while
+holding heading, then Land at current position. The hover scenario automatically
+applies/checks MPC_YAW_MODE=5 and records it separately from the gain profile.
+The next isolated rootfs starts from defaults again; no production or saved
+airframe defaults are changed. Do not transition or use RTL in this MC test.
 Update checks local managed-file hashes, downloads a checksum-verified manifest
 and ZIP, and updates in place with one rollback journal. It preserves
 flight runs and credentials. Local edits are not discarded. PX4 must be stopped.

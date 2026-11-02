@@ -93,15 +93,20 @@ class ReferenceTest(unittest.TestCase):
         self.assertEqual(params['MC_PITCHRATE_D'], .0012)
         self.assertGreaterEqual(params['MC_PITCHRATE_P'], .01)
         self.assertEqual(params['MC_PITCHRATE_K'], 1)
-        self.assertEqual(params['MC_ROLLRATE_P'], .031815)
+        self.assertEqual(params['MC_ROLLRATE_P'], .060)
+        self.assertEqual(params['MC_ROLLRATE_I'], .007954)
+        self.assertEqual(params['MC_ROLLRATE_D'], .000636)
         self.assertEqual(params['FW_ARSP_SCALE_EN'], 0)
         self.assertEqual(params['FW_USE_AIRSPD'], 1)
         self.assertEqual(params['FW_THR_MIN'], .08)
         self.assertEqual(params['VT_B_TRANS_DUR'], 15)
-        for fw,mc,scale in (('RR','YAW',.55),('PR','PITCH',.90),('YR','ROLL',.32)):
+        for fw,mc,scale in (('RR','YAW',.55),('PR','PITCH',.90)):
             for term in ('P','I','D'):
                 self.assertAlmostEqual(params[f'FW_{fw}_{term}']*scale,
                                        params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K'],places=6)
+        # Changing MC roll must not silently retune a different mode/axis.
+        self.assertEqual(tuple(params['FW_YR_'+term] for term in ('P','I','D')),
+                         (.099422,.024856,.001987))
         self.assertLess(params['MC_YAWRATE_P'], .105262)
         original_axes=((- .078,.040,-.996),(.078,-.040,-.996),(-.078,-.040,-.996),(.078,.040,-.996))
         for i in range(4):

@@ -22,9 +22,14 @@ def no_px4():
     require(result.returncode == 1, 'PX4 may still be running; stop it before source restore or collection')
 
 
-def startup(profile, altitude=50):
+def startup(profile, altitude=50, yaw_fixed=False):
     params = {'SYS_AUTOSTART': '5021', **profile_params(profile), 'MIS_TAKEOFF_ALT': str(altitude)}
     text = f'. etc/init.d-posix/rcS\n. "$REF6_PROFILE"\nparam set MIS_TAKEOFF_ALT {altitude}\n'
+    if yaw_fixed:
+        # Pinned FlightTaskAuto.hpp: 5 holds yaw; 4 turns to the waypoint first.
+        # This is a scenario override, not a change to the reusable gain profile.
+        params['MPC_YAW_MODE'] = '5'
+        text += 'param set MPC_YAW_MODE 5\n'
     for name, value in params.items():
         text += (f'param show {name}\n'
                  f'if ! param compare {name} {value}; then\n'
@@ -71,6 +76,7 @@ def flight(args):
                          'profile_sha256': digest(HERE/'profile.sh'),
                          'design_sha256': digest(HERE/'design.json')})
         identity['debug_upload_enabled'] = upload_enabled
+        identity['scenario_overrides'] = {'MPC_YAW_MODE': 5} if args.mode == 'hover' else {}
         (run/'identity.json').write_text(json.dumps(identity, indent=2)+'\n')
         (run/'truth-source.txt').write_text(str(truth)+'\n')
         shutil.copy2(HERE/'profile.sh', run/'profile.sh')
@@ -85,7 +91,7 @@ def flight(args):
         shutil.copy2(receipt['config'], run/'inputs/config.ini')
         shutil.copy2(identity['acf_path'], run/'inputs'/Path(identity['acf_path']).name)
         altitude = 180 if args.mode == 'flight' else (10 if args.mode == 'A' else 50)
-        (run/'startup.sh').write_text(startup(run/'profile.sh', altitude))
+        (run/'startup.sh').write_text(startup(run/'profile.sh', altitude, yaw_fixed=args.mode == 'hover'))
         changed = False
         initial = None
         try:
