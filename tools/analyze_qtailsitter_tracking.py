@@ -194,6 +194,25 @@ def analyze(archive,output):
                 'cross_track_m':stats(xy@np.array([-unit[1],unit[0]])),
                 'along_track_beyond_target_max_m':float(np.max(xy@unit)-length),
                 'distance_to_target_before_next_mode_m':float(np.linalg.norm(xy[-1]-direction))})
+            # Separate excitation from tracking quality. A quiet roll axis on a
+            # nose-directed GoTo is not proof that lateral roll is well tuned.
+            rt=clock(angular);mask=(rt>=start_time)&(rt<end_time);rt=rt[mask]
+            leg=metrics['goto_legs'][-1]
+            leg['rate_actual_rad_s']={axis:stats(angular[f'xyz[{i}]'][mask]) for i,axis in enumerate(('roll','pitch','yaw'))}
+            leg['rate_command_rad_s']={axis:stats(interp(rates,axis,rt)) for axis in ('roll','pitch','yaw')}
+            leg['rate_error_rad_s']={axis:stats(angular[f'xyz[{i}]'][mask]-interp(rates,axis,rt)) for i,axis in enumerate(('roll','pitch','yaw'))}
+            at=clock(att);mask=(at>=start_time)&(at<end_time);at=at[mask]
+            w,x,y,z=(att[f'q[{i}]'][mask] for i in range(4))
+            roll=np.arctan2(2*(w*x+y*z),1-2*(x*x+y*y))
+            yaw=np.unwrap(np.arctan2(2*(w*z+x*y),1-2*(y*y+z*z)))
+            leg['roll_deg']=stats(np.degrees(roll))
+            leg['yaw_change_from_leg_start_deg']=stats(np.degrees(yaw-yaw[0]))
+        diagnostics=[x.data for x in u.data_list if x.name=='debug_array' and len(x.data['id']) and x.data['id'][0]==101]
+        if diagnostics:
+            dd=diagnostics[0];mask=(clock(dd)>=takeoff)&(clock(dd)<=touchdown)
+            metrics['braking']={'activation_count_final':int(dd['data[28]'][-1]),
+                'airborne_active_sample_fraction':float(np.mean(dd['data[1]'][mask]>.5))}
+        metrics['dropouts']=len(u.dropouts)
         metrics['goto_geometry']=metrics['goto_legs'][0]
         metrics['speed_tracking']={}
         for label,(lo,hi) in phases.items():

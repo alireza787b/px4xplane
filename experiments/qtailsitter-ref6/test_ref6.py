@@ -191,13 +191,13 @@ class Ref6Tests(unittest.TestCase):
         self.assertIn('param compare MIS_TAKEOFF_ALT 50', text)
         self.assertNotIn('param set MPC_YAW_MODE', flight.startup(self.bundle/'profile.sh', 180))
 
-    def test_update_points_to_current_lateral_scenario(self):
+    def test_update_points_to_current_fw_scenario(self):
         args = argparse.Namespace(state=self.state, mode='update', manifest_url='https://example.invalid/current')
         output = io.StringIO()
         with patch('update_debug.update', return_value=ref6.VERSION), redirect_stdout(output):
             ref6.dispatch(args)
-        self.assertIn('Next: bash run.sh hover --yes-debug', output.getvalue())
-        self.assertNotIn('Next: bash run.sh flight', output.getvalue())
+        self.assertIn('Next: bash run.sh flight --yes-debug', output.getvalue())
+        self.assertNotIn('Next: bash run.sh hover', output.getvalue())
 
     def test_profile_dynamic_values_refused(self):
         (self.bundle/'profile.sh').write_text('param set MC_ROLLRATE_D $VALUE\n')

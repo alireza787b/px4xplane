@@ -100,10 +100,13 @@ class ReferenceTest(unittest.TestCase):
         self.assertEqual(params['FW_USE_AIRSPD'], 1)
         self.assertEqual(params['FW_THR_MIN'], .08)
         self.assertEqual(params['VT_B_TRANS_DUR'], 15)
-        for fw,mc,scale in (('RR','YAW',.55),('PR','PITCH',.90)):
+        for fw,mc,scale in (('PR','PITCH',.90),):
             for term in ('P','I','D'):
                 self.assertAlmostEqual(params[f'FW_{fw}_{term}']*scale,
                                        params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K'],places=6)
+        self.assertEqual(params['FW_RR_P'], .10)
+        self.assertEqual(params['FW_RR_I'], .014318)
+        self.assertEqual(params['FW_RR_D'], .001507)
         # Changing MC roll must not silently retune a different mode/axis.
         self.assertEqual(tuple(params['FW_YR_'+term] for term in ('P','I','D')),
                          (.099422,.024856,.001987))

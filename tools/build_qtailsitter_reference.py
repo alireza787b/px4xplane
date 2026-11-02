@@ -251,15 +251,16 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
     # downstream differential scaling. This equates unsaturated normalized PID
     # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
-    # Freeze the failed R8 FW trial during the isolated R9 MC-roll experiment.
-    # In particular, do not silently copy the new MC roll P into FW yaw.
-    fw_baseline={'RR':(.075360,.014318,.001507),
+    # R10 changes only FW roll P after the R9 MC trial. Other FW coefficients
+    # remain frozen; do not silently copy MC roll P into FW yaw.
+    fw_baseline={'RR':(.10,.014318,.001507),
                  'PR':(.133333,.016667,.001333),
                  'YR':(.099422,.024856,.001987)}
     for fw,coefficients in fw_baseline.items():
         for term,value in zip(('P','I','D'),coefficients):
             add(f'FW_{fw}_{term}',round(value,6),
-                'Frozen R8 FW trial coefficient, NOT a validated tune. Do not propagate the isolated R9 MC-roll change. FW/back-transition are on hold pending lateral MC validation.')
+                ('R10 FW roll P-only trial 0.07536->0.10: R8 rate/torque spectral evidence supports investigating more damping, not a blind P reduction. Effective physical MC-yaw-axis P=0.055 after scale0.55. Not an identified optimum or flight guarantee.' if fw=='RR' and term=='P' else
+                 'R8 FW coefficient retained during the R10 FW-roll-P-only test. Not a validated tune; no automatic propagation of MC gains.'))
         add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
     for axis,scale in (('R',.55),('P',.90),('Y',.32)):
         add(f'VT_FW_DIFTHR_S_{axis}',scale,'Unchanged pinned 5021 differential torque scaling, explicit for rate-seed reproducibility.')
@@ -311,7 +312,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.9", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.10", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

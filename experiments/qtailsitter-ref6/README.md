@@ -23,10 +23,13 @@ error approximately 0.042 rad/s RMS, with 2.3/3.0 m along-track overshoots.
 R8 failed FW/back recovery: FW bank oscillated around 0.4 Hz; the back-transition
 ended by timer while still pitched -52.8 degrees; subsequent MC roll/position
 oscillation repeatedly triggered emergency braking and interrupted landing.
-R9 changes only MC_ROLLRATE_P from 0.031815 to 0.060. Four local rate-response
-screens support this trial, not a full-flight stability claim. Every FW gain
-remains frozen at R8, including FW_YR_P: the MC update must not silently retune
-FW yaw. Next test is MC-only with lateral GoTos and fixed heading. See REPORT.md.
+R9 changed MC_ROLLRATE_P from 0.031815 to 0.060 and completed moderate MC flight,
+RTL and landing with zero emergency-braking activations. Its second GoTo still
+showed weak yaw tracking; it did not validate recovery from a large disturbance.
+R10 keeps R9 MC gains and changes only FW_RR_P from 0.07536 to 0.10. Other FW
+gains remain frozen, including FW_YR_P: do not automatically retune FW yaw from
+MC roll. Next test measures 15 seconds FW, then normal back-transition and Land.
+These are experimental parameters, not a full-flight stability claim. See REPORT.md.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
@@ -41,14 +44,15 @@ From the same installed debug folder:
 
 ```bash
 bash run.sh update
-bash run.sh hover --yes-debug
+bash run.sh flight --yes-debug
 ```
 
-Follow QUICKSTART.md: console takeoff to 50 m, sideways GoTo and return while
-holding heading, then Land at current position. The hover scenario automatically
-applies/checks MPC_YAW_MODE=5 and records it separately from the gain profile.
-The next isolated rootfs starts from defaults again; no production or saved
-airframe defaults are changed. Do not transition or use RTL in this MC test.
+Follow QUICKSTART.md: console takeoff to 180 m, settled hover, front transition,
+15 seconds established FW, normal back-transition, settled MC, then Land at
+current position. Do not use RTL or new GoTos in this measurement. The optional
+hover scenario remains available for MC lateral tests and separately records
+MPC_YAW_MODE=5. Each isolated rootfs starts from defaults; no production or
+saved airframe defaults are changed.
 Update checks local managed-file hashes, downloads a checksum-verified manifest
 and ZIP, and updates in place with one rollback journal. It preserves
 flight runs and credentials. Local edits are not discarded. PX4 must be stopped.

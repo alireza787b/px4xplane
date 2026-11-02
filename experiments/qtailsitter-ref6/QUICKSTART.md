@@ -1,12 +1,11 @@
-# R9: Dampen MC Roll Before The Next Transition
+# R10: Short FW Roll-Damping Test
 
-SITL only. Same aircraft, same plugin, same pinned diagnostic firmware.
-One gain change: MC_ROLLRATE_P 0.031815 -> 0.060; I/D and FW gains unchanged.
-This is an experiment, not a verified full-flight tune. No hardware use.
+SITL only. Same aircraft, plugin, firmware pin and R9 MC gains.
+Only FW_RR_P changes: 0.07536 -> 0.10. FW/back recovery is not yet validated.
 
 ## 1. Update In WSL
 
-Stop PX4. X-Plane may stay open: aircraft/config bytes do not change.
+Stop PX4. No aircraft/config bytes change, so X-Plane can stay open for updating.
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -14,84 +13,109 @@ bash run.sh update
 cat VERSION.txt
 ```
 
-Expected `2026-11-02.ref6.9`. No download/extraction, plugin install or token
-configuration again. Start a fresh X-Plane flight if the previous one stopped
-airborne; do not resume the previous uncontrolled aircraft state.
+Expect `2026-11-02.ref6.10`. No token, extraction or plugin reinstall.
+Use the flight command below even if the OLD updater process prints hover.
+Start a fresh X-Plane flight, not a previous stopped-airborne state.
 
 ## 2. Prepare And Launch
 
-Load the same QuadTailsitterRef6: 2 kg, zero payload, no wind, clear flat terrain.
-Start TruthCapture and QGC. In X-Plane select Plugins > PX4 X-Plane > Airframes >
-QuadTailsitterRef6, then Connect to SITL.
+Load QuadTailsitterRef6, 2 kg, zero payload, no wind, flat terrain with a large
+clear recovery area. Start TruthCapture recording and QGC. Select Plugins >
+PX4 X-Plane > Airframes > QuadTailsitterRef6, then Connect to SITL.
 
 ```bash
-bash run.sh hover --yes-debug
+bash run.sh flight --yes-debug
 ```
 
-This automatically commands 50 m console takeoff height and sets/checks
-`MPC_YAW_MODE=5` for fixed heading. Value 4 is NOT fixed heading in this firmware.
-The override is recorded in identity.json and applied only to this scenario.
-The reusable parameter profile retains the base airframe's yaw mode 0.
+This uses the SAME diagnostic PX4 pin and 180 m console takeoff height. It does
+not apply private dive/optional control fixes. Normal flight yaw mode is 0;
+the R9 lateral-test yaw-fixed override only applies to the hover scenario.
 
-## 3. Take Off
+## 3. Take Off From The PX4 Console
 
-Wait for REF6 PARAMETER GATE PASSED and Ready for takeoff. In the PX4 console:
+After REF6 PARAMETER GATE PASSED and Ready for takeoff:
 
 ```text
+param show FW_RR_P
 param show MC_ROLLRATE_P
-param show MPC_YAW_MODE
+param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect 0.060 and 5. Use console takeoff, not QGC's remembered takeoff slider.
-Wait for 50 m and about 15 seconds of steady hover. Note the heading arrow in
-QGC: it should keep pointing the same direction throughout the sideways test.
+Expect 0.10, 0.060 and 180. Use THIS takeoff command, not QGC's remembered
+takeoff slider. The last R9 QGC takeoff requested only about 10 m.
+Wait until actual height is 180 m above home and hold is settled for 15 seconds.
+Over flat terrain, verify actual ground clearance as well; home-relative height
+does not guarantee clearance over hills.
 
-## 4. Two Lateral GoTos In QGC
+## 4. Transition And Measure FW For 15 Seconds
 
-1. In Fly view, select a point 10-15 m to the aircraft's LEFT or RIGHT relative
-   to its heading arrow, not ahead of the arrow. Confirm Go To at the same height.
-2. Let it arrive and hold for 15 seconds. Do not keep moving the target.
-3. Go back to the starting point, still at the same height. Hold 15 seconds.
+```text
+commander transition
+```
 
-This deliberately excites roll without turning the nose toward each waypoint.
-The previous successful GoTos mainly tested pitch. Do not transition or use RTL
-in this short run. No further in-flight gain edits are needed.
+Issue once. Confirm established FW:
 
-If QGC is disconnected, do not substitute a stationary hover for lateral testing:
-run `mavlink status` and preserve/report the connection issue instead.
+```text
+listener vtol_vehicle_status -n 1
+```
 
-## 5. Land And Upload
+Require vehicle_vtol_state 4. Start counting FIFTEEN seconds from confirmed FW,
+not from the transition command. No GoTo, speed change, orbit completion or RTL.
+Hold can start a shallow turn on its inherited 1300 m orbit: leave its target
+alone during the measurement. Watch bank oscillation amplitude and altitude.
 
-After the return settles, land at the current position:
+After 15 seconds of FW, request normal MC recovery once:
+
+```text
+commander transition
+```
+
+## 5. Recover, Then Land At Current Position
+
+Back-rotation duration remains 15 seconds. Allow room for travel. A change to
+MC mode does not prove it reached upright attitude or stopped.
+
+```text
+listener vtol_vehicle_status -n 1
+listener vehicle_local_position -n 1
+```
+
+Require state 3 AND upright, settled attitude, horizontal speed roughly below
+1 m/s and vertical speed near zero. Observe another 15 seconds of steady hover,
+then:
 
 ```text
 commander land
 ```
 
-Let touchdown and automatic disarm complete, then:
+No RTL: its inherited 180 m return / 150 m descend heights add unnecessary
+climb and a long descent to this short control test.
+
+After touchdown and automatic disarm:
 
 ```text
 shutdown
 ```
 
-Leave TruthCapture running. The runner snapshots and uploads automatically.
-Wait for UPLOAD VERIFIED, then report that the test finished. Retry an upload:
+Leave TruthCapture running. Wait for UPLOAD VERIFIED. No manual ZIP copying.
+A failed upload can be retried:
 
 ```bash
 bash run.sh retry-uploads
 ```
 
-For a failed simulation, retain the oscillation interval and use shutdown;
-do not spend minutes repeating uncontrolled recovery. About 10-15 seconds of
-sustained oscillation after a GoTo is enough evidence. No force-arm or EKF-limit
-changes. A process exit while airborne is not a successful landing.
+## Failed Runs Are Useful
 
-## What We Compare
+If oscillation grows markedly, FW bank departs beyond approximately 60 degrees,
+height drops roughly 30 m, motors clip persistently, or the aircraft clearly
+loses control, preserve the failure and end with shutdown rather than waiting
+for a prolonged uncontrolled flight. These are simulation experiment limits,
+not proven recovery boundaries. About 10-15 seconds of sustained failed MC
+recovery is enough evidence; no need to leave it oscillating for minutes.
 
-Actual/desired roll rates and attitudes; lateral overshoot/settling; torque,
-motor headroom, yaw hold and coupling; emergency-braking count; raw versus
-smoothed descent commands. Stable stationary hover alone is not a pass.
-FW/back-transition follow after this result: their R8 gains remain available
-but unvalidated, not silently replaced by the MC correction.
+Do not relax EKF gates, force-arm, repeatedly toggle modes or change gains during
+this run. A timer-only back exit or shutdown while airborne remains a failed
+recovery, even if the FW segment improved. Compare FW bank/rate errors, sideslip,
+actual torque/prop response, pitch recovery, braking and landing separately.

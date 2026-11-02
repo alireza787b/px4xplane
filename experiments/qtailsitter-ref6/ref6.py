@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
 BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
 TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
-VERSION = '2026-11-02.ref6.9'
+VERSION = '2026-11-02.ref6.10'
 
 
 def require(condition, message):
@@ -287,7 +287,7 @@ def dispatch(args):
     if args.mode == 'update':
         from update_debug import update
         print('Updated SAME debug folder to', update(HERE, args.manifest_url))
-        print('Next: bash run.sh hover --yes-debug (R9 MC lateral test; see QUICKSTART.md).')
+        print('Next: bash run.sh flight --yes-debug (R10 short FW damping test; see QUICKSTART.md).')
     elif args.mode == 'configure-upload':
         from upload_debug import configure
         configure(url=args.upload_url)
@@ -329,9 +329,9 @@ def dispatch(args):
         if args.mode != 'flight':
             print('HOVER ONLY: do not transition in this run.')
             if args.mode == 'hover':
-                print('R9 MC lateral test: 50m console takeoff; fixed heading MPC_YAW_MODE=5 applied and checked automatically. Follow QUICKSTART.md.')
+                print('MC lateral scenario: 50m console takeoff; fixed heading MPC_YAW_MODE=5 applied and checked automatically.')
         else:
-            print('FW/back recovery failed R8. Current R9 test is hover with lateral GoTos; flight mode retains unvalidated R8 FW gains.')
+            print('R10: FW roll P-only damping trial, MC gains unchanged. Follow QUICKSTART.md; back-transition remains unvalidated.')
         if not args.yes_debug and args.mode != 'A':
             require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
                     == 'SITL EXPERIMENT', 'Experiment cancelled')
