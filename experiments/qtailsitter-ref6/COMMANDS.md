@@ -18,12 +18,15 @@ Simulation experiment only. Do not use on hardware. No stability guarantee.
    saturation or loss of control. Do not transition unless hover is controlled.
 5. In `A` or `hover` mode, skip to landing. In `flight` mode only, at 180 m clearance,
    type `commander transition` ONCE. Wait for confirmed FW state; observe at least
-   20 seconds. Do not repeatedly toggle because a command seems delayed.
-   QGC Hold uses the inherited 1300 m orbit, not an optimized Ref6 radius. For path
-   evidence use two well-separated, same-altitude waypoints, not abrupt close turns.
+   FIVE seconds for the current R8 first exposure. Do not repeatedly toggle
+   because a command seems delayed. Use QUICKSTART.md for the current scenario.
+   QGC Hold uses the inherited 1300 m orbit, not an optimized Ref6 radius. Do not
+   complete an orbit or issue new GoTos in this first short FW trial.
    Do not change speed or gains. While on a settled shallow bank or wings-level,
    with at least 180 m clearance, type `commander transition` ONCE for MC, then
    `listener vtol_vehicle_status -n 1`. Wait for upright recovery; observe 20 seconds.
+   Back-rotation is now scheduled over 15 seconds. Require actual upright
+   recovery and horizontal speed below about 1 m/s before Land.
    A timer-ended mode change is not proof of recovery. These are unvalidated SITL
    experiments, not release approvals. Preserve the first failure rather than
    attempting a prolonged uncontrolled recovery.

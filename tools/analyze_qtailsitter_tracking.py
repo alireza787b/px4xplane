@@ -33,6 +33,21 @@ def interp(data,key,times):
     return np.interp(times,clock(data),data[key])
 
 
+def goto_requests(command):
+    """Separate QGC delivery retries from genuinely new horizontal targets."""
+    raw=np.flatnonzero(command['command']==192)
+    unique=[]
+    last=None
+    for index in raw:
+        same=(last is not None and clock(command)[index]-clock(command)[last]<2
+              and abs(command['param5'][index]-command['param5'][last])<1e-7
+              and abs(command['param6'][index]-command['param6'][last])<1e-7
+              and abs(command['param7'][index]-command['param7'][last])<.1)
+        if not same:unique.append(index)
+        last=index
+    return raw,np.asarray(unique,dtype=int)
+
+
 def plot(path, title, panels, lo, hi):
     lines=[f'<svg xmlns="http://www.w3.org/2000/svg" width="1050" height="{70+190*len(panels)}">',
            '<rect width="100%" height="100%" fill="white"/>',
@@ -71,7 +86,12 @@ def analyze(archive,output):
         command=data('vehicle_command');status=data('vehicle_status');landed=data('vehicle_land_detected')
         def first_command(number):return float(clock(command)[command['command']==number][0])
         takeoff=first_command(22);goto=first_command(192)
-        land=float(clock(status)[status['nav_state']==18][0])
+        # RTL remains in nav_state 5 while its internal setpoint enters Land.
+        # Use the recorded navigation target rather than assuming nav_state 18.
+        triplet=data('position_setpoint_triplet')
+        land=float(clock(triplet)[(triplet['current.type']==4)&(clock(triplet)>takeoff)][0])
+        rtl_t=clock(status)[status['nav_state']==5]
+        rtl=float(rtl_t[0]) if len(rtl_t) else None
         touchdown=float(clock(landed)[(clock(landed)>land)&(landed['landed']==1)][0])
         phases={'hover':(max(takeoff+10,goto-11),goto-1),'goto':(goto+1,min(goto+35,land-2)),
                 'land':(land+2,touchdown-2)}
@@ -81,11 +101,17 @@ def analyze(archive,output):
         hte=data('hover_thrust_estimate')
         params=dict(u.initial_parameters)
         for _,key,value in u.changed_parameters:params[key]=value
+        raw_goto_indices,goto_indices=goto_requests(command)
+        goto_times=clock(command)[goto_indices]
         metrics={'archive_sha256':hashlib.sha256(archive.read_bytes()).hexdigest(),'identity':identity,
                  'events_boot_s':{'takeoff_request':takeoff,'goto':goto,'land':land,'touchdown':touchdown},
                  'vtol_states':np.unique(data('vtol_vehicle_status')['vehicle_vtol_state']).tolist(),
                  'messages':[{'t_s':m.timestamp/1e6,'text':m.message} for m in u.logged_messages],
                  'effective_parameters':params,'phases':{}}
+        metrics['events_boot_s']['goto_requests']=goto_times.tolist()
+        metrics['events_boot_s']['goto_raw_deliveries']=clock(command)[raw_goto_indices].tolist()
+        metrics['events_boot_s']['rtl']=rtl
+        if rtl is not None:phases['rtl_climb_return']=(rtl+1,land-1)
         for label,(lo,hi) in phases.items():
             phase={'boot_window_s':[lo,hi]};pt=clock(lp);mask=(pt>=lo)&(pt<=hi);pt=pt[mask]
             phase['position_error_m']={k:stats(lp[k][mask]-interp(lps,k,pt)) for k in ('x','y','z')}
@@ -101,7 +127,7 @@ def analyze(archive,output):
             phase['motor_command']=[stats(motors[f'control[{i}]'][mask]) for i in range(4)]
             mask=(clock(hte)>=lo)&(clock(hte)<=hi);phase['hover_thrust_estimate']=stats(hte['hover_thrust'][mask])
             metrics['phases'][label]=phase
-        rows=csv.DictReader(io.StringIO(read('/truth/frames.csv').decode()))
+        truth_name=next(n for n in zipped.namelist() if n.endswith('/truth/frames.csv'))
         truth={key:[] for key in ('time','alt','vy','mass','payload','wind')}
         pitch_moment=[]
         acf={parts[1]:parts[2] for line in read('/inputs/QuadTailsitterRef6.acf').decode().splitlines()
@@ -110,10 +136,11 @@ def analyze(archive,output):
         fields=('sim/time/total_flight_time_sec','sim/flightmodel/position/elevation',
                 'sim/flightmodel/position/local_vy','sim/flightmodel/weight/m_total',
                 'sim/flightmodel/weight/m_fixed','sim/weather/aircraft/wind_now_speed_msc')
-        for row in rows:
-            for key,field in zip(truth,fields):truth[key].append(float(row[field]))
-            thrust=np.array([float(v) for v in row['sim/flightmodel/engine/POINT_thrust'].split(';')[:4]])
-            pitch_moment.append(float(pitch_arms@thrust))
+        with zipped.open(truth_name) as stream:
+            for row in csv.DictReader(io.TextIOWrapper(stream)):
+                for key,field in zip(truth,fields):truth[key].append(float(row[field]))
+                thrust=np.array([float(v) for v in row['sim/flightmodel/engine/POINT_thrust'].split(';')[:4]])
+                pitch_moment.append(float(pitch_arms@thrust))
         truth={k:np.asarray(v) for k,v in truth.items()}
         metrics['truth']={k:stats(truth[k]) for k in ('mass','payload','wind')}
         gt=data('vehicle_global_position_groundtruth');gt_t=clock(gt)
@@ -151,26 +178,38 @@ def analyze(archive,output):
         metrics['axial_pitch_moment_response']={'fit_lag_s':delay,'nm_per_normalized_torque':coeff[0],
             'correlation':corr,'fit_rms_nm':float(np.sqrt(mse)),
             'warning':'Axial prop-thrust moment proxy only; omits lateral cant forces, aerodynamic and gyroscopic moments. Does not identify rigid-body inertia.'}
-        goto_i=np.flatnonzero(command['command']==192)[0]
         radius=6371000.
-        target=np.array([(command['param5'][goto_i]-lp['ref_lat'][-1])*np.pi/180*radius,
-                         (command['param6'][goto_i]-lp['ref_lon'][-1])*np.pi/180*radius*np.cos(lp['ref_lat'][-1]*np.pi/180)])
-        start=np.array([interp(lp,k,goto) for k in ('x','y')]);direction=target-start
-        length=float(np.linalg.norm(direction));unit=direction/length
-        mask=(clock(lp)>goto)&(clock(lp)<land)
-        xy=np.c_[lp['x'][mask],lp['y'][mask]]-start
-        metrics['goto_geometry']={'start_xy_m':start.tolist(),'target_xy_m':target.tolist(),'distance_m':length,
-            'cross_track_m':stats(xy@np.array([-unit[1],unit[0]])),
-            'along_track_beyond_target_max_m':float(np.max(xy@unit)-length),
-            'distance_to_target_before_land_m':float(np.linalg.norm(xy[-1]-direction))}
+        metrics['goto_legs']=[]
+        for number,goto_i in enumerate(goto_indices):
+            start_time=float(clock(command)[goto_i])
+            end_time=float(goto_times[number+1]) if number+1<len(goto_times) else (rtl or land)
+            target=np.array([(command['param5'][goto_i]-lp['ref_lat'][-1])*np.pi/180*radius,
+                             (command['param6'][goto_i]-lp['ref_lon'][-1])*np.pi/180*radius*np.cos(lp['ref_lat'][-1]*np.pi/180)])
+            start=np.array([interp(lp,k,start_time) for k in ('x','y')]);direction=target-start
+            length=float(np.linalg.norm(direction));unit=direction/max(length,1e-9)
+            mask=(clock(lp)>start_time)&(clock(lp)<end_time)
+            xy=np.c_[lp['x'][mask],lp['y'][mask]]-start
+            metrics['goto_legs'].append({'boot_window_s':[start_time,end_time],
+                'short_retarget':end_time-start_time<3,'start_xy_m':start.tolist(),'target_xy_m':target.tolist(),'distance_m':length,
+                'cross_track_m':stats(xy@np.array([-unit[1],unit[0]])),
+                'along_track_beyond_target_max_m':float(np.max(xy@unit)-length),
+                'distance_to_target_before_next_mode_m':float(np.linalg.norm(xy[-1]-direction))})
+        metrics['goto_geometry']=metrics['goto_legs'][0]
+        metrics['speed_tracking']={}
+        for label,(lo,hi) in phases.items():
+            times=clock(lp);mask=(times>=lo)&(times<=hi);times=times[mask]
+            metrics['speed_tracking'][label]={
+                'horizontal_actual_mps':stats(np.hypot(lp['vx'][mask],lp['vy'][mask])),
+                'horizontal_command_mps':stats(np.hypot(interp(lps,'vx',times),interp(lps,'vy',times))),
+                'vertical_actual_down_mps':stats(lp['vz'][mask]),'vertical_command_down_mps':stats(interp(lps,'vz',times))}
         metrics['warning']='No FW or back-transition data; MC performance does not validate either mode.'
         (output/'metrics.json').write_text(json.dumps(metrics,indent=2,allow_nan=False)+'\n')
         panels=[('MC '+axis+' rate rad/s (blue actual, red command)',[
                  ('actual',clock(angular),angular[f'xyz[{i}]']),('command',clock(rates),rates[axis])]) for i,axis in enumerate(('roll','pitch','yaw'))]
-        plot(output/'rates.svg','R6 MC GoTo rate tracking; PX4 boot seconds',panels,goto-4,land)
+        plot(output/'rates.svg',identity['runner']+' MC rate tracking; PX4 boot seconds',panels,goto-4,rtl or land)
         panels=[(axis+' position m (blue actual, red smoothed setpoint)',[
                  ('actual',clock(lp),lp[axis]),('setpoint',clock(lps),lps[axis])]) for axis in ('x','y','z')]
-        plot(output/'tracking.svg','R6 MC position tracking; not a FW flight',panels,takeoff,touchdown)
+        plot(output/'tracking.svg',identity['runner']+' MC tracking; not a FW flight',panels,takeoff,touchdown)
         return metrics
 
 

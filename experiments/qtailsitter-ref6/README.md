@@ -18,14 +18,18 @@ candidate is 2 kg with 0.60 m projected span, 0.10 m chord and four 500 W shaft
 power caps. Plane Maker's power field is horsepower, not kW. The hover seed is
 now 0.26 from the successful r6 2 kg hover/GoTo/Land log. Original motor
 orientations/rotation signs and official rotor direction vectors are retained.
-R7 changes only pitch-rate P from 0.06 to 0.12 and the hover seed from 0.25 to
-0.26. I/D, attitude/position guidance, aircraft, FW and TECS values stay unchanged.
-See REPORT.md for the 8 m GoTo overshoot, rate lag and next-test criteria.
+R7's two-GoTo/RTL capture confirms better MC tracking: first-leg pitch-rate
+error approximately 0.042 rad/s RMS, with 2.3/3.0 m along-track overshoots.
+R8 retains that MC baseline and prepares only a five-second FW exposure plus
+normal back-transition. FW PID coefficients follow the exact pinned frame and
+differential scaling; aerodynamic airspeed-squared rate scaling is disabled,
+airspeed use remains enabled, and back-rotation duration is now 15 seconds.
+These are unvalidated experimental seeds, not a proven FW tune. See REPORT.md.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
-Roll, yaw and FW gains remain at r6 values. MC pitch has one explicit P-only
-trial increase; no blanket retune is inferred from a stationary hover.
+All MC gains and speed/jerk/position limits remain at the tested r7 values.
+FW compression/filter/collective differences limit normalized PID equivalence.
 Read design.json and sizing.json for assumptions and envelope screening. Real
 control authority, trim, stability and landing remain simulator validation gates.
 
@@ -35,10 +39,12 @@ From the same installed debug folder:
 
 ```bash
 bash run.sh update
-bash run.sh A
+bash run.sh flight --yes-debug
 ```
 
-This revision repeats MC hover, one GoTo and Land. Do not transition yet.
+Follow QUICKSTART.md: controlled hover at 180 m, one front transition, five
+seconds FW, one normal back-transition, settled MC, then Land at current position.
+Do not use RTL or a prolonged FW orbit in this first handoff characterization.
 Update checks local managed-file hashes, downloads a checksum-verified manifest
 and ZIP, and updates in place with one rollback journal. It preserves
 flight runs and credentials. Local edits are not discarded. PX4 must be stopped.

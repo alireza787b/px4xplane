@@ -247,11 +247,23 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         add('MC_PITCHRATE_'+suffix,value,
             'R6 GoTo pitch-rate lag ~1.38s and error ~0.15rad/s RMS with motor headroom. Trial P-only step 0.06->0.12; I,D,K unchanged. Closed-loop evidence is not an identified optimum or a phase-margin guarantee.')
     add('MC_PITCHRATE_FF',0,'No identified pitch rate feedforward.')
-    for axis,p,integral in (('RR',.287079,.02),('PR',.007684,.001921)):
-        add(f'FW_{axis}_P',p,'R5 FW seed held unchanged; this revision tests MC only, not a validated FW tune.')
-        add(f'FW_{axis}_I',integral,'R5 FW integral held unchanged.')
-        add(f'FW_{axis}_D',0,'No identified fixed-wing derivative term for this compact model.')
-        add(f'FW_{axis}_FF',0,'No identified rate feedforward for this compact model; avoid inherited large-airframe feedforward.')
+    # Same physical rotors and allocator in both modes. Follow the pinned frame
+    # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
+    # downstream differential scaling. This equates unsaturated normalized PID
+    # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
+    for fw,mc,scale in (('RR','YAW',.55),('PR','PITCH',.90),('YR','ROLL',.32)):
+        for term in ('P','I','D'):
+            value=params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K']/scale
+            add(f'FW_{fw}_{term}',round(value,6),
+                f'Initial rotor-only normalized-effort seed from MC {mc} {term}, divided by differential scale {scale}. Exact frame mapping checked against pinned source; not measured FW tuning. No airspeed-squared gain multiplier.')
+        add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
+    for axis,scale in (('R',.55),('P',.90),('Y',.32)):
+        add(f'VT_FW_DIFTHR_S_{axis}',scale,'Unchanged pinned 5021 differential torque scaling, explicit for rate-seed reproducibility.')
+    add('FW_ARSP_SCALE_EN',0,'Rotor-only torque, no movable aerodynamic surfaces: disable aerodynamic surface V^-2 rate-gain schedule per PX4 parameter guidance. Prop authority still varies with collective/inflow and must be measured.')
+    add('FW_USE_AIRSPD',1,'Keep measured airspeed enabled for TECS, coordination and transition; only aerodynamic RATE output scaling is disabled.')
+    add('FW_THR_MIN',.08,'Use the same minimum command as inherited MPC_THR_MIN to avoid zero-collective rotor control in the first FW test. This does not prove sufficient torque margin or define idle thrust.')
+    add('VT_B_TRANS_DUR',15,'Trial 90deg/15s = 6deg/s back-rotation instead of prior 18deg/s. With unchanged MC pitch attitude P=0.58, an ideal rate-tracking screen gives ~10.4deg end-ramp lag versus ~15.5deg at 10s and a ~14.9deg exit threshold. Not a recovery prediction: timeout and residual speed still require evidence; longer travel must be allowed.')
+    add('FW_RLL_TO_YAW_FF',0,'Keep the prior zero adverse-yaw torque feedforward; do not add unmeasured cross-axis feedforward during the first FW trial.')
     add("FW_THR_MAX", 1, "Use the physically power-limited engine envelope, not the old 9.6kW model's 50% cap.")
     add("VT_F_TRANS_THR", .4, "Retained prior value; the pinned tailsitter transition uses MC thrust, not this Standard-VTOL throttle parameter. It is not a tailsitter acceleration tune.")
     add("FW_THR_TRIM", .25, "Provisional level-flight drag/power seed, not a calibrated trim point.")
@@ -295,7 +307,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-01.ref6.7", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.8", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

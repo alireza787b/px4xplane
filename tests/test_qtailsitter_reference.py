@@ -31,7 +31,7 @@ class ReferenceTest(unittest.TestCase):
             self.assertLess(doc["estimated_electrical_budget_w"], doc["battery_nominal_budget_w"])
             self.assertFalse(doc["flight_validated"])
             self.assertEqual(doc['acf_sha256'], 'c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918',
-                             'R7 is parameter-only: preserve the recorded R6 aircraft bytes')
+                             'Preserve the recorded R6/R7 aircraft bytes')
             self.assertTrue((out / "aircraft/QuadTailsitterRef6/Airfoil/NACA 2412 (popular).afl").is_file())
             for i in range(4):
                 self.assertEqual(as_float(candidate, f"_prop/{i}/_num_blades"), 2)
@@ -94,8 +94,14 @@ class ReferenceTest(unittest.TestCase):
         self.assertGreaterEqual(params['MC_PITCHRATE_P'], .01)
         self.assertEqual(params['MC_PITCHRATE_K'], 1)
         self.assertEqual(params['MC_ROLLRATE_P'], .031815)
-        self.assertEqual(params['FW_RR_P'], .287079)
-        self.assertEqual(params['FW_PR_P'], .007684)
+        self.assertEqual(params['FW_ARSP_SCALE_EN'], 0)
+        self.assertEqual(params['FW_USE_AIRSPD'], 1)
+        self.assertEqual(params['FW_THR_MIN'], .08)
+        self.assertEqual(params['VT_B_TRANS_DUR'], 15)
+        for fw,mc,scale in (('RR','YAW',.55),('PR','PITCH',.90),('YR','ROLL',.32)):
+            for term in ('P','I','D'):
+                self.assertAlmostEqual(params[f'FW_{fw}_{term}']*scale,
+                                       params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K'],places=6)
         self.assertLess(params['MC_YAWRATE_P'], .105262)
         original_axes=((- .078,.040,-.996),(.078,-.040,-.996),(-.078,-.040,-.996),(.078,.040,-.996))
         for i in range(4):

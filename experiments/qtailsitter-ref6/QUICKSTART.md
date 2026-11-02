@@ -1,12 +1,11 @@
-# Next Test A: Hover, One GoTo, Land
+# R8: First Short FW And Back-Transition Test
 
-SITL only. Same folder, same QuadTailsitterRef6 aircraft. No new PX4 control
-patch or plugin binary. No transition in this test. See REPORT.md for changes.
+SITL ONLY. MC baseline passed the last two GoTos and RTL; FW gains are initial
+test seeds, not flight-validated. Same aircraft, same folder, no plugin install.
 
 ## 1. Update In WSL
 
-Stop PX4. For this parameter-only update X-Plane may stay open with the SAME
-Ref6 on the ground. Then:
+Stop PX4. X-Plane may stay open for this parameter-only update.
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -14,58 +13,97 @@ bash run.sh update
 cat VERSION.txt
 ```
 
-Expected: `2026-11-01.ref6.7`. This update changes parameters, not the ACF; do not
-copy another aircraft or edit config.ini. Your existing upload setup is kept.
-If the updater reports local edits, send that error rather than deleting files.
+Expected `2026-11-02.ref6.8`. No token setup again. Do not change gains manually.
 
 ## 2. Prepare X-Plane
 
-- Keep or load Aircraft/QuadTailsitterRef6/QuadTailsitterRef6.acf; no wind.
-- Check Weight and Balance: total 2 kg, payload zero. Do not add ballast.
-- Start TruthCapture recording.
-- Plugins > PX4 X-Plane > Airframes > QuadTailsitterRef6, then Connect to SITL.
-- Open Windows QGC if wanted. Use the PX4 console below for the same test target.
+- Same QuadTailsitterRef6 aircraft, 2 kg total, zero payload, no wind.
+- Choose flat terrain with 150-200 m actual ground clearance during FW testing
+  and a kilometre-scale clear recovery area. A height above home is not terrain
+  clearance over rising ground. Do not test among buildings or hills.
+- Start TruthCapture recording and open QGC.
+- Plugins > PX4 X-Plane > Airframes > QuadTailsitterRef6; Connect to SITL.
 
-## 3. Start Test A In WSL
+## 3. Launch
 
 ```bash
-bash run.sh A
+bash run.sh flight --yes-debug
 ```
 
-It reuses ~/PX4-Autopilot-Me and detects your installed X-Plane/truth paths.
-Reconnect the plugin if building outlasts its wait. No token setup again.
-
-Wait for REF6 PARAMETER GATE PASSED and Ready for takeoff. In PX4, one at a time:
+Wait for REF6 PARAMETER GATE PASSED and Ready for takeoff. In the PX4 console:
 
 ```text
 commander check
 commander takeoff
 ```
 
-At 10 m, observe 20 seconds ONLY if controlled. No transition.
-In QGC click Go To about 40-60 m away on clear, level terrain, keeping the SAME
-altitude. One command only; no speed changes. Let it approach and settle for
-15 seconds. If stable, a second Go To back near the start is useful but optional.
-Then, in the PX4 console:
+Use THIS console takeoff, not QGC's remembered takeoff altitude. It commands
+180 m above the local home reference. At 2 m/s this climb takes about 90 seconds.
+Wait for controlled hover at height, then observe 20 seconds. Verify QGC is
+connected, estimate is healthy and the aircraft is not drifting/oscillating.
+
+## 4. Front Transition, Five Seconds FW
+
+```text
+commander transition
+```
+
+Issue ONCE. Watch the transition; confirm actual FW mode and finite airspeed
+near 25-26 m/s. Do NOT count five seconds from the command: count from confirmed
+FW. First exposure is FIVE seconds only; no new GoTo, orbit exercise, RTL,
+speed change or prolonged FW flight. A shallow turn from Hold may begin; do not
+try to complete its large orbit.
+
+If control is satisfactory after five seconds, request normal MC recovery:
+
+```text
+commander transition
+```
+
+Issue ONCE. Back-rotation is now scheduled over 15 seconds, not five. It can
+travel hundreds of metres while slowing. Do not command landing immediately
+and do not assume that a mode label means it is upright or stopped.
+
+## 5. Recover, Then Land
+
+Wait until visibly upright, controlled in MC, horizontal speed below about
+1 m/s and vertical speed near zero. Then observe another 20 seconds of stable
+hover. You can check the state in the PX4 console:
+
+```text
+listener vtol_vehicle_status -n 1
+listener vehicle_local_position -n 1
+```
+
+Require `vehicle_vtol_state: 3`; use vx/vy/vz and QGC for actual movement.
+Then land AT THE CURRENT POSITION over clear ground, not RTL:
 
 ```text
 commander land
 ```
 
-After touchdown and automatic disarm:
+Let controlled descent, touchdown and automatic disarm complete. Then:
 
 ```text
 shutdown
 ```
 
-Leave TruthCapture recording. Logs and truth snapshot upload automatically.
-Wait for UPLOAD VERIFIED, then tell me the test finished. No manual ZIP needed.
-For a failed upload: `bash run.sh retry-uploads`.
+Leave TruthCapture running. Wait for UPLOAD VERIFIED and tell me the run is
+done. No manual ZIP copying. A failed upload can be retried:
 
-Compare pitch reversals and braking with your previous run; do not just judge
-whether it eventually arrives. If new sustained oscillation or growing attitude
-error appears, stop rather than forcing another GoTo. If attitude diverges,
-stop the simulation and preserve the failed interval with
-shutdown. Do not force arm or increase EKF limits. Bench NOT VERIFIED means
-measurements remain pending, not a measured failure. This is not a flight-ready
-or hardware profile. Full-flight steps remain in COMMANDS.md for later testing.
+```bash
+bash run.sh retry-uploads
+```
+
+## Stop Conditions
+
+If oscillation grows, attitude departs uncontrolled, motor output clips
+persistently, airspeed becomes invalid/below 21 m/s in established FW, or height
+drops roughly 20 m, do not continue the exercise or wait for a crash. End the
+simulation and preserve the failed interval with shutdown. These thresholds are
+test limits, not guaranteed recovery boundaries. Do not force-arm or relax EKF
+limits. Do not repeatedly toggle modes. Report any quad-chute separately.
+
+This run is for one short front/FW/back sequence. Longer FW, turns and faster
+MC speed limits come after evidence review. Current MC speeds remain unchanged
+so the recovery controller is the same one you just tested successfully.
