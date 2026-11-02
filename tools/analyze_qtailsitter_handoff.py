@@ -18,6 +18,7 @@ import numpy as np
 from pyulog import ULog
 
 from analyze_qtailsitter_tracking import clock, interp, plot, stats
+from analyze_qtailsitter_design import CaptureFrames
 
 
 def multiply(a, b):
@@ -62,6 +63,12 @@ def lag_fit(times, actual, desired):
     correlation, lag = max(candidates)
     return {'lag_s': lag, 'correlation': correlation,
             'caveat': 'Closed-loop periodic correlation, not actuator delay or a causal plant fit.'}
+
+
+def mean_or_none(values):
+    values = np.asarray(values)
+    values = values[np.isfinite(values)]
+    return float(np.mean(values)) if len(values) else None
 
 
 def local_roll_screens(angular, rates, torque, integral, lo, hi, dt=.02):
@@ -199,72 +206,76 @@ def analyze(archive, output):
         metrics['estimator_truth'] = {'quaternion_error_deg': stats(np.degrees(2*np.arccos(np.clip(abs(np.sum(qa*qg, axis=1)), 0, 1)))),
             'rate_error_rad_s': [stats(interp(angular, f'xyz[{i}]', times)-interp(gt_ang, f'xyz[{i}]', times)) for i in range(3)],
             'accel_bias_mps2': [stats(d('estimator_sensor_bias')[f'accel_bias[{i}]']) for i in range(3)]}
-        fields = {'time': 'sim/time/total_flight_time_sec', 'alt': 'sim/flightmodel/position/elevation',
-                  'vy': 'sim/flightmodel/position/local_vy', 'mass': 'sim/flightmodel/weight/m_total',
-                  'payload': 'sim/flightmodel/weight/m_fixed', 'wind': 'sim/weather/aircraft/wind_now_speed_msc'}
-        vector_fields = {'thrust': 'sim/flightmodel/engine/POINT_thrust',
-                         'throttle': 'sim/flightmodel/engine/ENGN_thro_use',
-                         'power': 'sim/flightmodel/engine/ENGN_power'}
-        truth = {key: [] for key in (*fields, *vector_fields)}
-        with z.open(next(n for n in z.namelist() if n.endswith('/truth/frames.csv'))) as stream:
-            for row in csv.DictReader(io.TextIOWrapper(stream)):
-                for key, field in fields.items():
-                    truth[key].append(float(row[field]))
-                for key, field in vector_fields.items():
-                    truth[key].append([float(v) for v in row[field].split(';')[:4]])
-        truth = {key: np.asarray(value) for key, value in truth.items()}
-        if np.any(np.diff(truth['time']) <= 0):
-            raise ValueError('Non-monotonic truth clock; segment before fitting')
-        gt = d('vehicle_global_position_groundtruth')
-        gt_times = clock(gt)
-        # A runner snapshot may finish before the last ULog sample. Fit a
-        # covered interior window; never extrapolate either stream afterward.
-        mask = (gt_times >= front-18) & (gt_times <= end-20)
-        guess = truth['time'][0]-gt_times[0]
-        fits = []
-        for offset in np.arange(guess-10, guess+10, .005):
-            if gt_times[mask].min()+offset < truth['time'][0] or gt_times[mask].max()+offset > truth['time'][-1]:
-                continue
-            residual = np.interp(gt_times[mask]+offset, truth['time'], truth['alt'])-gt['alt'][mask]
-            fits.append((float(np.mean(residual**2)), float(offset)))
-        if not fits:
-            raise ValueError('Truth clock could not be fitted without extrapolation')
-        mse, offset = min(fits)
-        if np.sqrt(mse) > .1:
-            raise ValueError('Truth clock fit residual exceeds 0.1m; inspect clock coverage before interpreting CSV')
-        metrics['truth'] = {key: stats(truth[key]) for key in ('mass', 'payload', 'wind')}
-        metrics['truth']['clock_fit'] = {'sim_minus_boot_s': offset, 'altitude_rms_m': float(np.sqrt(mse))}
-        times = times[(times+offset >= truth['time'][0]) & (times+offset <= truth['time'][-1])]
-        metrics['truth']['estimator_vz_error_mps'] = stats(interp(lp, 'vz', times)+np.interp(times+offset, truth['time'], truth['vy']))
-        metrics['truth']['motor_channel_error'] = [stats(interp(motors, f'control[{i}]', times)-np.interp(times+offset, truth['time'], truth['throttle'][:, i])) for i in range(4)]
-        acf = {parts[1]: parts[2] for line in read('/inputs/QuadTailsitterRef6.acf').decode().splitlines()
-               if len(parts := line.split(maxsplit=2)) == 3 and parts[0] == 'P'}
-        # Axial-force proxy only. Cant, aerodynamic and gyroscopic moments are
-        # omitted deliberately; this is NOT the net rigid-body moment.
-        levers = np.array([[-float(acf[f'_engn/{i}/_part_x'])*.3048 for i in range(4)],
-                           [-float(acf[f'_engn/{i}/_part_z'])*.3048 for i in range(4)]])
-        moments = truth['thrust'] @ levers.T
-        for label in ('FW', 'back', 'Land'):
-            lo, hi = windows[label]
-            tt = np.arange(max(lo+.5, truth['time'][0]-offset), min(hi-.5, truth['time'][-1]-offset), .02)
-            result = {}
-            for axis in (0, 1):
-                physical = np.interp(tt+offset, truth['time'], moments[:, axis])
-                candidates = []
-                for delay in np.arange(0, .51, .02):
-                    command = interp(torque, f'xyz[{axis}]', tt-delay)
-                    coefficients = np.linalg.lstsq(np.c_[command, np.ones(len(tt))], physical, rcond=None)[0]
-                    predicted = np.c_[command, np.ones(len(tt))] @ coefficients
-                    candidates.append((float(np.mean((physical-predicted)**2)), float(delay), coefficients.tolist(),
-                                       float(np.corrcoef(command, physical)[0, 1])))
-                error, delay, coefficients, correlation = min(candidates)
-                result[str(axis)] = {'nm_per_normalized_torque': coefficients[0], 'offset_nm': coefficients[1],
-                                    'lag_s': delay, 'correlation': correlation, 'residual_rms_nm': float(np.sqrt(error))}
-            metrics['phases'][label]['axial_force_moment_proxy'] = result
+        truth = None
+        if not any(n.endswith(('/truth/frames.csv', '/truth/frames.csv.gz')) for n in z.namelist()):
+            metrics['truth'] = {'available': False, 'reason': 'Capture absent; no independent CSV velocity/actuator-force review possible.'}
+        else:
+            fields = {'time': 'sim/time/total_flight_time_sec', 'alt': 'sim/flightmodel/position/elevation',
+                      'vy': 'sim/flightmodel/position/local_vy', 'mass': 'sim/flightmodel/weight/m_total',
+                      'payload': 'sim/flightmodel/weight/m_fixed', 'wind': 'sim/weather/aircraft/wind_now_speed_msc'}
+            vector_fields = {'thrust': 'sim/flightmodel/engine/POINT_thrust',
+                             'throttle': 'sim/flightmodel/engine/ENGN_thro_use',
+                             'power': 'sim/flightmodel/engine/ENGN_power'}
+            truth = {key: [] for key in (*fields, *vector_fields)}
+            with CaptureFrames(archive) as stream:
+                for row in csv.DictReader(stream):
+                    for key, field in fields.items():
+                        truth[key].append(float(row[field]))
+                    for key, field in vector_fields.items():
+                        truth[key].append([float(v) for v in row[field].split(';')[:4]])
+            truth = {key: np.asarray(value) for key, value in truth.items()}
+            if np.any(np.diff(truth['time']) <= 0):
+                raise ValueError('Non-monotonic truth clock; segment before fitting')
+            gt = d('vehicle_global_position_groundtruth')
+            gt_times = clock(gt)
+            # A runner snapshot may finish before the last ULog sample. Fit a
+            # covered interior window; never extrapolate either stream afterward.
+            mask = (gt_times >= front-18) & (gt_times <= end-20)
+            guess = truth['time'][0]-gt_times[0]
+            fits = []
+            for offset in np.arange(guess-10, guess+10, .005):
+                if gt_times[mask].min()+offset < truth['time'][0] or gt_times[mask].max()+offset > truth['time'][-1]:
+                    continue
+                residual = np.interp(gt_times[mask]+offset, truth['time'], truth['alt'])-gt['alt'][mask]
+                fits.append((float(np.mean(residual**2)), float(offset)))
+            if not fits:
+                raise ValueError('Truth clock could not be fitted without extrapolation')
+            mse, offset = min(fits)
+            if np.sqrt(mse) > .1:
+                raise ValueError('Truth clock fit residual exceeds 0.1m; inspect clock coverage before interpreting CSV')
+            metrics['truth'] = {key: stats(truth[key]) for key in ('mass', 'payload', 'wind')}
+            metrics['truth']['clock_fit'] = {'sim_minus_boot_s': offset, 'altitude_rms_m': float(np.sqrt(mse))}
+            times = times[(times+offset >= truth['time'][0]) & (times+offset <= truth['time'][-1])]
+            metrics['truth']['estimator_vz_error_mps'] = stats(interp(lp, 'vz', times)+np.interp(times+offset, truth['time'], truth['vy']))
+            metrics['truth']['motor_channel_error'] = [stats(interp(motors, f'control[{i}]', times)-np.interp(times+offset, truth['time'], truth['throttle'][:, i])) for i in range(4)]
+            acf = {parts[1]: parts[2] for line in read('/inputs/QuadTailsitterRef6.acf').decode().splitlines()
+                   if len(parts := line.split(maxsplit=2)) == 3 and parts[0] == 'P'}
+            # Axial-force proxy only. Cant, aerodynamic and gyroscopic moments are
+            # omitted deliberately; this is NOT the net rigid-body moment.
+            levers = np.array([[-float(acf[f'_engn/{i}/_part_x'])*.3048 for i in range(4)],
+                               [-float(acf[f'_engn/{i}/_part_z'])*.3048 for i in range(4)]])
+            moments = truth['thrust'] @ levers.T
+            for label in ('FW', 'back', 'Land'):
+                lo, hi = windows[label]
+                tt = np.arange(max(lo+.5, truth['time'][0]-offset), min(hi-.5, truth['time'][-1]-offset), .02)
+                result = {}
+                for axis in (0, 1):
+                    physical = np.interp(tt+offset, truth['time'], moments[:, axis])
+                    candidates = []
+                    for delay in np.arange(0, .51, .02):
+                        command = interp(torque, f'xyz[{axis}]', tt-delay)
+                        coefficients = np.linalg.lstsq(np.c_[command, np.ones(len(tt))], physical, rcond=None)[0]
+                        predicted = np.c_[command, np.ones(len(tt))] @ coefficients
+                        candidates.append((float(np.mean((physical-predicted)**2)), float(delay), coefficients.tolist(),
+                                           float(np.corrcoef(command, physical)[0, 1])))
+                    error, delay, coefficients, correlation = min(candidates)
+                    result[str(axis)] = {'nm_per_normalized_torque': coefficients[0], 'offset_nm': coefficients[1],
+                                        'lag_s': delay, 'correlation': correlation, 'residual_rms_nm': float(np.sqrt(error))}
+                metrics['phases'][label]['axial_force_moment_proxy'] = result
         metrics['caveats'] = ['Not a validated plant identification or stability guarantee.',
-            'Moment proxy omits cant, aerodynamics and gyroscopic moments.',
-            'GT topics share the plugin transform; independent truth velocity and throttle checks do not prove all sensor paths correct.',
-            'Shutdown while airborne censors recovery/landing outcome.']
+            'Moment proxy, when available, omits cant, aerodynamics and gyroscopic moments.',
+            'GT topics share the plugin transform; topic agreement alone does not prove all sensor paths correct.',
+            'A mode label is not proof of upright recovery; inspect the logged exit condition.']
         auto = next(x.data for x in u.data_list if x.name == 'debug_array' and x.data['id'][0] == 101)
         after_land = (clock(auto) >= land) & (clock(auto) <= end)
         active = after_land & (auto['data[1]'] > .5)
@@ -273,8 +284,8 @@ def analyze(archive, output):
             'land_active_sample_fraction': float(np.mean(auto['data[1]'][after_land] > .5)),
             'activation_reasons': np.unique(auto['data[2]'][auto['data[28]'] > 0]).astype(int).tolist(),
             'raw_land_down_mps': stats(auto['data[12]'][after_land]),
-            'active_mean_actual_down_mps': float(np.mean(auto['data[21]'][active])),
-            'inactive_mean_actual_down_mps': float(np.mean(auto['data[21]'][inactive])),
+            'active_mean_actual_down_mps': mean_or_none(auto['data[21]'][active]),
+            'inactive_mean_actual_down_mps': mean_or_none(auto['data[21]'][inactive]),
             'active_output_minus_actual_down_mps': stats(auto['data[24]'][active]-auto['data[21]'][active])}
         # One row per boot second: keep commands, motor range and physical
         # response together rather than inferring recovery from a mode label.
@@ -328,8 +339,8 @@ def analyze(archive, output):
             for key in keys:
                 headers.append(str(len(columns))+'_'+key)
                 columns.append(interp(topic, key, grid))
-        np.savez_compressed(output/'resampled.npz', data=np.array(columns).T, headers=headers,
-                            truth_time=truth['time']-offset, thrust=truth['thrust'], power=truth['power'])
+        truth_columns = {'truth_time': truth['time']-offset, 'thrust': truth['thrust'], 'power': truth['power']} if truth is not None else {}
+        np.savez_compressed(output/'resampled.npz', data=np.array(columns).T, headers=headers, **truth_columns)
         (output/'metrics.json').write_text(json.dumps(metrics, indent=2, allow_nan=False)+'\n')
         return metrics
 

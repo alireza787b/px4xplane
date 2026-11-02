@@ -2,7 +2,10 @@
 """Capture stable, top-level TruthCapture session files without scanning the drive."""
 import json
 import csv
+import errno
+import gzip
 import hashlib
+import io
 import math
 import os
 from pathlib import Path
@@ -15,6 +18,10 @@ from locate_inputs import path
 
 
 MAX_WINDOW = 256 * 1024 * 1024
+MAX_INPUT_WINDOW = 1024 * 1024 * 1024
+MAX_COMPRESSED = 128 * 1024 * 1024
+MAX_ROW_BYTES = 1024 * 1024
+SPACE_HEADROOM = 32 * 1024 * 1024
 TAIL_BYTES = 1024 * 1024
 MAX_METADATA = 8 * 1024 * 1024
 SNAPSHOT_FILES = ('manifest.json', 'datarefs.json', 'datarefs.csv', 'datarefs.txt',
@@ -104,6 +111,89 @@ def _range_hash(stream, start, end, output=None):
     return digest.hexdigest()
 
 
+def _zip_budget(run):
+    # Allow for deflate expansion, ZIP headers, and SHA256SUMS entries.
+    total = 0
+    for file in run.rglob('*'):
+        if file.is_file() and not file.is_symlink():
+            size = file.stat().st_size
+            total += size + size // 1000 + 1024 + 4 * len(str(file.relative_to(run)).encode())
+    return total
+
+
+def _require_space(run, needed, detail):
+    free = shutil.disk_usage(run).free
+    if free < needed:
+        raise ValueError(f'Insufficient space for truth snapshot and final ZIP: need '
+                         f'{needed} bytes ({needed / 1024**2:.1f} MiB), have '
+                         f'{free} bytes ({free / 1024**2:.1f} MiB); {detail}.')
+
+
+class _BoundedOutput:
+    def __init__(self, output, run, limit, needed, detail):
+        self.output, self.run, self.limit = output, run, limit
+        self.needed, self.detail, self.size = needed, detail, 0
+
+    def write(self, data):
+        if self.size + len(data) > self.limit:
+            raise ValueError(f'Compressed truth exceeds {self.limit} byte '
+                             f'({self.limit / 1024**2:g} MiB) limit; '
+                             'no evidence published, no rows truncated.')
+        _require_space(self.run, self.needed, self.detail)
+        written = self.output.write(data)
+        self.size += written
+        self.needed -= written
+        return written
+
+
+def _validate_copy(stream, header, fields, time_field, initial, window_bytes,
+                   max_row_bytes=None):
+    if stream.readline(TAIL_BYTES + 1) != header:
+        raise ValueError('Copied CSV header was rewritten.')
+    raw_digest, window_digest = hashlib.sha256(header), hashlib.sha256()
+    remaining, row_bytes = window_bytes, 0
+    row_limit = window_bytes if max_row_bytes is None else max_row_bytes
+
+    def lines():
+        nonlocal remaining, row_bytes
+        # Preserve CSV newline handling while hashing the exact UTF-8 bytes.
+        with io.TextIOWrapper(stream, encoding='utf-8', newline='') as text:
+            while True:
+                line = text.readline(min(row_limit + 1, remaining + 1))
+                if not line:
+                    break
+                data = line.encode('utf-8')
+                remaining -= len(data)
+                row_bytes += len(data)
+                if remaining < 0:
+                    raise ValueError('Copied CSV has unexpected raw byte length.')
+                if row_bytes > row_limit:
+                    raise ValueError('CSV row exceeds bounded parsing limit; no rows truncated.')
+                raw_digest.update(data)
+                window_digest.update(data)
+                yield line
+
+    previous = {'frame_id': initial['last_frame'], 'sim_time_s': initial['last_time_s']}
+    first, count = None, 0
+    for row in csv.reader(lines(), strict=True):
+        row_bytes = 0
+        point = _point(row, fields, time_field)
+        if (point['frame_id'] <= previous['frame_id']
+                or point['sim_time_s'] <= previous['sim_time_s']):
+            raise ValueError('Non-monotonic frame/time or capture reset in run window.')
+        first = first or point
+        previous = point
+        count += 1
+    if remaining:
+        raise ValueError('Copied CSV truncated during snapshot.')
+    if not count:
+        raise ValueError('No new complete rows since preflight.')
+    summary = {'stop_reason': 'runner_snapshot', 'rows': count,
+               'first_frame': first['frame_id'], 'last_frame': previous['frame_id'],
+               'first_time_s': first['sim_time_s'], 'last_time_s': previous['sim_time_s']}
+    return summary, window_digest.hexdigest(), raw_digest.hexdigest()
+
+
 def begin_snapshot(source):
     """Return JSON-serializable preflight state; exclude all preflight rows.
 
@@ -178,55 +268,77 @@ def snapshot_live(source, run, initial):
                 raise ValueError('Capture manifest or session metadata changed during snapshot.')
 
         verify_source()
-        if stat.st_size - start > MAX_WINDOW:
-            raise ValueError('Live run window exceeds 256 MiB limit.')
+        if stat.st_size - start > MAX_INPUT_WINDOW:
+            raise ValueError(f'Live run window exceeds bounded input limit of '
+                             f'{MAX_INPUT_WINDOW} bytes ({MAX_INPUT_WINDOW / 1024**2:g} MiB); '
+                             'no evidence published, no rows truncated.')
         end = _complete_end(stream, stat.st_size)
         if end <= start:
             raise ValueError('No new complete rows since preflight.')
-        total = len(header) + end - start + sum(map(len, metadata.values()))
-        if shutil.disk_usage(run).free < 2 * total + 32 * 1024 * 1024:
-            raise ValueError('Insufficient space for truth snapshot and final ZIP.')
+        compressed = end - start > MAX_WINDOW
+        frames_name = 'frames.csv.gz' if compressed else 'frames.csv'
+        raw_bytes = len(header) + end - start
+        frames_budget = MAX_COMPRESSED if compressed else raw_bytes
+        # snapshot.json embeds the preflight header; allow for JSON escaping.
+        total = frames_budget + sum(map(len, metadata.values())) + 8 * len(header) + 64 * 1024
+        zip_budget = _zip_budget(run) + total + total // 1000 + 64 * 1024
+        needed = total + zip_budget + SPACE_HEADROOM
+        detail = (f'{frames_budget / 1024**2:g} MiB '
+                  f'{"compressed target cap" if compressed else "raw CSV"}, '
+                  f'{zip_budget / 1024**2:.1f} MiB final ZIP budget including existing run '
+                  f'evidence, {SPACE_HEADROOM / 1024**2:g} MiB free-space headroom')
+        _require_space(run, needed, detail)
         temporary = Path(tempfile.mkdtemp(prefix='truth-live-', suffix='.partial', dir=run))
         try:
             before_hash = _range_hash(stream, start, end)
-            with (temporary/'frames.csv').open('wb') as output:
-                output.write(header)
-                copied_hash = _range_hash(stream, start, end, output)
-            with (temporary/'frames.csv').open(newline='', encoding='utf-8-sig') as copied:
-                rows = csv.reader(copied, strict=True)
-                next(rows)
-                previous = {'frame_id': initial['last_frame'], 'sim_time_s': initial['last_time_s']}
-                first, count = None, 0
-                for row in rows:
-                    point = _point(row, fields, time_field)
-                    if (point['frame_id'] <= previous['frame_id']
-                            or point['sim_time_s'] <= previous['sim_time_s']):
-                        raise ValueError('Non-monotonic frame/time or capture reset in run window.')
-                    first = first or point
-                    previous = point
-                    count += 1
-            if not count:
-                raise ValueError('No new complete rows since preflight.')
+            artifact = temporary/frames_name
+            with artifact.open('wb') as output:
+                if compressed:
+                    bounded = _BoundedOutput(output, run, MAX_COMPRESSED, needed, detail)
+                    with gzip.GzipFile(filename='', mode='wb', fileobj=bounded,
+                                       compresslevel=6, mtime=0) as packed:
+                        packed.write(header)
+                        copied_hash = _range_hash(stream, start, end, packed)
+                else:
+                    output.write(header)
+                    copied_hash = _range_hash(stream, start, end, output)
+            opener = gzip.open if compressed else open
+            with opener(artifact, 'rb') as copied:
+                summary, verified_hash, raw_hash = _validate_copy(
+                    copied, header, fields, time_field, initial, end - start,
+                    max_row_bytes=MAX_ROW_BYTES if compressed else None)
+            if verified_hash != copied_hash:
+                raise ValueError('Copied capture prefix was rewritten during snapshot.')
+            stored_bytes = artifact.stat().st_size
+            with artifact.open('rb') as stored:
+                stored_hash = _range_hash(stored, 0, stored_bytes)
             if before_hash != copied_hash or copied_hash != _range_hash(stream, start, end):
                 raise ValueError('Copied capture prefix was rewritten during snapshot.')
             for name, data in metadata.items():
                 (temporary/name).write_bytes(data)
-            summary = {'stop_reason': 'runner_snapshot', 'rows': count,
-                       'first_frame': first['frame_id'], 'last_frame': previous['frame_id'],
-                       'first_time_s': first['sim_time_s'], 'last_time_s': previous['sim_time_s']}
             snapshot = {'source': str(source), 'initial': initial, 'start_byte': start,
                         'end_byte': end, 'observed_bytes': stat.st_size,
                         'omitted_partial_bytes': stat.st_size - end,
                         'window_sha256': copied_hash, 'metadata_sha256': _hashes(metadata),
+                        'frames_file': frames_name,
+                        'frames_compression': 'gzip' if compressed else 'none',
+                        'frames_bytes': stored_bytes, 'frames_sha256': stored_hash,
+                        'frames_raw_bytes': raw_bytes, 'frames_raw_sha256': raw_hash,
                         'wall_time_ns': time.time_ns(), **summary}
             for name, data in (('summary.json', summary), ('snapshot.json', snapshot)):
                 (temporary/name).write_text(json.dumps(data, indent=2)+'\n', encoding='utf-8')
             verify_source()
             if _range_hash(stream, start, end) != copied_hash:
                 raise ValueError('Copied capture prefix was rewritten during snapshot.')
+            _require_space(run, zip_budget + SPACE_HEADROOM, detail)
             if target.exists() or target.is_symlink():
                 raise ValueError('Truth evidence already exists; refusing to overwrite it.')
             temporary.rename(target)
+        except OSError as error:
+            if error.errno == errno.ENOSPC:
+                raise ValueError(f'Insufficient space for truth snapshot and final ZIP; '
+                                 f'{detail}. No evidence published.') from error
+            raise
         finally:
             if temporary.exists():
                 shutil.rmtree(temporary)

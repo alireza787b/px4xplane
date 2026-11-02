@@ -16,6 +16,10 @@ PX4_DEBUG_UPLOAD_ROOT=/var/lib/px4xplane-debug-upload
 The existing HTTPS Caddy site proxies only `/px4xplane-debug/upload` to
 `127.0.0.1:18764`. No port is exposed directly. POST accepts a Bearer token,
 Content-Length and X-Content-SHA256; GET/download/listing are unavailable.
+An authenticated HEAD with X-Upload-Bytes and X-Content-SHA256 checks size,
+quota and free disk before the large upload. It returns 204 when admissible,
+not a reservation: POST repeats all checks. A 507 is reported clearly by the
+client instead of streaming into an already-rejected request/TLS EOF.
 Limit: 256 MiB/object, 512 MiB total spool, 384 MiB free-disk reserve, one writer,
 180-second request deadline. Wrong checksums and partial uploads are rejected.
 Archives are stored by checksum and NEVER extracted. No automatic deletion of

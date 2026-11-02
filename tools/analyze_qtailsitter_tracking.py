@@ -15,6 +15,7 @@ import zipfile
 
 import numpy as np
 from pyulog import ULog
+from analyze_qtailsitter_design import CaptureFrames
 
 
 def stats(values):
@@ -127,7 +128,6 @@ def analyze(archive,output):
             phase['motor_command']=[stats(motors[f'control[{i}]'][mask]) for i in range(4)]
             mask=(clock(hte)>=lo)&(clock(hte)<=hi);phase['hover_thrust_estimate']=stats(hte['hover_thrust'][mask])
             metrics['phases'][label]=phase
-        truth_name=next(n for n in zipped.namelist() if n.endswith('/truth/frames.csv'))
         truth={key:[] for key in ('time','alt','vy','mass','payload','wind')}
         pitch_moment=[]
         acf={parts[1]:parts[2] for line in read('/inputs/QuadTailsitterRef6.acf').decode().splitlines()
@@ -136,8 +136,8 @@ def analyze(archive,output):
         fields=('sim/time/total_flight_time_sec','sim/flightmodel/position/elevation',
                 'sim/flightmodel/position/local_vy','sim/flightmodel/weight/m_total',
                 'sim/flightmodel/weight/m_fixed','sim/weather/aircraft/wind_now_speed_msc')
-        with zipped.open(truth_name) as stream:
-            for row in csv.DictReader(io.TextIOWrapper(stream)):
+        with CaptureFrames(archive) as stream:
+            for row in csv.DictReader(stream):
                 for key,field in zip(truth,fields):truth[key].append(float(row[field]))
                 thrust=np.array([float(v) for v in row['sim/flightmodel/engine/POINT_thrust'].split(';')[:4]])
                 pitch_moment.append(float(pitch_arms@thrust))

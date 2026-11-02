@@ -85,6 +85,18 @@ def send_once(archive, data, digest, size):
     connection = http.client.HTTPSConnection(url.hostname, url.port or 443,
                                              timeout=30, context=ssl.create_default_context())
     try:
+        connection.request('HEAD', url.path or '/', headers={
+            'Authorization': 'Bearer '+data['token'], 'X-Upload-Bytes': str(size),
+            'X-Content-SHA256': digest})
+        admission = connection.getresponse()
+        admission.read()
+        if admission.status == 507:
+            raise ValueError('Analysis server has insufficient disk space or upload quota; '
+                             'local archive retained. Ask the maintainer to free space, then retry-uploads.')
+        if admission.status not in (204, 405):  # 405 permits older debug servers.
+            if admission.status in (500, 502, 503, 504):
+                raise http.client.HTTPException(f'Temporary upload preflight HTTP {admission.status}')
+            raise ValueError(f'Upload preflight HTTP {admission.status}; local archive retained')
         connection.putrequest('POST', url.path or '/')
         connection.putheader('Authorization', 'Bearer '+data['token'])
         connection.putheader('Content-Type', 'application/zip')

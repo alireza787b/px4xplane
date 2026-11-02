@@ -5,7 +5,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'tools'))
 try:
-    from analyze_qtailsitter_handoff import multiply, quaternion, euler, peak
+    from analyze_qtailsitter_handoff import multiply, quaternion, euler, peak, mean_or_none
     import numpy as np
 except ModuleNotFoundError:
     multiply = None
@@ -13,6 +13,11 @@ except ModuleNotFoundError:
 
 @unittest.skipIf(multiply is None, 'Analysis tests require numpy and pyulog')
 class HandoffTests(unittest.TestCase):
+    def test_no_braking_has_json_compatible_empty_mean(self):
+        self.assertIsNone(mean_or_none([]))
+        self.assertIsNone(mean_or_none([float('nan')]))
+        self.assertEqual(mean_or_none([1, 3]), 2)
+
     def test_fw_level_is_mc_nose_down_90(self):
         angle = 2**-.5
         fw = multiply(np.array([[angle, 0, -angle, 0]]), [angle, 0, angle, 0])

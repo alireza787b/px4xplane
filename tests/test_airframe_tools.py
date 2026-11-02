@@ -1,5 +1,8 @@
 import csv
+import gzip
 import math
+import zipfile
+from unittest.mock import patch
 import tempfile
 import unittest
 from pathlib import Path
@@ -13,6 +16,36 @@ import check_px4_airframe_params as params
 
 
 class AirframeToolTest(unittest.TestCase):
+    def test_failed_zip_member_open_closes_archive(self):
+        with tempfile.TemporaryDirectory() as directory:
+            archive = Path(directory)/'capture.zip'
+            with zipfile.ZipFile(archive, 'w') as z:
+                z.writestr('frames.csv', 'frame_id,time\n1,1\n')
+            reader = design.CaptureFrames(archive)
+            with patch.object(zipfile.ZipFile, 'open', side_effect=zipfile.BadZipFile('damaged member')):
+                with self.assertRaises(zipfile.BadZipFile):
+                    with reader:
+                        pass
+            self.assertIsNone(reader._zip.fp)
+
+    def test_capture_reader_streams_gzip_in_directory_and_zip(self):
+        text = '\ufeffframe_id,sim_time_s,value\n1,1.0,kept\n2,1.1,complete\n'
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            packed = root/'frames.csv.gz'
+            packed.write_bytes(gzip.compress(text.encode()))
+            with design.CaptureFrames(root) as stream:
+                self.assertEqual(list(csv.DictReader(stream))[-1]['value'], 'complete')
+            archive = root/'capture.zip'
+            with zipfile.ZipFile(archive, 'w') as z:
+                z.write(packed, 'flight/truth/frames.csv.gz')
+            with design.CaptureFrames(archive) as stream:
+                self.assertEqual(len(list(csv.DictReader(stream))), 2)
+            (root/'frames.csv').write_text(text)
+            with self.assertRaisesRegex(FileNotFoundError, 'Expected one'):
+                with design.CaptureFrames(root):
+                    pass
+
     def test_parse_airframe_defaults_and_compare(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = Path(tmp_dir) / "airframe"

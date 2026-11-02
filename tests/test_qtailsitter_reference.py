@@ -104,7 +104,9 @@ class ReferenceTest(unittest.TestCase):
             for term in ('P','I','D'):
                 self.assertAlmostEqual(params[f'FW_{fw}_{term}']*scale,
                                        params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K'],places=6)
-        self.assertEqual(params['FW_RR_P'], .10)
+        self.assertEqual(params['FW_RR_P'], .14)
+        self.assertEqual(params['MC_ROLL_P'], 1.4)
+        self.assertEqual(params['MC_PITCH_P'], 1.0)
         self.assertEqual(params['FW_RR_I'], .014318)
         self.assertEqual(params['FW_RR_D'], .001507)
         # Changing MC roll must not silently retune a different mode/axis.

@@ -68,10 +68,20 @@ class UploadTests(unittest.TestCase):
             def read(self, _):
                 return b'{"ok":true,"sha256":"wrong","bytes":15}'
         with patch('upload_debug.http.client.HTTPSConnection') as connection:
-            connection.return_value.getresponse.return_value = Response()
+            admission = type('Admission', (), {'status':204, 'read':lambda _: b''})()
+            connection.return_value.getresponse.side_effect = [admission, Response()]
             with self.assertRaisesRegex(ValueError, 'receipt'):
                 uploads.send_once(self.archive, uploads.settings(self.config), self.receipt['sha256'],
                                   self.receipt['bytes'])
+
+    def test_disk_rejection_is_reported_before_sending_archive(self):
+        with patch('upload_debug.http.client.HTTPSConnection') as connection:
+            connection.return_value.getresponse.return_value.status = 507
+            with self.assertRaisesRegex(ValueError, 'insufficient disk space'):
+                uploads.send_once(self.archive, uploads.settings(self.config), self.receipt['sha256'],
+                                  self.receipt['bytes'])
+            connection.return_value.send.assert_not_called()
+            connection.return_value.putrequest.assert_not_called()
 
 
 if __name__ == '__main__':

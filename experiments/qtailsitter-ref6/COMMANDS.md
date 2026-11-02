@@ -1,4 +1,4 @@
-# R10 Copy-Paste Commands
+# R11 Copy-Paste Commands
 
 SITL only. Read QUICKSTART.md for the timing and observations.
 
@@ -11,7 +11,7 @@ cat VERSION.txt
 bash run.sh flight --yes-debug
 ```
 
-Expect 2026-11-02.ref6.10. Fresh Ref6 flight, no wind/payload; TruthCapture and
+Expect 2026-11-02.ref6.11. Fresh Ref6 flight, no wind/payload; TruthCapture and
 QGC running; select Ref6 and Connect to SITL in the X-Plane plugin.
 
 PX4 console after parameter gate:
@@ -19,12 +19,14 @@ PX4 console after parameter gate:
 ```text
 param show FW_RR_P
 param show MC_ROLLRATE_P
+param show MC_ROLL_P
+param show MC_PITCH_P
 param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect 0.10 / 0.060 / 180. Do not use QGC's remembered takeoff altitude.
+Expect 0.14 / 0.060 / 1.4 / 1.0 / 180. Do not use QGC's remembered takeoff altitude.
 At actual 180 m height and settled hover, once:
 
 ```text

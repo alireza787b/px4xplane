@@ -28,6 +28,33 @@ def app(settings):
     settings.root.mkdir(parents=True, exist_ok=True)
     lock = asyncio.Lock()
 
+    async def preflight(request):
+        # Check admission before a large body is sent. Early POST rejection can
+        # otherwise surface as a TLS EOF in a streaming client behind a proxy.
+        if time.time() >= settings.expires_at or not hmac.compare_digest(
+                request.headers.get('Authorization', ''), 'Bearer '+settings.token):
+            raise web.HTTPUnauthorized(text='Invalid or expired debug upload credentials')
+        try:
+            size = int(request.headers.get('X-Upload-Bytes', '0'))
+        except ValueError:
+            raise web.HTTPBadRequest(text='Invalid upload size')
+        digest = request.headers.get('X-Content-SHA256', '')
+        if not 0 < size <= settings.max_bytes:
+            raise web.HTTPRequestEntityTooLarge(max_size=settings.max_bytes, actual_size=size)
+        if not re.fullmatch('[a-f0-9]{64}', digest):
+            raise web.HTTPBadRequest(text='Missing SHA256')
+        async with lock:
+            final = settings.root/(digest+'.zip')
+            if final.is_file():
+                if final.stat().st_size != size:
+                    raise web.HTTPConflict(text='Existing object size mismatch')
+            else:
+                used = sum(p.stat().st_size for p in settings.root.iterdir() if p.is_file())
+                if used+size > settings.quota_bytes or shutil.disk_usage(settings.root).free-size < settings.free_floor:
+                    raise web.HTTPInsufficientStorage(text='Debug quota/free-space limit; keep local evidence')
+        # This is not a reservation; POST checks the bounds again under lock.
+        return web.Response(status=204)
+
     async def receive(request):
         auth = request.headers.get('Authorization', '')
         if time.time() >= settings.expires_at or not hmac.compare_digest(auth, 'Bearer '+settings.token):
@@ -96,6 +123,7 @@ def app(settings):
 
     application = web.Application(client_max_size=settings.max_bytes)
     application.router.add_post('/px4xplane-debug/upload', bounded)
+    application.router.add_head('/px4xplane-debug/upload', preflight)
     return application
 
 

@@ -26,14 +26,16 @@ oscillation repeatedly triggered emergency braking and interrupted landing.
 R9 changed MC_ROLLRATE_P from 0.031815 to 0.060 and completed moderate MC flight,
 RTL and landing with zero emergency-braking activations. Its second GoTo still
 showed weak yaw tracking; it did not validate recovery from a large disturbance.
-R10 keeps R9 MC gains and changes only FW_RR_P from 0.07536 to 0.10. Other FW
-gains remain frozen, including FW_YR_P: do not automatically retune FW yaw from
-MC roll. Next test measures 15 seconds FW, then normal back-transition and Land.
-These are experimental parameters, not a full-flight stability claim. See REPORT.md.
+R10 reduced FW roll oscillation but still timer-ended back-transition and
+repeatedly interrupted descent through horizontal emergency braking. Its MC
+attitude response lagged substantially more than the inner-rate response.
+R11 raises FW_RR_P 0.10->0.14, MC_ROLL_P 0.9->1.4 and MC_PITCH_P 0.58->1.0.
+All rate PID, speed, TECS, mass/CG and physical axes otherwise remain unchanged.
+These are evidence-supported trials, not full-flight validation. See REPORT.md.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
-Other MC gains and all speed/jerk/position limits remain at the r7 values.
+Other MC gains and speed/jerk/position limits remain unchanged from R10.
 FW compression/filter/collective differences limit normalized PID equivalence.
 Read design.json and sizing.json for assumptions and envelope screening. Real
 control authority, trim, stability and landing remain simulator validation gates.
@@ -84,7 +86,11 @@ run, restores source identity, creates a ZIP and uploads it automatically. It
 does not stop the recorder or require an Enter press. The summary explicitly
 says runner_snapshot, not menu_stop. Replaced/truncated/rewritten captures,
 changed session metadata, partial final rows and frame/time resets are checked.
-The current-run window is bounded to 256 MiB; source capture files are preserved.
+Windows up to 256 MiB remain raw CSV. Larger complete windows are streamed to
+frames.csv.gz, with a 1 GiB input ceiling, 128 MiB compressed-output ceiling,
+disk-space checks and atomic publication. No rows are silently dropped or
+decimated. Source captures remain unchanged. Analysis accepts either format.
+The final upload ZIP still has a 256 MiB limit; failed uploads remain retryable.
 
 Upload success requires a matching server checksum and byte count. Network,
 quota or auth failures retain the local ZIP and pending receipt. Retry with:

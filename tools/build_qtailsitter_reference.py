@@ -247,27 +247,29 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
         add('MC_PITCHRATE_'+suffix,value,
             'R6 GoTo pitch-rate lag ~1.38s and error ~0.15rad/s RMS with motor headroom. Trial P-only step 0.06->0.12; I,D,K unchanged. Closed-loop evidence is not an identified optimum or a phase-margin guarantee.')
     add('MC_PITCHRATE_FF',0,'No identified pitch rate feedforward.')
+    add('MC_ROLL_P',1.4,'R10 Land rate tracking lag ~10-13deg but attitude lag ~49-57deg at 6-7s cycles. Trial outer attitude P 0.9->1.4; rate PID and position/velocity gains unchanged. Local scalar screen is not a coupled guidance stability guarantee.')
+    add('MC_PITCH_P',1.0,'R10 Land pitch attitude lag ~70-76deg despite closer inner-rate tracking. Trial attitude P 0.58->1.0; rate PID unchanged. Also changes transition tracking, so angle-vs-timeout recovery must be measured, not assumed.')
     # Same physical rotors and allocator in both modes. Follow the pinned frame
     # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
     # downstream differential scaling. This equates unsaturated normalized PID
     # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
-    # R10 changes only FW roll P after the R9 MC trial. Other FW coefficients
+    # R11 continues the FW roll P trial. Other FW coefficients
     # remain frozen; do not silently copy MC roll P into FW yaw.
-    fw_baseline={'RR':(.10,.014318,.001507),
+    fw_baseline={'RR':(.14,.014318,.001507),
                  'PR':(.133333,.016667,.001333),
                  'YR':(.099422,.024856,.001987)}
     for fw,coefficients in fw_baseline.items():
         for term,value in zip(('P','I','D'),coefficients):
             add(f'FW_{fw}_{term}',round(value,6),
-                ('R10 FW roll P-only trial 0.07536->0.10: R8 rate/torque spectral evidence supports investigating more damping, not a blind P reduction. Effective physical MC-yaw-axis P=0.055 after scale0.55. Not an identified optimum or flight guarantee.' if fw=='RR' and term=='P' else
-                 'R8 FW coefficient retained during the R10 FW-roll-P-only test. Not a validated tune; no automatic propagation of MC gains.'))
+                ('R11 FW roll P trial 0.10->0.14 after R10 measured rate-error RMS~0.256rad/s versus R8~0.378. Flights are not isolated A/B; this is a damping experiment, not an optimum. Physical MC-yaw-axis P=0.077 after scale0.55; I/D unchanged.' if fw=='RR' and term=='P' else
+                 'R8 FW coefficient retained during the R11 trial. Not a validated tune; no automatic propagation of MC gains.'))
         add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
     for axis,scale in (('R',.55),('P',.90),('Y',.32)):
         add(f'VT_FW_DIFTHR_S_{axis}',scale,'Unchanged pinned 5021 differential torque scaling, explicit for rate-seed reproducibility.')
     add('FW_ARSP_SCALE_EN',0,'Rotor-only torque, no movable aerodynamic surfaces: disable aerodynamic surface V^-2 rate-gain schedule per PX4 parameter guidance. Prop authority still varies with collective/inflow and must be measured.')
     add('FW_USE_AIRSPD',1,'Keep measured airspeed enabled for TECS, coordination and transition; only aerodynamic RATE output scaling is disabled.')
     add('FW_THR_MIN',.08,'Use the same minimum command as inherited MPC_THR_MIN to avoid zero-collective rotor control in the first FW test. This does not prove sufficient torque margin or define idle thrust.')
-    add('VT_B_TRANS_DUR',15,'Trial 90deg/15s = 6deg/s back-rotation instead of prior 18deg/s. With unchanged MC pitch attitude P=0.58, an ideal rate-tracking screen gives ~10.4deg end-ramp lag versus ~15.5deg at 10s and a ~14.9deg exit threshold. Not a recovery prediction: timeout and residual speed still require evidence; longer travel must be allowed.')
+    add('VT_B_TRANS_DUR',15,'Retain 90deg/15s = 6deg/s back-rotation. Historical R8 ideal-rate screen at MC pitch attitude P=0.58 gave ~10.4deg end-ramp lag; that was not validated recovery. R11 pitch attitude P=1.0 supersedes that calculation. Actual angle/timeout and residual speed must still be measured; do not lengthen the timer to hide failed rotation.')
     add('FW_RLL_TO_YAW_FF',0,'Keep the prior zero adverse-yaw torque feedforward; do not add unmeasured cross-axis feedforward during the first FW trial.')
     add("FW_THR_MAX", 1, "Use the physically power-limited engine envelope, not the old 9.6kW model's 50% cap.")
     add("VT_F_TRANS_THR", .4, "Retained prior value; the pinned tailsitter transition uses MC thrust, not this Standard-VTOL throttle parameter. It is not a tailsitter acceleration tune.")
@@ -312,7 +314,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.10", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-02.ref6.11", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+from contextlib import ExitStack
+import gzip
 import io
 import json
 import math
@@ -85,31 +87,40 @@ class CaptureFrames:
         self.capture = capture
         self._zip: Optional[zipfile.ZipFile] = None
         self._text: Optional[TextIO] = None
+        self._resources = ExitStack()
 
     def __enter__(self) -> TextIO:
+        try:
+            return self._open()
+        except BaseException:
+            self._resources.close()
+            raise
+
+    def _open(self) -> TextIO:
         if self.capture.is_file() and self.capture.suffix.lower() == ".zip":
-            self._zip = zipfile.ZipFile(self.capture)
-            candidates = [name for name in self._zip.namelist() if name.endswith("/frames.csv") or name == "frames.csv"]
-            if not candidates:
-                raise FileNotFoundError(f"frames.csv not found in {self.capture}")
-            self._text = io.TextIOWrapper(self._zip.open(candidates[0], "r"), encoding="utf-8", newline="")
+            self._zip = self._resources.enter_context(zipfile.ZipFile(self.capture))
+            candidates = [name for name in self._zip.namelist()
+                          if name.rsplit('/', 1)[-1] in ('frames.csv', 'frames.csv.gz')]
+            if len(candidates) != 1:
+                raise FileNotFoundError(f"Expected one frames.csv or frames.csv.gz in {self.capture}")
+            stream = self._resources.enter_context(self._zip.open(candidates[0], "r"))
+            if candidates[0].endswith('.gz'):
+                stream = self._resources.enter_context(gzip.GzipFile(fileobj=stream, mode='rb'))
+            self._text = self._resources.enter_context(io.TextIOWrapper(stream, encoding="utf-8-sig", newline=""))
             return self._text
 
-        frames_path = self.capture / "frames.csv"
-        if not frames_path.exists():
-            nested = list(self.capture.glob("*/frames.csv"))
-            if len(nested) == 1:
-                frames_path = nested[0]
-        if not frames_path.exists():
-            raise FileNotFoundError(f"frames.csv not found under {self.capture}")
-        self._text = frames_path.open("r", encoding="utf-8", newline="")
+        candidates = [self.capture/name for name in ('frames.csv', 'frames.csv.gz') if (self.capture/name).is_file()]
+        if not candidates:
+            candidates = [p for pattern in ('*/frames.csv', '*/frames.csv.gz') for p in self.capture.glob(pattern)]
+        if len(candidates) != 1:
+            raise FileNotFoundError(f"Expected one frames.csv or frames.csv.gz under {self.capture}")
+        frames_path = candidates[0]
+        opener = gzip.open if frames_path.suffix == '.gz' else open
+        self._text = self._resources.enter_context(opener(frames_path, "rt", encoding="utf-8-sig", newline=""))
         return self._text
 
     def __exit__(self, exc_type, exc, tb) -> None:
-        if self._text is not None:
-            self._text.close()
-        if self._zip is not None:
-            self._zip.close()
+        self._resources.close()
 
 
 def estimate_wing_area_m2(values: Dict[str, str]) -> Dict[str, float]:

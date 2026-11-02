@@ -14,6 +14,7 @@ import zipfile
 
 import numpy as np
 from pyulog import ULog
+from analyze_qtailsitter_design import CaptureFrames
 
 
 def analyze(archive, output):
@@ -41,8 +42,8 @@ def analyze(archive, output):
         steady = (clock(hover) >= 65) & (clock(hover) <= 85)
         hte = float(np.median(hover['hover_thrust'][steady]))
         mass, payload = [], []
-        with zipped.open(member('truth/frames.csv')) as stream:
-            for row in csv.DictReader(io.TextIOWrapper(stream)):
+        with CaptureFrames(archive) as stream:
+            for row in csv.DictReader(stream):
                 mass.append(float(row['sim/flightmodel/weight/m_total']))
                 payload.append(float(row['sim/flightmodel/weight/m_fixed']))
         metrics = {

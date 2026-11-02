@@ -1,7 +1,7 @@
-# R10: Short FW Roll-Damping Test
+# R11: FW Damping And MC Attitude-Tracking Test
 
-SITL only. Same aircraft, plugin, firmware pin and R9 MC gains.
-Only FW_RR_P changes: 0.07536 -> 0.10. FW/back recovery is not yet validated.
+SITL only. Same aircraft, plugin and firmware pin. Changes: FW_RR_P=0.14,
+MC_ROLL_P=1.4 and MC_PITCH_P=1.0. Rate PID otherwise unchanged. Not yet validated.
 
 ## 1. Update In WSL
 
@@ -13,8 +13,7 @@ bash run.sh update
 cat VERSION.txt
 ```
 
-Expect `2026-11-02.ref6.10`. No token, extraction or plugin reinstall.
-Use the flight command below even if the OLD updater process prints hover.
+Expect `2026-11-02.ref6.11`. No token, extraction or plugin reinstall.
 Start a fresh X-Plane flight, not a previous stopped-airborne state.
 
 ## 2. Prepare And Launch
@@ -38,13 +37,15 @@ After REF6 PARAMETER GATE PASSED and Ready for takeoff:
 ```text
 param show FW_RR_P
 param show MC_ROLLRATE_P
+param show MC_ROLL_P
+param show MC_PITCH_P
 param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect 0.10, 0.060 and 180. Use THIS takeoff command, not QGC's remembered
-takeoff slider. The last R9 QGC takeoff requested only about 10 m.
+Expect 0.14, 0.060, 1.4, 1.0 and 180. Use THIS takeoff command, not QGC's remembered
+takeoff slider. Last flights used QGC-selected heights instead of 180 m.
 Wait until actual height is 180 m above home and hold is settled for 15 seconds.
 Over flat terrain, verify actual ground clearance as well; home-relative height
 does not guarantee clearance over hills.
@@ -105,6 +106,12 @@ A failed upload can be retried:
 ```bash
 bash run.sh retry-uploads
 ```
+
+The 256 MiB raw-window failure is fixed: larger complete truth windows are now
+streamed to gzip automatically, without dropping frames. Storage/input/output
+limits still apply and any failure is reported explicitly. This cannot restore
+the truth omitted from the ZIP you already sent. TLS/network failures also
+remain possible; retry-uploads retains the existing checksum-verified workflow.
 
 ## Failed Runs Are Useful
 

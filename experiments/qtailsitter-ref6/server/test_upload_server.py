@@ -65,6 +65,22 @@ class IntakeTests(unittest.IsolatedAsyncioTestCase):
         response = await self.client.post('/px4xplane-debug/upload', data=self.data, headers=headers)
         self.assertEqual(response.status, 400)
 
+    async def test_head_preflight_auth_bounds_and_no_storage(self):
+        headers = {**self.headers, 'X-Upload-Bytes': str(len(self.data))}
+        response = await self.client.head('/px4xplane-debug/upload', headers=headers)
+        self.assertEqual(response.status, 204)
+        self.assertFalse(list(self.root.iterdir()))
+        response = await self.client.head('/px4xplane-debug/upload')
+        self.assertEqual(response.status, 401)
+        self.settings.quota_bytes = 1
+        response = await self.client.head('/px4xplane-debug/upload', headers=headers)
+        self.assertEqual(response.status, 507)
+        self.assertFalse(list(self.root.iterdir()))
+        self.settings.quota_bytes = 4096
+        with patch('upload_server.shutil.disk_usage', return_value=type('Disk', (), {'free':0})()):
+            response = await self.client.head('/px4xplane-debug/upload', headers=headers)
+        self.assertEqual(response.status, 507)
+
 
 if __name__ == '__main__':
     unittest.main()

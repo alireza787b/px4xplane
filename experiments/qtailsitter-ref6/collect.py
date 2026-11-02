@@ -14,7 +14,8 @@ def collect(run):
     logs = list((run/'rootfs').rglob('*.ulg'))
     status = {'ulog_count': len(logs), 'ulog_bytes': sum(p.stat().st_size for p in logs),
               'truth_requested': (run/'truth-source.txt').exists(),
-              'truth_attached': (run/'truth/frames.csv').is_file(),
+              'truth_attached': any((run/'truth'/name).is_file()
+                                    for name in ('frames.csv', 'frames.csv.gz')),
               'note': 'Flight success and GCS reception require ULog review; process exit is not a pass.'}
     if (run/'session.json').is_file():
         status['session'] = json.loads((run/'session.json').read_text())
@@ -34,7 +35,8 @@ def collect(run):
         with os.fdopen(fd, 'wb') as stream:
             with zipfile.ZipFile(stream, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=3) as z:
                 for path in paths + [run/'SHA256SUMS']:
-                    z.write(path, str(Path(run.name)/path.relative_to(run)))
+                    compression = zipfile.ZIP_STORED if path.name == 'frames.csv.gz' else zipfile.ZIP_DEFLATED
+                    z.write(path, str(Path(run.name)/path.relative_to(run)), compress_type=compression)
         if any((p.stat().st_size, p.stat().st_mtime_ns) != stamp for p, stamp in before.items()):
             raise RuntimeError('Evidence changed during collection. Stop PX4 and retry; no ZIP published.')
         os.link(temporary, archive)  # Refuse to overwrite even on a name collision.
