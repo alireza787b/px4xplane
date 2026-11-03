@@ -24,6 +24,7 @@ PROFILE_NAME = "5021_xplane_qtailsitter"
 PROFILE_COUNT = 211
 MODEL = Path("Aircraft/NewQuadTailsitter/NewQuadTailsitter.acf")
 MODEL_SHA256 = "c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918"
+PAYLOAD_MODEL_SHA256 = "da0b5db7068a722da9b0379de6935a6fdaf975dd837e194a80839e64a2b5fe8b"
 CONFIG = Path("Resources/plugins/px4xplane/64/config.ini")
 RECOGNIZED_SOURCES = {
     "649929706fb34bf0b06dbd2df24e04d5d452d616": "base of flown logging child; not a direct flight claim",
@@ -43,6 +44,13 @@ class RunnerError(Exception):
 
 def digest(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def validate_model(data):
+    model_hash = digest(data)
+    if model_hash not in {MODEL_SHA256, PAYLOAD_MODEL_SHA256}:
+        raise RunnerError("Owner-supplied compact ACF SHA256 mismatch; legacy/substitute models are forbidden")
+    return model_hash
 
 
 def parse_profile(data):
@@ -341,8 +349,8 @@ def parser():
     return result
 
 
-def operator_check(root, config_hash, known):
-    print(f"Aircraft on disk: {root / MODEL}\nACF SHA256: {MODEL_SHA256}")
+def operator_check(root, config_hash, known, model_hash):
+    print(f"Aircraft on disk: {root / MODEL}\nACF SHA256: {model_hash}")
     print(f"Plugin config: {root / CONFIG}\nConfig SHA256: {config_hash}")
     if known:
         print("Last Log.txt aircraft-0 load path matches exactly. This is NOT live loaded-memory proof.")
@@ -350,6 +358,11 @@ def operator_check(root, config_hash, known):
         print("Log.txt does not reliably identify aircraft 0; no loaded-aircraft proof is claimed.")
     print("OPERATOR: load/verify the exact aircraft above, select QuadTailsitter in px4xplane, "
           "enable its connection, and keep that aircraft loaded. On-disk hashes do not prove live physics.")
+    if model_hash == PAYLOAD_MODEL_SHA256:
+        print("PAYLOAD/CG TEST REVISION: not flight-validated. In X-Plane Weight & Balance, "
+              "select zero payload and original CG for the 2 kg baseline, or record actual "
+              "test mass/CG (up to 6 kg total, not 6 kg payload). X-Plane may restore or "
+              "preload payload. This runner cannot verify live mass/CG.")
 
 
 def run(args):
@@ -362,12 +375,11 @@ def run(args):
     profile_bytes = profile.read_bytes()
     values = parse_profile(profile_bytes)
     profile_hash = digest(profile_bytes)
-    if digest((root / MODEL).read_bytes()) != MODEL_SHA256:
-        raise RunnerError("Owner-supplied compact ACF SHA256 mismatch; legacy/substitute models are forbidden")
+    model_hash = validate_model((root / MODEL).read_bytes())
     config_bytes = (root / CONFIG).read_bytes()
     validate_config(config_bytes)
     known = loaded_aircraft(root / "Log.txt", root)
-    operator_check(root, digest(config_bytes), known)
+    operator_check(root, digest(config_bytes), known, model_hash)
     source = validate_source(px4, args.allow_unvalidated_source)
     ensure_no_px4()
     metadata, first = read_state(state, profile_hash)
@@ -412,14 +424,14 @@ def run(args):
             raise RunnerError("Built rcS differs from inspected source; refusing cached/stale startup")
         if not (build / "bin/px4").is_file():
             raise RunnerError("Build did not produce bin/px4")
-        if (digest((root / MODEL).read_bytes()) != MODEL_SHA256
+        if (digest((root / MODEL).read_bytes()) != model_hash
                 or (root / CONFIG).read_bytes() != config_bytes or profile.read_bytes() != profile_bytes):
             raise RunnerError("Aircraft, plugin config, or profile changed during build; refusing launch")
         if not loaded_aircraft(root / "Log.txt", root) and not args.confirm_aircraft_loaded:
             raise RunnerError("Loaded-aircraft log became unreliable during build; verify before retrying")
         (state / "rootfs").mkdir(exist_ok=True)
         record = dict(metadata or {}, schema=1, profile_sha256=profile_hash, source_commit=source,
-                      profile_path=str(profile), model_sha256=MODEL_SHA256,
+                      profile_path=str(profile), model_sha256=model_hash,
                       binary_sha256=digest((build / "bin/px4").read_bytes()),
                       config_sha256=digest(config_bytes), startup_sha256=digest(startup.encode()))
         (state / "startup.sh").write_text(startup)

@@ -24,11 +24,23 @@ Do not treat an open draft as an already-merged official profile.
 PX4, plugin mappings and documentation retain the QuadTailsitter name. Only
 the owner's local X-Plane aircraft folder/file uses a distinct installation
 name; it does not create a new PX4 airframe or alter the physical ACF contents.
-Recorded ACF
-SHA256 is `c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918`.
+The recorded R16 ACF SHA256 is
+`c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918`.
 Four motors retain their ordering, rotation/cant, CG, inertia and power limits.
 The existing four-channel bridge mapping, `airspeedSource=body_axis`,
 `pitotAxisBody=-Z` and zero actuator smoothing are unchanged.
+
+The separately supplied payload/CG test revision has SHA256
+`da0b5db7068a722da9b0379de6935a6fdaf975dd837e194a80839e64a2b5fe8b`.
+It retains the 2 kg empty mass/default CG but enables fore/aft payload stations,
+6 kg total test mass and +/-20 mm longitudinal CG travel. These are simulator
+test settings, not a validated MTOW/CG envelope. Use X-Plane's **Flight > Edit
+Weight & Balance** menu; combined payload must stay at or below 4 kg. X-Plane
+may restore/preload payload: explicitly select zero payload and original CG
+for a baseline comparison. CG achievable by redistribution depends on loading.
+The runner recognizes both exact revisions and records the actual ACF hash,
+but cannot verify live mass/CG. No PX4 gain/controller change accompanies this
+private model extension. See the [X-Plane weight/balance guidance](https://developer.x-plane.com/article/weightbalance-and-load-stations/).
 
 The full `config/px4_params/5021_xplane_qtailsitter` reference contains the
 pinned inherited defaults plus all 91 reviewed overrides. The last four gain/

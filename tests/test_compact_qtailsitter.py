@@ -100,6 +100,25 @@ class ProfileTests(unittest.TestCase):
                 runner.find_profile(str(here / "missing"))
 
 
+class ModelTests(unittest.TestCase):
+    def test_baseline_and_payload_revisions_are_explicitly_recognized(self):
+        for model_hash in (runner.MODEL_SHA256, runner.PAYLOAD_MODEL_SHA256):
+            with self.subTest(model_hash=model_hash), mock.patch.object(runner, "digest", return_value=model_hash):
+                self.assertEqual(runner.validate_model(b"fixture"), model_hash)
+
+    def test_unrecognized_model_still_fails_closed(self):
+        with self.assertRaisesRegex(runner.RunnerError, "SHA256 mismatch"):
+            runner.validate_model(b"unrecognized model")
+
+    def test_payload_revision_has_explicit_live_loading_warning(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            runner.operator_check(Path('/tmp/X-Plane 12'), 'config-hash', True, runner.PAYLOAD_MODEL_SHA256)
+        self.assertIn(runner.PAYLOAD_MODEL_SHA256, output.getvalue())
+        self.assertIn('cannot verify live mass/CG', output.getvalue())
+        self.assertIn('not 6 kg payload', output.getvalue())
+
+
 class ConfigTests(unittest.TestCase):
     def test_headerless_plugin_config_uses_virtual_global_section(self):
         runner.validate_config(config_text().encode())
