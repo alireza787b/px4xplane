@@ -23,7 +23,7 @@ HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
 BASE = '649929706fb34bf0b06dbd2df24e04d5d452d616'
 TARGET = '58794523a151fa33a28a564454454b8c9fbfcdd5'
-VERSION = '2026-11-03.ref6.15'
+VERSION = '2026-11-03.ref6.16'
 BUNDLE_REF = 'refs/heads/validation/qtailsitter-upstream-20261103'
 SCENARIOS = ('baseline', 'recovery-jerk', 'braking-isolation')
 
@@ -364,9 +364,9 @@ def dispatch(args):
             if args.mode == 'hover':
                 print('MC lateral scenario: 50m console takeoff; fixed heading MPC_YAW_MODE=5 applied and checked automatically.')
         else:
-            print('R15: FW_RR_P=0.22; MC cruise/max 5/6m/s, auto climb/descent 2.5/1.6m/s. '
-                  'Same firmware, ACF, MC PID, acceleration, jerk and near-ground landing speed. '
-                  'Maximum-speed changes also affect braking thresholds. Follow QUICKSTART.md.')
+            print('R16: FW_RR_P=0.26, MC_PITCHRATE_P=0.16, FW_T_I_GAIN_PIT=0.10, FW_THR_TRIM=0.18. '
+                  'Same firmware, ACF, speeds, other PID terms, attitude gains and transition timing. '
+                  'Combined tuning candidate, not proven fixes. Follow QUICKSTART.md.')
             if scenario == 'braking-isolation':
                 print('WARNING: braking-isolation sets MPC_XY_VEL_MAX=12.0, increases the 1.3*bound threshold to 15.6 m/s, '
                       'and suppresses initial 9.3 m/s braking too. Explicit diagnostic only; NOT recommended, NOT a production fix.')

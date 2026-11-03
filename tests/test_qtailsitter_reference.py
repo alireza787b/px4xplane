@@ -91,7 +91,7 @@ class ReferenceTest(unittest.TestCase):
         self.assertEqual(params['MPC_JERK_AUTO'], 4)
         self.assertEqual(params['MPC_ACC_HOR'], 2)
         self.assertEqual(params['MPC_ACC_HOR_MAX'], 2)
-        self.assertEqual(params['MC_PITCHRATE_P'], .12)
+        self.assertEqual(params['MC_PITCHRATE_P'], .16)
         self.assertEqual(params['MC_PITCHRATE_I'], .015)
         self.assertEqual(params['MC_PITCHRATE_D'], .0012)
         self.assertGreaterEqual(params['MC_PITCHRATE_P'], .01)
@@ -104,10 +104,16 @@ class ReferenceTest(unittest.TestCase):
         self.assertEqual(params['FW_THR_MIN'], .08)
         self.assertEqual(params['VT_B_TRANS_DUR'], 15)
         for fw,mc,scale in (('PR','PITCH',.90),):
-            for term in ('P','I','D'):
+            for term in ('I','D'):
                 self.assertAlmostEqual(params[f'FW_{fw}_{term}']*scale,
                                        params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K'],places=6)
-        self.assertEqual(params['FW_RR_P'], .22)
+        self.assertEqual(params['FW_RR_P'], .26)
+        self.assertEqual(params['FW_PR_P'], .133333,
+                         'A recovery MC pitch change must not also change FW pitch P')
+        self.assertEqual(params['FW_T_I_GAIN_PIT'], .10)
+        self.assertEqual(params['FW_THR_TRIM'], .18)
+        self.assertNotIn('FW_R_TC', params, 'Do not bundle a 50% outer-loop gain change')
+        self.assertNotIn('FW_T_STE_R_TC', params, 'Retain the existing throttle feedback filter')
         self.assertEqual(params['MPC_XY_CRUISE'], 5)
         self.assertEqual(params['MPC_XY_VEL_MAX'], 6)
         self.assertEqual(params['MPC_VEL_MANUAL'], 5)

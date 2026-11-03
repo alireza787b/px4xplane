@@ -1,4 +1,4 @@
-# R15 Copy-Paste Commands
+# R16 Copy-Paste Commands
 
 Same debug folder/aircraft/firmware. Full scenario: QUICKSTART.md.
 Stop PX4 and old truth recording. WSL:
@@ -10,7 +10,7 @@ cat VERSION.txt
 bash run.sh prepare-truth
 ```
 
-Expect2026-11-03.ref6.15. FIRST load/reset a fresh charged Ref6 flight, no wind/
+Expect2026-11-03.ref6.16. FIRST load/reset a fresh charged Ref6 flight, no wind/
 payload. THEN start NEW TruthCapture recording; no reload/reset afterward.
 Open QGC and plugin Ref6 connection. WSL:
 
@@ -23,6 +23,9 @@ After parameter gate/Ready, PX4 console:
 ```text
 ver all
 param show FW_RR_P
+param show MC_PITCHRATE_P
+param show FW_T_I_GAIN_PIT
+param show FW_THR_TRIM
 param show MPC_XY_CRUISE
 param show MPC_Z_V_AUTO_UP
 param show MPC_Z_V_AUTO_DN
@@ -31,9 +34,9 @@ commander check
 commander takeoff
 ```
 
-Expect58794523a1...,0.22,5,2.5,1.6,180. Actual180m, clearance,15s settled.
-QGC: one100m MC GoTo and stop; another100m return and stop. One20m altitude
-up/down pair if available; check requested altitude reference. Wait10s settled.
+Expect58794523a1...,0.26,0.16,0.10,0.18,5,2.5,1.6,180.
+Actual180m, clearance,15s settled.
+QGC: one60m MC GoTo and stop; another60m return and stop. Wait10s settled.
 No parameter edits. Then PX4 console:
 
 ```text
@@ -41,14 +44,16 @@ commander transition
 listener vtol_vehicle_status -n 1
 ```
 
-FWstate4: observe75s, NO FW retarget/RTL/speed or altitude changes.
-Then back-transition ONCE:
+FWstate4: observe60s without retarget/RTL/speed or altitude changes.
+Then QGC Change Altitude to200m above home,20m above the intended180m level;
+check units/reference, wait30s with no new command. If that action is unavailable,
+report this part as skipped. Then back-transition ONCE:
 
 ```text
 commander transition
 ```
 
-Up to25s DECAYING recovery; Hold translation can be intentional.
+Up to25s DECAYING recovery; Hold translation can be intentional. No RTL needed.
 Once upright with settled attitude:
 
 ```text

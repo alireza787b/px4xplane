@@ -254,9 +254,10 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
                 'R5 yaw gains reduced by reaction-only/restored-cant yaw lever ratio; the new cant adds modeled authority. Trial compensation, not measured physical validation.')
         for suffix,value in (('P',p),('I',integral),('D',d),('K',1),('FF',0)):
             add(f'MC_{axis}RATE_{suffix}',round(value,6),reason)
-    for suffix,value in (('P',.12),('I',.015),('D',.0012),('K',1)):
+    for suffix,value in (('P',.16),('I',.015),('D',.0012),('K',1)):
         add('MC_PITCHRATE_'+suffix,value,
-            'R6 GoTo pitch-rate lag ~1.38s and error ~0.15rad/s RMS with motor headroom. Trial P-only step 0.06->0.12; I,D,K unchanged. Closed-loop evidence is not an identified optimum or a phase-margin guarantee.')
+            ('R16 pitch-rate damping trial 0.12->0.16. R15 back-transition requested about50deg/s while measured pitch rate stayed near4deg/s before a late reversal and49deg attitude overshoot. Motor torque allocation had headroom. I/D/K and attitude gain unchanged; validate both initial MC and recovery.' if suffix=='P' else
+             'Retain R15 MC pitch I/D/K during the P-only rate change.'))
     add('MC_PITCHRATE_FF',0,'No identified pitch rate feedforward.')
     add('MC_ROLL_P',1.4,'R10 Land rate tracking lag ~10-13deg but attitude lag ~49-57deg at 6-7s cycles. Trial outer attitude P 0.9->1.4; rate PID and position/velocity gains unchanged. Local scalar screen is not a coupled guidance stability guarantee.')
     add('MC_PITCH_P',1.0,'R10 Land pitch attitude lag ~70-76deg despite closer inner-rate tracking. Trial attitude P 0.58->1.0; rate PID unchanged. Also changes transition tracking, so angle-vs-timeout recovery must be measured, not assumed.')
@@ -264,27 +265,28 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
     # downstream differential scaling. This equates unsaturated normalized PID
     # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
-    # R15 continues the FW roll damping trial. Other FW coefficients
+    # R16 continues the FW roll damping trial. Other FW coefficients
     # remain frozen; do not silently copy MC roll P into FW yaw.
-    fw_baseline={'RR':(.22,.014318,.001507),
+    fw_baseline={'RR':(.26,.014318,.001507),
                  'PR':(.133333,.016667,.001333),
                  'YR':(.099422,.024856,.001987)}
     for fw,coefficients in fw_baseline.items():
         for term,value in zip(('P','I','D'),coefficients):
             add(f'FW_{fw}_{term}',round(value,6),
-                ('R15 FW damping trial 0.18->0.22. R14 reduced the first25s roll-mode amplitude, but a 0.46Hz mode persists in longer FW. Motor allocation is unsaturated and integrator has headroom. Physical MC-yaw normalized P becomes 0.121 after scale0.55; I/D, attitude gain and geometry unchanged. Provisional bounded SITL trial, not a stability guarantee.' if fw=='RR' and term=='P' else
+                ('R16 FW rate damping trial 0.22->0.26. R15 native prop moment opposes the remaining0.45Hz roll mode, with motor headroom; RTL still excites it. Differential scale0.55 gives normalized MC-yaw P0.143. I/D and outer attitude time constant unchanged. Bounded candidate, not a stability guarantee.' if fw=='RR' and term=='P' else
                  'R8 FW coefficient retained during the R11 trial. Not a validated tune; no automatic propagation of MC gains.'))
         add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
     for axis,scale in (('R',.55),('P',.90),('Y',.32)):
         add(f'VT_FW_DIFTHR_S_{axis}',scale,'Unchanged pinned 5021 differential torque scaling, explicit for rate-seed reproducibility.')
     add('FW_ARSP_SCALE_EN',0,'Rotor-only torque, no movable aerodynamic surfaces: disable aerodynamic surface V^-2 rate-gain schedule per PX4 parameter guidance. Prop authority still varies with collective/inflow and must be measured.')
     add('FW_USE_AIRSPD',1,'Keep measured airspeed enabled for TECS, coordination and transition; only aerodynamic RATE output scaling is disabled.')
+    add('FW_T_I_GAIN_PIT',.10,'R16 reduces inherited TECS pitch integrator0.25 to pinned PX4 default0.10. R15 RTL has0.21-0.23Hz speed/height-rate oscillation in commanded pitch, not just tracking error. Slower trim adaptation may leave transient offsets; pitch damping and speed weighting unchanged.')
     add('FW_THR_MIN',.08,'Use the same minimum command as inherited MPC_THR_MIN to avoid zero-collective rotor control in the first FW test. This does not prove sufficient torque margin or define idle thrust.')
     add('VT_B_TRANS_DUR',15,'Retain 90deg/15s = 6deg/s back-rotation. Historical R8 ideal-rate screen at MC pitch attitude P=0.58 gave ~10.4deg end-ramp lag; that was not validated recovery. R11 pitch attitude P=1.0 supersedes that calculation. Actual angle/timeout and residual speed must still be measured; do not lengthen the timer to hide failed rotation.')
     add('FW_RLL_TO_YAW_FF',0,'Keep the prior zero adverse-yaw torque feedforward; do not add unmeasured cross-axis feedforward during the first FW trial.')
     add("FW_THR_MAX", 1, "Use the physically power-limited engine envelope, not the old 9.6kW model's 50% cap.")
     add("VT_F_TRANS_THR", .4, "Retained prior value; the pinned tailsitter transition uses MC thrust, not this Standard-VTOL throttle parameter. It is not a tailsitter acceleration tune.")
-    add("FW_THR_TRIM", .25, "Provisional level-flight drag/power seed, not a calibrated trim point.")
+    add("FW_THR_TRIM", .18, "R16 partial trim correction from R15 steady145-185s: mean throttle0.1774 at26EAS with negative throttle integral. PX4 density-compensates this parameter:0.18 becomes about0.194 at that altitude, not exactly0.1774. Climb/sink feedforward also changes; validate altitude steps. Not an envelope calibration.")
     for name,value in (('FW_AIRSPD_STALL',17),('FW_AIRSPD_MIN',21),('FW_AIRSPD_TRIM',26),
                        ('FW_AIRSPD_MAX',34),('VT_ARSP_BLEND',20),('VT_ARSP_TRANS',25)):
         reason=('Retained prior value; the pinned tailsitter has no Standard-VTOL airspeed blending schedule controlled by this parameter.' if name=='VT_ARSP_BLEND' else
@@ -325,7 +327,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.15", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.16", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),
