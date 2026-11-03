@@ -239,6 +239,14 @@ class SourceAndNetworkTests(unittest.TestCase):
             with self.assertRaisesRegex(runner.RunnerError, "PID 42"):
                 runner.ensure_no_px4(proc)
 
+    def test_other_users_executable_link_is_not_needed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            proc = Path(tmp)
+            (proc / "1").mkdir()
+            (proc / "1/comm").write_text("systemd\n")
+            with mock.patch.object(Path, "resolve", side_effect=PermissionError("other user's exe")):
+                runner.ensure_no_px4(proc)
+
 
 class StateAndStartupTests(unittest.TestCase):
     @classmethod

@@ -176,12 +176,13 @@ def ensure_no_px4(proc=Path("/proc")):
             continue
         try:
             name = (entry / "comm").read_text().strip()
-            exe = (entry / "exe").resolve().name
         except FileNotFoundError:
             continue
         except PermissionError as exc:
             raise RunnerError(f"Cannot exclude another active PX4 process: {entry}") from exc
-        if name == "px4" or exe == "px4":
+        # Like pgrep -x, use the executable name, not command-line paths.
+        # /proc/<pid>/exe is often unreadable for unrelated users' processes.
+        if name == "px4":
             raise RunnerError(f"Another active PX4 process exists (PID {entry.name}); stop it first")
 
 
