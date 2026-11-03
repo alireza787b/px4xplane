@@ -1,316 +1,97 @@
 # Developer Guide
 
-**Quick reference for px4xplane development workflow, versioning, and CI/CD.**
+Current package: `v4.2.1`. Changes for PR21 belong under `Unreleased`; this
+work does not request a version bump, tag or release.
 
----
+Normal setup is in the [Quick Start](../README.md#quick-start) and optional
+[guided launcher guide](guided-launcher.md). Keep beginner instructions there
+separate from experimental validation.
 
-## Quick Start
+## Development Workflow
 
-### Development Workflow
+1. Work on a feature branch and keep changes scoped to the task.
+2. Build and test locally using the [Build Guide](BUILD.md).
+3. Add focused tests and an `Unreleased` changelog entry for behavioral changes.
+4. Open a pull request against `master` and review the CI results before merging.
 
-```bash
-# 1. Create feature branch (optional but recommended)
-git checkout -b feature/my-feature
+Do not force-push shared history as a release repair. Review unexpected local
+changes before updating a checkout; preserve them instead of automatically
+stashing, resetting or cleaning them.
 
-# 2. Make changes and test locally
-# Build: see docs/BUILD.md
+## Developer Validation
 
-# 3. Commit changes
-git add .
-git commit -m "Add feature: description"
+Plain `px4xplane` automates setup using official PX4 `main`, with no pending
+patches. `--validation` selects only open TECS #27670. Existing repo, branch
+and path overrides remain available. See
+[launcher validation](guided-launcher.md#developer-validation) for commands,
+`--no-sync` behavior and feature-branch helper updates.
 
-# 4. Push to master
-git checkout master
-git merge feature/my-feature
-git push origin master
-# → No release is created. Use workflow_dispatch for a manual CI build.
+Use separate per-airframe runtime state. Source updates must not silently
+delete saved tuning. `--reset-params` is an explicit backup/reset of the
+selected runtime only. Record source revision, plugin version, aircraft,
+active mapping and saved parameters when comparing results.
 
-# 5. When ready to release:
-# Update version numbers and public docs (see Versioning below)
-git add CHANGELOG.md CMakeLists.txt Makefile.linux Makefile.macos \
-  include/VersionInfo.h docs/config-editor.html README.md docs/index.md \
-  config/config.ini docs/*_XPLANE12_TEST.md aircraft/QuadTailsitter/README.md
-git commit -m "Release vX.Y.Z: description"
-git tag -a vX.Y.Z -m "Release vX.Y.Z: description"
-git push origin master && git push origin vX.Y.Z
-# → Automatic GitHub Release with binaries
-```
+Model-specific work is covered in the
+[compact QuadTailsitter developer page](compact-qtailsitter.md). Source-only
+owner tools are not release assets. Keep private inputs and credentials out of
+public branches and artifacts.
 
----
+## Local Checks
 
-## Versioning
-
-### Version Format: `MAJOR.MINOR.PATCH`
-
-- **MAJOR** (x.0.0): Breaking changes, migration required
-- **MINOR** (x.1.x): New features, backward compatible
-- **PATCH** (x.x.1): Bug fixes, backward compatible
-
-### Files to Update
-
-**1. `include/VersionInfo.h`**
-```cpp
-constexpr const char* VERSION = "4.2.1";  // Update
-constexpr const char* BUILD = "001";      // Reset for major/minor, increment for patch
-```
-
-**2. `CMakeLists.txt`**
-```cmake
-project(px4xplane VERSION 4.2.1 LANGUAGES CXX)  // Update
-```
-
-**3. `Makefile.linux` and `Makefile.macos`**
-```make
-VERSION := 4.2.1
-```
-
-**4. `docs/config-editor.html`** - Update the displayed editor version/build.
-
-**5. Public package docs** - Update any current-package references in
-`README.md`, `docs/index.md`, `config/config.ini`, aircraft docs, and
-flight-test cards.
-
-**6. `CHANGELOG.md`** - Add new section at top:
-```markdown
-## [4.2.1] - 2026-XX-XX
-
-### Added
-- Feature description
-
-### Fixed
-- Bug fix description
-```
-
-### Creating a Release
+Follow [BUILD.md](BUILD.md) for platform dependencies and packaging details.
+For a CMake build with offline tests enabled:
 
 ```bash
-# 1. Update versions and public current-package references
-# 2. Commit
-git add CHANGELOG.md CMakeLists.txt Makefile.linux Makefile.macos \
-  include/VersionInfo.h docs/config-editor.html README.md docs/index.md \
-  config/config.ini docs/*_XPLANE12_TEST.md aircraft/QuadTailsitter/README.md
-git commit -m "Release v4.2.1: Feature name"
-
-# 3. Tag and push
-git tag -a v4.2.1 -m "Release v4.2.1: Feature name"
-git push origin master
-git push origin v4.2.1
-
-# 4. Monitor release
-# → https://github.com/alireza787b/px4xplane/actions
-# → Builds take 5-15 minutes
-# → Release created automatically with 3 platform binaries
+cmake -B build -DCMAKE_BUILD_TYPE=Release -DPX4XPLANE_BUILD_TESTS=ON
+cmake --build build --config Release
+ctest --test-dir build -C Release --output-on-failure
 ```
 
----
+Before any flight check, match the X-Plane aircraft, plugin `config_name` and
+PX4 `SYS_AUTOSTART`. Offline tests and a successful build are not evidence of
+a new live flight or full-envelope acceptance. Use the matching
+[flight-test card](index.md#flight-test-cards) for runtime checks.
 
-## CI/CD (GitHub Actions)
+## CI and Packaging
 
-### Workflow Triggers
+| Trigger | Result |
+| --- | --- |
+| Pull request to `master` | Cross-platform build and offline tests |
+| Manual dispatch of `build.yml` | On-demand CI build |
+| Push of a new `v*.*.*` tag | Release workflow and versioned platform ZIPs |
 
-| Trigger | Branch/Tag | Result |
-|---------|-----------|--------|
-| Pull request to `master` | - | Build all platforms for validation |
-| Push tag `v*.*.*` | - | Build + Create GitHub Release |
-| Manual workflow dispatch in `build.yml` | Any | Build all platforms on demand |
+Regular pushes to `master` do not create releases. Workflow definitions:
+[build.yml](../.github/workflows/build.yml) and
+[release.yml](../.github/workflows/release.yml).
 
-### Build Outputs
+Check the complete staged plugin folder, including `64/{platform}.xpl`,
+`64/config.ini`, public `px4_airframes` references and user docs. Confirm
+experimental profiles, owner runners and private artifacts are not included
+as normal release assets. Use
+[GitHub Actions logs](https://github.com/alireza787b/px4xplane/actions) to
+investigate a failed build or packaging step.
 
-**CI artifacts** (90-day retention):
-- `px4xplane-windows.zip` (x64)
-- `px4xplane-linux.zip` (x64)
-- `px4xplane-macos.zip` (Universal: Intel + Apple Silicon)
+## Versioning and Releases
 
-**Release assets** are versioned:
-- `px4xplane-windows-vX.Y.Z.zip`
-- `px4xplane-linux-vX.Y.Z.zip`
-- `px4xplane-macos-vX.Y.Z.zip`
+Use semantic versioning: patch for compatible fixes, minor for compatible
+features, major for breaking changes. Until a new release is approved, keep
+`4.2.1` current and put changes under `Unreleased`.
 
-**Structure** (identical on all platforms):
-```
-px4xplane/
-├── 64/
-│   ├── {platform}.xpl
-│   └── config.ini
-├── px4_airframes/
-│   ├── 5001_xplane_cessna172
-│   ├── 5002_xplane_tb2
-│   ├── 5010_xplane_ehang184
-│   ├── 5020_xplane_alia250
-│   └── 5021_xplane_qtailsitter
-└── README.md
-```
+For a separately approved future release:
 
-### Workflow Files
+1. Choose a new, unused version and synchronize `include/VersionInfo.h`,
+   `CMakeLists.txt`, `Makefile.linux`, `Makefile.macos` and the config editor's
+   displayed version/build.
+2. Update current-package references in README, the docs index, config and
+   aircraft/test-card docs. Move reviewed `Unreleased` entries to the new
+   dated changelog section.
+3. Verify offline tests, all platform packages and the relevant X-Plane checks.
+4. Create a new annotated version tag only after approval, then monitor the
+   release workflow and inspect the downloadable assets.
 
-- `.github/workflows/build.yml` - Pull-request and manual build validation
-- `.github/workflows/release.yml` - Release automation (builds + GitHub Release on tag)
+Published versions and tags are immutable. Do not reuse a tag, force-update it
+or delete a published release to replace its contents. Document a published
+mistake and prepare a new reviewed patch version instead.
 
----
-
-## Common Tasks
-
-### Bug Fix (Patch Release)
-
-```bash
-# Example: v4.0.1 -> v4.0.2
-
-# 1. Fix bug and test
-# 2. Update version surfaces listed above
-# 3. Confirm no stale current version remains:
-rg "4\\.0\\.1|v4\\.0\\.1|build 001"
-
-# 4. Release
-git commit -m "Release v4.0.2: Fix critical bug"
-git tag -a v4.0.2 -m "Release v4.0.2: Fix critical bug"
-git push origin master && git push origin v4.0.2
-```
-
-### New Feature (Minor Release)
-
-```bash
-# Example: v4.0.x -> v4.2.1
-
-# 1. Implement feature and test
-# 2. Update version surfaces listed above
-
-# 3. Release
-git commit -m "Release v4.2.1: New feature"
-git tag -a v4.2.1 -m "Release v4.2.1: New feature"
-git push origin master && git push origin v4.2.1
-```
-
-### Breaking Change (Major Release)
-
-```bash
-# Current: v4.2.1 -> Target: v5.0.0
-
-# 1. Implement breaking change
-# 2. Document migration in CHANGELOG.md (BREAKING CHANGES section)
-# 3. Update version surfaces listed above
-
-# 4. Release
-git commit -m "Release v5.0.0: Breaking change description"
-git tag -a v5.0.0 -m "Release v5.0.0: Breaking change description"
-git push origin master && git push origin v5.0.0
-```
-
----
-
-## Testing Locally
-
-### Build All Platforms
-
-**Windows (Visual Studio):**
-```cmd
-# Open px4-xplane.sln
-# Build → Build Solution (Release | x64)
-```
-
-**Linux:**
-```bash
-make -f Makefile.linux
-# or
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
-```
-
-**macOS:**
-```bash
-make -f Makefile.macos
-# or
-cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build
-```
-
-### Verify Plugin Structure
-
-```bash
-# Windows
-tree /F build\windows\release\plugins\px4xplane
-
-# Linux/macOS
-tree build/{platform}/Release/px4xplane
-```
-
-**Expected structure:**
-- `64/{platform}.xpl` ✓
-- `64/config.ini` ✓
-- `px4_airframes/500*_xplane_*` ✓
-
----
-
-## Troubleshooting
-
-### Build Fails in CI/CD
-
-1. Check GitHub Actions logs: https://github.com/alireza787b/px4xplane/actions
-2. Identify failing platform (Windows/Linux/macOS)
-3. Test locally on that platform
-4. Fix and push
-
-### Release Created But Missing Binaries
-
-1. Check "build-and-upload" job in workflow
-2. Look for ZIP packaging errors
-3. Verify artifact upload step succeeded
-4. If needed, manually upload ZIPs to release
-
-### Wrong Version Number
-
-```bash
-# Delete tag locally and remotely
-git tag -d v4.2.1
-git push --delete origin v4.2.1
-
-# Delete GitHub Release manually
-# Fix version numbers, recommit, re-tag
-```
-
----
-
-## Best Practices
-
-✅ **DO:**
-- Test locally before pushing to master
-- Update all version and public current-package references consistently
-- Write clear CHANGELOG entries
-- Use annotated tags (`git tag -a`)
-- Test plugin in X-Plane before release
-
-❌ **DON'T:**
-- Push unfinished features to master
-- Reuse version numbers
-- Skip CHANGELOG updates
-- Use lightweight tags
-- Release without local testing
-
----
-
-## Documentation Structure
-
-```
-px4xplane/
-├── README.md              # User guide, installation, features
-├── CHANGELOG.md           # Version history
-├── docs/
-│   ├── DEVELOPER.md       # This file: workflow, versioning, CI/CD
-│   ├── BUILD.md           # Detailed build instructions (all platforms)
-│   ├── BUILD_SYSTEM.md    # Technical build system details
-│   ├── config-editor.html # Local config editor
-│   ├── custom-airframe-config.md
-│   └── developer/config-schema.md
-```
-
----
-
-## Links
-
-- **Repository**: https://github.com/alireza787b/px4xplane
-- **Issues**: https://github.com/alireza787b/px4xplane/issues
-- **Releases**: https://github.com/alireza787b/px4xplane/releases
-- **Actions**: https://github.com/alireza787b/px4xplane/actions
-- **Official PX4**: https://github.com/PX4/PX4-Autopilot
-- **PX4 X-Plane SITL merge**: https://github.com/PX4/PX4-Autopilot/pull/22493
-
----
-
-**Last Updated**: 2026-08-15 (px4xplane v4.2.1)
+See the [documentation index](index.md) for other guides and
+[Troubleshooting](index.md#troubleshooting) for operator issues.

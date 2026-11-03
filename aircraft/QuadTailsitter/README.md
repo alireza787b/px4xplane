@@ -1,6 +1,9 @@
 # QuadTailsitter X-Plane Aircraft
 
-This aircraft is paired with PX4 airframe `5021_xplane_qtailsitter`.
+This historical 5 kg example is retained in source, not packaged in new
+releases. Use its matching public `5021_xplane_qtailsitter` defaults.
+Model-specific developer tuning is separate; see the
+[compact experiment guide](../../docs/compact-qtailsitter.md).
 
 ## Camera Views
 
