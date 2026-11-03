@@ -89,7 +89,7 @@ class ProfileTests(unittest.TestCase):
 
     def test_sibling_bundle_profile_and_explicit_override(self):
         with tempfile.TemporaryDirectory() as tmp:
-            here = Path(tmp)
+            here = Path(tmp).resolve()
             sibling = here / runner.PROFILE_NAME
             sibling.write_bytes(PROFILE.read_bytes())
             self.assertEqual(runner.find_profile(script=here / "run_compact_qtailsitter.py"), sibling)
@@ -389,7 +389,7 @@ class RunnerIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
-        self.base = Path(self.tmp.name)
+        self.base = Path(self.tmp.name).resolve()
         self.root = self.base / "X-Plane 12"
         self.px4 = self.base / "px4"
         self.state = self.base / "state with spaces"
