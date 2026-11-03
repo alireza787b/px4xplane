@@ -27,6 +27,78 @@ MAX_METADATA = 8 * 1024 * 1024
 SNAPSHOT_FILES = ('manifest.json', 'datarefs.json', 'datarefs.csv', 'datarefs.txt',
                   'capture_config.ini', 'capture_config.json')
 
+# Laminar's published catalog defines moments in Nm and inertia per kg in m^2.
+# These are recorded only: neither this helper nor TruthCapture writes physics.
+MOMENT_REFS = tuple('sim/flightmodel/forces/'+axis+'_'+kind
+                    for kind in ('total', 'prop', 'aero') for axis in ('L', 'M', 'N'))
+INERTIA_REFS = tuple('sim/aircraft/weight/acf_J'+axis+axis+'_unitmass' for axis in 'xyz')
+ENERGY_REFS = ('sim/cockpit/electrical/battery_charge_watt_hr',
+               'sim/aircraft/electrical/battery_watt_hr_max',
+               'sim/cockpit2/electrical/battery_voltage_actual_volts',
+               'sim/cockpit2/electrical/battery_amps')
+FORCE_REFS = tuple('sim/flightmodel/forces/'+axis+'_'+kind
+                   for kind in ('total', 'prop', 'aero') for axis in ('faxil', 'fside', 'fnrml'))
+DIAGNOSTIC_REFS = MOMENT_REFS + INERTIA_REFS + ENERGY_REFS + FORCE_REFS
+TRUTH_BLOCK = ('\n# BEGIN REF6 READ-ONLY MOMENT AND ENERGY CAPTURE\n' +
+               ''.join(ref+'|ref6_dynamics|false\n' for ref in DIAGNOSTIC_REFS) +
+               '# END REF6 READ-ONLY MOMENT AND ENERGY CAPTURE\n').encode()
+
+
+def configure_diagnostics(state, restore=False):
+    """Receipted, reversible append to the recorder's custom catalog only."""
+    from ref6 import atomic, require
+    journal_file = state/'truth-instrumentation.json'
+    require(not journal_file.is_symlink(), 'Recorder instrumentation journal must not be a symlink')
+    journal = json.loads(journal_file.read_text()) if journal_file.exists() else None
+    if not restore:
+        receipt = json.loads((state/'receipt.json').read_text())
+        require(not receipt.get('restored'), 'Ref6 installation has been restored')
+    if journal is None:
+        require(not restore, 'No recorder instrumentation to restore')
+        root = Path(receipt['aircraft']).parents[1]
+        target = root/'Resources/plugins/XPlaneTruthCapture/config/datarefs.txt'
+        require(target.parent.is_dir() and not target.is_symlink(),
+                'Missing recorder config directory or symlink target: '+str(target))
+        before = target.read_bytes() if target.exists() else b''
+        require(len(before) < 256*1024, 'Recorder custom catalog exceeds 256 KiB')
+        require(b'# BEGIN REF6 READ-ONLY' not in before,
+                'Unreceipted Ref6 capture block found; refusing to overwrite')
+        journal = dict(version=1, target=str(target), original=before.hex(),
+                       originally_present=target.exists(), installed_sha256=hashlib.sha256(before+TRUTH_BLOCK).hexdigest())
+        atomic(journal_file, (json.dumps(journal, indent=2)+'\n').encode())
+    require(journal.get('version') == 1, 'Unsupported recorder instrumentation receipt')
+    target = Path(journal['target'])
+    require(target.is_absolute() and target.parent.resolve() == target.parent and not target.is_symlink(),
+            'Recorder target must be an absolute regular path')
+    before = bytes.fromhex(journal['original'])
+    current = target.read_bytes() if target.exists() else b''
+    expected = before+TRUTH_BLOCK
+    require(hashlib.sha256(expected).hexdigest() == journal['installed_sha256'],
+            'Recorder instrumentation receipt does not match this catalog')
+    require(current in (before, expected), 'Recorder custom catalog was edited; nothing overwritten')
+    if restore:
+        if journal['originally_present']:
+            atomic(target, before)
+        else:
+            target.unlink(missing_ok=True)
+        journal_file.unlink()
+        print('Restored recorder custom catalog:', target)
+    else:
+        if current != expected:
+            atomic(target, expected)
+        print('Read-only moment/inertia/battery capture configured:', target)
+        print('Stop any current TruthCapture recording, then Start Capture again. No plugin/aircraft replacement.')
+    return target
+
+
+def diagnostic_availability(source):
+    with (source/'datarefs.csv').open(encoding='utf-8-sig', newline='') as stream:
+        rows = {row['path']: row for row in csv.DictReader(stream)}
+    missing = [ref for ref in DIAGNOSTIC_REFS
+               if ref not in rows or rows[ref].get('exists', '').lower() != 'true']
+    return {'requested': list(DIAGNOSTIC_REFS), 'missing': missing,
+            'note': 'Availability only; units/signs/physical validity require post-flight review.'}
+
 
 def _identity(stat):
     # Do not use ctime/mtime: both can change on a legitimate append (also on WSL).

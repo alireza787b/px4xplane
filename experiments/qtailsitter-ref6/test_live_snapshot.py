@@ -20,6 +20,99 @@ import attach_truth as truth
 from collect import collect
 
 
+class DiagnosticCatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name)
+        self.state = root/'state'
+        self.state.mkdir()
+        self.target = root/'X-Plane 12/Resources/plugins/XPlaneTruthCapture/config/datarefs.txt'
+        self.target.parent.mkdir(parents=True)
+        (self.state/'receipt.json').write_text(json.dumps({
+            'aircraft': str(root/'X-Plane 12/Aircraft/QuadTailsitterRef6')}))
+
+    def test_configure_preserves_bytes_idempotent_and_restore(self):
+        original = b'\xef\xbb\xbf# user refs\r\nsim/test/user|custom|false\r\n'
+        self.target.write_bytes(original)
+        truth.configure_diagnostics(self.state)
+        installed = self.target.read_bytes()
+        self.assertEqual(installed, original+truth.TRUTH_BLOCK)
+        truth.configure_diagnostics(self.state)
+        self.assertEqual(self.target.read_bytes(), installed)
+        truth.configure_diagnostics(self.state, restore=True)
+        self.assertEqual(self.target.read_bytes(), original)
+
+    def test_new_custom_file_is_removed_on_restore(self):
+        truth.configure_diagnostics(self.state)
+        truth.configure_diagnostics(self.state, restore=True)
+        self.assertFalse(self.target.exists())
+
+    def test_user_edits_and_symlinks_are_not_overwritten(self):
+        truth.configure_diagnostics(self.state)
+        self.target.write_bytes(self.target.read_bytes()+b'# later user edit\n')
+        for restore in (False, True):
+            with self.assertRaisesRegex(ValueError, 'edited'):
+                truth.configure_diagnostics(self.state, restore=restore)
+        self.target.unlink()
+        other = self.target.parent/'other'
+        other.write_text('unrelated')
+        self.target.symlink_to(other)
+        with self.assertRaisesRegex(ValueError, 'regular path'):
+            truth.configure_diagnostics(self.state, restore=True)
+        self.assertEqual(other.read_text(), 'unrelated')
+
+    def test_crash_after_receipt_can_resume(self):
+        from ref6 import atomic
+        def fail_target(file, data):
+            if file == self.target:
+                raise OSError('simulated write failure')
+            atomic(file, data)
+        with patch('ref6.atomic', side_effect=fail_target):
+            with self.assertRaises(OSError):
+                truth.configure_diagnostics(self.state)
+        truth.configure_diagnostics(self.state)
+        self.assertEqual(self.target.read_bytes(), truth.TRUTH_BLOCK)
+
+    def test_symlink_journal_cannot_restore_another_catalog(self):
+        truth.configure_diagnostics(self.state)
+        journal = self.state/'truth-instrumentation.json'
+        other_state = self.state.parent/'other-state'
+        other_state.mkdir()
+        link = other_state/journal.name
+        link.symlink_to(journal)
+        original_journal = journal.read_bytes()
+        with self.assertRaisesRegex(ValueError, 'symlink'):
+            truth.configure_diagnostics(other_state, restore=True)
+        self.assertEqual(self.target.read_bytes(), truth.TRUTH_BLOCK)
+        self.assertEqual(journal.read_bytes(), original_journal)
+        self.assertTrue(link.is_symlink())
+
+    def test_resumed_prepare_rejects_restored_install_but_allows_truth_restore(self):
+        original = b'# user catalog\n'
+        self.target.write_bytes(original)
+        truth.configure_diagnostics(self.state)
+        # A truth restore can finish its write but leave the journal after a crash.
+        self.target.write_bytes(original)
+        receipt_file = self.state/'receipt.json'
+        receipt = json.loads(receipt_file.read_text())
+        receipt['restored'] = True
+        receipt_file.write_text(json.dumps(receipt))
+        with self.assertRaisesRegex(ValueError, 'installation has been restored'):
+            truth.configure_diagnostics(self.state)
+        self.assertEqual(self.target.read_bytes(), original)
+        truth.configure_diagnostics(self.state, restore=True)
+        self.assertEqual(self.target.read_bytes(), original)
+
+    def test_runtime_availability_does_not_synthesize_missing_values(self):
+        session = Path(self.temp.name)/'session'
+        session.mkdir()
+        (session/'datarefs.csv').write_text('path,exists\n'+''.join(
+            f'{ref},{"false" if ref.endswith("L_prop") else "true"}\n' for ref in truth.DIAGNOSTIC_REFS))
+        status = truth.diagnostic_availability(session)
+        self.assertEqual(status['missing'], ['sim/flightmodel/forces/L_prop'])
+
+
 class GeneratedWindow(io.RawIOBase):
     """Seekable, fixed-width CSV source without storing hundreds of MiB."""
 

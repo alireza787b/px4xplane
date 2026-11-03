@@ -1,98 +1,93 @@
-# R11: FW Damping And MC Attitude-Tracking Test
+# R12: Recovery Handoff Test
 
-SITL only. Same aircraft, plugin and firmware pin. Changes: FW_RR_P=0.14,
-MC_ROLL_P=1.4 and MC_PITCH_P=1.0. Rate PID otherwise unchanged. Not yet validated.
+SITL only. Same Ref6 aircraft, plugin and diagnostic firmware. No new PID,
+geometry, motor-direction, EKF, TECS or cruise-speed changes. This is a diagnostic
+test, not a promised complete-flight fix. R11 already supplies the baseline.
 
-## 1. Update In WSL
+## 1. Update And Add Read-Only Measurements
 
-Stop PX4. No aircraft/config bytes change, so X-Plane can stay open for updating.
+Stop PX4 and stop any current TruthCapture recording. In WSL:
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
 bash run.sh update
 cat VERSION.txt
+bash run.sh prepare-truth
 ```
 
-Expect `2026-11-02.ref6.11`. No token, extraction or plugin reinstall.
-Start a fresh X-Plane flight, not a previous stopped-airborne state.
+Expect `2026-11-03.ref6.12`. No extraction, plugin reinstall, new aircraft or token.
+`prepare-truth` appends a reversible block to TruthCapture's custom dataref list:
+prop/aerodynamic/total moments and forces, runtime inertia and battery measurements.
+It does not write physics or change the px4xplane config. Existing custom entries
+are preserved. To undo later: `bash run.sh restore-truth` with PX4 stopped.
 
-## 2. Prepare And Launch
+## 2. Fresh Aircraft And Capture
 
-Load QuadTailsitterRef6, 2 kg, zero payload, no wind, flat terrain with a large
-clear recovery area. Start TruthCapture recording and QGC. Select Plugins >
-PX4 X-Plane > Airframes > QuadTailsitterRef6, then Connect to SITL.
+Start a fresh Ref6 flight with a fully charged X-Plane battery, zero payload and
+no wind. Do not resume the previous stopped-airborne/depleted-battery state.
+Keep a large, flat recovery area clear. Start a NEW TruthCapture recording after
+step 1, then start QGC. Select Plugins > PX4 X-Plane > Airframes >
+QuadTailsitterRef6, then Connect to SITL.
 
 ```bash
-bash run.sh flight --yes-debug
+bash run.sh flight --scenario recovery-jerk --yes-debug
 ```
 
-This uses the SAME diagnostic PX4 pin and 180 m console takeoff height. It does
-not apply private dive/optional control fixes. Normal flight yaw mode is 0;
-the R9 lateral-test yaw-fixed override only applies to the hover scenario.
+This changes ONLY `MPC_JERK_AUTO=4` from the R11 baseline `0.7`. The runner checks
+the actual override and records it. All R11 PID values remain unchanged.
+Missing moment/energy datarefs stop the diagnostic before changing the PX4 checkout.
+Do not repeat baseline unless requested: `flight` without `--scenario` intentionally
+retains the old baseline, not the new recovery experiment.
 
-## 3. Take Off From The PX4 Console
+## 3. PX4 Console: Take Off
 
-After REF6 PARAMETER GATE PASSED and Ready for takeoff:
+After PARAMETER GATE PASSED and Ready for takeoff:
 
 ```text
-param show FW_RR_P
-param show MC_ROLLRATE_P
-param show MC_ROLL_P
-param show MC_PITCH_P
+param show MPC_JERK_AUTO
+param show MPC_XY_VEL_MAX
 param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect 0.14, 0.060, 1.4, 1.0 and 180. Use THIS takeoff command, not QGC's remembered
-takeoff slider. Last flights used QGC-selected heights instead of 180 m.
-Wait until actual height is 180 m above home and hold is settled for 15 seconds.
-Over flat terrain, verify actual ground clearance as well; home-relative height
-does not guarantee clearance over hills.
+Expect `4`, `4`, `180`. Use this takeoff command, NOT QGC's remembered takeoff
+slider. Wait for actual height 180 m above home, adequate terrain clearance and
+15 seconds of settled hover. No GoTo, RTL, autotune or in-flight parameter edits.
 
-## 4. Transition And Measure FW For 15 Seconds
+## 4. Front Transition, Then 15 Seconds FW
 
 ```text
 commander transition
-```
-
-Issue once. Confirm established FW:
-
-```text
 listener vtol_vehicle_status -n 1
 ```
 
-Require vehicle_vtol_state 4. Start counting FIFTEEN seconds from confirmed FW,
-not from the transition command. No GoTo, speed change, orbit completion or RTL.
-Hold can start a shallow turn on its inherited 1300 m orbit: leave its target
-alone during the measurement. Watch bank oscillation amplitude and altitude.
+Issue the transition once. Confirm `vehicle_vtol_state: 4`, then count 15 seconds
+from established FW. Its inherited Hold orbit may turn gently; leave the target
+alone. FW oscillation is NOT claimed fixed by changing an MC trajectory limit.
+The extra prop/aerodynamic moments are intended to diagnose it.
 
-After 15 seconds of FW, request normal MC recovery once:
+After those 15 seconds, request normal back-transition once:
 
 ```text
 commander transition
 ```
 
-## 5. Recover, Then Land At Current Position
+## 5. Recovery And Land
 
-Back-rotation duration remains 15 seconds. Allow room for travel. A change to
-MC mode does not prove it reached upright attitude or stopped.
+Wait for upright, settled MC with horizontal speed approximately below 1 m/s and
+vertical speed near zero. The MC mode label alone is not sufficient.
 
 ```text
 listener vtol_vehicle_status -n 1
 listener vehicle_local_position -n 1
 ```
 
-Require state 3 AND upright, settled attitude, horizontal speed roughly below
-1 m/s and vertical speed near zero. Observe another 15 seconds of steady hover,
-then:
+If it settles, observe another 15 seconds, then:
 
 ```text
 commander land
 ```
-
-No RTL: its inherited 180 m return / 150 m descend heights add unnecessary
-climb and a long descent to this short control test.
 
 After touchdown and automatic disarm:
 
@@ -100,29 +95,35 @@ After touchdown and automatic disarm:
 shutdown
 ```
 
-Leave TruthCapture running. Wait for UPLOAD VERIFIED. No manual ZIP copying.
-A failed upload can be retried:
+Leave TruthCapture running until collection finishes. Wait for UPLOAD VERIFIED.
+Truth compression, collection and upload are automatic. Retry a retained upload:
 
 ```bash
 bash run.sh retry-uploads
 ```
 
-The 256 MiB raw-window failure is fixed: larger complete truth windows are now
-streamed to gzip automatically, without dropping frames. Storage/input/output
-limits still apply and any failure is reported explicitly. This cannot restore
-the truth omitted from the ZIP you already sent. TLS/network failures also
-remain possible; retry-uploads retains the existing checksum-verified workflow.
+## Stop A Failed Test Promptly
 
-## Failed Runs Are Useful
+If recovery keeps oscillating for 15-20 seconds without damping, stop with
+`shutdown` and send that failure. Do not leave it oscillating for minutes or tune
+sliders. The prior run eventually exhausted available propulsion power near
+800 seconds; that is a separate event, not evidence about early control quality.
+Also stop for a growing attitude departure, persistent motor clipping, roughly
+30 m height loss, or actual horizontal speed exceeding about 12 m/s in MC.
+End the complete run within six minutes even if no clean landing is possible.
+These are experiment stop criteria, not certified recovery limits.
 
-If oscillation grows markedly, FW bank departs beyond approximately 60 degrees,
-height drops roughly 30 m, motors clip persistently, or the aircraft clearly
-loses control, preserve the failure and end with shutdown rather than waiting
-for a prolonged uncontrolled flight. These are simulation experiment limits,
-not proven recovery boundaries. About 10-15 seconds of sustained failed MC
-recovery is enough evidence; no need to leave it oscillating for minutes.
+## Second Case Only If Requested After Review
 
-Do not relax EKF gates, force-arm, repeatedly toggle modes or change gains during
-this run. A timer-only back exit or shutdown while airborne remains a failed
-recovery, even if the FW segment improved. Compare FW bank/rate errors, sideslip,
-actual torque/prop response, pitch recovery, braking and landing separately.
+A separate fresh flight can isolate braking without altering PID:
+
+```bash
+bash run.sh flight --scenario braking-isolation --yes-debug
+```
+
+This starts again from R11 and changes ONLY `MPC_XY_VEL_MAX=12`; jerk remains `0.7`
+and cruise remains `3.5`. It raises the braking trigger from `5.2` to `15.6 m/s`
+and can suppress INITIAL braking as well as retriggers. It is not a production
+fix, speed recommendation or permission to fly faster. Do not combine the cases
+or interpret it as a pure on/off switch. Follow the same short scenario/stop
+criteria, using a newly charged aircraft and recording.

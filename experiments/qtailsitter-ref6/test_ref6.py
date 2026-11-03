@@ -185,18 +185,101 @@ class Ref6Tests(unittest.TestCase):
         self.assertIn('-u 18571 -o 14550 -t "$REF6_QGC"', startup)
 
     def test_lateral_hover_scenario_has_checked_fixed_yaw(self):
-        text = flight.startup(self.bundle/'profile.sh', 50, yaw_fixed=True)
+        text = flight.startup(self.bundle/'profile.sh', 50, overrides=ref6.scenario_overrides('hover', 'baseline'))
         self.assertIn('param set MPC_YAW_MODE 5\n', text)
         self.assertIn('param compare MPC_YAW_MODE 5', text)
         self.assertIn('param compare MIS_TAKEOFF_ALT 50', text)
         self.assertNotIn('param set MPC_YAW_MODE', flight.startup(self.bundle/'profile.sh', 180))
+
+    def test_scenario_overrides_are_narrow_and_mode_specific(self):
+        for mode, scenario, expected in (
+                ('flight', 'baseline', {}),
+                ('hover', 'baseline', {'MPC_YAW_MODE': 5}),
+                ('A', 'baseline', {}),
+                ('flight', 'recovery-jerk', {'MPC_JERK_AUTO': 4.0}),
+                ('flight', 'braking-isolation', {'MPC_XY_VEL_MAX': 12.0})):
+            with self.subTest(mode=mode, scenario=scenario):
+                self.assertEqual(ref6.scenario_overrides(mode, scenario), expected)
+        with self.assertRaisesRegex(ValueError, 'Unknown scenario'):
+            ref6.scenario_overrides('flight', 'unknown')
+
+    def test_scenario_startup_applies_after_profile_and_altitude_and_gates_effective_values(self):
+        profile = self.bundle/'profile.sh'
+        original = profile.read_bytes()
+        for mode, scenario, name, old in (
+                ('hover', 'baseline', 'MPC_YAW_MODE', '4'),
+                ('flight', 'recovery-jerk', 'MPC_JERK_AUTO', '8'),
+                ('flight', 'braking-isolation', 'MPC_XY_VEL_MAX', '5')):
+            with self.subTest(scenario=scenario):
+                overrides = ref6.scenario_overrides(mode, scenario)
+                value = overrides[name]
+                with patch('flight.profile_params', return_value={name: old, 'MIS_TAKEOFF_ALT': '10'}):
+                    text = flight.startup(profile, 180, overrides=overrides)
+                applied = text.index(f'param set {name} {value}\n')
+                self.assertLess(text.index('. "$REF6_PROFILE"\n'), text.index('param set MIS_TAKEOFF_ALT 180\n'))
+                self.assertLess(text.index('param set MIS_TAKEOFF_ALT 180\n'), applied)
+                self.assertLess(applied, text.index('param show '))
+                self.assertIn(f'param show {name}\nif ! param compare {name} {value}; then\n', text)
+                self.assertNotIn(f'param compare {name} {old};', text)
+                self.assertEqual(text.count(f'param compare {name} '), 1)
+                self.assertIn('param compare MIS_TAKEOFF_ALT 180;', text)
+                self.assertNotIn('param compare MIS_TAKEOFF_ALT 10;', text)
+        self.assertEqual(profile.read_bytes(), original)
+
+    def test_nonbaseline_wrong_mode_rejected_before_lock_or_dispatch(self):
+        for mode in ('hover', 'A', 'check', 'install', 'bench', 'collect', 'restore', 'update',
+                     'configure-upload', 'disable-upload', 'retry-uploads'):
+            for scenario in ('recovery-jerk', 'braking-isolation'):
+                with self.subTest(mode=mode, scenario=scenario), \
+                     patch('sys.argv', ['ref6.py', mode, '--scenario', scenario]), \
+                     patch('pathlib.Path.open') as opened, patch('ref6.dispatch') as dispatch:
+                    with self.assertRaisesRegex(ValueError, 'only valid for mode flight'):
+                        ref6.main()
+                    opened.assert_not_called()
+                    dispatch.assert_not_called()
+
+    def test_direct_entry_points_reject_wrong_mode_before_side_effects(self):
+        for entry in (ref6.dispatch, flight.flight):
+            for mode in ('hover', 'A'):
+                for scenario in ('recovery-jerk', 'braking-isolation'):
+                    with self.subTest(entry=entry.__name__, mode=mode, scenario=scenario), \
+                         patch('flight.bundle_check') as checked, patch('flight.git') as git, \
+                         patch('pathlib.Path.open') as opened:
+                        with self.assertRaisesRegex(ValueError, 'only valid for mode flight'):
+                            entry(argparse.Namespace(mode=mode, scenario=scenario))
+                        checked.assert_not_called()
+                        git.assert_not_called()
+                        opened.assert_not_called()
+
+    def test_flight_scenario_cli_and_diagnostic_warnings(self):
+        for scenario in ref6.SCENARIOS:
+            with self.subTest(scenario=scenario):
+                output = io.StringIO()
+                with patch('sys.argv', ['ref6.py', 'flight', '--scenario', scenario, '--yes-debug',
+                                        '--host', '127.0.0.1', '--truth', str(self.base/'truth')]), \
+                     patch('ref6.bundle_check'), patch('gates.report', return_value={}), \
+                     patch('flight.flight') as launch, redirect_stdout(output):
+                    ref6.main()
+                self.assertEqual(launch.call_args.args[0].scenario, scenario)
+                text = output.getvalue()
+                self.assertIn('Scenario: '+scenario, text)
+                if scenario == 'braking-isolation':
+                    self.assertIn('increases the 1.3*bound threshold to 15.6 m/s', text)
+                    self.assertIn('suppresses initial 9.3 m/s braking too', text)
+                    self.assertIn('NOT a production fix', text)
+                elif scenario == 'recovery-jerk':
+                    self.assertIn('diagnostics only; no full-flight promise', text)
+                else:
+                    self.assertNotIn('WARNING:', text)
 
     def test_update_points_to_current_fw_scenario(self):
         args = argparse.Namespace(state=self.state, mode='update', manifest_url='https://example.invalid/current')
         output = io.StringIO()
         with patch('update_debug.update', return_value=ref6.VERSION), redirect_stdout(output):
             ref6.dispatch(args)
-        self.assertIn('Next: bash run.sh flight --yes-debug', output.getvalue())
+        self.assertIn('Next: bash run.sh prepare-truth', output.getvalue())
+        self.assertIn('QUICKSTART.md for the recovery-jerk test', output.getvalue())
+        self.assertNotIn('Next: bash run.sh flight --yes-debug', output.getvalue())
         self.assertNotIn('Next: bash run.sh hover', output.getvalue())
 
     def test_profile_dynamic_values_refused(self):
@@ -325,6 +408,38 @@ class Ref6Tests(unittest.TestCase):
             restored.assert_called_once()
             collected.assert_called_once()
 
+    def test_missing_diagnostics_rejected_before_checkout_or_run_creation(self):
+        self.install()
+        truth = self.base/'truth'
+        truth.mkdir()
+        catalog = truth/'datarefs.csv'
+        for scenario in ('recovery-jerk', 'braking-isolation'):
+            for missing in ('absent', 'unavailable', 'catalog'):
+                with self.subTest(scenario=scenario, missing=missing):
+                    catalog.write_text('path,exists\n'+''.join(
+                        f'{ref},{"false" if missing == "unavailable" and index == 0 else "true"}\n'
+                        for index, ref in enumerate(attach_truth.DIAGNOSTIC_REFS)
+                        if not (missing == 'absent' and index == 0)))
+                    if missing == 'catalog':
+                        catalog.unlink()
+                    args = argparse.Namespace(host='127.0.0.1', qgc='127.0.0.1', truth=truth,
+                        repo=self.base/'repo', state=self.state, mode='flight',
+                        scenario=scenario, no_upload=True)
+                    with patch('flight.HERE', self.bundle), patch('flight.bundle_check'), \
+                         patch('flight.no_px4'), patch('flight.active_session', return_value=truth), \
+                         patch('flight.loaded_truth', return_value={}), \
+                         patch('flight.git', return_value=subprocess.CompletedProcess([], 0, stdout='')) as git, \
+                         patch('flight.save') as saved, patch('flight.subprocess.run') as execute, \
+                         patch('flight.tempfile.gettempdir', return_value=str(self.base)):
+                        error = FileNotFoundError if missing == 'catalog' else ValueError
+                        with self.assertRaises(error):
+                            flight.flight(args)
+                        self.assertEqual([call.args[1:] for call in git.call_args_list],
+                            [('status', '--porcelain'), ('cat-file', '-e', ref6.BASE+'^{commit}')])
+                        saved.assert_not_called()
+                        execute.assert_not_called()
+                    self.assertFalse((self.bundle/'runs').exists())
+
     def test_hover_aliases_accept_pending_report_without_measurements(self):
         for mode in ('hover', 'A', 'flight'):
             with patch('sys.argv', ['ref6.py', mode, '--host', '127.0.0.1', '--truth', str(self.base/'truth')]), patch('ref6.bundle_check'), \
@@ -335,6 +450,7 @@ class Ref6Tests(unittest.TestCase):
                 launch.assert_called_once()
                 self.assertIsNone(launch.call_args.args[0].bench_measurements)
                 self.assertEqual(launch.call_args.args[0].mode, mode)
+                self.assertEqual(launch.call_args.args[0].scenario, 'baseline')
 
     def test_hover_requires_explicit_experiment_consent(self):
         with patch('sys.argv', ['ref6.py', 'hover']), patch('ref6.bundle_check'), \

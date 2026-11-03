@@ -9,10 +9,10 @@ import socket
 import subprocess
 import tempfile
 
-from attach_truth import active_session, begin_snapshot, snapshot_live
+from attach_truth import active_session, begin_snapshot, snapshot_live, diagnostic_availability
 from collect import collect
 from upload_debug import settings, upload
-from ref6 import HERE, BASE, TARGET, VERSION, bundle_check, digest, loaded_truth, profile_params, require
+from ref6 import HERE, BASE, TARGET, VERSION, bundle_check, digest, loaded_truth, profile_params, require, scenario_overrides
 from locate_inputs import path
 from source_state import git, save, restore
 
@@ -22,14 +22,12 @@ def no_px4():
     require(result.returncode == 1, 'PX4 may still be running; stop it before source restore or collection')
 
 
-def startup(profile, altitude=50, yaw_fixed=False):
+def startup(profile, altitude=50, overrides=None):
     params = {'SYS_AUTOSTART': '5021', **profile_params(profile), 'MIS_TAKEOFF_ALT': str(altitude)}
     text = f'. etc/init.d-posix/rcS\n. "$REF6_PROFILE"\nparam set MIS_TAKEOFF_ALT {altitude}\n'
-    if yaw_fixed:
-        # Pinned FlightTaskAuto.hpp: 5 holds yaw; 4 turns to the waypoint first.
-        # This is a scenario override, not a change to the reusable gain profile.
-        params['MPC_YAW_MODE'] = '5'
-        text += 'param set MPC_YAW_MODE 5\n'
+    for name, value in (overrides or {}).items():
+        params[name] = str(value)
+        text += f'param set {name} {value}\n'
     for name, value in params.items():
         text += (f'param show {name}\n'
                  f'if ! param compare {name} {value}; then\n'
@@ -43,6 +41,8 @@ def startup(profile, altitude=50, yaw_fixed=False):
 
 
 def flight(args):
+    scenario = getattr(args, 'scenario', 'baseline')
+    overrides = scenario_overrides(args.mode, scenario)
     bundle_check()
     require(args.host and args.qgc and args.truth, '--host, --qgc and --truth required (explicit unicast IPs)')
     for tool in ('git', 'make', 'script', 'pgrep'):
@@ -62,6 +62,12 @@ def flight(args):
         require(not receipt.get('restored'), 'Installation has been restored; reinstall with a new state')
         truth = active_session(args.truth.resolve())
         identity = loaded_truth(truth, receipt)
+        if scenario != 'baseline':
+            instrumentation = diagnostic_availability(truth)
+            require(not instrumentation['missing'],
+                    'Moment/energy capture is missing: '+', '.join(instrumentation['missing'])+
+                    '. Run prepare-truth, then restart TruthCapture; no checkout changed.')
+            identity['truth_diagnostics'] = instrumentation
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.bind(('0.0.0.0', 18571))
         results = HERE/'runs'
@@ -76,7 +82,8 @@ def flight(args):
                          'profile_sha256': digest(HERE/'profile.sh'),
                          'design_sha256': digest(HERE/'design.json')})
         identity['debug_upload_enabled'] = upload_enabled
-        identity['scenario_overrides'] = {'MPC_YAW_MODE': 5} if args.mode == 'hover' else {}
+        identity['scenario'] = scenario
+        identity['scenario_overrides'] = overrides
         (run/'identity.json').write_text(json.dumps(identity, indent=2)+'\n')
         (run/'truth-source.txt').write_text(str(truth)+'\n')
         shutil.copy2(HERE/'profile.sh', run/'profile.sh')
@@ -91,7 +98,7 @@ def flight(args):
         shutil.copy2(receipt['config'], run/'inputs/config.ini')
         shutil.copy2(identity['acf_path'], run/'inputs'/Path(identity['acf_path']).name)
         altitude = 180 if args.mode == 'flight' else (10 if args.mode == 'A' else 50)
-        (run/'startup.sh').write_text(startup(run/'profile.sh', altitude, yaw_fixed=args.mode == 'hover'))
+        (run/'startup.sh').write_text(startup(run/'profile.sh', altitude, overrides=overrides))
         changed = False
         initial = None
         try:

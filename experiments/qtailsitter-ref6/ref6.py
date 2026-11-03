@@ -23,12 +23,26 @@ HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
 BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
 TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
-VERSION = '2026-11-02.ref6.11'
+VERSION = '2026-11-03.ref6.12'
+SCENARIOS = ('baseline', 'recovery-jerk', 'braking-isolation')
 
 
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def scenario_overrides(mode, scenario):
+    require(scenario in SCENARIOS, 'Unknown scenario: '+str(scenario))
+    require(mode == 'flight' or scenario == 'baseline', 'Nonbaseline --scenario is only valid for mode flight')
+    if mode == 'hover':
+        # Pinned FlightTaskAuto.hpp: 5 holds yaw; 4 turns to the waypoint first.
+        return {'MPC_YAW_MODE': 5}
+    if scenario == 'recovery-jerk':
+        return {'MPC_JERK_AUTO': 4.0}
+    if scenario == 'braking-isolation':
+        return {'MPC_XY_VEL_MAX': 12.0}
+    return {}
 
 
 def digest(file):
@@ -122,7 +136,8 @@ def atomic(file, data):
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())
-        shutil.copymode(file, temporary)
+        if file.exists():
+            shutil.copymode(file, temporary)
         os.replace(temporary, file)
     finally:
         temporary.unlink(missing_ok=True)
@@ -259,7 +274,7 @@ def recovery_truth(run, source):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=['check', 'install', 'bench', 'hover', 'A', 'flight',
+    parser.add_argument('mode', choices=['check', 'install', 'bench', 'hover', 'A', 'flight', 'prepare-truth', 'restore-truth',
                                        'collect', 'restore', 'update', 'configure-upload',
                                        'disable-upload', 'retry-uploads'])
     parser.add_argument('--xplane', type=path)
@@ -271,11 +286,13 @@ def main():
     parser.add_argument('--host', type=ipv4)
     parser.add_argument('--qgc', type=ipv4)
     parser.add_argument('--bench-measurements', type=path)
+    parser.add_argument('--scenario', choices=SCENARIOS, default='baseline')
     parser.add_argument('--no-upload', action='store_true', help='Disable upload for this run only')
     parser.add_argument('--yes-debug', action='store_true', help='Explicitly accept the unvalidated SITL experiment without a prompt')
     parser.add_argument('--manifest-url', default='https://de2.joomtalk.ir/OuZsF0TGp1L7DRBjnf_nsGSDc_4wW2gy/ref6-debug-current.json')
     parser.add_argument('--upload-url', default='https://de2.joomtalk.ir/px4xplane-debug/upload')
     args = parser.parse_args()
+    scenario_overrides(args.mode, args.scenario)
     # Serialize this bundle's install, rollback, flight and evidence operations.
     with (HERE/'.ref6.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -283,14 +300,21 @@ def main():
 
 
 def dispatch(args):
+    scenario = getattr(args, 'scenario', 'baseline')
+    overrides = scenario_overrides(args.mode, scenario)
     args.state = args.state.resolve()
     if args.mode == 'update':
         from update_debug import update
         print('Updated SAME debug folder to', update(HERE, args.manifest_url))
-        print('Next: bash run.sh flight --yes-debug (R11 FW/MC tracking trial; see QUICKSTART.md).')
+        print('Next: bash run.sh prepare-truth, then follow QUICKSTART.md for the recovery-jerk test.')
     elif args.mode == 'configure-upload':
         from upload_debug import configure
         configure(url=args.upload_url)
+    elif args.mode in ('prepare-truth', 'restore-truth'):
+        from attach_truth import configure_diagnostics
+        from flight import no_px4
+        no_px4()
+        configure_diagnostics(args.state, restore=args.mode == 'restore-truth')
     elif args.mode == 'disable-upload':
         from upload_debug import disable
         disable()
@@ -324,6 +348,7 @@ def dispatch(args):
         bundle_check()
         report(args.bench_measurements)
         print('Mode', args.mode, '; SAME pinned diagnostic firmware.')
+        print('Scenario:', scenario, '| scenario_overrides:', overrides)
         print('UNVALIDATED SITL ONLY. Calibration and hover results are pending. No readiness claim.')
         print('Observe the hover checkpoint before any transition. No EKF overrides.')
         if args.mode != 'flight':
@@ -331,7 +356,12 @@ def dispatch(args):
             if args.mode == 'hover':
                 print('MC lateral scenario: 50m console takeoff; fixed heading MPC_YAW_MODE=5 applied and checked automatically.')
         else:
-            print('R11: stronger FW roll rate feedback and MC roll/pitch attitude response. Follow QUICKSTART.md; recovery remains experimental.')
+            print('R12: bounded diagnostic scenarios; baseline retains the reusable profile. Follow QUICKSTART.md; recovery remains experimental.')
+            if scenario == 'braking-isolation':
+                print('WARNING: braking-isolation sets MPC_XY_VEL_MAX=12.0, increases the 1.3*bound threshold to 15.6 m/s, '
+                      'and suppresses initial 9.3 m/s braking too. NOT a production fix.')
+            elif scenario == 'recovery-jerk':
+                print('WARNING: recovery-jerk sets MPC_JERK_AUTO=4.0 for diagnostics only; no full-flight promise.')
         if not args.yes_debug and args.mode != 'A':
             require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
                     == 'SITL EXPERIMENT', 'Experiment cancelled')

@@ -4,7 +4,22 @@ Private, experimental SITL only. No hardware firmware, production plugin changes
 private dive feature or PX4 control patches are included. See QUICKSTART.md for
 the next test. The aircraft and bundle keep the SAME names and locations.
 
-## Current Correction
+## Current Test: R12
+
+R11 failed recovery before any manual edits. Its back-transition now meets the
+pitch-angle exit condition, but the postback trajectory repeatedly releases
+braking with substantial retained acceleration. The inherited 0.7 m/s3 normal
+jerk then permits virtual-speed retriggers and interrupts landing descent.
+FW roll oscillation is a separate unresolved active-loop/aircraft-model problem.
+
+R12 preserves the R11 aircraft and all PID gains. Explicit, recorded scenarios
+change one setting at a time. Start with `recovery-jerk` (MPC_JERK_AUTO=4).
+`braking-isolation` raises MPC_XY_VEL_MAX to 12 only for diagnosis; it suppresses
+initial braking too and is NOT a production fix. `baseline` remains unchanged.
+Neither case has flown on this server. See REPORT.md for measured evidence,
+the pinned-PX4 smoother replay and the limits of our conclusions.
+
+## Reference History
 
 The previous Ref6 profile retained CT=2 with KM approximately 0.01905. Its
 uncanted yaw-effectiveness row was 0.0381, below the recorded PX4 allocator's
@@ -29,9 +44,10 @@ showed weak yaw tracking; it did not validate recovery from a large disturbance.
 R10 reduced FW roll oscillation but still timer-ended back-transition and
 repeatedly interrupted descent through horizontal emergency braking. Its MC
 attitude response lagged substantially more than the inner-rate response.
-R11 raises FW_RR_P 0.10->0.14, MC_ROLL_P 0.9->1.4 and MC_PITCH_P 0.58->1.0.
-All rate PID, speed, TECS, mass/CG and physical axes otherwise remain unchanged.
-These are evidence-supported trials, not full-flight validation. See REPORT.md.
+R11 raised FW_RR_P 0.10->0.14, MC_ROLL_P 0.9->1.4 and MC_PITCH_P 0.58->1.0.
+Other rate PID, speed, TECS, mass/CG and physical axes stayed unchanged.
+Its failed full-flight result supersedes the local scalar-model prediction;
+those screens did not establish coupled position/attitude/braking stability.
 CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
 disabled explicitly. Component inertia informs initial rate gains, but X-Plane
 automatic inertia remains enabled because its manual serialization is unverified.
@@ -46,12 +62,14 @@ From the same installed debug folder:
 
 ```bash
 bash run.sh update
-bash run.sh flight --yes-debug
+bash run.sh prepare-truth
+bash run.sh flight --scenario recovery-jerk --yes-debug
 ```
 
 Follow QUICKSTART.md: console takeoff to 180 m, settled hover, front transition,
 15 seconds established FW, normal back-transition, settled MC, then Land at
-current position. Do not use RTL or new GoTos in this measurement. The optional
+current position. Use a fresh, fully charged X-Plane aircraft, not the prior
+airborne/depleted state. Do not use RTL, GoTo, autotune or gain edits. The optional
 hover scenario remains available for MC lateral tests and separately records
 MPC_YAW_MODE=5. Each isolated rootfs starts from defaults; no production or
 saved airframe defaults are changed.
@@ -62,6 +80,14 @@ For ACF changes X-Plane must also be closed: the same installed ACF and its
 receipt are updated together with managed files under a rollback journal.
 Local aircraft edits or an inconsistent receipt stop the update. One prior
 managed version, including replaced installed bytes, is retained for recovery.
+
+With PX4 stopped, `prepare-truth` adds a receipted block to the recorder's custom
+dataref list. Restart capture afterwards. It records native prop/aerodynamic/
+total moments/forces, runtime inertia and electrical state; it does not write
+physics or replace a plugin. Diagnostic cases check availability before checkout
+changes. To undo the recorder-only change, stop PX4 and use `restore-truth`.
+User catalog edits are never silently discarded. Baseline mode can still run
+without the extra instrumentation, but is not the next recommended test.
 
 On WSL2 NAT, the runner detects the current Windows gateway and QGC host. The
 TruthCapture output root comes from the recorded X-Plane installation. Override
