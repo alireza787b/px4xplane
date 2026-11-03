@@ -45,7 +45,7 @@ commander start
 
 def config_text():
     return ("config_name = QuadTailsitter\n[QuadTailsitter]\n"
-            "aircraftMatch = NewQuadTailsitter\nairspeedSource = body_axis\n"
+            "aircraftMatch = QuadTailsitter,PB50\nairspeedSource = body_axis\n"
             "pitotAxisBody = -Z\nactuatorSmoothingTimeConstantSec = 0.0\n"
             + "".join(f"channel{i} = sim/flightmodel/engine/ENGN_thro_use, floatArray, [{i}], [-1 1]\n"
                       for i in range(4)))
@@ -112,7 +112,7 @@ class ConfigTests(unittest.TestCase):
         for old, new in (("body_axis", "xplane_indicated"), ("-Z", "+X"),
                          ("Sec = 0.0", "Sec = 0.1"), ("Sec = 0.0", "Sec = nan"),
                          ("[2], [-1 1]", "[3], [-1 1]"), ("[-1 1]", "[0 1]"),
-                         ("floatArray", "float"), ("NewQuadTailsitter", "Cessna")):
+                         ("floatArray", "float"), ("aircraftMatch = QuadTailsitter,PB50", "aircraftMatch = Cessna")):
             with self.subTest(new=new), self.assertRaises(runner.RunnerError):
                 runner.validate_config(config_text().replace(old, new).encode())
         with self.assertRaises(runner.RunnerError):

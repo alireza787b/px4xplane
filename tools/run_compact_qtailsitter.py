@@ -29,6 +29,7 @@ RECOGNIZED_SOURCES = {
     "649929706fb34bf0b06dbd2df24e04d5d452d616": "base of flown logging child; not a direct flight claim",
     "e4aa189ade1e78baa1f202f7024c9a3ea07d09a3": "source-reviewed upstream EKF #29578; NOT flown",
     "caa183a4059bcca4189776f8b621fe806f4b311a": "profile draft PR #29598; source-reviewed, NOT flown",
+    "8b673ec32724c2829f3abefc77963fbec8ac680e": "PR #29598 naming correction only; source-reviewed, NOT flown",
 }
 NUMBER = re.compile(r"[+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?\Z")
 PARAM_NAME = re.compile(r"[A-Z][A-Z0-9_]{0,31}\Z")

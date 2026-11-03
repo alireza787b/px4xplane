@@ -5,7 +5,7 @@ control surfaces. It uses differential thrust, a body-axis virtual pitot and
 the existing PX4 target `xplane_qtailsitter` (`SYS_AUTOSTART=5021`).
 
 **This is draft work.** The previous 5 kg model and the compact model are NOT
-interchangeable. The matching `NewQuadTailsitter.acf` is supplied privately by
+interchangeable. The matching compact QuadTailsitter model is supplied privately by
 its owner; it is not included in this repository, CI artifacts or releases.
 Do not download a different aircraft and assume these parameters apply.
 Companion PX4 draft: [PX4 #29598](https://github.com/PX4/PX4-Autopilot/pull/29598).
@@ -15,13 +15,16 @@ Do not treat an open draft as an already-merged official profile.
 
 | Component | Compact model pairing |
 | --- | --- |
-| X-Plane file | `Aircraft/NewQuadTailsitter/NewQuadTailsitter.acf` |
+| X-Plane file | Owner-supplied model; use the exact path in its private installation guide |
 | Plugin section | `[QuadTailsitter]` |
 | PX4 target / ID | `xplane_qtailsitter` / `5021` |
 | Parameters before merge | Draft defaults plus isolated launcher below |
 | Parameters after merge | Official PX4 defaults at the merge commit or later |
 
-The aircraft rename does not alter its physical ACF contents. Recorded ACF
+PX4, plugin mappings and documentation retain the QuadTailsitter name. Only
+the owner's local X-Plane aircraft folder/file uses a distinct installation
+name; it does not create a new PX4 airframe or alter the physical ACF contents.
+Recorded ACF
 SHA256 is `c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918`.
 Four motors retain their ordering, rotation/cant, CG, inertia and power limits.
 The existing four-channel bridge mapping, `airspeedSource=body_axis`,

@@ -5,7 +5,7 @@ There are two incompatible model/profile generations. Read the
 The draft compact defaults are not a generic retune for the old 5 kg aircraft.
 
 1. Check the model filename, ACF hash, selected plugin section and PX4 defaults.
-   The compact aircraft is `NewQuadTailsitter.acf`, supplied privately by its owner.
+   The compact QuadTailsitter model is supplied privately by its owner.
 2. Use separate saved parameters. Verify the startup parameter gate, source
    revision and `SYS_AUTOSTART=5021`; do not infer the tune from the ID alone.
 3. Connect QGC and wait for estimator readiness without raising bias limits.

@@ -48,7 +48,7 @@ class CompactProfileContract(unittest.TestCase):
         ini=configparser.ConfigParser(interpolation=None)
         ini.read_string('[global]\n'+(ROOT/'config/config.ini').read_text())
         q=ini['QuadTailsitter']
-        self.assertEqual(q['aircraftMatch'],'NewQuadTailsitter')
+        self.assertEqual(q['aircraftMatch'],'QuadTailsitter,PB50')
         self.assertEqual(q['airspeedSource'],'body_axis')
         self.assertEqual(q['pitotAxisBody'],'-Z')
         self.assertEqual(float(q['actuatorSmoothingTimeConstantSec']),0)
@@ -57,6 +57,17 @@ class CompactProfileContract(unittest.TestCase):
         self.assertFalse((ROOT/'aircraft/NewQuadTailsitter').exists())
         cmake=(ROOT/'CMakeLists.txt').read_text()
         self.assertNotRegex(cmake,r'copy_directory\s+\$\{CMAKE_SOURCE_DIR\}/aircraft/QuadTailsitter')
+
+    def test_public_identity_stays_quadtailsitter(self):
+        profile=(ROOT/'config/px4_params/5021_xplane_qtailsitter').read_text()
+        self.assertIn('@name              QuadTailsitter X-Plane SITL',profile)
+        for relative in ('config/px4_params/5021_xplane_qtailsitter',
+                         'config/config.ini', 'config/px4_params/README.md',
+                         'docs/compact-qtailsitter.md',
+                         'docs/QUADTAILSITTER_XPLANE12_TEST.md',
+                         'aircraft/QuadTailsitter/README.md'):
+            with self.subTest(path=relative):
+                self.assertNotIn('NewQuadTailsitter',(ROOT/relative).read_text())
 
 
 if __name__=='__main__':
