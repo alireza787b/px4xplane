@@ -44,21 +44,21 @@ def restore_one(repo, original):
 
 def restore(repo, file):
     snapshot = json.loads(file.read_text())
+    modules = initialized(repo)
+    added = [relative for relative in modules if relative not in snapshot['submodules']]
+    # Remove only clean worktrees initialized by this test, retaining Git caches.
+    # A module added by newer PX4 would otherwise leave the old checkout untracked.
+    for relative in sorted(added, key=lambda p: p.count('/')):
+        if any(relative.startswith(parent+'/') for parent in added if parent != relative):
+            continue
+        parents = [p for p in modules if relative.startswith(p+'/')]
+        parent = max(parents, key=len) if parents else ''
+        owner = repo/parent if parent else repo
+        path = relative[len(parent)+1:] if parent else relative
+        git(owner, 'submodule', 'deinit', '--', path)
     restore_one(repo, snapshot['main'])
     for relative, original in snapshot['submodules'].items():
         restore_one(repo/relative, original)
-    # Build machinery may initialize additional modules. Keep those files, but align
-    # them with the restored parent's gitlinks without fetching or deleting data.
-    modules = initialized(repo)
-    for relative in sorted(modules, key=lambda p: p.count('/')):
-        if relative not in snapshot['submodules']:
-            parents = [p for p in modules if relative.startswith(p+'/')]
-            parent = max(parents, key=len) if parents else ''
-            owner = repo/parent if parent else repo
-            path = relative[len(parent)+1:] if parent else relative
-            expected = git(owner, 'ls-tree', 'HEAD', '--', path).stdout.split()
-            if expected and expected[0] == '160000':
-                restore_one(repo/relative, {'branch': '', 'commit': expected[2]})
     print('Restored source and previously initialized submodule identities.')
 
 

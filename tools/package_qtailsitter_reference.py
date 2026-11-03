@@ -7,11 +7,14 @@ from pathlib import Path
 import shutil
 import subprocess
 import zipfile
+import sys
 
 from build_qtailsitter_reference import build
 
 ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_NAME = 'PX4_QTAILSITTER_REF6_2026-11-01'
+sys.path.insert(0, str(ROOT/'experiments/qtailsitter-ref6'))
+from ref6 import BASE, TARGET
 
 
 def package(output_root, archive_dir, review_dir=None):
@@ -37,8 +40,8 @@ def package(output_root, archive_dir, review_dir=None):
         f'px4xplane source checkout commit: `{commit}`.\n\n'
         'The per-file SHA256SUMS records the delivered scripts, including any local\n'
         'changes. Do not infer a clean working tree from the commit alone.\n\n'
-        'PX4 baseline: `f90b40d61e56405513dfcd8e194287ac60d3a6ae`.\n'
-        'Diagnostic-only build: `9cfe130a8d8e0c25f88e044141c523247ca53d48`.\n'
+        f'PX4 baseline: `{BASE}`.\n'
+        f'Diagnostic-only build: `{TARGET}`.\n'
         'No private dive feature, optional control fixes or hardware firmware included.\n\n'
         'The generated model has NOT flown on this server. Geometry and BEM\n'
         'checks are not X-Plane calibration. Read QUICKSTART.md before testing.\n')

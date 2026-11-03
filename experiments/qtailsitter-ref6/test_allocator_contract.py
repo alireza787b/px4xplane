@@ -7,7 +7,7 @@ import subprocess
 import tempfile
 import unittest
 
-REVISION = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
+from ref6 import BASE, TARGET
 
 
 def method(source, marker):
@@ -17,12 +17,34 @@ def method(source, marker):
 
 
 class AllocatorContract(unittest.TestCase):
+    def test_current_upstream_control_fix_is_not_replaced_by_diagnostics(self):
+        repo = Path(os.environ.get('PX4_TEST_REPO', str(Path.home()/'PX4-Autopilot-Me')))
+        if not (repo/'src/lib/matrix').is_dir():
+            self.skipTest('Requires the existing PX4 checkout')
+        def source(revision, path):
+            return subprocess.check_output(['git', '-C', str(repo), 'show', revision+':'+path], text=True)
+        auto = 'src/modules/flight_mode_manager/tasks/Auto/FlightTaskAuto.cpp'
+        upstream, observed = source(BASE, auto), source(TARGET, auto)
+        self.assertIn('forceSetAcceleration({0.f, 0.f, 0.f})', upstream)
+        marker = 'void FlightTaskAuto::_checkEmergencyBraking()'
+        strip_observations = lambda text: '\n'.join(line for line in text.splitlines()
+            if '_braking_activation_' not in line
+            and 'Latch activation evidence before the trajectory is re-seeded.' not in line)
+        self.assertEqual(method(upstream, marker), strip_observations(method(observed, marker)))
+        for marker in ('bool FlightTaskAuto::activate(', 'void FlightTaskAuto::_updateTrajConstraints()'):
+            self.assertEqual(method(upstream, marker), method(observed, marker))
+        for path in ('src/modules/mc_pos_control/MulticopterPositionControl.cpp',
+                     'src/modules/fw_rate_control/FixedwingRateControl.cpp',
+                     'src/modules/fw_att_control/FixedwingAttitudeControl.cpp',
+                     'src/lib/tecs/TECS.cpp'):
+            self.assertEqual(source(BASE, path), source(TARGET, path), path)
+
     def test_recorded_fw_frame_and_differential_scale(self):
         repo=Path(os.environ.get('PX4_TEST_REPO', str(Path.home()/'PX4-Autopilot-Me')))
         if not shutil.which('g++') or not (repo/'src/lib/matrix').is_dir():
             self.skipTest('Requires g++ and existing PX4 matrix headers')
         def source(path):
-            return subprocess.check_output(['git','-C',str(repo),'show',REVISION+':'+path],text=True)
+            return subprocess.check_output(['git','-C',str(repo),'show',TARGET+':'+path],text=True)
         fw=source('src/modules/fw_rate_control/FixedwingRateControl.cpp')
         vtol=source('src/modules/vtol_att_control/tailsitter.cpp')
         expressions=re.findall(r'^\s*body_rates_setpoint = Vector3f\([^;]+\);',fw,re.MULTILINE)
@@ -82,7 +104,7 @@ int main() {
         if not shutil.which('g++') or not (repo/'src/lib/matrix').is_dir():
             self.skipTest('Requires g++ and the existing PX4 matrix headers')
         def source(path):
-            return subprocess.check_output(['git', '-C', str(repo), 'show', REVISION+':'+path], text=True)
+            return subprocess.check_output(['git', '-C', str(repo), 'show', TARGET+':'+path], text=True)
         rotors = source('src/modules/control_allocator/VehicleActuatorEffectiveness/ActuatorEffectivenessRotors.cpp')
         allocator = source('src/modules/control_allocator/ControlAllocator.cpp')
         inverse = source('src/lib/control_allocation/control_allocation/ControlAllocationPseudoInverse.cpp')

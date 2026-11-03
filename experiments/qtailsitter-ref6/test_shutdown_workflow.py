@@ -29,8 +29,9 @@ class ShutdownWorkflow(unittest.TestCase):
             (root/'Log.txt').write_text('fixture log')
             (truth/'manifest.json').write_text('{"session":"unchanged"}')
             (truth/'frames.csv').write_text('frame_id,sim_time_s\n1,1\n')
-            (truth/'datarefs.csv').write_text('path,exists\n'+''.join(
-                f'{ref},true\n' for ref in DIAGNOSTIC_REFS))
+            if mode == 'flight':
+                (truth/'datarefs.csv').write_text('path,exists\n'+''.join(
+                    f'{ref},true\n' for ref in DIAGNOSTIC_REFS))
             binary = repo/'build/px4_sitl_default/bin/px4'
             binary.parent.mkdir(parents=True)
             binary.write_text('fixture binary')
@@ -38,9 +39,23 @@ class ShutdownWorkflow(unittest.TestCase):
             identity = {'manifest': {'system_path':str(root)}, 'acf_path':str(acf)}
             args = argparse.Namespace(host='127.0.0.1', qgc='127.0.0.1', truth=truth,
                 repo=repo, state=state, mode=mode, scenario=scenario, bench_measurements=None, no_upload=False)
+            commands = []
             def git(_repo, *parts):
+                commands.append(parts)
                 return subprocess.CompletedProcess([],0,stdout=flight.TARGET if parts==('rev-parse','FETCH_HEAD') else '')
             def execute(command, **kwargs):
+                self.assertEqual(commands, [
+                    ('status', '--porcelain'),
+                    ('bundle', 'verify', str(bundle/'diagnostics.bundle')),
+                    ('-c', 'fetch.recurseSubmodules=false', 'fetch', '--no-tags',
+                     str(bundle/'diagnostics.bundle'), flight.BUNDLE_REF),
+                    ('rev-parse', 'FETCH_HEAD'),
+                    ('cat-file', '-e', flight.BASE+'^{commit}'),
+                    ('switch', '--detach', flight.TARGET),
+                    ('diff', flight.BASE, flight.TARGET),
+                    ('-c', 'fetch.recurseSubmodules=false', 'submodule', 'update',
+                     '--init', '--recursive', '--jobs', '2'),
+                    ('submodule', 'status', '--recursive')])
                 if command[0]=='script':
                     Path(command[-1]).write_text('REF6 PARAMETER GATE PASSED\n')
                     with (truth/'frames.csv').open('a') as output:
@@ -69,11 +84,19 @@ class ShutdownWorkflow(unittest.TestCase):
                     self.assertEqual(summary['rows'],2)
                     self.assertEqual(session['px4_exit_code'],exit_code)
                     recorded=json.loads(zipped.read(next(n for n in zipped.namelist() if n.endswith('/identity.json'))))
-                    self.assertEqual(recorded['runner'], '2026-11-03.ref6.12')
+                    self.assertEqual(recorded['runner'], '2026-11-03.ref6.13')
+                    self.assertEqual(recorded['base'], flight.BASE)
+                    self.assertEqual(recorded['source'], flight.TARGET)
                     self.assertEqual(recorded['mode'], mode)
                     self.assertEqual(recorded['scenario'], scenario)
                     overrides = flight.scenario_overrides(mode, scenario)
                     self.assertEqual(recorded['scenario_overrides'], overrides)
+                    if mode == 'flight':
+                        diagnostics = recorded['truth_diagnostics']
+                        self.assertEqual(diagnostics['missing'], [])
+                        self.assertEqual(set(diagnostics['requested']), set(DIAGNOSTIC_REFS))
+                    else:
+                        self.assertNotIn('truth_diagnostics', recorded)
                     startup=zipped.read(next(n for n in zipped.namelist() if n.endswith('/startup.sh'))).decode()
                     for name, value in overrides.items():
                         self.assertIn(f'param set {name} {value}\n', startup)

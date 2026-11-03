@@ -211,6 +211,9 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
 
     # Actual 2 kg R6 hover/GoTo/Land HTE ranged around 0.26, without ballast.
     add("MPC_THR_HOVER", .26, "R6 measured HTE: hover median 0.2657, GoTo 0.2613, Land 0.2603 at actual 2kg. Rounded starting seed; estimator remains enabled.")
+    add('MPC_JERK_AUTO',4,'R13 uses the current PX4 default, within metadata bounds. Replaces inherited 0.7 while testing merged upstream braking recovery; not an independent A/B or a proven optimum.')
+    add('MPC_ACC_HOR',2,'R13 normal autonomous acceleration: current PX4 metadata minimum, replacing inherited 0.7. Improves nominal recovery agility; emergency braking has separate limits. Validate coupled response in SITL.')
+    add('MPC_ACC_HOR_MAX',2,'R13 normalizes inherited 1.0 to the documented minimum. This parameter limits manual-mode deceleration with MPC_POS_MODE=0; it is unused with MPC_POS_MODE=4 and is not the auto emergency-brake limit.')
     for index in range(4):
         engine = f"_engn/{index}"
         add(f"CA_ROTOR{index}_PX", -as_float(values, f"{engine}/_part_z") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
@@ -314,7 +317,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.12", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.13", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

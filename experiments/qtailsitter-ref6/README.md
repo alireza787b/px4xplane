@@ -1,150 +1,143 @@
 # QuadTailsitter Debug Workflow
 
-Private, experimental SITL only. No hardware firmware, production plugin changes,
-private dive feature or PX4 control patches are included. See QUICKSTART.md for
-the next test. The aircraft and bundle keep the SAME names and locations.
+Private experimental SITL only. Same Ref6 aircraft and installed debug folder.
+No production plugin changes, private dive feature or hardware image.
+**Current instructions: QUICKSTART.md.**
 
-## Current Test: R12
+## Current Test: R13
 
-R11 failed recovery before any manual edits. Its back-transition now meets the
-pitch-angle exit condition, but the postback trajectory repeatedly releases
-braking with substantial retained acceleration. The inherited 0.7 m/s3 normal
-jerk then permits virtual-speed retriggers and interrupts landing descent.
-FW roll oscillation is a separate unresolved active-loop/aircraft-model problem.
+The test now uses official PX4 main snapshot `649929706fb34bf0b06dbd2df24e04d5d452d616`
+plus log-only diagnostics `58794523a151fa33a28a564454454b8c9fbfcdd5`.
+The upstream emergency-braking follow-up [#28350](https://github.com/PX4/PX4-Autopilot/pull/28350)
+merged on October 12; the old September base did not contain it. That finding
+supersedes R12's tune-first recommendation. REPORT.md explains the correction
+and the final merged implementation, not the stale PR-body design.
 
-R12 preserves the R11 aircraft and all PID gains. Explicit, recorded scenarios
-change one setting at a time. Start with `recovery-jerk` (MPC_JERK_AUTO=4).
-`braking-isolation` raises MPC_XY_VEL_MAX to 12 only for diagnosis; it suppresses
-initial braking too and is NOT a production fix. `baseline` remains unchanged.
-Neither case has flown on this server. See REPORT.md for measured evidence,
-the pinned-PX4 smoother replay and the limits of our conclusions.
+Current upstream also includes TECS altitude/speed and underspeed/bank handling
+improvements, and true-airspeed turn coordination. These are not new custom
+patches. FW rate/attitude gains, NPFG, speeds, trim, motor mapping, mass/CG and
+the ACF remain unchanged. The reusable trajectory profile now sets
+MPC_JERK_AUTO=4, MPC_ACC_HOR=2 and MPC_ACC_HOR_MAX=2. The last is not an auto
+emergency-braking limit. This combined firmware/profile trial is not an
+isolated A/B proof of any one PR or a promise of perfect flight.
 
-## Reference History
+The unchanged ACF is 2 kg with 0.60 m projected span, 0.10 m chord and four
+500 W shaft-power caps. It retains original motor signs and PX4's direction
+vectors. CT=6.5 preserves the modeled yaw/FW-roll allocation above the weak-axis
+cutoff; it is a normalized allocation scale, not measured maximum thrust.
+Prop/cant effectiveness, runtime inertia and FW trim remain validation tasks.
 
-The previous Ref6 profile retained CT=2 with KM approximately 0.01905. Its
-uncanted yaw-effectiveness row was 0.0381, below the recorded PX4 allocator's
-0.05 cutoff. That removed MC yaw / FW roll control. The new profile explicitly
-uses PX4's default common CT scale 6.5. A host test compiles the recorded PX4
-matrix, filter and normalization routines to reproduce the failure and check the
-correction. This is a configuration repair, not a newly proven PX4 bug.
-
-The old 6 kg model settled near 0.71 normalized hover command. The compact
-candidate is 2 kg with 0.60 m projected span, 0.10 m chord and four 500 W shaft
-power caps. Plane Maker's power field is horsepower, not kW. The hover seed is
-now 0.26 from the successful r6 2 kg hover/GoTo/Land log. Original motor
-orientations/rotation signs and official rotor direction vectors are retained.
-R7's two-GoTo/RTL capture confirms better MC tracking: first-leg pitch-rate
-error approximately 0.042 rad/s RMS, with 2.3/3.0 m along-track overshoots.
-R8 failed FW/back recovery: FW bank oscillated around 0.4 Hz; the back-transition
-ended by timer while still pitched -52.8 degrees; subsequent MC roll/position
-oscillation repeatedly triggered emergency braking and interrupted landing.
-R9 changed MC_ROLLRATE_P from 0.031815 to 0.060 and completed moderate MC flight,
-RTL and landing with zero emergency-braking activations. Its second GoTo still
-showed weak yaw tracking; it did not validate recovery from a large disturbance.
-R10 reduced FW roll oscillation but still timer-ended back-transition and
-repeatedly interrupted descent through horizontal emergency braking. Its MC
-attitude response lagged substantially more than the inner-rate response.
-R11 raised FW_RR_P 0.10->0.14, MC_ROLL_P 0.9->1.4 and MC_PITCH_P 0.58->1.0.
-Other rate PID, speed, TECS, mass/CG and physical axes stayed unchanged.
-Its failed full-flight result supersedes the local scalar-model prediction;
-those screens did not establish coupled position/attitude/braking stability.
-CG is 5 mm ahead of a wing-only quarter-chord estimate. Secondary panels are
-disabled explicitly. Component inertia informs initial rate gains, but X-Plane
-automatic inertia remains enabled because its manual serialization is unverified.
-Other MC gains and speed/jerk/position limits remain unchanged from R10.
-FW compression/filter/collective differences limit normalized PID equivalence.
-Read design.json and sizing.json for assumptions and envelope screening. Real
-control authority, trim, stability and landing remain simulator validation gates.
+R11's quiet initial hover did not establish recovery stability. It returned to
+MC around 9.3 m/s, repeatedly released emergency braking with substantial
+trajectory acceleration retained, and interrupted Land descent. A separate
+0.448 Hz FW roll oscillation occurred earlier. Late power collapse near 800 s
+is strongly consistent with battery depletion, not the early failure.
+See REPORT.md and retained R11 plots for the measured evidence.
 
 ## Daily Commands
 
-From the same installed debug folder:
+Stop PX4 and the old TruthCapture recording:
 
 ```bash
+cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
 bash run.sh update
+cat VERSION.txt
 bash run.sh prepare-truth
-bash run.sh flight --scenario recovery-jerk --yes-debug
 ```
 
-Follow QUICKSTART.md: console takeoff to 180 m, settled hover, front transition,
-15 seconds established FW, normal back-transition, settled MC, then Land at
-current position. Use a fresh, fully charged X-Plane aircraft, not the prior
-airborne/depleted state. Do not use RTL, GoTo, autotune or gain edits. The optional
-hover scenario remains available for MC lateral tests and separately records
-MPC_YAW_MODE=5. Each isolated rootfs starts from defaults; no production or
-saved airframe defaults are changed.
-Update checks local managed-file hashes, downloads a checksum-verified manifest
-and ZIP, and updates in place with one rollback journal. It preserves
-flight runs and credentials. Local edits are not discarded. PX4 must be stopped.
-For ACF changes X-Plane must also be closed: the same installed ACF and its
-receipt are updated together with managed files under a rollback journal.
-Local aircraft edits or an inconsistent receipt stop the update. One prior
-managed version, including replaced installed bytes, is retained for recovery.
+Expect 2026-11-03.ref6.13. Fresh fully charged Ref6, no wind/payload. Start a NEW
+TruthCapture recording, QGC and the plugin connection. Then:
 
-With PX4 stopped, `prepare-truth` adds a receipted block to the recorder's custom
-dataref list. Restart capture afterwards. It records native prop/aerodynamic/
-total moments/forces, runtime inertia and electrical state; it does not write
-physics or replace a plugin. Diagnostic cases check availability before checkout
-changes. To undo the recorder-only change, stop PX4 and use `restore-truth`.
-User catalog edits are never silently discarded. Baseline mode can still run
-without the extra instrumentation, but is not the next recommended test.
+```bash
+bash run.sh flight --yes-debug
+```
 
-On WSL2 NAT, the runner detects the current Windows gateway and QGC host. The
-TruthCapture output root comes from the recorded X-Plane installation. Override
-with --host, --qgc, --truth or --repo for other layouts. Hosts, paths, firmware
-revision and upload state are printed and recorded. --yes-debug is explicit
-consent to an unvalidated simulation test; it never arms the vehicle.
+Follow QUICKSTART.md: actual 180 m, settled hover, front-transition, 20 seconds
+established FW, normal back-transition, settled MC, Land, touchdown/disarm,
+shutdown. No GoTo, RTL, speed commands, autotune or in-flight gain edits.
+Stop sustained failed recovery after 15-20 seconds; do not waste minutes of
+battery/evidence. Limit the complete run to six minutes.
 
-## One-Time Upload Configuration
+The legacy recovery-jerk case remains compatible but now duplicates baseline
+jerk=4. braking-isolation remains an explicit diagnostic only, not a recommended
+test or fix. Neither raises the default maximum speed. Do not use old commands
+instead of the current guide.
+
+## Source And Installation
+
+The update downloads a checksum-verified package into the SAME folder, preserves
+runs/credentials and retains one previous managed version. It does not discard
+local managed-file edits. PX4 must be stopped; X-Plane must also be closed only
+if an update changes installed ACF bytes. R13 does not change the ACF/config.
+
+The Git bundle carries current official source history plus the log-only commit.
+It reuses ~/PX4-Autopilot-Me; no second PX4 clone. Its prerequisite is the old
+September base already used in these tests. Missing submodule objects still
+download. The runner aligns submodules to the pinned commits before building,
+records identities, and restores original source/submodule identities afterward.
+A dirty checkout stops the test instead of discarding user work.
+
+Each isolated rootfs starts fresh with official airframe 5021 and the explicit
+Ref6 profile. Startup compares every profile setting, altitude and scenario
+override before declaring PARAMETER GATE PASSED. Both firmware pins, ACF/config
+hashes and effective scenario are recorded.
+
+## Recorder And QGC
+
+prepare-truth appends a receipted, reversible block to TruthCapture's custom
+catalog: native total/prop/aerodynamic moments/forces, runtime unit-mass inertia
+and electrical state. It writes no simulator physics and replaces no plugin.
+Stop old capture and start a NEW recording afterward. Full-flight tests require
+these datarefs to exist before source changes; hover/A retain prior behavior.
+Undo with restore-truth while PX4/recording are stopped. User catalog edits are
+not overwritten.
+
+The runner derives the current WSL2 Windows gateway/QGC host and truth output
+root from the installation receipt. Override --host, --qgc, --truth or --repo for
+other layouts. A direct unicast QGC MAVLink instance targets Windows UDP14550;
+no router is required. Check the printed host and QGC heartbeat before arming.
+qgc-firewall.ps1 contains the scoped Windows rule when needed.
+
+## Automatic Evidence Upload
+
+Existing upload credentials remain outside the bundle at
+~/.config/px4xplane-debug/upload.json, mode0600. Do not put a token in Git, a
+public download, command arguments or evidence. Only if not yet configured:
 
 ```bash
 bash run.sh configure-upload
 ```
 
-Paste the upload-only token supplied privately through Telegram at the hidden
-prompt. It is stored in ~/.config/px4xplane-debug/upload.json with mode 0600,
-outside the bundle and evidence. Never put it in Git, command-line arguments,
-public downloads or a flight report. Tokens expire; renew through the owner when
-needed. The endpoint accepts uploads only, not listing or downloads.
+After PX4 shutdown, the runner snapshots complete truth rows for THIS run,
+restores source, creates a ZIP and uploads automatically. Leave the recorder
+running until collection ends. Windows up to 256 MiB remain raw CSV; larger
+complete windows stream to frames.csv.gz with a 1 GiB input and 128 MiB compressed
+ceiling. The ZIP limit remains 256 MiB. No silent row truncation or decimation.
 
-After PX4 shutdown, the runner snapshots complete TruthCapture rows for THIS
-run, restores source identity, creates a ZIP and uploads it automatically. It
-does not stop the recorder or require an Enter press. The summary explicitly
-says runner_snapshot, not menu_stop. Replaced/truncated/rewritten captures,
-changed session metadata, partial final rows and frame/time resets are checked.
-Windows up to 256 MiB remain raw CSV. Larger complete windows are streamed to
-frames.csv.gz, with a 1 GiB input ceiling, 128 MiB compressed-output ceiling,
-disk-space checks and atomic publication. No rows are silently dropped or
-decimated. Source captures remain unchanged. Analysis accepts either format.
-The final upload ZIP still has a 256 MiB limit; failed uploads remain retryable.
-
-Upload success requires a matching server checksum and byte count. Network,
-quota or auth failures retain the local ZIP and pending receipt. Retry with:
+UPLOAD VERIFIED requires the server's matching checksum and byte count.
+Network/quota/auth failures retain a local pending ZIP. Retry:
 
 ```bash
 bash run.sh retry-uploads
 ```
 
-Only say the test finished; the reviewing agent can retrieve the server evidence
-through authorized SSH. No manual ZIP copying is needed after verified upload.
+After verified upload, tell the reviewing agent the test finished. No manual
+copying is required. Keep original Windows recordings until review completes.
 
-## Disable and Restore
+## Disable And Restore
 
 ```bash
 bash run.sh disable-upload
-bash run.sh flight --no-upload
+bash run.sh restore-truth
 ```
 
-These affect this debug runner only. Production px4xplane does not auto-upload.
-For production preparation, disable the private intake service and its scoped
-proxy route as documented in the repository's server/README.md.
+For source restoration after an interrupted run:
+`bash run.sh restore --run PATH --repo PATH`.
+To restore original plugin selection/config, quit X-Plane then
+`bash run.sh restore`. The original aircraft was never replaced.
 
-To restore source after an interrupted run: run.sh restore --run PATH --repo PATH.
-To restore the original plugin selection/config: quit X-Plane, then run.sh restore.
-Rollback refuses meaningful user edits. The original aircraft is never replaced.
-Use run.sh check for bundle, profile and diagnostic identity checks.
-
-Maintained source: experiments/qtailsitter-ref6. Package with
-tools/package_qtailsitter_reference.py. The server implementation is deliberately
-not shipped in the client ZIP. Reports and plots describe recorded flights, not
-certification or a human PX4 maintainer's sign-off.
+Maintained source: experiments/qtailsitter-ref6; package with
+tools/package_qtailsitter_reference.py. server/README.md documents disabling
+the private intake and scoped proxy route at production preparation.
+No diagnostic upload is added to production px4xplane. Reports are measured
+analysis and AI review, not human maintainer approval or certification.

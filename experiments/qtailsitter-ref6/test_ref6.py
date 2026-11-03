@@ -29,7 +29,8 @@ class Ref6Tests(unittest.TestCase):
         (self.source/(ref6.NAME+'.acf')).write_text('I\n1200 Version\nP acf/_num_engn 4\n')
         (self.bundle/'design.json').write_text(json.dumps({'name': ref6.NAME,
             'acf_sha256': ref6.digest(self.source/(ref6.NAME+'.acf'))}))
-        params = {'MC_ROLLRATE_D': .001}
+        params = {'MC_ROLLRATE_D': .001, 'MPC_JERK_AUTO': 4,
+                  'MPC_ACC_HOR': 2, 'MPC_ACC_HOR_MAX': 2}
         for i in range(4):
             params[f'CA_ROTOR{i}_CT'] = 6.5
             params[f'CA_ROTOR{i}_KM'] = .01905 if i < 2 else -.01905
@@ -184,6 +185,16 @@ class Ref6Tests(unittest.TestCase):
         self.assertIn('shutdown', startup)
         self.assertIn('-u 18571 -o 14550 -t "$REF6_QGC"', startup)
 
+    def test_r13_baseline_retains_and_checks_reusable_profile(self):
+        profile = self.bundle/'profile.sh'
+        original = profile.read_bytes()
+        text = flight.startup(profile, 180, overrides=ref6.scenario_overrides('flight', 'baseline'))
+        for name, value in (('MPC_JERK_AUTO', 4), ('MPC_ACC_HOR', 2), ('MPC_ACC_HOR_MAX', 2)):
+            self.assertIn(f'param compare {name} {value};', text)
+            self.assertNotIn(f'param set {name} ', text)
+        self.assertIn('param compare MC_ROLLRATE_D 0.001;', text)
+        self.assertEqual(profile.read_bytes(), original)
+
     def test_lateral_hover_scenario_has_checked_fixed_yaw(self):
         text = flight.startup(self.bundle/'profile.sh', 50, overrides=ref6.scenario_overrides('hover', 'baseline'))
         self.assertIn('param set MPC_YAW_MODE 5\n', text)
@@ -263,12 +274,20 @@ class Ref6Tests(unittest.TestCase):
                 self.assertEqual(launch.call_args.args[0].scenario, scenario)
                 text = output.getvalue()
                 self.assertIn('Scenario: '+scenario, text)
+                self.assertIn('R13: baseline is the recommended latest-upstream SITL test', text)
+                self.assertIn(ref6.VERSION, text)
+                self.assertIn('official PX4 BASE: '+ref6.BASE, text)
+                self.assertIn('log-only TARGET: '+ref6.TARGET, text)
+                self.assertIn('#28350', text)
+                self.assertIn('PID/ACF unchanged', text)
                 if scenario == 'braking-isolation':
                     self.assertIn('increases the 1.3*bound threshold to 15.6 m/s', text)
                     self.assertIn('suppresses initial 9.3 m/s braking too', text)
                     self.assertIn('NOT a production fix', text)
+                    self.assertIn('Explicit diagnostic only; NOT recommended', text)
                 elif scenario == 'recovery-jerk':
                     self.assertIn('diagnostics only; no full-flight promise', text)
+                    self.assertIn('now the same as baseline', text)
                 else:
                     self.assertNotIn('WARNING:', text)
 
@@ -278,9 +297,21 @@ class Ref6Tests(unittest.TestCase):
         with patch('update_debug.update', return_value=ref6.VERSION), redirect_stdout(output):
             ref6.dispatch(args)
         self.assertIn('Next: bash run.sh prepare-truth', output.getvalue())
-        self.assertIn('QUICKSTART.md for the recovery-jerk test', output.getvalue())
+        self.assertIn('QUICKSTART.md for the latest-upstream baseline flight', output.getvalue())
         self.assertNotIn('Next: bash run.sh flight --yes-debug', output.getvalue())
         self.assertNotIn('Next: bash run.sh hover', output.getvalue())
+
+    def test_check_verifies_bundle_prerequisites_without_requiring_new_base_or_fetch(self):
+        args = argparse.Namespace(state=self.state, mode='check', repo=self.base/'old-repo')
+        output = io.StringIO()
+        with patch('ref6.HERE', self.bundle), patch('ref6.bundle_check'), \
+             patch('ref6.subprocess.run') as execute, redirect_stdout(output):
+            ref6.dispatch(args)
+        execute.assert_called_once_with(['git', '-C', str(args.repo), 'bundle', 'verify',
+                                         str(self.bundle/'diagnostics.bundle')], check=True)
+        self.assertIn(ref6.BASE, output.getvalue())
+        self.assertIn(ref6.TARGET, output.getvalue())
+        self.assertIn('#28350', output.getvalue())
 
     def test_profile_dynamic_values_refused(self):
         (self.bundle/'profile.sh').write_text('param set MC_ROLLRATE_D $VALUE\n')
@@ -408,12 +439,87 @@ class Ref6Tests(unittest.TestCase):
             restored.assert_called_once()
             collected.assert_called_once()
 
+    def test_bundle_import_into_old_checkout_restores_main_and_submodule_identities(self):
+        receipt = self.install()
+        truth = self.base/'truth'
+        truth.mkdir()
+        (truth/'datarefs.csv').write_text('path,exists\n'+''.join(
+            f'{ref},true\n' for ref in attach_truth.DIAGNOSTIC_REFS))
+        (self.bundle/'bench-report.json').write_text('{}')
+        (self.root/'Log.txt').write_text('fixture')
+        identity = {'manifest': {'system_path': str(self.root)},
+                    'acf_path': str(Path(receipt['aircraft'])/(ref6.NAME+'.acf'))}
+        git = source_state.git
+
+        def init(repo):
+            repo.mkdir()
+            git(repo, 'init', '-b', 'original')
+            git(repo, 'config', 'user.name', 'Test')
+            git(repo, 'config', 'user.email', 'test@example.test')
+
+        def commit(repo, message):
+            git(repo, 'commit', '--allow-empty', '-m', message)
+            return git(repo, 'rev-parse', 'HEAD').stdout.strip()
+
+        for detached in (False, True):
+            with self.subTest(detached=detached), tempfile.TemporaryDirectory(dir=self.base) as directory:
+                root = Path(directory)
+                module, repo, producer = (root/name for name in ('module', 'repo', 'producer'))
+                init(module)
+                module_old = commit(module, 'original submodule')
+                module_new = commit(module, 'build submodule')
+                init(repo)
+                git(repo, '-c', 'protocol.file.allow=always', 'submodule', 'add', str(module), 'module')
+                git(repo/'module', 'switch', '-c', 'saved-module', module_old)
+                git(repo, 'add', '.')
+                old = commit(repo, 'old bundle prerequisite')
+                if detached:
+                    git(repo, 'switch', '--detach', old)
+                    git(repo/'module', 'switch', '--detach', module_old)
+                original = source_state.identity(repo)
+                original_module = source_state.identity(repo/'module')
+                git(root, 'clone', '--no-hardlinks', str(repo), str(producer))
+                git(producer, 'config', 'user.name', 'Test')
+                git(producer, 'config', 'user.email', 'test@example.test')
+                base = commit(producer, 'new official upstream base')
+                target = commit(producer, 'log-only diagnostic target')
+                git(producer, 'update-ref', ref6.BUNDLE_REF, target)
+                git(producer, 'bundle', 'create', str(self.bundle/'diagnostics.bundle'), ref6.BUNDLE_REF, '^'+old)
+                self.assertNotEqual(git(repo, 'cat-file', '-e', base+'^{commit}', check=False).returncode, 0)
+                args = argparse.Namespace(host='127.0.0.1', qgc='127.0.0.1', truth=truth,
+                    repo=repo, state=self.state, mode='flight', scenario='baseline',
+                    bench_measurements=None, no_upload=True)
+
+                real_run = subprocess.run
+
+                def build(command, **kwargs):
+                    if command[0] != 'make':
+                        return real_run(command, **kwargs)
+                    self.assertEqual(command[0], 'make')
+                    self.assertEqual(source_state.identity(repo), {'branch': '', 'commit': target})
+                    git(repo, 'cat-file', '-e', base+'^{commit}')
+                    git(repo/'module', 'switch', '--detach', module_new)
+                    raise subprocess.CalledProcessError(2, command)
+
+                with patch('flight.HERE', self.bundle), patch('flight.bundle_check'), patch('flight.no_px4'), \
+                     patch('flight.BASE', base), patch('flight.TARGET', target), \
+                     patch('flight.active_session', return_value=truth), \
+                     patch('flight.loaded_truth', side_effect=lambda *args: dict(identity)), \
+                     patch('flight.collect') as collected, \
+                     patch('flight.subprocess.run', side_effect=build):
+                    with self.assertRaises(subprocess.CalledProcessError):
+                        flight.flight(args)
+                    collected.assert_called_once()
+                self.assertEqual(source_state.identity(repo), original)
+                self.assertEqual(source_state.identity(repo/'module'), original_module)
+                self.assertFalse(git(repo, 'status', '--porcelain').stdout)
+
     def test_missing_diagnostics_rejected_before_checkout_or_run_creation(self):
         self.install()
         truth = self.base/'truth'
         truth.mkdir()
         catalog = truth/'datarefs.csv'
-        for scenario in ('recovery-jerk', 'braking-isolation'):
+        for scenario in ref6.SCENARIOS:
             for missing in ('absent', 'unavailable', 'catalog'):
                 with self.subTest(scenario=scenario, missing=missing):
                     catalog.write_text('path,exists\n'+''.join(
@@ -435,10 +541,40 @@ class Ref6Tests(unittest.TestCase):
                         with self.assertRaises(error):
                             flight.flight(args)
                         self.assertEqual([call.args[1:] for call in git.call_args_list],
-                            [('status', '--porcelain'), ('cat-file', '-e', ref6.BASE+'^{commit}')])
+                            [('status', '--porcelain')])
                         saved.assert_not_called()
                         execute.assert_not_called()
                     self.assertFalse((self.bundle/'runs').exists())
+
+    def test_restore_removes_only_new_clean_module_worktrees(self):
+        git = source_state.git
+        module, repo = self.base/'module-source', self.base/'restore-repo'
+        for directory in (module, repo):
+            directory.mkdir()
+            git(directory, 'init', '-b', 'original')
+            git(directory, 'config', 'user.name', 'Test')
+            git(directory, 'config', 'user.email', 'test@example.test')
+            (directory/'tracked').write_text('preserved')
+            git(directory, 'add', '.')
+            git(directory, 'commit', '-m', 'original')
+        snapshot = self.base/'before.json'
+        source_state.save(repo, snapshot)
+        original = source_state.identity(repo)
+        git(repo, 'switch', '-c', 'diagnostic')
+        git(repo, '-c', 'protocol.file.allow=always', 'submodule', 'add', str(module), 'new-module')
+        git(repo, 'commit', '-am', 'new upstream module')
+        (repo/'new-module/tracked').write_text('user edit during run')
+        with self.assertRaises(subprocess.CalledProcessError):
+            source_state.restore(repo, snapshot)
+        self.assertEqual((repo/'new-module/tracked').read_text(), 'user edit during run')
+        self.assertEqual(source_state.identity(repo)['branch'], 'diagnostic')
+        # Returning the fixture to its committed bytes permits clean deinitialization.
+        (repo/'new-module/tracked').write_text('preserved')
+        source_state.restore(repo, snapshot)
+        self.assertEqual(source_state.identity(repo), original)
+        self.assertFalse(git(repo, 'status', '--porcelain').stdout)
+        self.assertFalse((repo/'new-module/tracked').exists())
+        self.assertTrue((repo/'.git/modules/new-module/objects').is_dir())
 
     def test_hover_aliases_accept_pending_report_without_measurements(self):
         for mode in ('hover', 'A', 'flight'):

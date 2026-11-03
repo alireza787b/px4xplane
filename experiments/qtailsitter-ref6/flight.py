@@ -12,7 +12,7 @@ import tempfile
 from attach_truth import active_session, begin_snapshot, snapshot_live, diagnostic_availability
 from collect import collect
 from upload_debug import settings, upload
-from ref6 import HERE, BASE, TARGET, VERSION, bundle_check, digest, loaded_truth, profile_params, require, scenario_overrides
+from ref6 import HERE, BASE, TARGET, VERSION, BUNDLE_REF, bundle_check, digest, loaded_truth, profile_params, require, scenario_overrides
 from locate_inputs import path
 from source_state import git, save, restore
 
@@ -57,12 +57,11 @@ def flight(args):
     with open(Path(tempfile.gettempdir())/('px4-qtail-'+key+'.lock'), 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         require(not git(repo, 'status', '--porcelain').stdout, 'PX4 checkout is dirty; nothing discarded')
-        git(repo, 'cat-file', '-e', BASE+'^{commit}')
         receipt = json.loads((args.state/'receipt.json').read_text())
         require(not receipt.get('restored'), 'Installation has been restored; reinstall with a new state')
         truth = active_session(args.truth.resolve())
         identity = loaded_truth(truth, receipt)
-        if scenario != 'baseline':
+        if args.mode == 'flight':
             instrumentation = diagnostic_availability(truth)
             require(not instrumentation['missing'],
                     'Moment/energy capture is missing: '+', '.join(instrumentation['missing'])+
@@ -104,11 +103,25 @@ def flight(args):
         try:
             git(repo, 'bundle', 'verify', str(HERE/'diagnostics.bundle'))
             git(repo, '-c', 'fetch.recurseSubmodules=false', 'fetch', '--no-tags',
-                str(HERE/'diagnostics.bundle'), 'refs/heads/validation/qtailsitter-diagnostics-20261029')
+                str(HERE/'diagnostics.bundle'), BUNDLE_REF)
             require(git(repo, 'rev-parse', 'FETCH_HEAD').stdout.strip() == TARGET, 'Diagnostic identity mismatch')
+            # The bundle carries official upstream history as well as diagnostics.
+            git(repo, 'cat-file', '-e', BASE+'^{commit}')
             changed = True
             git(repo, 'switch', '--detach', TARGET)
             (run/'source.patch').write_text(git(repo, 'diff', BASE, TARGET).stdout)
+            print('Aligning PX4 submodules to the pinned revision; existing Git caches are reused.', flush=True)
+            try:
+                modules = git(repo, '-c', 'fetch.recurseSubmodules=false', 'submodule',
+                              'update', '--init', '--recursive', '--jobs', '2')
+            except subprocess.CalledProcessError as error:
+                (run/'submodules.txt').write_text((error.stdout or '')+(error.stderr or ''))
+                raise
+            (run/'submodules.txt').write_text((modules.stdout or '')+(modules.stderr or ''))
+            module_status = git(repo, 'submodule', 'status', '--recursive').stdout
+            (run/'submodule-identities.txt').write_text(module_status)
+            require(all(not line or line[0] == ' ' for line in module_status.splitlines()),
+                    'PX4 submodules do not match the pinned revision; build refused')
             with (run/'build.txt').open('w') as output:
                 subprocess.run(['make', '-C', str(repo), '-j', '2', 'px4_sitl_default'],
                                stdout=output, stderr=subprocess.STDOUT, check=True)

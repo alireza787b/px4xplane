@@ -21,15 +21,22 @@ from locate_inputs import path
 
 HERE = Path(__file__).resolve().parent
 NAME = 'QuadTailsitterRef6'
-BASE = 'f90b40d61e56405513dfcd8e194287ac60d3a6ae'
-TARGET = '9cfe130a8d8e0c25f88e044141c523247ca53d48'
-VERSION = '2026-11-03.ref6.12'
+BASE = '649929706fb34bf0b06dbd2df24e04d5d452d616'
+TARGET = '58794523a151fa33a28a564454454b8c9fbfcdd5'
+VERSION = '2026-11-03.ref6.13'
+BUNDLE_REF = 'refs/heads/validation/qtailsitter-upstream-20261103'
 SCENARIOS = ('baseline', 'recovery-jerk', 'braking-isolation')
 
 
 def require(condition, message):
     if not condition:
         raise ValueError(message)
+
+
+def print_source_info():
+    print('Source:', VERSION, '| official PX4 BASE:', BASE, '| log-only TARGET:', TARGET)
+    print('Includes all official upstream changes since the Sep 21 base, including #28350 '
+          '(braking feedforward velocity-limit fix). No new PX4 controller patch.')
 
 
 def scenario_overrides(mode, scenario):
@@ -306,7 +313,7 @@ def dispatch(args):
     if args.mode == 'update':
         from update_debug import update
         print('Updated SAME debug folder to', update(HERE, args.manifest_url))
-        print('Next: bash run.sh prepare-truth, then follow QUICKSTART.md for the recovery-jerk test.')
+        print('Next: bash run.sh prepare-truth, then follow QUICKSTART.md for the latest-upstream baseline flight.')
     elif args.mode == 'configure-upload':
         from upload_debug import configure
         configure(url=args.upload_url)
@@ -323,8 +330,8 @@ def dispatch(args):
         retry_pending(HERE/'runs')
     elif args.mode == 'check':
         bundle_check()
-        subprocess.run(['git', '-C', str(args.repo), 'cat-file', '-e', BASE+'^{commit}'], check=True)
         subprocess.run(['git', '-C', str(args.repo), 'bundle', 'verify', str(HERE/'diagnostics.bundle')], check=True)
+        print_source_info()
         print('Ref6', VERSION, 'checks passed; no installation or flight performed')
     elif args.mode == 'install':
         require(args.xplane and args.config, '--xplane and --config required')
@@ -348,6 +355,7 @@ def dispatch(args):
         bundle_check()
         report(args.bench_measurements)
         print('Mode', args.mode, '; SAME pinned diagnostic firmware.')
+        print_source_info()
         print('Scenario:', scenario, '| scenario_overrides:', overrides)
         print('UNVALIDATED SITL ONLY. Calibration and hover results are pending. No readiness claim.')
         print('Observe the hover checkpoint before any transition. No EKF overrides.')
@@ -356,12 +364,15 @@ def dispatch(args):
             if args.mode == 'hover':
                 print('MC lateral scenario: 50m console takeoff; fixed heading MPC_YAW_MODE=5 applied and checked automatically.')
         else:
-            print('R12: bounded diagnostic scenarios; baseline retains the reusable profile. Follow QUICKSTART.md; recovery remains experimental.')
+            print('R13: baseline is the recommended latest-upstream SITL test; reusable profile uses '
+                  'MPC_JERK_AUTO=4, MPC_ACC_HOR=2, MPC_ACC_HOR_MAX=2. PID/ACF unchanged. '
+                  'Follow QUICKSTART.md; recovery remains experimental.')
             if scenario == 'braking-isolation':
                 print('WARNING: braking-isolation sets MPC_XY_VEL_MAX=12.0, increases the 1.3*bound threshold to 15.6 m/s, '
-                      'and suppresses initial 9.3 m/s braking too. NOT a production fix.')
+                      'and suppresses initial 9.3 m/s braking too. Explicit diagnostic only; NOT recommended, NOT a production fix.')
             elif scenario == 'recovery-jerk':
-                print('WARNING: recovery-jerk sets MPC_JERK_AUTO=4.0 for diagnostics only; no full-flight promise.')
+                print('WARNING: legacy recovery-jerk sets MPC_JERK_AUTO=4.0, now the same as baseline; '
+                      'diagnostics only; no full-flight promise.')
         if not args.yes_debug and args.mode != 'A':
             require(input('Type SITL EXPERIMENT to capture this unvalidated simulation test: ').strip()
                     == 'SITL EXPERIMENT', 'Experiment cancelled')

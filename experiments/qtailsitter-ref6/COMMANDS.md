@@ -1,8 +1,8 @@
-# R12 Copy-Paste Commands
+# R13 Copy-Paste Commands
 
-Detailed sequence and stop conditions: QUICKSTART.md. Experimental SITL only.
+SITL only. Full sequence/stop criteria: QUICKSTART.md. This replaces R12.
 
-PX4 stopped; stop the old TruthCapture recording:
+Stop PX4 and old TruthCapture recording; in WSL:
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -11,48 +11,50 @@ cat VERSION.txt
 bash run.sh prepare-truth
 ```
 
-Expect `2026-11-03.ref6.12`. Fresh Ref6 flight, full X-Plane battery, no payload
-or wind. Start a new TruthCapture recording and QGC; connect the Ref6 plugin.
+Expect 2026-11-03.ref6.13. Fresh fully charged Ref6, no wind/payload. Start NEW
+TruthCapture recording, QGC and plugin connection. Then in WSL:
 
 ```bash
-bash run.sh flight --scenario recovery-jerk --yes-debug
+bash run.sh flight --yes-debug
 ```
 
-After the parameter gate, in the PX4 console:
+Wait for build/connection and PARAMETER GATE PASSED. PX4 console:
 
 ```text
+ver all
 param show MPC_JERK_AUTO
+param show MPC_ACC_HOR
 param show MPC_XY_VEL_MAX
 param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect `4`, `4`, `180`. Wait for actual 180 m above home and 15 seconds settled:
+Expect hash 58794523a1..., values 4, 2, 4, 180. At actual 180 m plus 15 s settled:
 
 ```text
 commander transition
 listener vtol_vehicle_status -n 1
 ```
 
-When state 4 is confirmed, count 15 seconds. Then once:
+FW state 4, then 20 s established FW. Back-transition once:
 
 ```text
 commander transition
 ```
 
-Wait for actual upright/stopped MC, then 15 seconds settled:
+After actual upright/stopped MC plus 15 s settled:
 
 ```text
 commander land
 ```
 
-After automatic disarm, or after 15-20 seconds of sustained failed recovery:
+After touchdown/autodisarm, or 15-20 s sustained failed recovery:
 
 ```text
 shutdown
 ```
 
-Wait for UPLOAD VERIFIED. No RTL, GoTo, autotune or gain edits in this test.
-Use `bash run.sh retry-uploads` if upload fails. Keep the original Windows truth
-recording until the analysis is complete. No file copying is needed after upload.
+Wait for UPLOAD VERIFIED; leave TruthCapture running until collection ends.
+No in-flight edits, autotune, GoTo, RTL or speed changes. Retry failed uploads:
+`bash run.sh retry-uploads`.
