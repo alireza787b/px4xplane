@@ -1,27 +1,25 @@
-# QuadTailsitter Model-Pairing Check
+# QuadTailsitter X-Plane 12 Test Card
 
-There are two incompatible model/profile generations. Read the
-[compact migration guide](compact-qtailsitter.md) before selecting one.
-The draft compact defaults are not a generic retune for the old 5 kg aircraft.
+Use the public legacy QuadTailsitter reference with its matching model.
+Model/profile development details are in the
+[compact developer guide](compact-qtailsitter.md), not the normal setup flow.
 
-1. Check the model filename, ACF hash, selected plugin section and PX4 defaults.
-   The compact QuadTailsitter model is supplied privately by its owner.
-2. Use separate saved parameters. Verify the startup parameter gate, source
-   revision and `SYS_AUTOSTART=5021`; do not infer the tune from the ID alone.
-3. Connect QGC and wait for estimator readiness without raising bias limits.
-4. Begin with hover, a short movement/stop and Land before trying transitions
-   on a changed build or installation. Never use these SITL values on hardware.
-5. For a further flight check, allow substantial terrain/altitude margin,
-   settle in FW and command one back-transition before evaluating RTL geometry.
-   Existing 1300 m loiter defaults do not override a mission's explicit radius.
-6. Judge body rates, quaternions and actual height, not the near-vertical Euler
+1. Follow the [Quick Start](../README.md#quick-start) using official PX4 `main`.
+   Select the matching X-Plane aircraft and plugin section `[QuadTailsitter]`.
+2. Select `xplane_qtailsitter` and verify `SYS_AUTOSTART=5021`. Confirm the
+   actual PX4 defaults and saved parameters; the target ID alone is not enough.
+   The guided launcher keeps this airframe's state separate and preserves tuning.
+3. Confirm QGC shows a connected vehicle and wait for estimator readiness.
+   The X-Plane TCP connection alone does not confirm QGC telemetry.
+4. Begin with hover, a short movement/stop and Land on a changed installation.
+   Never use these SITL values on hardware.
+5. Allow ample terrain/altitude margin for transition checks. Settle in
+   fixed-wing flight and check one back-transition before evaluating RTL.
+6. Judge body rates, quaternions and actual height, not near-vertical Euler
    roll display alone. End the simulation for growing departure or non-decay.
-7. Verify continuous commanded descent, touchdown and automatic disarm.
+7. Verify controlled descent, touchdown and automatic disarm.
 
-The R16 owner test completed mission/FW/RTL/Land, but residual oscillation and
-back-transition climb remain. This card is not a production acceptance claim.
-Additional full-envelope or other-airframe tuning is separate work.
-
-If investigating a regression, retain the ULog, source/profile/model identities,
-X-Plane Log.txt and optional independent truth. Do not upload aircraft-bearing
-archives publicly; arrange private reviewer access or publish sanitized metrics.
+Record the source revision, plugin version, model/profile identity, PX4 output
+and relevant ULog results. This checklist does not claim a new completed flight
+or full-envelope acceptance. See [Troubleshooting](index.md#troubleshooting)
+for connection or saved-parameter issues.

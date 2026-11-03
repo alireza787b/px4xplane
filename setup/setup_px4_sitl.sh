@@ -4,7 +4,7 @@
 #
 # Author: Alireza Ghaderi
 # LinkedIn: alireza787b
-# Updated: July 2026
+# Updated: November 2026
 # GitHub Repo: alireza787b/px4xplane
 #
 # === Purpose ===
@@ -22,7 +22,7 @@
 # 1. Uses official PX4 main as the base, optionally with TECS PR #27670.
 # 2. Auto-syncs with remote updates (smart pull detection).
 # 3. Sets up the necessary dependencies by running the provided setup script (`ubuntu.sh`).
-# 4. Optionally sets up MAVLink Router for communication with X-Plane.
+# 4. Targets QGC directly, with an optional already-installed MAVLink Router.
 # 5. Optionally sets up global access to the `px4xplane` command.
 # 6. Prompts the user to select a platform to build and initiates the build process.
 #
@@ -33,7 +33,7 @@
 # - **Expert Options**: Full control via flags and manual overrides
 # - **Robust Error Handling**: Graceful fallbacks and informative error messages
 # - **Progress Indicators**: Visual feedback for all major operations
-# - **MAVLink Router**: Optional automated setup for network communication
+# - **Saved tuning**: Isolated per airframe; explicit resets are backed up
 # - **Global Access**: Optional `px4xplane` command for system-wide access
 # - **Repair Mode**: Force full re-setup if needed
 #
@@ -51,10 +51,10 @@
 # The following variables can be customized at the top of the script:
 # - `REPO_URL`: URL of the selected PX4 repository
 # - `BRANCH_NAME`: Branch to checkout
-# - `UPSTREAM_URL`: URL of the upstream PX4 repository
+# - `OFFICIAL_PX4_REPO_URL`: URL of the upstream PX4 repository
 # - `DEFAULT_CLONE_PATH`: Default installation directory
 # - `PLATFORM_CHOICES`: Available airframes for X-Plane
-# - `USE_MAVLINK_ROUTER`: Enable/disable MAVLink Router setup
+# - `--with-mavlink-router`: Opt in to an installed router for remote QGC
 #
 # === Requirements ===
 # - Git (required)
@@ -81,13 +81,11 @@ REPO_URL="${PX4XPLANE_PX4_REPO:-$OFFICIAL_PX4_REPO_URL}"
 BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-$DEFAULT_PX4_BRANCH}"
 PX4_REPO_EXPLICIT=false
 PX4_BRANCH_EXPLICIT=false
-REPO_URL_WAS_OVERRIDDEN=false
-[ -n "${PX4XPLANE_PX4_REPO:-}" ] && PX4_REPO_EXPLICIT=true && REPO_URL_WAS_OVERRIDDEN=true
+[ -n "${PX4XPLANE_PX4_REPO:-}" ] && PX4_REPO_EXPLICIT=true
 [ -n "${PX4XPLANE_PX4_BRANCH:-}" ] && PX4_BRANCH_EXPLICIT=true
-PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-origin}"
+PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-px4xplane}"
 TECS_ALT_FRAME_GUARD_SOURCE_REF="${PX4XPLANE_TECS_ALT_FRAME_GUARD_REF:-refs/pull/27670/head}"
 TECS_ALT_FRAME_GUARD_LOCAL_REF="pr-27670-tecs-alt-reference-guard"
-UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
 DEFAULT_CLONE_PATH="$HOME"
 MANAGED_CHECKOUT_NAME="${PX4XPLANE_CHECKOUT_NAME:-PX4-Autopilot}"
 LEGACY_CHECKOUT_NAME="PX4-Autopilot-Me"
@@ -96,14 +94,15 @@ PX4_PATH_OVERRIDE="${PX4XPLANE_PX4_PATH:-}"
 DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 COMMAND_NAME="px4xplane"
-MAVLINK2REST_IP="127.0.0.1"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
 SETUP_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh"
+SETUP_RUNNER_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/launch_sitl.py"
+LAUNCHER_VERSION="2026-11-03.1"
 
 # === MAVLink Router Configuration ===
-USE_MAVLINK_ROUTER=true  # Set to true to enable MAVLink Router installation and setup
-MAVLINK_ROUTER_INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/mavlink-anywhere/main/install_mavlink_router.sh"
-MAVLINK_ROUTER_COMMAND="mavlink-routerd -e __PX4_SIM_HOSTNAME__:14540 -e __PX4_SIM_HOSTNAME__:14550 -e __PX4_SIM_HOSTNAME__:14569 -e __MAVLINK2REST_IP__:14569 0.0.0.0:14550"
+USE_MAVLINK_ROUTER=false
+QGC_HOST=""
+RESET_PARAMS_MODE=false
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
@@ -149,16 +148,20 @@ Developer validation: --validation (experimental TECS PR #27670 only).
 Custom repository, branch, and checkout options work with either mode.
 
 Options:
-  --sync          Force-sync the selected PX4 checkout to the configured PX4
-                  branch remote, update submodules, and reset saved SITL
-                  parameters before launching.
+  --sync          Sync the clean selected PX4 checkout to the configured remote
+                  revision and update submodules. Preserve local branches and tuning.
   --no-sync       Advanced/offline mode: do not sync the PX4 checkout before
                   launching; skip launcher and PX4 update checks. Cannot apply
-                  the TECS guard. Saved SITL params are still reset if the
-                  selected airframe defaults changed.
+                  the TECS guard. Saved per-airframe tuning is preserved.
   --repair        Run the full dependency/setup path and sync the selected PX4 checkout.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
+  --reset-params  Back up and reset only the selected airframe's isolated SITL
+                  parameter store. Does not delete another checkout's parameters.
+  --qgc-host IP   QGC IPv4 address (default: the selected X-Plane host).
+  --with-mavlink-router
+                  Use an already installed mavlink-routerd for a remote GCS.
+                  Optional; direct QGC UDP is the default. No router installer runs.
   --px4-repo URL  Use a different PX4 remote for this run.
   --px4-branch NAME
                   Use a different PX4 branch for this run. Also available via
@@ -168,7 +171,7 @@ Options:
                   px4xplane remote and does not rewrite your origin remote.
   --restore-official
                   Restore the selected PX4 checkout to official PX4 main,
-                  update submodules, reset saved SITL params, and exit.
+                  update submodules, preserve branches/tuning, and exit.
   --validation    Use official PX4 main plus the still-open experimental
                   fixed-wing TECS altitude reset PR #27670 only.
   --official      Use official PX4 main without experimental patches (default).
@@ -190,8 +193,8 @@ Options:
                   altitude reference reset PR #27670 before launching.
   --without-tecs-alt-guard
                   Do not apply the pending fixed-wing TECS altitude guard.
-  --uninstall     Remove the global px4xplane command, saved config, and legacy
-                  helper-managed fork checkout if present.
+  --uninstall     Remove the global px4xplane command and saved launcher config.
+                  Preserve PX4 checkouts, tuning, logs and backups.
   --help          Show this help.
 
 Environment:
@@ -228,6 +231,23 @@ while [[ $# -gt 0 ]]; do
             RESET_IP_MODE=true
             shift
             ;;
+        --reset-params)
+            RESET_PARAMS_MODE=true
+            shift
+            ;;
+        --qgc-host)
+            if [ -z "${2:-}" ]; then
+                echo "Missing value for --qgc-host"
+                print_usage
+                exit 1
+            fi
+            QGC_HOST="$2"
+            shift 2
+            ;;
+        --with-mavlink-router)
+            USE_MAVLINK_ROUTER=true
+            shift
+            ;;
         "$PX4_REPO_FLAG")
             if [ -z "${2:-}" ]; then
                 echo "Missing value for $PX4_REPO_FLAG"
@@ -236,7 +256,6 @@ while [[ $# -gt 0 ]]; do
             fi
             REPO_URL="$2"
             PX4_REPO_EXPLICIT=true
-            REPO_URL_WAS_OVERRIDDEN=true
             SYNC_MODE=true
             shift 2
             ;;
@@ -273,7 +292,6 @@ while [[ $# -gt 0 ]]; do
             fi
             if [ "$PX4_REPO_EXPLICIT" = false ]; then
                 REPO_URL="$OFFICIAL_PX4_REPO_URL"
-                REPO_URL_WAS_OVERRIDDEN=true
             fi
             APPLY_TECS_ALT_FRAME_GUARD=true
             shift
@@ -285,7 +303,6 @@ while [[ $# -gt 0 ]]; do
             fi
             if [ "$PX4_REPO_EXPLICIT" = false ]; then
                 REPO_URL="$OFFICIAL_PX4_REPO_URL"
-                REPO_URL_WAS_OVERRIDDEN=true
             fi
             APPLY_TECS_ALT_FRAME_GUARD=false
             shift
@@ -370,13 +387,8 @@ if [ "$UNINSTALL_MODE" = true ]; then
         echo "Global command not found."
     fi
 
-    # Remove the legacy helper-managed fork checkout and config file.
-    # Do not remove ~/PX4-Autopilot automatically; it may be a user's normal
-    # PX4 development checkout.
-    if [ -d "$DEFAULT_CLONE_PATH/$LEGACY_CHECKOUT_NAME" ]; then
-        sudo rm -rf "$DEFAULT_CLONE_PATH/$LEGACY_CHECKOUT_NAME"
-        echo "Removed legacy $LEGACY_CHECKOUT_NAME cloned repository."
-    fi
+    # Checkouts, per-airframe state and backups may contain the user's work.
+    echo "PX4 checkouts, saved tuning and parameter backups are preserved."
     if [ -e "$DEFAULT_CONFIG_FILE" ]; then
         rm "$DEFAULT_CONFIG_FILE"
         echo "Removed .px4sitl_config file."
@@ -418,6 +430,7 @@ if [ "$USING_EXTERNAL_PX4_PATH" = true ] && [ "$PX4_REMOTE_NAME" = "origin" ]; t
 fi
 
 # === Create Parent Directory if Needed ===
+SOURCE_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
 if [ ! -d "$INSTALL_PATH" ]; then
     echo "Directory $INSTALL_PATH does not exist. Creating it..."
     mkdir -p "$INSTALL_PATH"
@@ -426,9 +439,9 @@ fi
 # === Copy Script to Parent Directory ===
 SCRIPT_PATH="$INSTALL_PATH/$SCRIPT_NAME"
 SCRIPT_WAS_COPIED=false
-if [ "$(basename "$0")" != "$SCRIPT_NAME" ]; then
+if [ "$(readlink -f "$0")" != "$(readlink -m "$SCRIPT_PATH")" ]; then
     echo "Copying script to $SCRIPT_PATH..."
-    cp "$0" "$SCRIPT_PATH"
+    cp "$0" "$SCRIPT_PATH" || exit 1
     chmod +x "$SCRIPT_PATH"
     SCRIPT_WAS_COPIED=true
 fi
@@ -471,7 +484,7 @@ refresh_global_command() {
     local current_target
     local seen=":"
 
-    for target in $(global_command_paths); do
+    while IFS= read -r target; do
         [ -n "$target" ] || continue
         case "$seen" in
             *":$target:"*) continue ;;
@@ -488,7 +501,7 @@ refresh_global_command() {
 
             chmod +x "$target" 2>/dev/null || true
         fi
-    done
+    done < <(global_command_paths)
 }
 
 if [ "$SCRIPT_WAS_COPIED" = true ]; then
@@ -505,7 +518,7 @@ is_valid_ipv4() {
 
     for part in "${parts[@]}"; do
         [[ "$part" =~ ^[0-9]+$ ]] || return 1
-        ((part >= 0 && part <= 255)) || return 1
+        ((10#$part >= 0 && 10#$part <= 255)) || return 1
     done
 }
 
@@ -699,48 +712,29 @@ airframe_hash_for_platform() {
     fi
 }
 
-reset_saved_sitl_parameters() {
-    local rootfs="$CLONE_PATH/build/px4_sitl_default/rootfs"
-    local removed=false
-
-    for param_file in "$rootfs/parameters.bson" "$rootfs/parameters_backup.bson"; do
-        if [ -f "$param_file" ]; then
-            rm -f "$param_file"
-            removed=true
-        fi
-    done
-
-    if [ "$removed" = true ]; then
-        success "Saved PX4 SITL parameters reset so airframe defaults reload."
-    else
-        info "No saved PX4 SITL parameter store found to reset."
+require_clean_px4_checkout() {
+    local status_output
+    status_output="$(git status --porcelain --untracked-files=normal)" || return 1
+    if [ -n "$status_output" ]; then
+        warning "PX4 has local changes or mismatched submodules. Nothing was discarded."
+        printf '%s\n' "$status_output"
+        info "Commit/preserve your changes first, or deliberately use --no-sync."
+        return 1
     fi
+    # Root status does not always expose untracked files in nested submodules.
+    git submodule foreach --quiet --recursive \
+        'test -z "$(git status --porcelain --untracked-files=normal)"' || {
+        warning "A PX4 submodule has local changes; sync stopped without cleaning."
+        return 1
+    }
 }
 
-reset_params_if_airframe_changed() {
-    local platform="$1"
-    local current_hash
-    current_hash="$(airframe_hash_for_platform "$platform")"
-    SELECTED_AIRFRAME_HASH=""
-
-    if [ -z "$current_hash" ]; then
-        warning "Could not fingerprint the PX4 airframe file for $platform."
-        return
-    fi
-
-    SELECTED_AIRFRAME_HASH="$current_hash"
-
-    if [ "$SYNC_MODE" = true ] || [ "$RESET_CONFIG_MODE" = true ] || [ "$REPAIR_MODE" = true ]; then
-        info "Sync/reset requested; clearing saved SITL parameters before launch."
-        reset_saved_sitl_parameters
-        return
-    fi
-
-    if [ "$PREVIOUS_PLATFORM" != "$platform" ] || [ "$PREVIOUS_AIRFRAME_HASH" != "$current_hash" ]; then
-        info "Selected airframe/defaults changed since the previous run."
-        reset_saved_sitl_parameters
-    else
-        info "Selected airframe/defaults unchanged; keeping saved SITL parameters."
+require_no_running_px4() {
+    local status=0
+    pgrep -x px4 >/dev/null 2>&1 || status=$?
+    if [ "$status" -ne 1 ]; then
+        warning "PX4 may already be running (or process detection failed). Stop it before setup/build."
+        return 1
     fi
 }
 
@@ -775,7 +769,7 @@ apply_guard_commits() {
     for guard_commit in $guard_commits; do
         if ! git cherry-pick -x "$guard_commit"; then
             if [ -z "$(git diff --name-only --diff-filter=U)" ] && git diff --quiet && git diff --cached --quiet; then
-                git cherry-pick --skip >/dev/null 2>&1 || git reset --hard HEAD >/dev/null 2>&1 || true
+                git cherry-pick --skip || return 1
                 info "$label commit $guard_commit was already present; skipped."
             else
                 git cherry-pick --abort >/dev/null 2>&1 || true
@@ -806,15 +800,12 @@ fetch_guard_ref() {
 }
 
 sync_px4_repo_to_remote() {
-    local clean_untracked="${1:-false}"
     local remote_ref="$PX4_REMOTE_NAME/$BRANCH_NAME"
-    local local_branch="$BRANCH_NAME"
-    local status_output
-    local ahead_count
-    local backup_branch
     local current_remote_url
 
     cd "$CLONE_PATH" || return 1
+    require_no_running_px4 || return 1
+    require_clean_px4_checkout || return 1
 
     progress "Syncing PX4 checkout with $remote_ref..."
 
@@ -825,22 +816,21 @@ sync_px4_repo_to_remote() {
         current_remote_url="$(git remote get-url "$PX4_REMOTE_NAME" 2>/dev/null || true)"
     fi
 
-    if git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1 && \
-       { [ "$REPO_URL_WAS_OVERRIDDEN" = true ] || [ "$PX4_REMOTE_NAME" != "origin" ] || [ "$current_remote_url" != "$REPO_URL" ]; }; then
+    if [ "$PX4_REMOTE_NAME" = origin ] && [ -n "$current_remote_url" ] && [ "$current_remote_url" != "$REPO_URL" ]; then
+        warning "Refusing to rewrite origin. Use the default px4xplane remote."
+        return 1
+    fi
+    if [ "$PX4_REMOTE_NAME" != origin ] && git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1; then
         git remote set-url "$PX4_REMOTE_NAME" "$REPO_URL"
         info "Using $PX4_REMOTE_NAME remote: $REPO_URL"
     fi
 
-    if ! git fetch "$PX4_REMOTE_NAME" "+$BRANCH_NAME:refs/remotes/$PX4_REMOTE_NAME/$BRANCH_NAME"; then
+    if ! git fetch --no-recurse-submodules "$PX4_REMOTE_NAME" "+$BRANCH_NAME:refs/remotes/$PX4_REMOTE_NAME/$BRANCH_NAME"; then
         warning "Could not fetch $PX4_REMOTE_NAME/$BRANCH_NAME."
         return 1
     fi
 
     fetch_guard_ref "$APPLY_TECS_ALT_FRAME_GUARD" "$TECS_ALT_FRAME_GUARD_SOURCE_REF" "$TECS_ALT_FRAME_GUARD_LOCAL_REF" "fixed-wing TECS altitude guard" || return 1
-
-    if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ]; then
-        local_branch="${BRANCH_NAME}-validation"
-    fi
 
     if ! git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
         warning "Remote branch $remote_ref was not found."
@@ -852,95 +842,37 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    status_output="$(git status --porcelain --untracked-files=normal 2>/dev/null)"
-    if [ -n "$status_output" ]; then
-        info "Saving local uncommitted/untracked PX4 changes to git stash before sync."
-        git stash push --include-untracked -m "px4xplane auto-backup before sync $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
-    fi
-
-    ahead_count="$(git rev-list --count "$remote_ref"..HEAD 2>/dev/null || echo 0)"
-    if [[ "$ahead_count" =~ ^[0-9]+$ ]] && [ "$ahead_count" -gt 0 ]; then
-        backup_branch="px4xplane-local-backup-$(date -u +%Y%m%dT%H%M%SZ)"
-        git branch "$backup_branch" HEAD >/dev/null 2>&1 || true
-        info "Local commits were ahead of remote; backup branch created: $backup_branch"
-    fi
-
-    if ! git checkout -B "$local_branch" "$remote_ref"; then
+    # Detached checkout leaves all the user's local branch pointers intact.
+    if ! git checkout --detach "$remote_ref"; then
         warning "Could not switch local branch to $remote_ref."
-        return 1
-    fi
-
-    if ! git reset --hard "$remote_ref"; then
-        warning "Could not reset local branch to $remote_ref."
         return 1
     fi
 
     apply_guard_commits "$remote_ref" "$APPLY_TECS_ALT_FRAME_GUARD" "$TECS_ALT_FRAME_GUARD_LOCAL_REF" "fixed-wing TECS altitude guard" || return 1
 
-    if [ "$clean_untracked" = true ]; then
-        git clean -fd
-    fi
-
     progress "Synchronizing submodules..."
-    git submodule sync --recursive
-    if git submodule update --init --recursive --force --checkout --quiet; then
+    git submodule sync --recursive || return 1
+    if git submodule update --init --recursive --checkout --quiet; then
         success "Submodules updated."
     else
-        warning "Submodule update had issues. Continuing with the synced PX4 branch."
+        warning "Submodule update failed; no build or launch will run."
+        return 1
     fi
 
-    if [ "$clean_untracked" = true ]; then
-        git submodule foreach --recursive 'git reset --hard >/dev/null 2>&1; git clean -fd >/dev/null 2>&1' >/dev/null 2>&1 || true
-    fi
-
-    reset_saved_sitl_parameters
-    success "PX4 checkout is synced to $(git rev-parse --short HEAD) on $(git branch --show-current)."
+    success "PX4 checkout synced to $(git rev-parse --short HEAD) (detached; local branches/tuning preserved)."
 }
 
 restore_px4_repo_to_official() {
-    local official_remote="upstream"
-    local official_ref="$official_remote/$OFFICIAL_PX4_BRANCH"
-    local status_output
-
     if [ ! -d "$CLONE_PATH/.git" ]; then
         warning "No PX4 git checkout found at $CLONE_PATH."
         return 1
     fi
 
-    cd "$CLONE_PATH" || return 1
-
-    if git remote get-url origin 2>/dev/null | grep -Eq 'github.com[:/]PX4/PX4-Autopilot(.git)?$'; then
-        official_remote="origin"
-        official_ref="origin/$OFFICIAL_PX4_BRANCH"
-    elif ! git remote get-url "$official_remote" >/dev/null 2>&1; then
-        git remote add "$official_remote" "$UPSTREAM_URL"
-        info "Added upstream remote: $UPSTREAM_URL"
-    fi
-
-    progress "Restoring PX4 checkout to official $official_ref..."
-    if ! git fetch "$official_remote" "+$OFFICIAL_PX4_BRANCH:refs/remotes/$official_remote/$OFFICIAL_PX4_BRANCH"; then
-        warning "Could not fetch official PX4 $OFFICIAL_PX4_BRANCH from $official_remote."
-        return 1
-    fi
-
-    status_output="$(git status --porcelain --untracked-files=normal 2>/dev/null)"
-    if [ -n "$status_output" ]; then
-        info "Saving local uncommitted/untracked PX4 changes to git stash before official restore."
-        git stash push --include-untracked -m "px4xplane auto-backup before official restore $(date -u +%Y%m%dT%H%M%SZ)" >/dev/null 2>&1 || true
-    fi
-
-    if ! git checkout -B "$OFFICIAL_PX4_BRANCH" "$official_ref"; then
-        warning "Could not switch to official PX4 $OFFICIAL_PX4_BRANCH."
-        return 1
-    fi
-
-    git reset --hard "$official_ref" || return 1
-    git clean -fd
-    git submodule sync --recursive
-    git submodule update --init --recursive --force --checkout --quiet || true
-    git submodule foreach --recursive 'git reset --hard >/dev/null 2>&1; git clean -fd >/dev/null 2>&1' >/dev/null 2>&1 || true
-
-    reset_saved_sitl_parameters
+    REPO_URL="$OFFICIAL_PX4_REPO_URL"
+    BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
+    PX4_REMOTE_NAME=px4xplane
+    APPLY_TECS_ALT_FRAME_GUARD=false
+    sync_px4_repo_to_remote || return 1
     success "PX4 checkout restored to official $OFFICIAL_PX4_BRANCH at $(git rev-parse --short HEAD)."
     info "X-Plane SITL airframes are available in official PX4 main."
 }
@@ -966,8 +898,11 @@ update_launcher_script_if_needed() {
 
     if ! cmp -s "$temp_script" "$current_script_path" 2>/dev/null || ! cmp -s "$temp_script" "$SCRIPT_PATH" 2>/dev/null; then
         info "Updating px4xplane launcher script from master."
-        cp "$temp_script" "$SCRIPT_PATH"
-        chmod +x "$SCRIPT_PATH"
+        if ! cp "$temp_script" "$SCRIPT_PATH" || ! chmod +x "$SCRIPT_PATH"; then
+            rm -f "$temp_script"
+            warning "Could not install launcher update; stopping without running an outdated copy."
+            exit 1
+        fi
 
         if [ "$current_script_path" != "$SCRIPT_PATH" ]; then
             cp "$temp_script" "$current_script_path" 2>/dev/null || true
@@ -990,6 +925,11 @@ if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
 fi
 
 update_launcher_script_if_needed
+if ! command -v pgrep >/dev/null 2>&1; then
+    warning "Process checks require pgrep. Install procps before running setup."
+    exit 1
+fi
+require_no_running_px4 || exit 1
 
 # === Trap for Cleanup ===
 cleanup() {
@@ -1016,7 +956,7 @@ echo "╚═══════════════════════�
 echo ""
 highlight "Author: Alireza Ghaderi (@alireza787b)"
 highlight "GitHub: https://github.com/alireza787b/px4xplane"
-highlight "Updated: July 2026"
+highlight "Updated: November 2026"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
 highlight "PX4 X-Plane Support"
@@ -1063,6 +1003,11 @@ if ! command -v git &> /dev/null; then
     exit 1
 fi
 success "Git found."
+if ! command -v python3 >/dev/null 2>&1; then
+    warning "Python 3 is required. Install it with: sudo apt-get install python3"
+    exit 1
+fi
+info "Launcher version: $LAUNCHER_VERSION | script: $(readlink -f "$0")"
 
 # === Simplified Process for Subsequent Runs ===
 if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
@@ -1076,8 +1021,8 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
             LOCAL_HASH="$(git rev-parse HEAD 2>/dev/null)"
             REMOTE_HASH="$LOCAL_HASH"
         else
-            LOCAL_HASH=""
-            REMOTE_HASH=""
+            warning "Sync failed. Stopping; --no-sync is available for intentional local runs."
+            exit 1
         fi
     else
         highlight "Offline/no-sync mode"
@@ -1085,60 +1030,13 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
         REMOTE_HASH="$LOCAL_HASH"
     fi
 
-    if [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ] && [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
-        warning "Updates available from remote repository!"
-        echo ""
-        echo "Local commit:  $LOCAL_HASH"
-        echo "Remote commit: $REMOTE_HASH"
-        echo ""
-        highlight "Do you want to pull the latest updates? (Recommended)"
-        echo "Press Enter to pull updates (default: yes) or type 'n' to skip"
-        read -t 10 -r PULL_UPDATES
-
-        if [[ -z "$PULL_UPDATES" || ! "$PULL_UPDATES" =~ ^[Nn]$ ]]; then
-            if sync_px4_repo_to_remote false; then
-
-                # Check if setup script itself was updated
-                if [ -f "$CLONE_PATH/setup_px4_sitl.sh" ]; then
-                    info "Checking if setup script was updated..."
-
-                    # Compare script with current running script
-                    CURRENT_SCRIPT_PATH="$(readlink -f "$0")"
-
-                    if ! cmp -s "$CLONE_PATH/setup_px4_sitl.sh" "$CURRENT_SCRIPT_PATH" 2>/dev/null; then
-                        warning "The setup script has been updated!"
-                        info "Copying new version to: $SCRIPT_PATH"
-
-                        if cp "$CLONE_PATH/setup_px4_sitl.sh" "$SCRIPT_PATH" 2>/dev/null; then
-                            chmod +x "$SCRIPT_PATH"
-                            refresh_global_command
-                            success "Setup script updated successfully!"
-                            echo ""
-                            highlight "⚠️  The script has been updated. Please re-run the command."
-                            info "Run: $0"
-                            exit 0
-                        else
-                            warning "Could not update setup script. Continuing with current version..."
-                        fi
-                    fi
-                fi
-
-                success "Successfully updated to latest version!"
-                highlight "Changes pulled. You may want to rebuild your airframe."
-            else
-                warning "Could not sync to remote branch. Continuing with local version..."
-                info "You may need to run: $0 --sync"
-            fi
-        else
-            info "Skipping updates. Using current local version."
-        fi
-    elif [ "$SYNC_MODE" = false ]; then
+    if [ "$SYNC_MODE" = false ]; then
         info "Using local HEAD ${LOCAL_HASH:-unknown}; remote not checked (--no-sync)."
     elif [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ]; then
         success "Your installation is up-to-date!"
     else
         warning "Could not check for updates (local or remote hash missing)."
-        info "Continuing with current installation..."
+        exit 1
     fi
 
     highlight "Skipping initial setup. Proceeding to build selection..."
@@ -1150,9 +1048,13 @@ else
 
     # === Clone the Repository ===
     if [ ! -d "$CLONE_PATH/.git" ]; then
+        if [ "$SYNC_MODE" = false ]; then
+            warning "No existing checkout for --no-sync. Run once with sync or pass --px4-path."
+            exit 1
+        fi
         progress "Cloning the repository from $REPO_URL..."
         info "This may take a few minutes depending on your connection..."
-        git clone --recursive "$REPO_URL" "$CLONE_PATH"
+        git clone --branch "$BRANCH_NAME" -- "$REPO_URL" "$CLONE_PATH" || exit 1
         success "Repository cloned successfully!"
     else
         info "Repository already exists at $CLONE_PATH."
@@ -1160,24 +1062,9 @@ else
 
     cd "$CLONE_PATH" || exit
 
-    progress "Checking out branch: $BRANCH_NAME..."
-    git checkout "$BRANCH_NAME"
-    success "Switched to branch: $BRANCH_NAME"
-
-    # === Add Upstream and Fetch Tags ===
-    progress "Adding upstream repository and fetching tags..."
-
-    # Check if upstream already exists
-    if ! git remote | grep -q "^upstream$"; then
-        git remote add upstream "$UPSTREAM_URL"
-        info "Added upstream remote: $UPSTREAM_URL"
-    else
-        info "Upstream remote already configured."
+    if [ "$SYNC_MODE" = true ]; then
+        sync_px4_repo_to_remote || exit 1
     fi
-
-    git fetch upstream --quiet
-    git fetch upstream --tags --quiet
-    success "Upstream repository configured."
 
     # === Run the ubuntu.sh Script ===
     highlight "Installing PX4 dependencies..."
@@ -1190,44 +1077,13 @@ else
         info "For WSL users: It's recommended to restart WSL after first installation."
         echo "  Exit WSL, then restart it before running this script again."
     else
-        warning "Dependency installation completed with warnings. This is usually okay."
+        warning "Dependency installation failed. Resolve the setup output before launching."
+        exit 1
     fi
 
-    # === Fetch Latest Changes and Normalize Branch State ===
-    if ! sync_px4_repo_to_remote true; then
-        warning "Could not fully sync the PX4 checkout. Continuing with the checked-out branch."
-    fi
 fi
 
-# === Clean Build Options ===
-highlight "Build Options"
-echo "You can clean the build directory if you're experiencing build issues."
-echo ""
-info "Option 1: 'make clean' - Removes build artifacts (safe, fast)"
-info "Option 2: 'make distclean' - Full reset including CMake cache (slower, thorough)"
-warning "After pulling or copying new airframe parameter files, choose 'd'."
-info "A normal 'make clean' can leave saved SITL parameters in place and mask new airframe defaults."
-echo ""
-echo "Press Enter to skip (default) or type:"
-echo "  'c' for clean"
-echo "  'd' for distclean"
-echo ""
-read -t 5 -r CLEAN_OPTION
-
-cd "$CLONE_PATH" || exit
-
-if [[ "$CLEAN_OPTION" =~ ^[Cc]$ ]]; then
-    progress "Running 'make clean'..."
-    make clean
-    success "Build directory cleaned."
-elif [[ "$CLEAN_OPTION" =~ ^[Dd]$ ]]; then
-    progress "Running 'make distclean'..."
-    make distclean
-    success "Build directory fully reset."
-    reset_saved_sitl_parameters
-else
-    info "Skipping clean. Using existing build cache."
-fi
+info "Build cache and saved tuning are preserved; no automatic clean/distclean."
 
 # === Network Setup for X-Plane ===
 # Detect environment and configure IP address for X-Plane connection
@@ -1289,66 +1145,77 @@ if ! is_valid_ipv4 "$PX4_SIM_HOSTNAME"; then
     PX4_SIM_HOSTNAME="$DEFAULT_FALLBACK_IP"
 fi
 
-# Preserve the previous airframe fingerprint before rewriting the config file.
-PREVIOUS_PLATFORM="$(last_config_value LAST_PLATFORM)"
-PREVIOUS_AIRFRAME_HASH="$(last_config_value LAST_AIRFRAME_HASH)"
-
 # Save the IP; the selected platform and airframe fingerprint are appended after selection.
 echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
 echo "PX4_SIM_HOST_SOURCE=${CHOSEN_PX4_SIM_IP_SOURCE:-auto}" >> "$CONFIG_FILE"
 export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
 success "IP address configured: $PX4_SIM_HOSTNAME"
 
+QGC_HOST="${QGC_HOST:-$PX4_SIM_HOSTNAME}"
+QGC_HOST="$(normalize_ip_input "$QGC_HOST")"
+if ! is_valid_ipv4 "$QGC_HOST"; then
+    warning "Invalid --qgc-host IPv4 address: $QGC_HOST"
+    exit 1
+fi
+QGC_STARTUP_HOST="$QGC_HOST"
+info "X-Plane TCP endpoint: $PX4_SIM_HOSTNAME:4560"
+info "QGC UDP destination: $QGC_HOST:14550 (reception not yet verified)"
+
 # === MAVLink Router Setup ===
 if [ "$USE_MAVLINK_ROUTER" = true ]; then
     highlight "MAVLink Router Setup"
-    echo "MAVLink Router enables communication between PX4 and X-Plane/GCS."
-    echo ""
-
-    MAVLINK_ROUTER_INSTALL_SCRIPT="$INSTALL_PATH/install_mavlink_router.sh"
-
-    # Download the MAVLink Router installation script
-    if [ ! -f "$MAVLINK_ROUTER_INSTALL_SCRIPT" ]; then
-        progress "Downloading MAVLink Router installation script..."
-        curl -sS -o "$MAVLINK_ROUTER_INSTALL_SCRIPT" "$MAVLINK_ROUTER_INSTALL_SCRIPT_URL"
-        chmod +x "$MAVLINK_ROUTER_INSTALL_SCRIPT"
+    if ! command -v mavlink-routerd >/dev/null 2>&1; then
+        warning "mavlink-routerd is not installed. Install it separately or omit --with-mavlink-router."
+        exit 1
     fi
-
-    # Run the MAVLink Router installation script
-    progress "Installing MAVLink Router..."
-    if bash "$MAVLINK_ROUTER_INSTALL_SCRIPT"; then
-        success "MAVLink Router installed."
-    else
-        warning "MAVLink Router installation had issues. Continuing anyway..."
+    if [[ "$QGC_HOST" == 127.* ]]; then
+        warning "Use direct QGC for localhost. Router mode requires a remote --qgc-host to avoid a loop/port conflict."
+        exit 1
     fi
-
-    # Replace specific IP placeholders in the MAVLink Router command
-    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_COMMAND//__PX4_SIM_HOSTNAME__/$PX4_SIM_HOSTNAME}"
-    MAVLINK_ROUTER_CMD="${MAVLINK_ROUTER_CMD//__MAVLINK2REST_IP__/$MAVLINK2REST_IP}"
-
-    progress "Starting MAVLink Router..."
-    info "Command: $MAVLINK_ROUTER_CMD"
-    bash -c "$MAVLINK_ROUTER_CMD" &
+    mavlink-routerd -e "$QGC_HOST:14550" 127.0.0.1:14550 &
     MAVLINK_ROUTER_PID=$!
-
     sleep 1
     if kill -0 "$MAVLINK_ROUTER_PID" 2>/dev/null; then
-        # Provide additional instructions
-        success "MAVLink Router is running (PID: $MAVLINK_ROUTER_PID)"
-        echo ""
-        highlight "MAVLink Endpoints Available:"
-        echo "  • $PX4_SIM_HOSTNAME:14540 (X-Plane connection)"
-        echo "  • $PX4_SIM_HOSTNAME:14550 (Ground Control Station)"
-        echo "  • $PX4_SIM_HOSTNAME:14569 (Additional endpoint)"
-        echo "  • $MAVLINK2REST_IP:14569 (MAVLink2REST interface)"
-        echo ""
-        info "Configure these endpoints in QGroundControl or your GCS."
-        sleep 2
+        QGC_STARTUP_HOST=127.0.0.1
+        info "Optional router forwards local UDP 14550 to $QGC_HOST:14550."
     else
-        warning "MAVLink Router exited immediately. Check the command above and rerun with --reset-ip if the IP is wrong."
+        warning "MAVLink Router failed to start; no PX4 launch performed."
         MAVLINK_ROUTER_PID=""
+        exit 1
     fi
 fi
+
+ensure_sitl_runner() {
+    RUNNER_PATH="$HOME/.local/share/px4xplane/launch_sitl.py"
+    local candidate
+    candidate="$(mktemp)" || return 1
+    if [ -f "$SOURCE_SCRIPT_DIR/setup_px4_sitl.sh" ] && [ -f "$SOURCE_SCRIPT_DIR/launch_sitl.py" ]; then
+        cp "$SOURCE_SCRIPT_DIR/launch_sitl.py" "$candidate" || return 1
+    elif [ "$SYNC_MODE" = true ]; then
+        if ! curl -fsSL "$SETUP_RUNNER_URL" -o "$candidate"; then
+            rm -f "$candidate"
+            warning "Could not download the SITL launcher companion. Retry, or use --no-sync with an installed copy."
+            return 1
+        fi
+    elif [ -f "$RUNNER_PATH" ]; then
+        rm -f "$candidate"
+        candidate="$RUNNER_PATH"
+    else
+        rm -f "$candidate"
+        warning "Offline companion is missing. Run once online before --no-sync."
+        return 1
+    fi
+    if [ "$(python3 "$candidate" --api-version)" != 1 ]; then
+        [ "$candidate" = "$RUNNER_PATH" ] || rm -f "$candidate"
+        warning "Launcher companion version mismatch; refresh the setup script."
+        return 1
+    fi
+    if [ "$candidate" != "$RUNNER_PATH" ]; then
+        mkdir -p "$(dirname "$RUNNER_PATH")" || return 1
+        mv "$candidate" "$RUNNER_PATH" || return 1
+    fi
+}
+ensure_sitl_runner || exit 1
 
 # === Global Access Setup (Optional) ===
 if ! command -v "$COMMAND_NAME" &> /dev/null; then
@@ -1361,20 +1228,29 @@ if ! command -v "$COMMAND_NAME" &> /dev/null; then
 
     if [[ -z "$GLOBAL_SETUP" || "$GLOBAL_SETUP" =~ ^[Yy]$ ]]; then
         if [ -d "$HOME/bin" ]; then
+            COMMAND_DIR="$HOME/bin"
             ln -sf "$SCRIPT_PATH" "$HOME/bin/$COMMAND_NAME"
             success "Global command set up in: $HOME/bin/$COMMAND_NAME"
         elif [ -d "$HOME/.local/bin" ]; then
+            COMMAND_DIR="$HOME/.local/bin"
             ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/$COMMAND_NAME"
             success "Global command set up in: $HOME/.local/bin/$COMMAND_NAME"
         else
+            COMMAND_DIR="$HOME/.local/bin"
             mkdir -p "$HOME/.local/bin"
             ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/$COMMAND_NAME"
-            echo 'export PATH="$HOME/.local/bin:$PATH"' >> "$HOME/.bashrc"
-            source "$HOME/.bashrc"
             success "Global command set up in: $HOME/.local/bin/$COMMAND_NAME"
         fi
         chmod +x "$SCRIPT_PATH"
         refresh_global_command
+        case ":$PATH:" in
+            *":$COMMAND_DIR:"*) ;;
+            *)
+                printf 'export PATH="%s:$PATH"\n' "$COMMAND_DIR" >> "$HOME/.bashrc"
+                export PATH="$COMMAND_DIR:$PATH"
+                info "Open a new WSL/terminal session to refresh the parent shell's command path."
+                ;;
+        esac
         info "You can now run '$COMMAND_NAME' from anywhere!"
     else
         info "Global access setup skipped."
@@ -1390,16 +1266,16 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
     if [[ "$PLATFORM" == "Exit" ]]; then
         info "Exiting without building..."
         exit 0
-    elif [[ " ${PLATFORM_CHOICES[@]} " =~ " ${PLATFORM} " ]]; then
+    elif [ -n "$PLATFORM" ]; then
         highlight "Building: $PLATFORM"
+        require_no_running_px4 || exit 1
         LAST_PLATFORM="$PLATFORM"
         info "PX4 target: $PLATFORM (SYS_AUTOSTART=$(sys_autostart_for_platform "$PLATFORM"))"
         info "Airframe file: $(airframe_file_for_platform "$PLATFORM")"
         warning "Confirm X-Plane is loaded with the matching aircraft/config before arming."
 
         cd "$CLONE_PATH" || exit
-        reset_params_if_airframe_changed "$PLATFORM"
-        CURRENT_AIRFRAME_HASH="$SELECTED_AIRFRAME_HASH"
+        CURRENT_AIRFRAME_HASH="$(airframe_hash_for_platform "$PLATFORM")"
 
         {
             echo "LAST_PLATFORM=$LAST_PLATFORM"
@@ -1408,66 +1284,26 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
             fi
         } >> "$CONFIG_FILE"
 
-        progress "Running: make px4_sitl_default $PLATFORM"
+        info "Source commit: $(git rev-parse HEAD)"
+        info "Saved tuning: isolated by checkout/source and airframe; preserved unless --reset-params."
+        progress "Building with existing cache: make -j2 px4_sitl_default"
         echo ""
 
-        if make px4_sitl_default "$PLATFORM"; then
-            success "Build completed successfully!"
-        else
-            warning "Build completed with errors. Check the output above."
+        if ! make -j2 px4_sitl_default; then
+            warning "Build failed. No PX4 launch performed."
+            exit 1
         fi
-        break
+        RUNNER_ARGS=(--checkout "$CLONE_PATH" --target "$PLATFORM" --host "$PX4_SIM_HOSTNAME"
+            --qgc-host "$QGC_STARTUP_HOST" --source-label "$REPO_URL@$BRANCH_NAME:$APPLY_TECS_ALT_FRAME_GUARD")
+        [ "$RESET_PARAMS_MODE" = false ] || RUNNER_ARGS+=(--reset-params)
+        python3 "$RUNNER_PATH" "${RUNNER_ARGS[@]}"
+        PX4_EXIT_CODE=$?
+        info "PX4 exited with status $PX4_EXIT_CODE. Saved tuning and logs remain in the reported runtime directory."
+        exit "$PX4_EXIT_CODE"
     else
         warning "Invalid selection. Please choose a valid platform or 'Exit'."
     fi
 done
 
-# === Final Instructions ===
-echo ""
-echo "╔════════════════════════════════════════════════════════════════════════════╗"
-echo "║                         Setup Complete!                                    ║"
-echo "╚════════════════════════════════════════════════════════════════════════════╝"
-echo ""
-success "PX4 SITL is ready for X-Plane simulation!"
-echo ""
-highlight "Next Steps:"
-echo ""
-echo "1. Launch X-Plane and load the matching aircraft:"
-info "   Selected airframe: $PLATFORM"
-echo ""
-echo "2. Start the px4xplane bridge plugin in X-Plane:"
-info "   Plugins -> PX4 X-Plane -> Connect to SITL"
-echo ""
-echo "3. Connect your Ground Control Station:"
-info "   QGroundControl will auto-connect to UDP:14550"
-echo ""
-echo "4. Verify the connection in PX4 console:"
-info "   Look for 'HIL_SENSOR' and 'HIL_GPS' messages"
-echo ""
-warning "Important Reminders:"
-echo "  • Make sure the correct airframe is loaded in X-Plane"
-echo "  • The aircraft model should match the PX4 airframe type"
-echo "  • For WSL users, verify Windows Firewall allows TCP 4560 and the GCS UDP endpoints"
-echo ""
-highlight "Resources:"
-echo "  • README: https://github.com/alireza787b/px4xplane#quick-start"
-echo "  • Documentation: https://github.com/alireza787b/px4xplane/tree/master/docs"
-echo "  • Troubleshooting: https://github.com/alireza787b/px4xplane/blob/master/docs/index.md#troubleshooting"
-echo "  • Issues: https://github.com/alireza787b/px4xplane/issues"
-echo ""
-info "Installation Summary:"
-echo "  ✓ Repository: $CLONE_PATH"
-echo "  ✓ Branch: $(cd "$CLONE_PATH" 2>/dev/null && git branch --show-current 2>/dev/null || echo "$BRANCH_NAME")"
-echo "  ✓ PX4 remote: $PX4_REMOTE_NAME"
-echo "  ✓ Airframe: $PLATFORM"
-echo "  ✓ IP Address: ${PX4_SIM_HOSTNAME:-Not configured}"
-echo ""
-echo "────────────────────────────────────────────────────────────────────────────"
-info "Official PX4 X-Plane SITL support is merged. Experimental TECS PR #27670 is"
-info "applied only when explicitly selected in the launcher output above."
-echo "────────────────────────────────────────────────────────────────────────────"
-echo ""
-highlight "Happy Flying! 🚁✈️"
-echo ""
-
-# === End of Script ===
+warning "No airframe selected; no SITL launch performed."
+exit 1

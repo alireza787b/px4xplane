@@ -16,7 +16,7 @@ import run_compact_qtailsitter as runner
 
 
 REPO = Path(__file__).resolve().parents[1]
-PROFILE = REPO / "config/px4_params" / runner.PROFILE_NAME
+PROFILE = REPO / "config/experimental/compact-qtailsitter" / runner.PROFILE_NAME
 GCS_LINE = "mavlink start -x -u $udp_gcs_port_local -r 4000000 -f $mavlink_network_interface_arg\n"
 # Keep the real rcS anchors and reset branch in the small standalone fixture.
 RCS = """#!/bin/sh

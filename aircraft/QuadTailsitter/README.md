@@ -1,10 +1,9 @@
 # QuadTailsitter X-Plane Aircraft
 
-This is the historical 5 kg model. Do NOT pair it with the draft compact
-`5021_xplane_qtailsitter` defaults. It is retained in source for historical
-comparison but excluded from new release packages during migration.
-See the [compact model migration guide](../../docs/compact-qtailsitter.md).
-The owner-supplied compact QuadTailsitter model is not published in this repository.
+This historical 5 kg example is retained in source, not packaged in new
+releases. Use its matching public `5021_xplane_qtailsitter` defaults.
+Model-specific developer tuning is separate; see the
+[compact experiment guide](../../docs/compact-qtailsitter.md).
 
 ## Camera Views
 

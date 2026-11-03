@@ -10,9 +10,13 @@ The source of truth for SITL execution is the active PX4 checkout:
 When preparing an official PX4 PR, keep the PX4 airframe files in the PX4
 repository and avoid adding px4xplane release-kit files to the PX4 branch.
 
-Draft exception for pre-merge validation: the compact QuadTailsitter runner
-explicitly reads its matching reference into an isolated parameter store.
-The replacement `5021_xplane_qtailsitter` reference targets the privately
-supplied compact QuadTailsitter model, not the old public 5 kg model. See
-`docs/compact-qtailsitter.md` in the plugin package/repository. A stock PX4
-checkout will not read these new defaults until its companion PR is merged.
+`5021_xplane_qtailsitter` retains the public legacy QuadTailsitter model/default
+pairing. The opt-in 211-value compact profile lives separately at
+`config/experimental/compact-qtailsitter/5021_xplane_qtailsitter`; it is not the
+normal packaged default. See the
+[compact developer guide](../../docs/compact-qtailsitter.md) for profile details.
+
+The [guided launcher](../../docs/guided-launcher.md#saved-parameters) preserves
+tuning in per-airframe state directories. Updating these reference files does
+not automatically replace saved parameters. `--reset-params` explicitly backs
+up and resets only the selected runtime.

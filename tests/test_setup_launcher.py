@@ -50,6 +50,17 @@ def function_source(name):
 
 
 class SetupLauncherTest(unittest.TestCase):
+    def test_router_and_parameter_reset_require_explicit_flags(self):
+        report='\nprintf "router=%s reset_params=%s qgc=%s\\n" "$USE_MAVLINK_ROUTER" "$RESET_PARAMS_MODE" "$QGC_HOST"\n'
+        for flags,expected in (((), 'router=false reset_params=false qgc='),
+                               (('--reset-config',), 'router=false reset_params=false qgc='),
+                               (('--reset-params','--with-mavlink-router','--qgc-host','192.168.1.25'),
+                                'router=true reset_params=true qgc=192.168.1.25')):
+            with self.subTest(flags=flags):
+                result=shell(OPTIONS+report,flags)
+                self.assertEqual(result.returncode,0,result.stderr)
+                self.assertEqual(result.stdout.strip(),expected)
+
     def selection(self, *args, env=None):
         result = shell(OPTIONS + '\nprint_launcher_selection\n'
                        'printf "path=%s\\ninstall=%s\\nsync=%s\\n" '
@@ -268,6 +279,8 @@ warning() { :; }
 success() { :; }
 progress() { :; }
 reset_saved_sitl_parameters() { :; }
+require_clean_px4_checkout() { :; }
+require_no_running_px4() { :; }
 git() {
     case "$1" in
         status) ;;

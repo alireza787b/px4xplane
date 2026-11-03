@@ -14,9 +14,8 @@ writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
 The current package is `v4.2.1` with Windows, Linux, and macOS builds. It
-includes examples for Cessna 172, TB2, Ehang 184 and Alia 250. The draft
-compact QuadTailsitter profile requires its owner-supplied aircraft; see the
-[model-pairing guide](docs/compact-qtailsitter.md) before using that target.
+includes examples for Cessna 172, TB2, Ehang 184, Alia 250 and QuadTailsitter.
+The QuadTailsitter example needs its matching owner-provided model.
 
 ## Latest Video
 
@@ -34,7 +33,9 @@ project video archive and playlist; future videos will be added there.
 2. Install or update PX4 SITL.
    Follow the official
    [PX4 development environment](https://docs.px4.io/main/en/dev_setup/dev_env.html)
-   setup for your OS, WSL2, container, or remote Linux machine.
+   setup for your OS, WSL2, container, or remote Linux machine, then the
+   [PX4 X-Plane simulation guide](https://docs.px4.io/main/en/sim_xplane/).
+   Use official `PX4/PX4-Autopilot` `main` for normal runs.
 
 3. Download the latest px4xplane package for your OS from
    [Releases](https://github.com/alireza787b/px4xplane/releases).
@@ -68,9 +69,28 @@ Available PX4 targets include `xplane_alia250`, `xplane_cessna172`,
 [PX4 X-Plane simulation](https://docs.px4.io/main/en/sim_xplane/) page for the
 current target list, running notes, and the custom-airframe integration path.
 
+## Optional Guided Setup
+
+For guided host detection, checkout setup and airframe selection, run:
+
+```bash
+tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash "$tmp"
+```
+
+After installing the command, start future sessions with `px4xplane`. The
+launcher automatically prepares official PX4 `main`, reuses existing checkouts
+and preserves saved tuning in separate per-airframe state directories. Use
+`--px4-path ~/PX4-Autopilot` to select an existing checkout explicitly.
+
+See the [guided launcher guide](docs/guided-launcher.md) for checkout safety,
+networking and explicit parameter resets, or
+[Troubleshooting](docs/index.md#troubleshooting) for connection problems.
+
 ## Network Notes
 
-PX4 connects to the px4xplane plugin on TCP port `4560`.
+PX4 connects to the px4xplane plugin on TCP port `4560`. QGroundControl (QGC)
+uses a separate MAVLink connection, normally UDP `14550`. A configured target
+address does not confirm that QGC is receiving telemetry.
 
 If PX4 SITL and X-Plane run on the same Linux or macOS machine, the default
 localhost setup is normally enough.
@@ -99,54 +119,21 @@ Run that `export` before the normal PX4 `make px4_sitl_default xplane_*`
 command in the same terminal session.
 
 Also allow inbound TCP `4560` on the X-Plane host firewall. More detail is in
-the [network setup guide](docs/index.md#network-and-platform-notes).
+the [network setup guide](docs/index.md#network-and-platform-notes). With the
+launcher, use `--qgc-host <qgc-host-ip>` when QGC is on another host. Direct
+MAVLink is the default; MAVLink Router is optional, not installed automatically.
 
-## px4xplane CLI and Experimental Validation
+## Developer Validation
 
-The official PX4 commands above are the normal path. The optional `px4xplane`
-launcher is useful when you want a guided WSL/IP prompt, automatic PX4 sync,
-airframe selection, stale SITL parameter cleanup, or local validation of
-pending PX4 fixes:
-
-```bash
-tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash "$tmp"
-```
-
-The helper installs the `px4xplane` launcher, syncs the selected PX4 checkout,
-uses official PX4 without experimental patches by default, and opens the airframe
-menu. If you accept the command install prompt, future sessions can be started
-by typing `px4xplane` from any terminal.
-
-For an intentional local test of the pending TECS altitude-reference proposal, use:
+Normal launches use official PX4 without pending patches. To test only the open
+[TECS altitude-reference proposal #27670](https://github.com/PX4/PX4-Autopilot/pull/27670):
 
 ```bash
-px4xplane --validation --reset-config
+px4xplane --validation
 ```
 
-That command uses official PX4 `main` as the base and applies only the still-open
-TECS altitude-reference PR #27670 locally. It does not apply closed GSF PR
-#27533 or already-merged VTOL/tailsitter fixes. For an official-PX4 baseline without pending
-PRs, use `px4xplane --official --reset-config`.
-
-If you already have a PX4 checkout and do not want a second clone, pass it to
-the helper:
-
-```bash
-px4xplane --px4-path ~/PX4-Autopilot --sync --reset-config
-```
-
-The helper uses a separate `px4xplane` git remote inside that checkout and
-leaves your `origin` remote unchanged. To put the selected checkout back on
-official PX4 `main`, run:
-
-```bash
-px4xplane --px4-path ~/PX4-Autopilot --restore-official
-```
-
-The launcher refreshes automatically detected WSL addresses when the WSL
-network changes. Addresses entered manually remain saved; clear one with
-`px4xplane --reset-ip`. For common setup or connection errors, see
-[Troubleshooting](docs/index.md#troubleshooting).
+Custom PX4 repo, branch and checkout overrides remain available. See
+[developer validation](docs/guided-launcher.md#developer-validation) for details.
 
 ## Status
 
@@ -163,33 +150,12 @@ timing. Legacy configs that explicitly selected `async` now migrate to the safe
 mode; unbounded developer comparisons require the explicit `async_unsafe`
 value. Existing airframe mappings and PX4 parameters are unchanged.
 
-PX4-side follow-ups are separate from the plugin. Status checked 2026-11-03:
-
-- [PX4-Autopilot PR #27533](https://github.com/PX4/PX4-Autopilot/pull/27533):
-  EKF-GSF emergency yaw-reset proposal, closed without merging; no longer applied.
-- [PX4-Autopilot PR #27601](https://github.com/PX4/PX4-Autopilot/pull/27601):
-  Standard VTOL front-transition setpoint handoff, merged into official PX4.
-- [PX4-Autopilot PR #27670](https://github.com/PX4/PX4-Autopilot/pull/27670):
-  fixed-wing TECS reset on altitude-reference changes.
-- [PX4-Autopilot PR #27793](https://github.com/PX4/PX4-Autopilot/pull/27793):
-  upstream tailsitter attitude-conversion fix, merged into PX4 `main`.
-
-Those PX4 changes are intentionally not bundled into this plugin repository.
-The launcher applies the TECS proposal only when explicitly requested with
-`--validation` or `--with-tecs-alt-guard`. A normal launch has no experimental
-patch prompt. Retired positive guard flags stop with an explanation.
-
-The [compact QuadTailsitter draft](docs/compact-qtailsitter.md) is a separate
-model-specific defaults migration, not another core-controller bugfix. Before
-its PX4 merge, use its explicit profile launcher rather than assuming a stock
-`xplane_qtailsitter` target loads the new tune. Private ACFs, raw evidence and
-temporary debug upload services are not included in public releases.
-
 ## Common Paths
 
 | I want to... | Start here |
 | --- | --- |
 | Install and fly an included airframe | [Quick Start](#quick-start) and the matching [flight-test card](docs/index.md#flight-test-cards) |
+| Use guided PX4 setup | [Guided launcher guide](docs/guided-launcher.md) |
 | Run PX4 in WSL2, Docker, or another computer | [Network setup](docs/index.md#network-and-platform-notes) |
 | Fix setup or connection errors | [Troubleshooting](docs/index.md#troubleshooting) |
 | Create or edit a custom airframe mapping | [Custom airframe guide](docs/custom-airframe-config.md) |

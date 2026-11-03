@@ -11,14 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Draft compact QuadTailsitter model/profile migration, paired with the PX4
-  airframe-default follow-up. The private aircraft is not shipped in releases.
-- Separate official-PX4 operation from explicit developer validation, and retire
-  closed or merged guard options rather than applying obsolete PR heads.
-- Add an isolated compact-profile launcher with source/model/parameter checks;
-  normal users continue to use the official PX4 simulation instructions.
+- Keep the official PX4 Quick Start separate from optional automatic guided
+  setup and explicit developer validation (TECS #27670 only).
+- Document safe checkout reuse, per-airframe saved state and explicit backed-up
+  `--reset-params`; source updates no longer imply deleting saved tuning.
+- Clarify direct QGC targeting and optional use of an already-installed MAVLink
+  Router, separately from the X-Plane TCP connection.
+- Restore the public legacy QuadTailsitter model/default pairing; isolate the
+  211-value compact profile under `config/experimental/compact-qtailsitter/`.
+- Consolidate launcher guidance and replace obsolete release-repair advice
+  with immutable published tags and new-version corrections.
 
-This is draft work, not a tagged release or a full-envelope validation claim.
+The current package remains `4.2.1`; no new tag, release or live-flight
+acceptance is claimed here. PX4 #29598 remains draft for future tuning.
 
 ## [4.2.1] - 2026-08-15
 

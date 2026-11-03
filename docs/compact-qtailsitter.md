@@ -1,115 +1,61 @@
-# Compact QuadTailsitter: Draft Model Migration
+# Compact QuadTailsitter Experiment
 
-The revised compact profile is a 2 kg, 0.6 m span, four-motor tailsitter without
-control surfaces. It uses differential thrust, a body-axis virtual pitot and
-the existing PX4 target `xplane_qtailsitter` (`SYS_AUTOSTART=5021`).
+This developer-only experiment pairs a 2 kg, 0.6 m span, four-motor tailsitter
+with model-specific parameters. It is not a retune for the public legacy
+5 kg QuadTailsitter example. Both retain the public QuadTailsitter name,
+plugin section `[QuadTailsitter]` and target `xplane_qtailsitter`
+(`SYS_AUTOSTART=5021`); the target ID alone does not identify the model/tune.
 
-**This is draft work.** The previous 5 kg model and the compact model are NOT
-interchangeable. The matching compact QuadTailsitter model is supplied privately by
-its owner; it is not included in this repository, CI artifacts or releases.
-Do not download a different aircraft and assume these parameters apply.
-Companion PX4 draft: [PX4 #29598](https://github.com/PX4/PX4-Autopilot/pull/29598).
-Do not treat an open draft as an already-merged official profile.
+## Profile Pairing
 
-## Model, Mapping And Parameters
+| Use | Parameter reference | Model |
+| --- | --- | --- |
+| Public example | `config/px4_params/5021_xplane_qtailsitter` | Matching legacy QuadTailsitter |
+| Opt-in experiment | `config/experimental/compact-qtailsitter/5021_xplane_qtailsitter` | Matching owner-provided compact model |
 
-| Component | Compact model pairing |
-| --- | --- |
-| X-Plane file | Owner-supplied model; use the exact path in its private installation guide |
-| Plugin section | `[QuadTailsitter]` |
-| PX4 target / ID | `xplane_qtailsitter` / `5021` |
-| Parameters before merge | Draft defaults plus isolated launcher below |
-| Parameters after merge | Official PX4 defaults at the merge commit or later |
+The public reference/default pairing remains legacy. The experimental file
+holds the complete 211-value compact profile, not just the final gain/trim
+changes, and is not shipped as the normal default. PX4 executes airframe
+defaults from its own checkout, not from the plugin's reference folder.
+Neither plain `px4xplane` nor `--validation` selects this experimental profile.
 
-PX4, plugin mappings and documentation retain the QuadTailsitter name. Only
-the owner's local X-Plane aircraft folder/file uses a distinct installation
-name; it does not create a new PX4 airframe or alter the physical ACF contents.
-The recorded R16 ACF SHA256 is
-`c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918`.
-Four motors retain their ordering, rotation/cant, CG, inertia and power limits.
-The existing four-channel bridge mapping, `airspeedSource=body_axis`,
-`pitotAxisBody=-Z` and zero actuator smoothing are unchanged.
+[PX4 #29598](https://github.com/PX4/PX4-Autopilot/pull/29598) remains **DRAFT**
+for future tuning. It is not merged, a release prerequisite or a reason to
+replace the public model/default pairing.
 
-The separately supplied payload/CG test revision has SHA256
-`da0b5db7068a722da9b0379de6935a6fdaf975dd837e194a80839e64a2b5fe8b`.
-It retains the 2 kg empty mass/default CG but enables fore/aft payload stations,
-6 kg total test mass and +/-20 mm longitudinal CG travel. These are simulator
-test settings, not a validated MTOW/CG envelope. Use X-Plane's **Flight > Edit
-Weight & Balance** menu; combined payload must stay at or below 4 kg. X-Plane
-may restore/preload payload: explicitly select zero payload and original CG
-for a baseline comparison. CG achievable by redistribution depends on loading.
-The runner recognizes both exact revisions and records the actual ACF hash,
-but cannot verify live mass/CG. No PX4 gain/controller change accompanies this
-private model extension. See the [X-Plane weight/balance guidance](https://developer.x-plane.com/article/weightbalance-and-load-stations/).
+## Development Setup
 
-The full `config/px4_params/5021_xplane_qtailsitter` reference contains the
-pinned inherited defaults plus all 91 reviewed overrides. The last four gain/
-trim changes alone do not reproduce the tune. PX4 does not read that reference
-from the plugin folder automatically. A stock pre-merge `make ...
-xplane_qtailsitter` still uses the old PX4 checkout's defaults.
+The compact ACF is owner-provided and stays private. Obtain its matching
+revision through the owner's installation instructions; there is no public
+model download or required drive/path in this guide. Verify the actual loaded
+aircraft, mapping, source revision and full parameter profile before arming.
+The existing four-channel mapping uses `airspeedSource=body_axis`,
+`pitotAxisBody=-Z` and zero actuator smoothing.
 
-## Before Merge: Explicit Profile Launch
+`tools/run_compact_qtailsitter.py` remains in developer source and the private
+kit, not a public guided-launcher dependency or release asset.
+Its use belongs with the matching private model instructions, not the beginner
+workflow. Keep experimental saved parameters isolated from public airframes;
+inspect differences and back up the selected runtime before an explicit reset.
+Do not erase another aircraft's tuning or use a PX4-wide reset as routine setup.
 
-Keep the normal [official PX4 workflow](https://docs.px4.io/main/en/sim_xplane/)
-for the other aircraft. For the owner-supplied compact model only, stop PX4,
-load the matching aircraft and select `Plugins > PX4 X-Plane > Airframes >
-QuadTailsitter`, then `Connect to SITL`. From the px4xplane checkout in WSL:
+## Evidence and Remaining Work
 
-```bash
-python3 tools/run_compact_qtailsitter.py --px4-path "$HOME/PX4-Autopilot-Me" \
-  --xplane-root '/mnt/h/X-Plane 12' --check
-python3 tools/run_compact_qtailsitter.py --px4-path "$HOME/PX4-Autopilot-Me" \
-  --xplane-root '/mnt/h/X-Plane 12'
-```
+An earlier owner test completed mission takeoff, fixed-wing flight, RTL,
+back-transition, landing and auto-disarm on its recorded build. Residual
+fixed-wing oscillations and back-transition climb remain; this is not a
+full-envelope, hardware-readiness or new live-flight acceptance claim for PR21.
 
-The runner reuses the existing PX4 checkout/cache, reports the exact source,
-checks the model/config/profile, builds SITL and uses its own runtime parameter
-directory. It performs no fetch, checkout, reset or cherry-pick and does not
-need TruthCapture, an upload token or a diagnostic firmware patch. WSL NAT
-host detection can be overridden with `--host` and `--qgc-host`.
-The on-disk hash is not proof of X-Plane's loaded in-memory model; verify the
-loaded aircraft before connecting. Do not arm until the parameter gate passes.
+Review inherited `FW_R_TC=1.5` against its metadata limit before promotion;
+silently changing it to 1.0 would change outer-loop gain by 50%. Wing-clearance
+metadata, stall/maximum-speed limits and payload/CG behavior also need further
+review. Keep any model-specific parameter proposal separate from core-controller
+fixes and the public launcher.
 
-Saved parameters stay isolated from all other aircraft. If changed parameters
-fail the gate, inspect them; `--reset-params` explicitly reapplies the frozen
-profile values while retaining other parameters. Do not use PX4-wide
-`param reset_all` or delete another aircraft's files.
-See `--help` for the source-validation override: a different source must be
-reported as unvalidated, not silently accepted as the recorded flight build.
+Raw aircraft-bearing logs and truth archives remain private. Share sanitized
+metrics for public review, not the ACF or access credentials. Truth capture,
+uploads and private services are optional investigation tools, not normal-user
+dependencies.
 
-## After Merge
-
-Once the PX4 draft is merged, the normal official target uses the replacement
-model's defaults. Confirm the merge commit, install the owner-supplied model,
-keep the matching plugin section, and initialize a separate parameter store.
-The optional profile runner remains useful for source/profile checks; the
-main helper's experimental PR mode is not required for normal operation.
-Do not activate the replacement profile with the legacy aircraft. Keep the old
-model and old profile paired privately if historical comparison is needed.
-
-## Evidence And Limits
-
-R16 was flown using official PX4 `649929706f` plus a logging-only child
-`58794523a1`, px4xplane 4.2.1 and the ACF hash above. The subsequently fetched
-upstream `e4aa189ade` has one additional EKF heading-observability change; it
-was not the flight-tested binary. The new draft code has not been flown yet.
-
-The matching ULog has no dropouts or in-flight parameter edits; all 91 overrides
-match. Complete independent truth contained 72,957 frames. The run completed
-mission takeoff, FW, RTL, angle-based back-transition, Land and auto-disarm.
-It used a 50 m takeoff target and about 25 s pre-RTL FW, not a complete envelope
-test. Normal descent tracked 1.6 m/s; back-transition completed by angle in
-13.77 s, with about 37 m climb and a roughly 32 degree recovery pitch peak.
-Residual FW roll and speed/height oscillations remain. No hardware readiness,
-universal stability or isolated causal A/B result is claimed.
-
-Inherited `FW_R_TC=1.5` exceeds its metadata maximum; changing it to 1.0 changes
-outer-loop gain by 50%, so this is an explicit draft blocker, not silent cleanup.
-Inherited wing-span/height clearance metadata and unmeasured stall/maximum-speed
-limits also need review before production promotion. Do not hide these by
-labelling the draft fully tuned. The other four aircraft are unchanged; their
-future tuning is separate.
-
-Raw flight/truth archives contain the private ACF and location data. Do not
-attach them to public issues/PRs or release assets. Numerical summaries and
-reviewer-access arrangements must not accidentally redistribute the model.
+Return to the [Developer Guide](DEVELOPER.md) or
+[documentation index](index.md#troubleshooting) for general setup issues.

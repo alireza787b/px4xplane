@@ -335,13 +335,12 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying TB2 X-Plane test card to plugin root directory"
 )
 
-# The historical 5 kg model does not match the draft compact 5021 defaults.
-# The replacement is owner-supplied: never package a private ACF or a legacy
-# model beside an incompatible profile, including stale incremental outputs.
+# The QuadTailsitter mapping is an example for a separately supplied model.
+# Do not distribute private aircraft or retain stale model output in packages.
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E rm -rf
         ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
-    COMMENT "Removing incompatible legacy QuadTailsitter from package output"
+    COMMENT "Removing owner-supplied QuadTailsitter example from package output"
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -539,7 +538,9 @@ list(APPEND PACKAGE_ASSET_COMMANDS
         ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
         ${OUTPUT_DIR}/../docs/compact-qtailsitter.md
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/tools/run_compact_qtailsitter.py
+        ${CMAKE_SOURCE_DIR}/docs/guided-launcher.md
+        ${OUTPUT_DIR}/../docs/guided-launcher.md
+    COMMAND ${CMAKE_COMMAND} -E remove -f
         ${OUTPUT_DIR}/../tools/run_compact_qtailsitter.py
     COMMAND ${CMAKE_COMMAND} -E rm -rf
         ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
@@ -661,6 +662,11 @@ if(PX4XPLANE_BUILD_TESTS)
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
         if(UNIX)
+            add_test(
+                NAME guided_sitl_runner
+                COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_guided_sitl tests.test_launcher_safety
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            )
             add_test(
                 NAME compact_profile_runner
                 COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_compact_qtailsitter

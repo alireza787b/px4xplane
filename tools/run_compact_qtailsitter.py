@@ -86,8 +86,8 @@ def find_profile(explicit=None, script=None):
         return path
     here = Path(script or __file__).resolve().parent
     # Repository layout, then the same layout or a sibling profile in an owner bundle.
-    candidates = [here.parent / "config/px4_params" / PROFILE_NAME,
-                  here / "config/px4_params" / PROFILE_NAME,
+    candidates = [here.parent / "config/experimental/compact-qtailsitter" / PROFILE_NAME,
+                  here / "config/experimental/compact-qtailsitter" / PROFILE_NAME,
                   here / PROFILE_NAME, here.parent / PROFILE_NAME]
     for candidate in candidates:
         if candidate.is_file():
