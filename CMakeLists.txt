@@ -657,9 +657,21 @@ if(PX4XPLANE_BUILD_TESTS)
         )
         add_test(
             NAME python_offline_tools
-            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools
+            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools tests.test_compact_profile_contract
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
+        if(UNIX)
+            add_test(
+                NAME compact_profile_runner
+                COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_compact_qtailsitter
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            )
+            add_test(
+                NAME setup_launcher_options
+                COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_setup_launcher
+                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+            )
+        endif()
     endif()
 
     find_program(Node_EXECUTABLE node)
