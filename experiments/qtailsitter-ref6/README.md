@@ -4,7 +4,7 @@ Private experimental SITL only. Same Ref6 aircraft and installed debug folder.
 No production plugin changes, private dive feature or hardware image.
 **Current instructions: QUICKSTART.md.**
 
-## Current Test: R14
+## Current Test: R15
 
 The test retains official PX4 main snapshot `649929706fb34bf0b06dbd2df24e04d5d452d616`
 plus log-only diagnostics `58794523a151fa33a28a564454454b8c9fbfcdd5`.
@@ -15,15 +15,18 @@ and the final merged implementation, not the stale PR-body design.
 
 Current upstream also includes TECS altitude/speed and underspeed/bank handling
 improvements, and true-airspeed turn coordination. These are not new custom
-patches. R13 completed landing and automatic disarm with one postback braking
-event and no Land braking. R14 tests only FW_RR_P 0.14 -> 0.18 against its
-remaining 0.449 Hz roll mode. MC, I/D, attitude gains, NPFG, speeds, trim, motor
-mapping, mass/CG and ACF remain unchanged. The trajectory profile retains
+patches. R13 and R14 landed and automatically disarmed, without repeated Land
+braking. R14 reduced early FW oscillation but a longer run still showed a
+0.46Hz mode. R15 tests FW_RR_P 0.18 -> 0.22 and modest faster MC requests:
+cruise5m/s, climb2.5m/s, descent1.6m/s. MC PID, I/D, attitude gains, NPFG,
+trim, FW speeds, mapping, mass/CG and ACF remain unchanged. Near-ground Land
+speed stays0.9m/s. The trajectory profile retains
 MPC_JERK_AUTO=4, MPC_ACC_HOR=2 and MPC_ACC_HOR_MAX=2. The last is not an auto
 emergency-braking limit. R13 was a combined firmware/profile trial, not an
-isolated A/B proof of one PR. R14 is a bounded damping experiment, not a
-promise of perfect flight. Back-transition still climbs about 37.6 m and exits
-by timeout; those remain acceptance gaps, not newly solved behavior.
+isolated A/B proof of one PR. R15 changes speed bounds and therefore braking
+thresholds too; it is not an independent braking fix or a stability promise.
+Back-transition still climbs about37m; R14 exited by angle rather than timeout,
+but recovery and full-envelope performance remain acceptance gaps.
 
 The unchanged ACF is 2 kg with 0.60 m projected span, 0.10 m chord and four
 500 W shaft-power caps. It retains original motor signs and PX4's direction
@@ -49,20 +52,22 @@ cat VERSION.txt
 bash run.sh prepare-truth
 ```
 
-Expect 2026-11-03.ref6.14. Fresh fully charged Ref6, no wind/payload. Start a NEW
-TruthCapture recording, QGC and the plugin connection. Then:
+Expect2026-11-03.ref6.15. Load/reset a fresh charged Ref6 FIRST, no wind/payload,
+THEN start a NEW TruthCapture recording, QGC and plugin connection. Don't reload
+or reset the flight/recorder after that. R14's reset-invalid truth window was
+rejected, not silently stitched. Then:
 
 ```bash
 bash run.sh flight --yes-debug
 ```
 
-Follow QUICKSTART.md: console takeoff to actual 180 m, settled hover, transition,
-25 seconds FW and up to 45 if bounded, back-transition, decaying recovery,
+Follow QUICKSTART.md: console takeoff180m, settled hover, short MC GoTo/stop and
+vertical checks, transition,75s clean FW window, back-transition, decaying recovery,
 Land, touchdown/disarm,
-shutdown. No GoTo, RTL, speed commands, autotune or in-flight gain edits.
+shutdown. No FW GoTo/retarget, RTL, speed commands, autotune or gain edits.
 Stop growing/non-decaying recovery within 25 seconds; do not waste minutes of
 battery/evidence. Hold can command translation toward its old target; Land
-should stop this travel. Limit airborne time to seven minutes.
+should stop this travel. Limit airborne time to eight minutes.
 
 The legacy recovery-jerk case remains compatible but now duplicates baseline
 jerk=4. braking-isolation remains an explicit diagnostic only, not a recommended
@@ -74,7 +79,7 @@ instead of the current guide.
 The update downloads a checksum-verified package into the SAME folder, preserves
 runs/credentials and retains one previous managed version. It does not discard
 local managed-file edits. PX4 must be stopped; X-Plane must also be closed only
-if an update changes installed ACF bytes. R14 does not change the ACF/config.
+if an update changes installed ACF bytes. R15 does not change the ACF/config.
 
 The Git bundle carries current official source history plus the log-only commit.
 It reuses ~/PX4-Autopilot-Me; no second PX4 clone. Its prerequisite is the old

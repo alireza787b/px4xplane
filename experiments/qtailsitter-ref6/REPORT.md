@@ -1,175 +1,200 @@
-# R13 Flight Review And R14 Damping Test
+# R14 Review, R15 Candidate And Production Plan
 
-Experimental SITL only. R13 landed, but FW tracking and back-transition are
-not production-quality. R14 is a one-parameter experiment, not a perfect-flight
-claim, new PX4 core fix, public release or hardware tune.
+Experimental Ref6 SITL only. R14 successfully returned and landed. It is not
+yet evidence of a fully damped fixed-wing envelope or a production-ready tune.
+No production plugin, original aircraft, PX4 bridge code or public PR is changed.
 
-## Evidence Integrity
+## Evidence And Limitations
 
-Automatic retry succeeded. The complete ZIP was on the private upload server;
-a separate manual home-folder copy was truncated. No repeat flight is needed.
+- Archive SHA256: ac38730ff2338e69d324172da7ef8bb6c21500db1f297d1f7b4e84b612b89cff.
+- 41,591,249 bytes; ZIP CRCs and all26 evidence-file hashes pass.
+- ULog: 2026-11-03/10_27_19.ulg, firmware58794523a1, R14 profile.
+- All82 generated profile values match reconstructed startup parameters.
+  No in-flight parameter edits or ULog dropouts.
+- ACF hash stays c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918.
+- No independent truth frames are attached. The recorder existed at preflight,
+  but collection rejected non-monotonic frame/time or a reset during the window.
+  This is not ZIP corruption and does not invalidate the ULog. It prevents
+  independent force/moment/battery or sensor-pipeline verification for this run.
+- Both requested independent AI reviewers hit the usage limit before returning
+  results. The current analysis and decisions were completed locally; no
+  completed expert review or human maintainer approval is claimed.
 
-- Run: flight-tys1du5m; ULog: 2026-11-03/05_30_46.ulg.
-- Archive: 43,951,488 bytes; all ZIP CRCs and 30 SHA256SUMS entries pass.
-- SHA256: 72b1eb38f78430ffb7f59966ecf2a132f33b43300d0c7c328148e3b191a326e8.
-- ULog and 28,777 truth rows present; no dropouts or in-flight parameter edits.
-- All 82 applied profile parameters match after replaying startup changes.
-  The initial ULog header alone is not the applied profile.
-- Firmware: 58794523a151fa33a28a564454454b8c9fbfcdd5, official snapshot
-  649929706fb34bf0b06dbd2df24e04d5d452d616 plus logging only.
-- ACF hash: c70590c45d9caeb2f1521c2941da9485d87b5e5d68332a695f2109bcae17b918.
-  Recorder-reported loaded path and copied disk file agree; this is not an
-  independent simulator-memory hash.
+Do not change snapshot logic to silently accept/reset-stitch bad timestamps.
+Load/reset the fresh X-Plane flight BEFORE starting the new truth recording,
+and do not reload/reset it until shutdown and collection finish.
 
-Independent groundtruth-rate alignment gives truth simulator time approximately
-PX4 boot time +344.10958 s, with 0.000285 rad/s RMS residual. Window offsets
-differ by milliseconds. Estimated NED velocity agrees with truth at RMS
-0.0158/0.0195/0.0122 m/s; estimated rates at about 0.008 rad/s.
-No accel-bias, compass or unstable-velocity warning follows initial heading
-alignment. This flight does not implicate a large EKF/pipeline error; it does
-not prove correctness at every FPS, weather condition or platform.
+## What R14 Actually Tested
 
-## Timeline
+All times below are PX4 boot seconds.
 
-Times are PX4 boot seconds; NED vertical speed is positive down.
-
-| Event | Time s | Observation |
+| Event | Time s | Meaning |
 | --- | ---: | --- |
-| Takeoff request | 36.701 | External QGC command with explicit MSL altitude |
-| Airborne | 39.657 | Land detector leaves landed state |
-| Hold | 75.900 | Actual target about 57 m above home |
-| Front transition | 81.638 | Normal pitch program |
-| FW | 94.276 | Persistent lateral oscillation |
-| Back-transition | 118.970 | Deceleration and altitude gain |
-| MC | 133.983 | Timeout-only exit, not pitch completion |
-| First inactive braking sample | 138.416 | No subsequent retrigger |
-| Land | 157.855 | Stops translation and descends |
-| Ground contact / landed | 224.842 / 225.560 | Touchdown detected |
-| Auto-disarm | 227.087 | 1.527 s after landed |
+| Airborne | 18.826 | External QGC takeoff request |
+| Hold | 75.187 | Actual takeoff target about98m above home |
+| Front / FW | 82.159 / 94.875 | Normal front transition |
+| Altitude commands | 114.971 / 176.496 | Two QGC reposition/altitude requests |
+| RTL | 234.476 | Navigator commands return at180m above destination |
+| Back / MC | 293.420 / 308.163 | Normal RTL back-transition |
+| RTL Land target | 345.460 | Land happens inside RTL, not nav_state18 |
+| Landed / auto-disarm | 468.324 / 469.851 | Successful landing and disarm |
 
-MIS_TAKEOFF_ALT really was 180 m. QGC supplied 1548.403 m MSL, about 57 m above
-home, overriding the default. This is not an altitude-controller failure.
-Use console takeoff for the next comparison.
+QGC again supplied an explicit altitude, overriding MIS_TAKEOFF_ALT180.
+The flight also continued FW for about199s, changed altitude and used RTL.
+These are useful additional observations, but not the exact R14 short
+comparison scenario. Do not claim an isolated causal A/B.
 
-## MC And Landing: Preserve The Working Baseline
+## FW Findings
 
-MC climb tracks about 2 m/s. The few seconds of settled initial hover have
-attitude-error RMS about 0.40 deg and horizontal speed RMS about 0.039 m/s.
-This is not an extended MC-envelope or disturbance test.
+The first matched24.7s roll-rate-error RMS is0.122rad/s (~6.97deg/s), versus
+R13's0.175rad/s (~10.01deg/s). Dominant roll-rate amplitude is about0.064rad/s
+(~3.65deg/s) versus roughly0.19rad/s in R13. This supports an early improvement,
+not universal damping; entry altitude and command history differ.
 
-There is one postback braking activation at approximately 9.29 m/s. It releases
-through the no-progress fallback, not a fully stopped condition: first inactive
-sample has XY speed 3.09 m/s. The virtual stop precedes the physical stop.
-Pitch reaches 41.5 deg during the decaying transient; attitude error remains
-below 2 deg from about 153.28 s, 19.3 s after MC entry.
+The longer record shows a persistent approximately0.46Hz roll mode:
+- FW135-175s: roll-rate-error RMS0.216rad/s, harmonic amplitude0.271rad/s.
+- FW190-230s: errorRMS0.194rad/s, amplitude0.258rad/s (~14.8deg/s).
+- RTL240-293s: errorRMS0.244rad/s, amplitude0.321rad/s.
+- The late135-230s bank oscillation is about5deg amplitude; the corresponding
+  bank-command amplitude is only about0.38-0.50deg. It is not simply tracking
+  an equally large oscillating guidance command.
 
-Later 3.1-3.3 m/s motion is commanded: Hold retains the distant waypoint and
-requests a 3.5 m/s return. This is not failed stationary hover. Land commands
-a stop at the landing location: XY speed stays below 0.2 m/s about 5.1 s later.
+Motor commands remain approximately0.019-0.501 over the full FW interval.
+Motor allocator torque residual stays below6.1e-8 and no actuator saturation
+codes are reported. Roll integral peaks around0.043 against limit0.2.
+There is room for a bounded damping change, not evidence for larger thrust
+limits, integral limits, new geometry or estimator overrides.
 
-Stable Land descent averages 1.402 m/s with vertical tracking-error RMS about
-0.034 m/s. Independent truth gives 1.406 m/s over 165-190 s. Descent slows near
-ground. There are ZERO Land braking activations. Late landing attitude-error
-RMS is about 0.133 deg and XY position-error RMS about 0.149 m. Auto-disarm
-timing matches COM_DISARM_LAND=1.5.
+R13 native moment evidence showed opposing-rate prop/P work near this mode.
+That supports a further small P-only test, but R14 has no native moment capture
+to independently confirm the same physical balance. Closed-loop correlations
+do not identify actuator delay, aerodynamic derivatives or stability margins.
 
-This improves substantially on old R11 repeated braking and ineffective
-approximately 0.19 m/s descent. It is not a causal A/B: firmware, trajectory
-settings and entry conditions changed together. The final
-[merged braking fix #28350](https://github.com/PX4/PX4-Autopilot/commit/2750a9bd274476443548d8ed3efdfbd6fa8fd5b4)
-is present; no duplicate patch is needed. No new MC gains, braking threshold or
-descent-rate changes are justified in R14.
+TECS follows the commanded altitude changes and RTL climb rather than a
+continuous uncontrolled FW climb. Speeds oscillate with the flight and must be
+reviewed together with lateral motion. No pitch/energy-limit retune is inferred
+from the absence of a steady calibrated trim maneuver. Keep trim/speed/TECS
+seeds fixed for the next trial.
 
-## Back-Transition: Remaining Limitation
+## MC, Recovery And Landing
 
-Height rises from 58.3 to 95.9 m while slowing from about 29 to 9.3 m/s.
-The 37.6 m climb is real. Timeout-only exit occurs at elapsed 15.003 s, pitch
--20.29 deg, short of the -14.90 deg completion threshold. Pitch-rate-error
-RMS is about 0.422 rad/s. A brief lower-motor/thrust constraint occurs, but not
-sustained maximum-throttle saturation or integral windup.
+MC climb35-60s tracks about2.001m/s; rate-error RMSxyz~0.0072/0.0073/0.0083rad/s.
+Stable high-altitude Land averages1.391m/s. The existing initial and near-ground
+speed limits explain slow commanded movement; there is no evidence here that
+the controller rejected those commands.
 
-Kinetic-energy conversion can contribute to the climb; it does not by itself
-explain poor pitch-program tracking. Increasing timeout could hide slow recovery
-and increase the excursion. Preserve 15 s for comparison, measure the exit and
-actual orientation again, and retain this as an acceptance gap.
+Back-transition slows about30.2 to9.2m/s and gains about37m of height.
+It exits by ANGLE this time, at14.734s and pitch-14.62deg, before15s timeout.
+This is better exit behavior than R13, but the large climb and recovery
+transient remain real limitations, not a perfect transition.
 
-## FW: Next Tuning Target
+Exactly one postback braking activation appears. No repeated Land braking
+occurs. Later MC RTL return is commanded translation, not failed stationary
+hover. After return, the craft descends, detects landed and disarms about1.53s
+later. No new accel-bias or compass warning appears in the recorded messages.
+Without raw truth this does not revalidate the sensor pipeline at all FPS.
 
-The 24.7 s FW interval has a growing mode near 0.449 Hz. Bank ranges -4.67 to
-17.22 deg; command ranges -4.76 to 16 deg. Whole-window bank-error RMS is
-10.03 deg and roll-rate-error RMS 10.01 deg/s; late rate-error RMS is 11.20.
-Modal bank amplitude is 3.96 deg versus command amplitude 0.274 deg. This is
-not simply following an equal-amplitude oscillating guidance command.
+## R15: Bounded Candidate Changes
 
-FW roll rate is NEGATIVE MC yaw rate; FW yaw rate is MC roll rate. Recorded
-torque mapping agrees with pinned source. The empty control-surface allocator
-reports unachieved axes but is not the motor allocator. Motor commands stay
-about 0.082-0.338; motor allocation residuals are numerical noise, roll integral
-reaches only 17.5% of its limit, and gain compression stays close to one.
+| Parameter | R14 | R15 | Scope |
+| --- | ---: | ---: | --- |
+| FW_RR_P |0.18|0.22|Further22.2% P-only FW damping trial |
+| MPC_XY_CRUISE |3.5|5.0|Default autonomous horizontal request |
+| MPC_XY_VEL_MAX |4.0|6.0|Horizontal bound; also braking activation bound |
+| MPC_VEL_MANUAL |4.0|5.0|Manual-position speed, not a hover-speed target |
+| MPC_Z_V_AUTO_UP |2.0|2.5|Autonomous climb request |
+| MPC_Z_VEL_MAX_UP |2.4|3.0|Paired climb bound |
+| MPC_Z_V_AUTO_DN |1.4|1.6|Autonomous high-altitude descent |
+| MPC_Z_VEL_MAX_DN |1.4|1.8|Paired manual/vertical bound |
+| MPC_TKO_SPEED |1.2|1.5|Initial takeoff climb, same2.5s ramp |
 
-Native moment projections show the prop moment opposes the roll oscillation,
-while the aerodynamic rate-aligned component adds modal work of similar
-magnitude. P dominates the opposing-rate request. These are closed-loop
-finite-window measurements, not independently identified aerodynamic
-derivatives, transport delay or stability margins. They support a bounded
-P-only damping trial, not arbitrary I/D, cant, inertia or motor-power changes.
+A stationary hover still targets zero velocity. Increasing travel speed is
+not increasing hover RPM or hover thrust. Keep MPC_THR_HOVER0.26 and estimator
+enabled. Near-ground MPC_LAND_SPEED0.9, crawl0.36 and landing heights8/3/1m
+remain unchanged. Faster descent at altitude must not also increase touchdown
+speed without separate evidence.
 
-Track error falls from about 1166 to 467 m while capturing the 1300 m Hold
-orbit. This segment demonstrates neither a completed orbit nor a path limit
-cycle. Establish lower-loop tracking before tightening NPFG.
+All MC PID, acceleration, jerk, tilt, FW I/D/FF, differential scales, TECS,
+airspeeds, NPFG, bank/radius, geometry/CG/inertia and transition timing stay
+fixed. Firmware is identical to R14. R15 has90 explicit profile parameters.
 
-## Performance: Measured Versus Provisional
+Important coupling: PX4 uses1.3*maximum-speed bounds for emergency braking.
+Horizontal activation changes5.2->7.8m/s; upward3.12->3.9m/s; downward changes
+2.184->2.496m/s using max(MAX_DN,1.2*AUTO_DN). This is NOT an independent
+braking disable or a hidden fix. Prior9.2m/s postback speed would still exceed
+the new horizontal threshold, but different physical entry conditions can
+change activation and settling. Compare actual entry speed and diagnostic
+events in the next log.
 
-| Item | Observation / current setting | Decision |
-| --- | --- | --- |
-| Mass | 2.000 kg, no payload | Preserve ACF/CG/motor geometry |
-| MC climb / descent | About 2 / 1.4 m/s tracked | Preserve |
-| CAS / EAS command | Mean 26.46 / 26 m/s | No wrong trim-speed command indicated |
-| TAS | Mean 28.61 m/s at density about 1.05 kg/m3 | Normal EAS/TAS difference, not runaway speed |
-| FW throttle | Mean about 0.18, not maximum | No maximum-power cruise explanation |
-| Trim seeds | FW_THR_TRIM=0.25, FW_PSP_OFF=2 deg | Provisional, not calibrated in steady stabilized flight |
-| Stall/min/trim/max | 17 / 21 / 26 / 34 m/s | Actual stall and maximum sustainable speed unmeasured |
-| FW climb/sink limits | Existing performance model | No full-power climb/idle descent performed |
-| Bank / Hold radius | 16 deg / 1300 m | Freeze for lower-loop comparison, not final agility |
-| FW_R_TC | 1.5 s exceeds metadata maximum 1.0 | Explicit configuration debt; do not also raise outer bandwidth |
-| Battery | 66.6 to 51.8 Wh over recording | No depletion; fresh battery each test |
+A fixed deceleration limit requires longer stopping distance at higher speed:
+raising cruise3.5->5 means roughly double kinetic-energy/stopping-distance
+demand under the same ideal constant deceleration. Leave room at each target.
+These are user-requested candidate speeds, not measured maximum capability
+or a claim of unchanged stability. Simultaneous MC speed/FW P changes mean
+a complete flight is not a single-variable A/B.
 
-At observed TAS a coordinated level 16 deg turn needs roughly 290 m radius;
-25 deg would imply about 180 m. These are still-air geometry calculations,
-not demonstrated tracking or certified limits. Simulator MC-body alpha near
--86 deg in FW is not a conventional wing stall angle.
+Only runner usability also changes: dirty-checkout errors now print the exact
+changed paths, without resetting, cleaning, ignoring or deleting user work.
+No extra legacy directory or second PX4 clone is introduced.
 
-PX4's [performance guide](https://docs.px4.io/main/en/config_fw/position_tuning_guide_fixedwing)
-requires measured trim, speed, climb and idle-descent conditions.
-Its [rate/attitude guide](https://docs.px4.io/main/en/config_fw/pid_tuning_guide_fixedwing)
-places lower-loop tuning before guidance. Generic surface-control starting
-gains do not calibrate this rotor-only tailsitter.
+## What Belongs Where
 
-## R14: Exact Change And Verification
+The original [X-Plane SITL airframe PR22493](https://github.com/PX4/PX4-Autopilot/pull/22493)
+is already merged (2026-07-01). The remaining observations do not establish a
+transport/frame/sensor bug requiring an official bridge-core change.
 
-Only flight-profile change: **FW_RR_P 0.14 -> 0.18** (+28.6%). With differential
-scale 0.55 unchanged, normalized physical-MC-yaw P changes 0.077 -> 0.099;
-these are NOT physical moment gains. I/D/FF, FW_R_TC, NPFG, TECS, speeds, all
-MC settings, transition timing, ACF and allocation remain unchanged.
-Firmware hash stays identical to R13; no PX4 core change is added.
+1. px4xplane experimental branch: Ref6 ACF/config pairing, explicit tuning,
+   evidence workflow and current test guide. Keep the production plugin's
+   telemetry/control mapping unchanged unless evidence identifies a defect.
+2. PX4 fork validation branch: same official firmware and logging-only commit;
+   no new core patch or cherry-pick for these gain/speed changes.
+3. Eventual official PX4 follow-up: reviewed airframe defaults only, paired to
+   the exact released aircraft. Original5021 describes a5kg aircraft with
+   different arms/model; Ref6 is2kg. Do NOT silently transplant all Ref6 gains
+   into5021 or other four aircraft and call that universal tuning. Decide the
+   supported model/airframe identity explicitly before proposing defaults.
+4. Merged core fixes remain upstream. This R15 iteration is not a reason to
+   reopen the merged bridge PR, duplicate28350, or update unrelated open PRs.
+   PR27670 remains separate; this log does not establish a reason to add it.
 
-Independent AI reviews covered FW and MC separately. The FW reviewer initially
-suggested +0.01 conservatively, then agreed 0.18 is a more informative bounded
-SITL experiment given the weak modal imbalance and available command headroom.
-This is not human maintainer approval or a predicted settling-time guarantee.
+## Production Exit Checklist
 
-Follow QUICKSTART.md. Compare the first matched 25 s of FW, then continue to
-45 s only if bounded. Desired evidence: lower modal amplitude and late rate
-error without worse attitude tracking, new high-frequency motion or clipping.
-Roll back to 0.14 if comparable late rate/error RMS worsens over 10% or new
-sustained saturation occurs. Do not tighten radius or normalize TC simultaneously.
+Successful takeoff/RTL/Land is demonstrated in two runs. Production promotion
+still requires:
+- Complete, monotonic new truth capture; clean source/model/profile identities.
+- Sustained FW tracking without growing or persistent unacceptable roll mode.
+- Faster MC GoTo, stop, climb, descent, back-transition and Land tracking.
+- Quantified back-transition climb/recovery, not just a successful MC label.
+- Resolve FW_R_TC1.5 outside metadata max1.0. It is active at runtime, not
+  silently clamped. Normalizing it to1.0 raises outer-loop gain50%, so do not
+  bundle that with inner-loop damping or declare the current value production.
+- Measure trim, minimum/stall behavior, maximum sustainable speed and climb/sink
+  performance separately. Current17/21/26/34m/s are provisional seeds, not
+  measured or certified envelope limits.
+- Standardize final model/airframe identity, then regression-test all five
+  existing production airframes before public commit/tag/release promotion.
+- Cleanly separate public user installation from optional developer logging/
+  patches. Disable private upload by default in production; remove temporary
+  debug intake only after evidence delivery/review and explicit closeout.
 
-Allow up to 25 s of visibly DECAYING MC attitude recovery, then Land. Hold may
-command translation; zero XY speed is not required to request Land. Stop a
-growing departure promptly. Commands, stop criteria and upload retry are in
-QUICKSTART.md / COMMANDS.md.
+Do not relabel R15 as a final production release before those checks pass.
 
-This is not full production acceptance. Once damping is confirmed, validate
-straight legs, complete left/right turns, altitude/speed changes, trim and
-performance limits under measured conditions before publishing defaults.
-Other airframes and the main PR are untouched.
+## Next Test
+
+Follow QUICKSTART.md in the SAME folder. Fresh flight FIRST, then NEW recording;
+never reload/reset during the captured run. Console takeoff180m, one MC GoTo/
+stop and one small altitude up/down pair, then a clean75s FW segment without
+retargeting, normal back-transition and Land. No new code rebuild is required
+beyond the runner's normal pinned build check. Watch the new speed settings,
+FW mode amplitude, actual recovery and descent. Keep the airborne run under
+eight minutes with a fully charged simulator battery.
+
+No additional public PR or plugin release is made yet. Reports/plots and the
+checksum-verified debug update are delivered to Telegram. The two unavailable
+reviewers are not represented as completed expert approval.
+
+Sources: [PX4 jerk-limited trajectories](https://docs.px4.io/main/en/config_mc/mc_jerk_limited_type_trajectory),
+[PX4 FW performance tuning](https://docs.px4.io/main/en/config_fw/position_tuning_guide_fixedwing),
+[QGC Fly View](https://docs.qgroundcontrol.com/master/en/qgc-user-guide/fly_view/fly_view.html).
+Pinned source is58794523a1: FlightTaskAuto.cpp braking/landing constraints,
+MulticopterPositionControl.cpp paired-limit enforcement and official5021 defaults.

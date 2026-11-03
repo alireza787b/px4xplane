@@ -1,9 +1,7 @@
-# R14 Copy-Paste Commands
+# R15 Copy-Paste Commands
 
-SITL only. Same R13 firmware/ACF; only FW_RR_P changes 0.14 -> 0.18.
-Full scenario and stop criteria: QUICKSTART.md.
-
-Stop PX4 and old TruthCapture recording. WSL:
+Same debug folder/aircraft/firmware. Full scenario: QUICKSTART.md.
+Stop PX4 and old truth recording. WSL:
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -12,61 +10,63 @@ cat VERSION.txt
 bash run.sh prepare-truth
 ```
 
-Expect 2026-11-03.ref6.14. Fresh charged Ref6, no wind/payload. Start NEW
-TruthCapture recording, QGC and the Ref6 plugin connection. WSL:
+Expect2026-11-03.ref6.15. FIRST load/reset a fresh charged Ref6 flight, no wind/
+payload. THEN start NEW TruthCapture recording; no reload/reset afterward.
+Open QGC and plugin Ref6 connection. WSL:
 
 ```bash
 bash run.sh flight --yes-debug
 ```
 
-After PARAMETER GATE PASSED and Ready, PX4 console (NOT WSL):
+After parameter gate/Ready, PX4 console:
 
 ```text
 ver all
 param show FW_RR_P
-param show MPC_JERK_AUTO
+param show MPC_XY_CRUISE
+param show MPC_Z_V_AUTO_UP
+param show MPC_Z_V_AUTO_DN
 param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect 58794523a1..., 0.18, 4, 180. Use console takeoff, not QGC's remembered
-altitude. At actual 180 m, terrain clearance and 15 s settled:
+Expect58794523a1...,0.22,5,2.5,1.6,180. Actual180m, clearance,15s settled.
+QGC: one100m MC GoTo and stop; another100m return and stop. One20m altitude
+up/down pair if available; check requested altitude reference. Wait10s settled.
+No parameter edits. Then PX4 console:
 
 ```text
 commander transition
 listener vtol_vehicle_status -n 1
 ```
 
-Confirm state 4. Observe 25 s; continue to 45 s total FW only if bounded.
+FWstate4: observe75s, NO FW retarget/RTL/speed or altitude changes.
 Then back-transition ONCE:
 
 ```text
 commander transition
 ```
 
-Allow up to 25 s of DECAYING attitude recovery. Hold may command 3.5 m/s travel
-toward its old target; zero XY speed is not required to request Land.
+Up to25s DECAYING recovery; Hold translation can be intentional.
 Once upright with settled attitude:
 
 ```text
 commander land
 ```
 
-After touchdown/autodisarm, or to end a failed SIMULATOR experiment:
+Touchdown/autodisarm:
 
 ```text
 shutdown
 ```
 
-Keep truth recording until collection ends; wait for UPLOAD VERIFIED.
-Network failure: retry the SAME evidence, no repeat flight:
+Keep recording until collection ends. WaitUPLOAD VERIFIED. Retry if needed:
 
 ```bash
 bash run.sh retry-uploads
 ```
 
-No in-flight edits, autotune, GoTo, RTL or speed changes. Maximum seven minutes
-airborne. Growing departure, about 30 m height loss, persistent motor clipping,
-MC speed above 12 m/s or non-decaying recovery: end the test. Early FW stop
-thresholds and back-transition handling are in QUICKSTART.md.
+Abort criteria, early FW back-transition and skipped QGC altitude-test reporting
+are in QUICKSTART.md. No new token/folder/install. Maximum8min airborne.
+This is candidate validation, not a production/hardware release.

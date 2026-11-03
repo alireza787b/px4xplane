@@ -107,7 +107,24 @@ class ReferenceTest(unittest.TestCase):
             for term in ('P','I','D'):
                 self.assertAlmostEqual(params[f'FW_{fw}_{term}']*scale,
                                        params[f'MC_{mc}RATE_{term}']*params[f'MC_{mc}RATE_K'],places=6)
-        self.assertEqual(params['FW_RR_P'], .18)
+        self.assertEqual(params['FW_RR_P'], .22)
+        self.assertEqual(params['MPC_XY_CRUISE'], 5)
+        self.assertEqual(params['MPC_XY_VEL_MAX'], 6)
+        self.assertEqual(params['MPC_VEL_MANUAL'], 5)
+        self.assertEqual(params['MPC_Z_V_AUTO_UP'], 2.5)
+        self.assertEqual(params['MPC_Z_VEL_MAX_UP'], 3)
+        self.assertEqual(params['MPC_Z_V_AUTO_DN'], 1.6)
+        self.assertEqual(params['MPC_Z_VEL_MAX_DN'], 1.8)
+        self.assertEqual(params['MPC_TKO_SPEED'], 1.5)
+        self.assertLessEqual(params['MPC_XY_CRUISE'], params['MPC_XY_VEL_MAX'])
+        self.assertLessEqual(params['MPC_Z_V_AUTO_UP'], params['MPC_Z_VEL_MAX_UP'])
+        self.assertLessEqual(params['MPC_Z_V_AUTO_DN'], params['MPC_Z_VEL_MAX_DN'])
+        order = list(params)
+        for bound, request in (('MPC_XY_VEL_MAX', 'MPC_XY_CRUISE'),
+                               ('MPC_Z_VEL_MAX_UP', 'MPC_Z_V_AUTO_UP'),
+                               ('MPC_Z_VEL_MAX_DN', 'MPC_Z_V_AUTO_DN')):
+            self.assertLess(order.index(bound), order.index(request),
+                            'Apply the new bound before its request to avoid runtime clamping')
         self.assertEqual(params['MC_ROLL_P'], 1.4)
         self.assertEqual(params['MC_PITCH_P'], 1.0)
         self.assertEqual(params['FW_RR_I'], .014318)

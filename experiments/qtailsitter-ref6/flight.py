@@ -22,6 +22,12 @@ def no_px4():
     require(result.returncode == 1, 'PX4 may still be running; stop it before source restore or collection')
 
 
+def require_clean_checkout(repo):
+    status = git(repo, 'status', '--porcelain').stdout
+    require(not status, 'PX4 checkout is dirty; nothing discarded. Changed paths:\n'+status+
+            'Inspect these paths with git status --short; do not reset or clean blindly.')
+
+
 def startup(profile, altitude=50, overrides=None):
     params = {'SYS_AUTOSTART': '5021', **profile_params(profile), 'MIS_TAKEOFF_ALT': str(altitude)}
     text = f'. etc/init.d-posix/rcS\n. "$REF6_PROFILE"\nparam set MIS_TAKEOFF_ALT {altitude}\n'
@@ -56,7 +62,7 @@ def flight(args):
     key = __import__('hashlib').sha256(str(repo).encode()).hexdigest()[:16]
     with open(Path(tempfile.gettempdir())/('px4-qtail-'+key+'.lock'), 'a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        require(not git(repo, 'status', '--porcelain').stdout, 'PX4 checkout is dirty; nothing discarded')
+        require_clean_checkout(repo)
         receipt = json.loads((args.state/'receipt.json').read_text())
         require(not receipt.get('restored'), 'Installation has been restored; reinstall with a new state')
         truth = active_session(args.truth.resolve())

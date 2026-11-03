@@ -214,6 +214,14 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     add('MPC_JERK_AUTO',4,'R13 uses the current PX4 default, within metadata bounds. Replaces inherited 0.7 while testing merged upstream braking recovery; not an independent A/B or a proven optimum.')
     add('MPC_ACC_HOR',2,'R13 normal autonomous acceleration: current PX4 metadata minimum, replacing inherited 0.7. Improves nominal recovery agility; emergency braking has separate limits. Validate coupled response in SITL.')
     add('MPC_ACC_HOR_MAX',2,'R13 normalizes inherited 1.0 to the documented minimum. This parameter limits manual-mode deceleration with MPC_POS_MODE=0; it is unused with MPC_POS_MODE=4 and is not the auto emergency-brake limit.')
+    # Increase requested speed, not control bandwidth or near-ground descent.
+    # Set each bound before its request: the running controller can otherwise
+    # clamp a new request to the old bound while this profile is being applied.
+    for name,value in (('MPC_XY_VEL_MAX',6),('MPC_XY_CRUISE',5),('MPC_VEL_MANUAL',5),
+                       ('MPC_Z_VEL_MAX_UP',3),('MPC_Z_V_AUTO_UP',2.5),
+                       ('MPC_Z_VEL_MAX_DN',1.8),('MPC_Z_V_AUTO_DN',1.6),
+                       ('MPC_TKO_SPEED',1.5)):
+        add(name,value,'R15 bounded MC speed trial after R14 tracked 2m/s climb and 1.4m/s descent. Paired request/limit values remain consistent; acceleration, jerk, tilt, PID and near-ground landing speed unchanged. Higher max velocities also change upstream emergency-braking thresholds; validate postback recovery. Not calibrated maximum performance.')
     for index in range(4):
         engine = f"_engn/{index}"
         add(f"CA_ROTOR{index}_PX", -as_float(values, f"{engine}/_part_z") * FT_TO_M, "Actual ACF hub position in MC FRD, meters.")
@@ -256,15 +264,15 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
     # downstream differential scaling. This equates unsaturated normalized PID
     # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
-    # R14 tests FW roll damping only. Other FW coefficients
+    # R15 continues the FW roll damping trial. Other FW coefficients
     # remain frozen; do not silently copy MC roll P into FW yaw.
-    fw_baseline={'RR':(.18,.014318,.001507),
+    fw_baseline={'RR':(.22,.014318,.001507),
                  'PR':(.133333,.016667,.001333),
                  'YR':(.099422,.024856,.001987)}
     for fw,coefficients in fw_baseline.items():
         for term,value in zip(('P','I','D'),coefficients):
             add(f'FW_{fw}_{term}',round(value,6),
-                ('R14 P-only damping trial 0.14->0.18. R13 has a growing 0.449Hz FW roll mode; measured prop moment opposes that rate, while motor allocator and integral have headroom. Physical MC-yaw normalized P becomes 0.099 after scale0.55. I/D, MC and geometry unchanged. Not a validated optimum or a predicted stability margin.' if fw=='RR' and term=='P' else
+                ('R15 FW damping trial 0.18->0.22. R14 reduced the first25s roll-mode amplitude, but a 0.46Hz mode persists in longer FW. Motor allocation is unsaturated and integrator has headroom. Physical MC-yaw normalized P becomes 0.121 after scale0.55; I/D, attitude gain and geometry unchanged. Provisional bounded SITL trial, not a stability guarantee.' if fw=='RR' and term=='P' else
                  'R8 FW coefficient retained during the R11 trial. Not a validated tune; no automatic propagation of MC gains.'))
         add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
     for axis,scale in (('R',.55),('P',.90),('Y',.32)):
@@ -317,7 +325,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.14", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.15", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

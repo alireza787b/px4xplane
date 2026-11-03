@@ -185,6 +185,15 @@ class Ref6Tests(unittest.TestCase):
         self.assertIn('shutdown', startup)
         self.assertIn('-u 18571 -o 14550 -t "$REF6_QGC"', startup)
 
+    def test_dirty_checkout_reports_paths_without_mutation(self):
+        status = '?? Tools/simulation/old-simulator/\n M user.cpp\n'
+        with patch('flight.git', return_value=subprocess.CompletedProcess([], 0, status, '')) as git:
+            with self.assertRaises(ValueError) as caught:
+                flight.require_clean_checkout(self.base)
+            self.assertIn(status, str(caught.exception))
+            self.assertIn('nothing discarded', str(caught.exception))
+            git.assert_called_once_with(self.base, 'status', '--porcelain')
+
     def test_r13_baseline_retains_and_checks_reusable_profile(self):
         profile = self.bundle/'profile.sh'
         original = profile.read_bytes()
@@ -274,12 +283,12 @@ class Ref6Tests(unittest.TestCase):
                 self.assertEqual(launch.call_args.args[0].scenario, scenario)
                 text = output.getvalue()
                 self.assertIn('Scenario: '+scenario, text)
-                self.assertIn('R14: P-only FW damping test, FW_RR_P=0.18 (was 0.14)', text)
+                self.assertIn('R15: FW_RR_P=0.22; MC cruise/max 5/6m/s', text)
                 self.assertIn(ref6.VERSION, text)
                 self.assertIn('official PX4 BASE: '+ref6.BASE, text)
                 self.assertIn('log-only TARGET: '+ref6.TARGET, text)
                 self.assertIn('#28350', text)
-                self.assertIn('Same R13 firmware, MC, TECS, trajectory and ACF', text)
+                self.assertIn('Same firmware, ACF, MC PID, acceleration, jerk and near-ground landing speed', text)
                 self.assertNotIn('PID/ACF unchanged', text)
                 if scenario == 'braking-isolation':
                     self.assertIn('increases the 1.3*bound threshold to 15.6 m/s', text)
