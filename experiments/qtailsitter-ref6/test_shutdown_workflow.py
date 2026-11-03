@@ -84,7 +84,7 @@ class ShutdownWorkflow(unittest.TestCase):
                     self.assertEqual(summary['rows'],2)
                     self.assertEqual(session['px4_exit_code'],exit_code)
                     recorded=json.loads(zipped.read(next(n for n in zipped.namelist() if n.endswith('/identity.json'))))
-                    self.assertEqual(recorded['runner'], '2026-11-03.ref6.13')
+                    self.assertEqual(recorded['runner'], flight.VERSION)
                     self.assertEqual(recorded['base'], flight.BASE)
                     self.assertEqual(recorded['source'], flight.TARGET)
                     self.assertEqual(recorded['mode'], mode)

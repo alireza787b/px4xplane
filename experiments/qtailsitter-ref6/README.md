@@ -4,9 +4,9 @@ Private experimental SITL only. Same Ref6 aircraft and installed debug folder.
 No production plugin changes, private dive feature or hardware image.
 **Current instructions: QUICKSTART.md.**
 
-## Current Test: R13
+## Current Test: R14
 
-The test now uses official PX4 main snapshot `649929706fb34bf0b06dbd2df24e04d5d452d616`
+The test retains official PX4 main snapshot `649929706fb34bf0b06dbd2df24e04d5d452d616`
 plus log-only diagnostics `58794523a151fa33a28a564454454b8c9fbfcdd5`.
 The upstream emergency-braking follow-up [#28350](https://github.com/PX4/PX4-Autopilot/pull/28350)
 merged on October 12; the old September base did not contain it. That finding
@@ -15,11 +15,15 @@ and the final merged implementation, not the stale PR-body design.
 
 Current upstream also includes TECS altitude/speed and underspeed/bank handling
 improvements, and true-airspeed turn coordination. These are not new custom
-patches. FW rate/attitude gains, NPFG, speeds, trim, motor mapping, mass/CG and
-the ACF remain unchanged. The reusable trajectory profile now sets
+patches. R13 completed landing and automatic disarm with one postback braking
+event and no Land braking. R14 tests only FW_RR_P 0.14 -> 0.18 against its
+remaining 0.449 Hz roll mode. MC, I/D, attitude gains, NPFG, speeds, trim, motor
+mapping, mass/CG and ACF remain unchanged. The trajectory profile retains
 MPC_JERK_AUTO=4, MPC_ACC_HOR=2 and MPC_ACC_HOR_MAX=2. The last is not an auto
-emergency-braking limit. This combined firmware/profile trial is not an
-isolated A/B proof of any one PR or a promise of perfect flight.
+emergency-braking limit. R13 was a combined firmware/profile trial, not an
+isolated A/B proof of one PR. R14 is a bounded damping experiment, not a
+promise of perfect flight. Back-transition still climbs about 37.6 m and exits
+by timeout; those remain acceptance gaps, not newly solved behavior.
 
 The unchanged ACF is 2 kg with 0.60 m projected span, 0.10 m chord and four
 500 W shaft-power caps. It retains original motor signs and PX4's direction
@@ -32,7 +36,7 @@ MC around 9.3 m/s, repeatedly released emergency braking with substantial
 trajectory acceleration retained, and interrupted Land descent. A separate
 0.448 Hz FW roll oscillation occurred earlier. Late power collapse near 800 s
 is strongly consistent with battery depletion, not the early failure.
-See REPORT.md and retained R11 plots for the measured evidence.
+See REPORT.md and the packaged R13 plots for current measured evidence.
 
 ## Daily Commands
 
@@ -45,18 +49,20 @@ cat VERSION.txt
 bash run.sh prepare-truth
 ```
 
-Expect 2026-11-03.ref6.13. Fresh fully charged Ref6, no wind/payload. Start a NEW
+Expect 2026-11-03.ref6.14. Fresh fully charged Ref6, no wind/payload. Start a NEW
 TruthCapture recording, QGC and the plugin connection. Then:
 
 ```bash
 bash run.sh flight --yes-debug
 ```
 
-Follow QUICKSTART.md: actual 180 m, settled hover, front-transition, 20 seconds
-established FW, normal back-transition, settled MC, Land, touchdown/disarm,
+Follow QUICKSTART.md: console takeoff to actual 180 m, settled hover, transition,
+25 seconds FW and up to 45 if bounded, back-transition, decaying recovery,
+Land, touchdown/disarm,
 shutdown. No GoTo, RTL, speed commands, autotune or in-flight gain edits.
-Stop sustained failed recovery after 15-20 seconds; do not waste minutes of
-battery/evidence. Limit the complete run to six minutes.
+Stop growing/non-decaying recovery within 25 seconds; do not waste minutes of
+battery/evidence. Hold can command translation toward its old target; Land
+should stop this travel. Limit airborne time to seven minutes.
 
 The legacy recovery-jerk case remains compatible but now duplicates baseline
 jerk=4. braking-isolation remains an explicit diagnostic only, not a recommended
@@ -68,7 +74,7 @@ instead of the current guide.
 The update downloads a checksum-verified package into the SAME folder, preserves
 runs/credentials and retains one previous managed version. It does not discard
 local managed-file edits. PX4 must be stopped; X-Plane must also be closed only
-if an update changes installed ACF bytes. R13 does not change the ACF/config.
+if an update changes installed ACF bytes. R14 does not change the ACF/config.
 
 The Git bundle carries current official source history plus the log-only commit.
 It reuses ~/PX4-Autopilot-Me; no second PX4 clone. Its prerequisite is the old
@@ -121,7 +127,8 @@ Network/quota/auth failures retain a local pending ZIP. Retry:
 bash run.sh retry-uploads
 ```
 
-After verified upload, tell the reviewing agent the test finished. No manual
+After verified upload, tell the reviewing agent the test finished. The archive
+is on the analysis upload server, not necessarily in VPS home. No manual
 copying is required. Keep original Windows recordings until review completes.
 
 ## Disable And Restore

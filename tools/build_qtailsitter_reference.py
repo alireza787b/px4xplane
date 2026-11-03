@@ -256,15 +256,15 @@ def parameter_profile(values: dict[str, str]) -> tuple[dict[str, float], dict[st
     # transforms (FW roll <- MC yaw, pitch <- pitch, FW yaw <- MC roll) and cancel
     # downstream differential scaling. This equates unsaturated normalized PID
     # effort, NOT aerodynamic response, actuator bandwidth or stability margins.
-    # R11 continues the FW roll P trial. Other FW coefficients
+    # R14 tests FW roll damping only. Other FW coefficients
     # remain frozen; do not silently copy MC roll P into FW yaw.
-    fw_baseline={'RR':(.14,.014318,.001507),
+    fw_baseline={'RR':(.18,.014318,.001507),
                  'PR':(.133333,.016667,.001333),
                  'YR':(.099422,.024856,.001987)}
     for fw,coefficients in fw_baseline.items():
         for term,value in zip(('P','I','D'),coefficients):
             add(f'FW_{fw}_{term}',round(value,6),
-                ('R11 FW roll P trial 0.10->0.14 after R10 measured rate-error RMS~0.256rad/s versus R8~0.378. Flights are not isolated A/B; this is a damping experiment, not an optimum. Physical MC-yaw-axis P=0.077 after scale0.55; I/D unchanged.' if fw=='RR' and term=='P' else
+                ('R14 P-only damping trial 0.14->0.18. R13 has a growing 0.449Hz FW roll mode; measured prop moment opposes that rate, while motor allocator and integral have headroom. Physical MC-yaw normalized P becomes 0.099 after scale0.55. I/D, MC and geometry unchanged. Not a validated optimum or a predicted stability margin.' if fw=='RR' and term=='P' else
                  'R8 FW coefficient retained during the R11 trial. Not a validated tune; no automatic propagation of MC gains.'))
         add(f'FW_{fw}_FF',0,'No identified FW aerodynamic rate feedforward; preserve zero during first short characterization.')
     for axis,scale in (('R',.55),('P',.90),('Y',.32)):
@@ -317,7 +317,7 @@ def build(source: Path, output: Path, blade_chord_scale: float = 2.6) -> dict:
     rho = 1.059
     tw = 4 * APC_STATIC[1][1] * rho / 1.225 / (MASS_KG * G)
     doc = {
-        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.13", "flight_validated": False,
+        "name": NAME, "display_name": "Compact BSC3120 X-Tailsitter (2kg candidate)", "revision": "2026-11-03.ref6.14", "flight_validated": False,
         "source_sha256": hashlib.sha256(text.encode()).hexdigest(), "acf_sha256": sha256(acf),
         "mass_kg": MASS_KG, "main_panel_area_m2": MAIN_AREA_M2,
         "main_chord_scale": sizing.CHORD / (as_float(values, '_wing/0/_Croot') * FT_TO_M),

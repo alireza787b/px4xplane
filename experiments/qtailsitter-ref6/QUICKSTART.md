@@ -1,12 +1,13 @@
-# R13: Current PX4 Full-Flight Test
+# R14: FW Damping And Landing Check
 
-SITL only. This supersedes R12. The same aircraft, plugin and PID gains are used.
-The runner now builds official PX4 main snapshot `649929706f` plus logging only
-(`58794523a1`). The already-merged braking fix is included, not a new private fix.
+Experimental SITL ONLY. R13 landed but still has a FW roll mode, back-transition
+climb/timeout and recovery transient. R14 changes only FW_RR_P 0.14 -> 0.18.
+Same firmware, aircraft and MC settings. Read REPORT.md for remaining gaps;
+this is not production acceptance.
 
-## 1. Update The Same Folder
+## 1. Update In WSL
 
-Stop PX4 and the old TruthCapture recording. Paste in WSL:
+Stop PX4 and the old TruthCapture recording:
 
 ```bash
 cd "$HOME/PX4_QTAILSITTER_REF6_2026-11-01"
@@ -15,47 +16,42 @@ cat VERSION.txt
 bash run.sh prepare-truth
 ```
 
-Expect `2026-11-03.ref6.13`. The first update may finish by printing an OLD
-R12 next-test line; ignore it and follow this guide. No new folder, aircraft,
-plugin reinstall or upload token is needed.
+Expect **2026-11-03.ref6.14**. Follow THIS guide if the old updater prints an
+older next-test line. No new folder, upload token, ACF or plugin installation.
 
-## 2. Fresh Simulator Flight
+## 2. Fresh X-Plane Flight
 
-Load a fresh QuadTailsitterRef6 flight with a fully charged X-Plane battery,
-zero payload and no wind. Do not resume the prior depleted/airborne state.
-Start a NEW TruthCapture recording after prepare-truth, then QGC.
-Select Plugins > PX4 X-Plane > Airframes > QuadTailsitterRef6, then Connect to SITL.
+Load QuadTailsitterRef6 with a fresh fully charged battery, zero wind/payload.
+Do not resume the old depleted/airborne state. Start a NEW TruthCapture recording
+after prepare-truth, then QGC. Select Plugins > PX4 X-Plane > Airframes >
+QuadTailsitterRef6, then Connect to SITL.
 
-In WSL:
+WSL:
 
 ```bash
 bash run.sh flight --yes-debug
 ```
 
-Use this plain flight command, not the old recovery-jerk or braking-isolation
-cases. The runner prints and records both firmware pins. It imports new source
-into your existing PX4 checkout, aligns submodules and builds. First build can
-take time and download missing dependencies; if the plugin wait expires, click
-Connect to SITL again. No complete PX4 clone is required.
+Existing PX4 checkout is reused and restored afterward. If the build outlasts
+the plugin connection wait, click Connect to SITL again.
 
 ## 3. PX4 Console Checks And Takeoff
 
-After PARAMETER GATE PASSED and Ready for takeoff:
+After PARAMETER GATE PASSED and Ready, type in the PX4 console, NOT WSL:
 
 ```text
 ver all
+param show FW_RR_P
 param show MPC_JERK_AUTO
-param show MPC_ACC_HOR
-param show MPC_XY_VEL_MAX
 param show MIS_TAKEOFF_ALT
 commander check
 commander takeoff
 ```
 
-Expect firmware hash beginning `58794523a1`, values `4`, `2`, `4`, `180`.
-The 2 kg ACF and rate PID values are unchanged. Do not override EKF checks.
-Use console takeoff, not QGC's remembered takeoff slider. Wait for actual 180 m
-above home, adequate terrain clearance and 15 seconds settled hover.
+Expect hash beginning 58794523a1 and values 0.18, 4, 180. Stop if identity or
+checks differ; no EKF overrides. Use CONSOLE takeoff: QGC previously supplied
+an explicit approximately 57 m target, overriding the 180 m default.
+Wait for actual 180 m above home, terrain clearance and 15 s settled hover.
 
 ## 4. Front Transition And FW
 
@@ -64,12 +60,17 @@ commander transition
 listener vtol_vehicle_status -n 1
 ```
 
-Issue once. Confirm vehicle_vtol_state: 4, then observe 20 seconds established
-FW without changing the target or speed. Hold normally flies an orbit.
-Current upstream includes turn-coordination/TECS/underspeed fixes, but smooth
-FW flight is not yet demonstrated for this model.
+Issue once; confirm vehicle_vtol_state: 4. Observe the first 25 s, then continue
+to 45 s total established FW only if motion remains bounded. Look for reduced
+or damping oscillation, not simply more bank. A complete 1300 m orbit is NOT
+expected in 45 s.
 
-Then request back-transition ONCE:
+If bank oscillation clearly grows, actual bank exceeds about 30 deg, or roll
+rate repeatedly exceeds about 35 deg/s, request back-transition ONCE early
+instead of continuing FW. These are experimental stop thresholds, not aircraft
+design limits or a substitute for observing the flight.
+
+Otherwise, after 45 s:
 
 ```text
 commander transition
@@ -77,43 +78,42 @@ commander transition
 
 ## 5. MC Recovery And Land
 
-Confirm actual upright, stopped, settled MC, not just its label:
+Allow up to 25 s of a DECAYING attitude transient. Observe actual orientation,
+not just the MC label. R13 entered MC by timeout at about -20 deg pitch and
+9.3 m/s residual speed, then took about 19 s to settle attitude. This remains
+under review, not a claimed fixed transition.
 
-```text
-listener vtol_vehicle_status -n 1
-listener vehicle_local_position -n 1
-```
-
-If horizontal speed is approximately below 1 m/s and vertical speed near zero,
-observe 15 seconds settled, then:
+Hold may command a smooth 3.5 m/s return toward its old waypoint. That translation
+is not necessarily unstable hover. Once upright with settled attitude, Land
+should stop the horizontal travel at the landing position:
 
 ```text
 commander land
 ```
 
-After touchdown and automatic disarm:
+Expect about 1.4 m/s descent at altitude and slower near-ground descent. After
+touchdown and automatic disarm:
 
 ```text
 shutdown
 ```
 
-Leave TruthCapture running until collection finishes. Wait for UPLOAD VERIFIED.
-The runner restores your original checkout, compresses truth and uploads the
-evidence automatically. No manual file copying is needed after success.
-Retry a pending upload with `bash run.sh retry-uploads`.
+End the SIMULATOR experiment with shutdown instead if recovery grows or does
+not decay within 25 s, motor clipping persists, height loss is about 30 m or
+MC XY speed exceeds about 12 m/s. Keep airborne time below seven minutes.
+These are diagnostic limits, NOT certified hardware procedures.
 
-## End A Failed Test Promptly
+## 6. Upload
 
-If recovery oscillates without damping for 15-20 seconds, use shutdown and send
-that failure; do not leave it airborne for minutes. Also end for a growing
-attitude departure, persistent motor clipping, about 30 m height loss or actual
-horizontal speed above about 12 m/s in MC. Complete the run within six minutes.
-These are experiment stop criteria, not certified aircraft limits.
+Keep TruthCapture recording until collection ends. Wait for UPLOAD VERIFIED.
+The destination is the analysis server, not the VPS home folder. No manual
+copy is needed. On network failure, preserve the ZIP and run folder; WSL:
 
-No autotune, slider edits, GoTo, RTL or speed changes in this run. R13 changes
-the official firmware AND normal trajectory settings (jerk 4, acceleration 2),
-so improvement is not an isolated A/B proof for one PR. FW/MC PID, ACF, speeds,
-trim and allocation remain fixed.
+```bash
+bash run.sh retry-uploads
+```
 
-To undo recorder-only extra logging later, stop PX4 and the recording, then
-run `bash run.sh restore-truth`. It does not alter simulator physics.
+Tell the reviewing agent the retry completed and paste its final status. No
+repeat flight solely for an upload failure. No autotune, gain edits, GoTo, RTL
+or speed changes in this comparison. A later measured mission will address
+full path capture, left/right turns and the performance envelope.
