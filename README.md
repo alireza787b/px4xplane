@@ -14,8 +14,9 @@ writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
 The current package is `v4.2.1` with Windows, Linux, and macOS builds. It
-includes tested examples for Cessna 172, TB2, Ehang 184, Alia 250, and
-QuadTailsitter.
+includes examples for Cessna 172, TB2, Ehang 184 and Alia 250. The draft
+compact QuadTailsitter profile requires its owner-supplied aircraft; see the
+[model-pairing guide](docs/compact-qtailsitter.md) before using that target.
 
 ## Latest Video
 
@@ -112,18 +113,19 @@ tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza7
 ```
 
 The helper installs the `px4xplane` launcher, syncs the selected PX4 checkout,
-offers an optional experimental PX4 validation stack, and opens the airframe
+uses official PX4 without experimental patches by default, and opens the airframe
 menu. If you accept the command install prompt, future sessions can be started
 by typing `px4xplane` from any terminal.
 
-For full local validation while separate PX4 fixes are still pending, use:
+For an intentional local test of the pending TECS altitude-reference proposal, use:
 
 ```bash
 px4xplane --validation --reset-config
 ```
 
-That command uses official PX4 `main` as the base and stacks the experimental
-PX4 PRs locally for the run. For a clean official-PX4 baseline without pending
+That command uses official PX4 `main` as the base and applies only the still-open
+TECS altitude-reference PR #27670 locally. It does not apply closed GSF PR
+#27533 or already-merged VTOL/tailsitter fixes. For an official-PX4 baseline without pending
 PRs, use `px4xplane --official --reset-config`.
 
 If you already have a PX4 checkout and do not want a second clone, pass it to
@@ -161,21 +163,27 @@ timing. Legacy configs that explicitly selected `async` now migrate to the safe
 mode; unbounded developer comparisons require the explicit `async_unsafe`
 value. Existing airframe mappings and PX4 parameters are unchanged.
 
-Several PX4-side fixes found during final X-Plane validation are tracked in
-separate PX4 PRs:
+PX4-side follow-ups are separate from the plugin. Status checked 2026-11-03:
 
 - [PX4-Autopilot PR #27533](https://github.com/PX4/PX4-Autopilot/pull/27533):
-  EKF-GSF emergency yaw-reset guard for fast VTOL transitions.
+  EKF-GSF emergency yaw-reset proposal, closed without merging; no longer applied.
 - [PX4-Autopilot PR #27601](https://github.com/PX4/PX4-Autopilot/pull/27601):
-  Standard VTOL front-transition setpoint handoff.
+  Standard VTOL front-transition setpoint handoff, merged into official PX4.
 - [PX4-Autopilot PR #27670](https://github.com/PX4/PX4-Autopilot/pull/27670):
   fixed-wing TECS reset on altitude-reference changes.
 - [PX4-Autopilot PR #27793](https://github.com/PX4/PX4-Autopilot/pull/27793):
   upstream tailsitter attitude-conversion fix, merged into PX4 `main`.
 
 Those PX4 changes are intentionally not bundled into this plugin repository.
-The launcher can stack the remaining open PRs locally for validation while they
-are pending.
+The launcher applies the TECS proposal only when explicitly requested with
+`--validation` or `--with-tecs-alt-guard`. A normal launch has no experimental
+patch prompt. Retired positive guard flags stop with an explanation.
+
+The [compact QuadTailsitter draft](docs/compact-qtailsitter.md) is a separate
+model-specific defaults migration, not another core-controller bugfix. Before
+its PX4 merge, use its explicit profile launcher rather than assuming a stock
+`xplane_qtailsitter` target loads the new tune. Private ACFs, raw evidence and
+temporary debug upload services are not included in public releases.
 
 ## Common Paths
 

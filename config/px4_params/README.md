@@ -9,3 +9,10 @@ The source of truth for SITL execution is the active PX4 checkout:
 
 When preparing an official PX4 PR, keep the PX4 airframe files in the PX4
 repository and avoid adding px4xplane release-kit files to the PX4 branch.
+
+Draft exception for pre-merge validation: the compact QuadTailsitter runner
+explicitly reads its matching reference into an isolated parameter store.
+The replacement `5021_xplane_qtailsitter` reference targets the privately
+supplied `NewQuadTailsitter.acf`, not the old public 5 kg model. See
+`docs/compact-qtailsitter.md` in the plugin package/repository. A stock PX4
+checkout will not read these new defaults until its companion PR is merged.

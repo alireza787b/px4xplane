@@ -315,6 +315,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
         ${OUTPUT_DIR}/../QUADTAILSITTER_XPLANE12_TEST.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
+        ${OUTPUT_DIR}/../compact-qtailsitter.md
     COMMENT "Copying QuadTailsitter X-Plane test card to plugin root directory"
 )
 
@@ -332,16 +335,14 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying TB2 X-Plane test card to plugin root directory"
 )
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter")
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-            ${PACKAGE_ROOT}/X-Plane_Aircraft
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter
-            ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
-        COMMENT "Copying QuadTailsitter aircraft source to package output"
-    )
-endif()
+# The historical 5 kg model does not match the draft compact 5021 defaults.
+# The replacement is owner-supplied: never package a private ACF or a legacy
+# model beside an incompatible profile, including stale incremental outputs.
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E rm -rf
+        ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
+    COMMENT "Removing incompatible legacy QuadTailsitter from package output"
+)
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -530,15 +531,19 @@ foreach(PARAM_FILE ${PX4_PARAMS})
     )
 endforeach()
 
-if(EXISTS "${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter")
-    list(APPEND PACKAGE_ASSET_COMMANDS
-        COMMAND ${CMAKE_COMMAND} -E make_directory
-            ${PACKAGE_ROOT}/X-Plane_Aircraft
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_SOURCE_DIR}/aircraft/QuadTailsitter
-            ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
-    )
-endif()
+list(APPEND PACKAGE_ASSET_COMMANDS
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
+        ${OUTPUT_DIR}/../compact-qtailsitter.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
+        ${OUTPUT_DIR}/../docs/compact-qtailsitter.md
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_SOURCE_DIR}/tools/run_compact_qtailsitter.py
+        ${OUTPUT_DIR}/../tools/run_compact_qtailsitter.py
+    COMMAND ${CMAKE_COMMAND} -E rm -rf
+        ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
+)
 
 add_custom_target(package_assets ALL
     ${PACKAGE_ASSET_COMMANDS}

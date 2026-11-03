@@ -9,7 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes._
+### Changed
+
+- Draft compact QuadTailsitter model/profile migration, paired with the PX4
+  airframe-default follow-up. The private aircraft is not shipped in releases.
+- Separate official-PX4 operation from explicit developer validation, and retire
+  closed or merged guard options rather than applying obsolete PR heads.
+- Add an isolated compact-profile launcher with source/model/parameter checks;
+  normal users continue to use the official PX4 simulation instructions.
+
+This is draft work, not a tagged release or a full-envelope validation claim.
 
 ## [4.2.1] - 2026-08-15
 

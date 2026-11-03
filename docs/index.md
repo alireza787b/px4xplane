@@ -81,11 +81,14 @@ manual address and asks again.
   code without pending PRs; use `--validation` only for an intentional local
   test of the experimental PR stack. Use `--no-sync` only for deliberate
   offline/debug runs.
-- Separate PX4 EKF edge-case PR:
+  `--no-sync` skips helper and PX4 remote update checks; do not combine it with
+  an enabled validation guard. Feature-branch users can separately set
+  `PX4XPLANE_SKIP_LAUNCHER_UPDATE=1` to retain their selected helper version.
+- Historical PX4 EKF edge-case proposal (closed without merging; not applied):
   [PX4-Autopilot #27533](https://github.com/PX4/PX4-Autopilot/pull/27533).
   This covers the fast-VTOL transition EKF-GSF yaw-reset issue found during
   final Alia validation and is intentionally separate from the plugin package.
-- Separate PX4 Standard VTOL handoff PR:
+- Merged PX4 Standard VTOL handoff PR (already in current official PX4):
   [PX4-Autopilot #27601](https://github.com/PX4/PX4-Autopilot/pull/27601).
   This covers the front-transition pusher-thrust and pitch-setpoint handoff
   issue found during Alia validation and is intentionally separate from the
@@ -97,12 +100,11 @@ manual address and asks again.
   [PX4-Autopilot #27793](https://github.com/PX4/PX4-Autopilot/pull/27793).
   This supersedes the earlier local tailsitter frame-guard validation branch and
   is now part of official PX4 `main`.
-- For intentional local validation while #27533, #27601, and #27670 are pending, run
+- For intentional local validation of the still-open TECS #27670 proposal, run
   `px4xplane --validation --reset-config`. The launcher syncs official PX4
-  `main` and cherry-picks those remaining PR heads locally for the run. Use
-  `px4xplane --without-ekf-gsf-guard`,
-  `px4xplane --without-vtol-handoff-guard`, or
-  `px4xplane --without-tecs-alt-guard` only for selective A/B tests.
+  `main` and applies that PR locally. Normal launches do not prompt for patches.
+  Positive flags for closed #27533 or merged #27601/#27793 fail with a clear
+  retirement message; negative legacy flags remain compatible no-ops.
 - For a clean official-PX4 baseline without pending PRs, run
   `px4xplane --official --reset-config`.
 - If you already maintain an official PX4 checkout, use
@@ -111,6 +113,9 @@ manual address and asks again.
 - Use `px4xplane --px4-path ~/PX4-Autopilot --restore-official` to reset that
   checkout back to official PX4 `main` after validation.
 - The plugin runtime config is `px4xplane/64/config.ini`.
+- The [compact QuadTailsitter profile](compact-qtailsitter.md) is a separate
+  draft model/defaults migration. Its owner-supplied ACF is private. Until PX4
+  merges the profile, a stock official target does not load the new tune.
 - `config_schema.json` is editor and validator metadata only; it is not read by the plugin at runtime.
 - Use `Plugins > PX4 X-Plane > Advanced > Open Config Editor` for schema-backed editing and export a new `config.ini` when changes are complete.
 - Use `Plugins > PX4 X-Plane > Advanced > Validate Config` after changing the active mapping in-sim.

@@ -10,16 +10,16 @@
 # === Purpose ===
 # This script automates the setup of PX4 Software-In-The-Loop (SITL) integration
 # with X-Plane. Official X-Plane SITL support is merged into PX4 main. The helper
-# can also run a maintained validation stack while separate PX4-side fixes are
-# pending.
+# can also apply experimental TECS altitude reset PR #27670 for developer
+# validation while that PX4-side PR remains open.
 #
 # Current Status:
 # - Official PX4 integration: https://github.com/PX4/PX4-Autopilot/pull/22493
-# - Validation mode: official PX4 main plus remaining pending PX4-side PRs
+# - Validation mode: official PX4 main plus experimental TECS PR #27670 only
 #
 # === Functionality ===
 # The script performs the following tasks:
-# 1. Uses official PX4 main as the base, optionally with validation PRs.
+# 1. Uses official PX4 main as the base, optionally with TECS PR #27670.
 # 2. Auto-syncs with remote updates (smart pull detection).
 # 3. Sets up the necessary dependencies by running the provided setup script (`ubuntu.sh`).
 # 4. Optionally sets up MAVLink Router for communication with X-Plane.
@@ -85,12 +85,6 @@ REPO_URL_WAS_OVERRIDDEN=false
 [ -n "${PX4XPLANE_PX4_REPO:-}" ] && PX4_REPO_EXPLICIT=true && REPO_URL_WAS_OVERRIDDEN=true
 [ -n "${PX4XPLANE_PX4_BRANCH:-}" ] && PX4_BRANCH_EXPLICIT=true
 PX4_REMOTE_NAME="${PX4XPLANE_PX4_REMOTE:-origin}"
-EKF_GSF_GUARD_SOURCE_REF="${PX4XPLANE_EKF_GSF_GUARD_REF:-refs/pull/27533/head}"
-EKF_GSF_GUARD_LOCAL_REF="pr-27533-ekf-gsf-guard"
-VTOL_HANDOFF_GUARD_SOURCE_REF="${PX4XPLANE_VTOL_HANDOFF_GUARD_REF:-refs/pull/27601/head}"
-VTOL_HANDOFF_GUARD_LOCAL_REF="pr-27601-vtol-handoff-guard"
-TAILSITTER_FW_FRAME_GUARD_SOURCE_REF="${PX4XPLANE_TAILSITTER_FW_FRAME_GUARD_REF:-refs/pull/27793/head}"
-TAILSITTER_FW_FRAME_GUARD_LOCAL_REF="pr-27793-tailsitter-fw-frame-guard"
 TECS_ALT_FRAME_GUARD_SOURCE_REF="${PX4XPLANE_TECS_ALT_FRAME_GUARD_REF:-refs/pull/27670/head}"
 TECS_ALT_FRAME_GUARD_LOCAL_REF="pr-27670-tecs-alt-reference-guard"
 UPSTREAM_URL="https://github.com/PX4/PX4-Autopilot.git"
@@ -139,34 +133,29 @@ NO_TECS_ALT_FRAME_GUARD_FLAG="--without-tecs-alt-guard"
 HELP_FLAG="--help"
 
 SYNC_MODE=true
-NO_SYNC_MODE=false
 RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
 RESTORE_OFFICIAL_MODE=false
-VALIDATION_MODE=false
-EXACT_PR_MODE=false
-OFFICIAL_MODE=false
-APPLY_EKF_GSF_GUARD=false
-SKIP_EKF_GSF_GUARD=false
-APPLY_VTOL_HANDOFF_GUARD=false
-SKIP_VTOL_HANDOFF_GUARD=false
-APPLY_TAILSITTER_FW_FRAME_GUARD=false
-SKIP_TAILSITTER_FW_FRAME_GUARD=false
+LAUNCH_MODE=official
 APPLY_TECS_ALT_FRAME_GUARD=false
-SKIP_TECS_ALT_FRAME_GUARD=false
 
 print_usage() {
     cat <<EOF
 Usage: $0 [options] [install_path]
+
+Normal use: no arguments, or --official (default; no experimental patches).
+Developer validation: --validation (experimental TECS PR #27670 only).
+Custom repository, branch, and checkout options work with either mode.
 
 Options:
   --sync          Force-sync the selected PX4 checkout to the configured PX4
                   branch remote, update submodules, and reset saved SITL
                   parameters before launching.
   --no-sync       Advanced/offline mode: do not sync the PX4 checkout before
-                  launching. Saved SITL params are still reset if the selected
-                  airframe defaults changed.
+                  launching; skip launcher and PX4 update checks. Cannot apply
+                  the TECS guard. Saved SITL params are still reset if the
+                  selected airframe defaults changed.
   --repair        Run the full dependency/setup path and sync the selected PX4 checkout.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
@@ -180,36 +169,34 @@ Options:
   --restore-official
                   Restore the selected PX4 checkout to official PX4 main,
                   update submodules, reset saved SITL params, and exit.
-  --validation    Use official PX4 main plus the remaining experimental
-                  PX4-side validation PRs for EKF-GSF, Standard VTOL, and
-                  fixed-wing TECS.
-  --official      Use official PX4 main without the validation stack.
+  --validation    Use official PX4 main plus the still-open experimental
+                  fixed-wing TECS altitude reset PR #27670 only.
+  --official      Use official PX4 main without experimental patches (default).
   --exact-pr      Backward-compatible alias for --official.
   --with-ekf-gsf-guard
-                  Local test mode: cherry-pick the open EKF-GSF yaw reset
-                  guard PR on top before launching.
+                  Retired: fails because PR #27533 was closed without merging.
   --without-ekf-gsf-guard
-                  Do not prompt for or apply the pending EKF-GSF guard.
+                  Backward-compatible no-op; the guard is retired.
   --with-vtol-handoff-guard
-                  Local test mode: also cherry-pick the open Standard VTOL
-                  front-transition setpoint handoff PR before launching.
+                  Retired: fails because PR #27601 is already merged.
   --without-vtol-handoff-guard
-                  Do not prompt for or apply the pending VTOL handoff guard.
+                  Backward-compatible no-op; the guard is retired.
   --with-tailsitter-fw-frame-guard
-                  Legacy local test mode: cherry-pick the tailsitter
-                  fixed-wing quaternion attitude-frame PR before launching.
-                  This is normally not needed on current PX4 main because
-                  PR #27793 has merged.
+                  Retired: fails because PR #27793 is already merged.
   --without-tailsitter-fw-frame-guard
-                  Do not apply the legacy tailsitter FW frame guard.
+                  Backward-compatible no-op; the guard is retired.
   --with-tecs-alt-guard
-                  Local test mode: cherry-pick the fixed-wing TECS altitude
-                  reference reset PR before launching.
+                  Developer validation: cherry-pick experimental TECS
+                  altitude reference reset PR #27670 before launching.
   --without-tecs-alt-guard
                   Do not apply the pending fixed-wing TECS altitude guard.
   --uninstall     Remove the global px4xplane command, saved config, and legacy
                   helper-managed fork checkout if present.
   --help          Show this help.
+
+Environment:
+  PX4XPLANE_SKIP_LAUNCHER_UPDATE=1
+                  Skip launcher self-updates to preserve a development copy.
 EOF
 }
 
@@ -230,11 +217,6 @@ while [[ $# -gt 0 ]]; do
             ;;
         "$NO_SYNC_MODE_FLAG")
             SYNC_MODE=false
-            NO_SYNC_MODE=true
-            SKIP_EKF_GSF_GUARD=true
-            SKIP_VTOL_HANDOFF_GUARD=true
-            SKIP_TAILSITTER_FW_FRAME_GUARD=true
-            SKIP_TECS_ALT_FRAME_GUARD=true
             shift
             ;;
         "$RESET_CONFIG_FLAG")
@@ -285,7 +267,7 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         "$VALIDATION_MODE_FLAG")
-            VALIDATION_MODE=true
+            LAUNCH_MODE=validation
             if [ "$PX4_BRANCH_EXPLICIT" = false ]; then
                 BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
             fi
@@ -293,77 +275,43 @@ while [[ $# -gt 0 ]]; do
                 REPO_URL="$OFFICIAL_PX4_REPO_URL"
                 REPO_URL_WAS_OVERRIDDEN=true
             fi
-            APPLY_EKF_GSF_GUARD=true
-            SKIP_EKF_GSF_GUARD=false
-            APPLY_VTOL_HANDOFF_GUARD=true
-            SKIP_VTOL_HANDOFF_GUARD=false
-            APPLY_TAILSITTER_FW_FRAME_GUARD=false
-            SKIP_TAILSITTER_FW_FRAME_GUARD=true
             APPLY_TECS_ALT_FRAME_GUARD=true
-            SKIP_TECS_ALT_FRAME_GUARD=false
-            SYNC_MODE=true
             shift
             ;;
         "$OFFICIAL_MODE_FLAG"|"$EXACT_PR_MODE_FLAG")
-            OFFICIAL_MODE=true
-            EXACT_PR_MODE=true
-            BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
+            LAUNCH_MODE=official
+            if [ "$PX4_BRANCH_EXPLICIT" = false ]; then
+                BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
+            fi
             if [ "$PX4_REPO_EXPLICIT" = false ]; then
                 REPO_URL="$OFFICIAL_PX4_REPO_URL"
                 REPO_URL_WAS_OVERRIDDEN=true
             fi
-            APPLY_EKF_GSF_GUARD=false
-            SKIP_EKF_GSF_GUARD=true
-            APPLY_VTOL_HANDOFF_GUARD=false
-            SKIP_VTOL_HANDOFF_GUARD=true
-            APPLY_TAILSITTER_FW_FRAME_GUARD=false
-            SKIP_TAILSITTER_FW_FRAME_GUARD=true
             APPLY_TECS_ALT_FRAME_GUARD=false
-            SKIP_TECS_ALT_FRAME_GUARD=true
-            SYNC_MODE=true
             shift
             ;;
         "$EKF_GSF_GUARD_FLAG")
-            APPLY_EKF_GSF_GUARD=true
-            SKIP_EKF_GSF_GUARD=false
-            SYNC_MODE=true
-            shift
-            ;;
-        "$NO_EKF_GSF_GUARD_FLAG")
-            SKIP_EKF_GSF_GUARD=true
-            APPLY_EKF_GSF_GUARD=false
-            shift
+            echo "Error: $1 is retired: PX4 PR #27533 was closed without merging. Use --official (default) or --validation for TECS PR #27670 only." >&2
+            exit 1
             ;;
         "$VTOL_HANDOFF_GUARD_FLAG")
-            APPLY_VTOL_HANDOFF_GUARD=true
-            SKIP_VTOL_HANDOFF_GUARD=false
-            SYNC_MODE=true
-            shift
-            ;;
-        "$NO_VTOL_HANDOFF_GUARD_FLAG")
-            SKIP_VTOL_HANDOFF_GUARD=true
-            APPLY_VTOL_HANDOFF_GUARD=false
-            shift
+            echo "Error: $1 is retired: PX4 PR #27601 is already merged. Use --official (default) or --validation for TECS PR #27670 only." >&2
+            exit 1
             ;;
         "$TAILSITTER_FW_FRAME_GUARD_FLAG")
-            APPLY_TAILSITTER_FW_FRAME_GUARD=true
-            SKIP_TAILSITTER_FW_FRAME_GUARD=false
-            SYNC_MODE=true
-            shift
+            echo "Error: $1 is retired: PX4 PR #27793 is already merged. Use --official (default) or --validation for TECS PR #27670 only." >&2
+            exit 1
             ;;
-        "$NO_TAILSITTER_FW_FRAME_GUARD_FLAG")
-            SKIP_TAILSITTER_FW_FRAME_GUARD=true
-            APPLY_TAILSITTER_FW_FRAME_GUARD=false
+        "$NO_EKF_GSF_GUARD_FLAG"|"$NO_VTOL_HANDOFF_GUARD_FLAG"|"$NO_TAILSITTER_FW_FRAME_GUARD_FLAG")
+            # Keep old commands working without restoring obsolete patches.
             shift
             ;;
         "$TECS_ALT_FRAME_GUARD_FLAG")
+            LAUNCH_MODE=validation
             APPLY_TECS_ALT_FRAME_GUARD=true
-            SKIP_TECS_ALT_FRAME_GUARD=false
-            SYNC_MODE=true
             shift
             ;;
         "$NO_TECS_ALT_FRAME_GUARD_FLAG")
-            SKIP_TECS_ALT_FRAME_GUARD=true
             APPLY_TECS_ALT_FRAME_GUARD=false
             shift
             ;;
@@ -383,6 +331,31 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 set -- "${POSITIONAL_ARGS[@]}"
+
+if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] && [ "$SYNC_MODE" = false ]; then
+    echo "Error: cannot apply experimental TECS guard PR #27670 without sync. Remove --no-sync or select --without-tecs-alt-guard (or --official)." >&2
+    exit 1
+fi
+
+print_launcher_selection() {
+    echo "Selected PX4 launcher configuration:"
+    if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
+        echo "  Mode: restore-official (no experimental patches)"
+        echo "  Repository: $OFFICIAL_PX4_REPO_URL"
+        echo "  Branch: $OFFICIAL_PX4_BRANCH"
+        echo "  TECS altitude guard #27670: disabled"
+    else
+        echo "  Mode: $LAUNCH_MODE"
+        echo "  Repository: $REPO_URL"
+        echo "  Branch: $BRANCH_NAME"
+        if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ]; then
+            echo "  TECS altitude guard #27670: enabled (experimental, developer validation only)"
+        else
+            echo "  TECS altitude guard #27670: disabled"
+        fi
+    fi
+    echo "  Retired guards: #27533 closed unmerged; #27601 and #27793 merged; never applied"
+}
 
 if [ "$UNINSTALL_MODE" = true ]; then
     # Uninstall the global access command
@@ -863,33 +836,14 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    fetch_guard_ref "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_SOURCE_REF" "$EKF_GSF_GUARD_LOCAL_REF" "EKF-GSF yaw reset guard" || return 1
-    fetch_guard_ref "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_SOURCE_REF" "$VTOL_HANDOFF_GUARD_LOCAL_REF" "Standard VTOL handoff guard" || return 1
     fetch_guard_ref "$APPLY_TECS_ALT_FRAME_GUARD" "$TECS_ALT_FRAME_GUARD_SOURCE_REF" "$TECS_ALT_FRAME_GUARD_LOCAL_REF" "fixed-wing TECS altitude guard" || return 1
-    fetch_guard_ref "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_SOURCE_REF" "$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF" "tailsitter FW attitude-frame PR #27793" || return 1
 
-    if [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || \
-       [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ]; then
+    if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ]; then
         local_branch="${BRANCH_NAME}-validation"
     fi
 
     if ! git rev-parse --verify "$remote_ref" >/dev/null 2>&1; then
         warning "Remote branch $remote_ref was not found."
-        return 1
-    fi
-
-    if [ "$APPLY_EKF_GSF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$EKF_GSF_GUARD_LOCAL_REF" >/dev/null 2>&1; then
-        warning "Remote guard ref $PX4_REMOTE_NAME/$EKF_GSF_GUARD_LOCAL_REF was not found."
-        return 1
-    fi
-
-    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_LOCAL_REF" >/dev/null 2>&1; then
-        warning "Remote guard ref $PX4_REMOTE_NAME/$VTOL_HANDOFF_GUARD_LOCAL_REF was not found."
-        return 1
-    fi
-
-    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] && ! git rev-parse --verify "$PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF" >/dev/null 2>&1; then
-        warning "Remote guard ref $PX4_REMOTE_NAME/$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF was not found."
         return 1
     fi
 
@@ -921,10 +875,7 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    apply_guard_commits "$remote_ref" "$APPLY_EKF_GSF_GUARD" "$EKF_GSF_GUARD_LOCAL_REF" "EKF-GSF yaw reset guard" || return 1
-    apply_guard_commits "$remote_ref" "$APPLY_VTOL_HANDOFF_GUARD" "$VTOL_HANDOFF_GUARD_LOCAL_REF" "Standard VTOL handoff guard" || return 1
     apply_guard_commits "$remote_ref" "$APPLY_TECS_ALT_FRAME_GUARD" "$TECS_ALT_FRAME_GUARD_LOCAL_REF" "fixed-wing TECS altitude guard" || return 1
-    apply_guard_commits "$remote_ref" "$APPLY_TAILSITTER_FW_FRAME_GUARD" "$TAILSITTER_FW_FRAME_GUARD_LOCAL_REF" "tailsitter FW attitude-frame PR #27793" || return 1
 
     if [ "$clean_untracked" = true ]; then
         git clean -fd
@@ -995,6 +946,10 @@ restore_px4_repo_to_official() {
 }
 
 update_launcher_script_if_needed() {
+    if [ "$SYNC_MODE" = false ] || [ "${PX4XPLANE_SKIP_LAUNCHER_UPDATE:-0}" = 1 ]; then
+        return 0
+    fi
+
     local current_script_path
     local temp_script
 
@@ -1029,159 +984,6 @@ update_launcher_script_if_needed() {
     rm -f "$temp_script"
 }
 
-enable_pending_px4_fixes() {
-    [ "$SKIP_EKF_GSF_GUARD" = true ] || APPLY_EKF_GSF_GUARD=true
-    [ "$SKIP_VTOL_HANDOFF_GUARD" = true ] || APPLY_VTOL_HANDOFF_GUARD=true
-    [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ] || APPLY_TECS_ALT_FRAME_GUARD=true
-    SYNC_MODE=true
-}
-
-skip_pending_px4_fixes() {
-    [ "$APPLY_EKF_GSF_GUARD" = true ] || SKIP_EKF_GSF_GUARD=true
-    [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || SKIP_VTOL_HANDOFF_GUARD=true
-    [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || SKIP_TAILSITTER_FW_FRAME_GUARD=true
-    [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || SKIP_TECS_ALT_FRAME_GUARD=true
-}
-
-any_pending_px4_fix_selected() {
-    [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$SKIP_EKF_GSF_GUARD" = true ] || \
-    [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || [ "$SKIP_VTOL_HANDOFF_GUARD" = true ] || \
-    [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ] || [ "$SKIP_TAILSITTER_FW_FRAME_GUARD" = true ] || \
-    [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ]
-}
-
-prompt_for_pending_px4_fixes() {
-    if [ "$VALIDATION_MODE" = true ] || [ "$EXACT_PR_MODE" = true ] || [ "$NO_SYNC_MODE" = true ]; then
-        return
-    fi
-
-    echo ""
-    highlight "Pending PX4 validation fixes"
-    echo "Official PX4 already includes X-Plane SITL. These PX4-side fixes found"
-    echo "during final validation are still separate open review items:"
-    echo "  - EKF-GSF yaw reset guard: https://github.com/PX4/PX4-Autopilot/pull/27533"
-    echo "  - Standard VTOL handoff guard: https://github.com/PX4/PX4-Autopilot/pull/27601"
-    echo "  - Fixed-wing TECS altitude reset: https://github.com/PX4/PX4-Autopilot/pull/27670"
-    echo ""
-    echo "Already in current PX4 main:"
-    echo "  - Tailsitter attitude conversion: https://github.com/PX4/PX4-Autopilot/pull/27793"
-    echo ""
-    echo "The Standard VTOL PR currently has changes requested and the stack is for"
-    echo "development validation, not the normal user path."
-    echo "Apply the experimental stack locally for this run?"
-    echo "Type 'y' to apply it, or press Enter to use official PX4 main (default)."
-    read -t 10 -r PENDING_PX4_FIX_CHOICE
-
-    if [[ "$PENDING_PX4_FIX_CHOICE" =~ ^[Yy]$ ]]; then
-        enable_pending_px4_fixes
-        info "Experimental PX4 validation fixes will be applied locally for this run."
-    else
-        skip_pending_px4_fixes
-        info "Using official PX4 main without pending validation fixes."
-    fi
-}
-
-prompt_for_ekf_gsf_guard() {
-    if [ "$APPLY_EKF_GSF_GUARD" = true ] || [ "$SKIP_EKF_GSF_GUARD" = true ]; then
-        return
-    fi
-
-    echo ""
-    highlight "EKF-GSF yaw-reset guard"
-    echo "Apply PX4 PR #27533 locally for fast-VTOL yaw-reset validation? (Recommended)"
-    echo "Press Enter for yes (default) or type 'n' to run without it."
-    read -t 10 -r EKF_GSF_GUARD_CHOICE
-
-    if [[ -z "$EKF_GSF_GUARD_CHOICE" || ! "$EKF_GSF_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
-        APPLY_EKF_GSF_GUARD=true
-        SYNC_MODE=true
-        info "EKF-GSF guard will be applied locally for this run."
-    else
-        SKIP_EKF_GSF_GUARD=true
-        info "Continuing without the EKF-GSF guard."
-    fi
-}
-
-prompt_for_vtol_handoff_guard() {
-    if [ "$APPLY_VTOL_HANDOFF_GUARD" = true ] || [ "$SKIP_VTOL_HANDOFF_GUARD" = true ]; then
-        return
-    fi
-
-    echo ""
-    highlight "Standard VTOL transition handoff guard"
-    echo "PX4 PR #27601 currently has changes requested."
-    echo "Apply it only for an intentional Standard VTOL A/B validation run?"
-    echo "Type 'y' to apply it, or press Enter to continue without it (default)."
-    read -t 10 -r VTOL_HANDOFF_GUARD_CHOICE
-
-    if [[ "$VTOL_HANDOFF_GUARD_CHOICE" =~ ^[Yy]$ ]]; then
-        APPLY_VTOL_HANDOFF_GUARD=true
-        SYNC_MODE=true
-        info "Standard VTOL handoff guard will be applied locally for this run."
-    else
-        SKIP_VTOL_HANDOFF_GUARD=true
-        info "Continuing without the Standard VTOL handoff guard."
-    fi
-}
-
-prompt_for_tecs_alt_guard() {
-    if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || [ "$SKIP_TECS_ALT_FRAME_GUARD" = true ]; then
-        return
-    fi
-
-    echo ""
-    highlight "Fixed-wing TECS altitude reset"
-    echo "Apply PX4 PR #27670 locally for Cessna/TB2 altitude-reference validation? (Recommended)"
-    echo "Press Enter for yes (default) or type 'n' to run without it."
-    read -t 10 -r TECS_ALT_GUARD_CHOICE
-
-    if [[ -z "$TECS_ALT_GUARD_CHOICE" || ! "$TECS_ALT_GUARD_CHOICE" =~ ^[Nn]$ ]]; then
-        APPLY_TECS_ALT_FRAME_GUARD=true
-        SYNC_MODE=true
-        info "Fixed-wing TECS altitude reset will be applied locally for this run."
-    else
-        SKIP_TECS_ALT_FRAME_GUARD=true
-        info "Continuing without the fixed-wing TECS altitude reset."
-    fi
-}
-
-guard_state_text() {
-    local apply="$1"
-    local skip="$2"
-
-    if [ "$apply" = true ]; then
-        echo "apply"
-    elif [ "$skip" = true ]; then
-        echo "skip"
-    else
-        echo "prompt"
-    fi
-}
-
-tailsitter_state_text() {
-    if [ "$APPLY_TAILSITTER_FW_FRAME_GUARD" = true ]; then
-        echo "apply legacy"
-    else
-        echo "merged in PX4 main"
-    fi
-}
-
-print_validation_selection() {
-    highlight "Selected PX4 Validation Stack"
-    echo "  PX4 branch:        $BRANCH_NAME"
-    echo "  PX4 remote:        $PX4_REMOTE_NAME ($REPO_URL)"
-    echo "  EKF-GSF guard:     $(guard_state_text "$APPLY_EKF_GSF_GUARD" "$SKIP_EKF_GSF_GUARD")"
-    echo "  VTOL handoff guard: $(guard_state_text "$APPLY_VTOL_HANDOFF_GUARD" "$SKIP_VTOL_HANDOFF_GUARD")"
-    echo "  Tailsitter fix:    $(tailsitter_state_text)"
-    echo "  TECS alt guard:    $(guard_state_text "$APPLY_TECS_ALT_FRAME_GUARD" "$SKIP_TECS_ALT_FRAME_GUARD")"
-
-    if [ "$VALIDATION_MODE" = true ]; then
-        info "--validation selected: using official PX4 plus the remaining pending validation PR stack."
-    elif [ "$EXACT_PR_MODE" = true ]; then
-        info "--official/--exact-pr selected: using official PX4 without pending validation PRs."
-    fi
-}
-
 if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
     rm -f "$CONFIG_FILE"
     success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
@@ -1201,6 +1003,7 @@ cleanup() {
 trap cleanup EXIT
 
 if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
+    print_launcher_selection
     restore_px4_repo_to_official
     exit $?
 fi
@@ -1219,16 +1022,15 @@ echo "────────────────────────�
 highlight "PX4 X-Plane Support"
 echo ""
 echo "Official PX4 X-Plane SITL support is merged in PX4/PX4-Autopilot."
-echo "The launcher uses official PX4 main as the base. It can optionally stack"
-echo "remaining pending PX4 validation PRs locally for final flight-test coverage."
+echo "Normal runs use official PX4 main without experimental patches."
+echo "Developer validation (--validation) adds only experimental TECS PR #27670."
+print_launcher_selection
 echo ""
 info "Current Status:"
 echo "  → PX4 checkout: $CLONE_PATH"
 echo "  → PX4 source: $PX4_REMOTE_NAME ($REPO_URL)"
 echo "  → Branch: $BRANCH_NAME"
 echo "  → X-Plane SITL merge: https://github.com/PX4/PX4-Autopilot/pull/22493"
-echo "  → Optional EKF-GSF guard: PX4 PR #27533"
-echo "  → Optional VTOL handoff guard: PX4 PR #27601"
 echo "  → Optional TECS altitude guard: PX4 PR #27670"
 echo "  → Tailsitter conversion fix: PX4 PR #27793 merged in current PX4 main"
 if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
@@ -1262,14 +1064,6 @@ if ! command -v git &> /dev/null; then
 fi
 success "Git found."
 
-if ! any_pending_px4_fix_selected; then
-    prompt_for_pending_px4_fixes
-fi
-prompt_for_ekf_gsf_guard
-prompt_for_vtol_handoff_guard
-prompt_for_tecs_alt_guard
-print_validation_selection
-
 # === Simplified Process for Subsequent Runs ===
 if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
     info "Detected existing installation at: $CLONE_PATH"
@@ -1286,37 +1080,9 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
             REMOTE_HASH=""
         fi
     else
-        # Advanced/offline path, reached only when --no-sync is used.
         highlight "Offline/no-sync mode"
-        echo "Check for updates from remote repository anyway?"
-        echo "Press 's' to skip or any other key to check (default: check in 5 seconds)"
-        read -t 5 -n 1 -r SKIP_UPDATE_CHECK
-        echo ""
-
-        if [[ "$SKIP_UPDATE_CHECK" =~ ^[Ss]$ ]]; then
-            warning "Skipped update check. Using current local version."
-            info "Normal '$COMMAND_NAME' runs sync by default. Use --no-sync only for deliberate offline/debug runs."
-            LOCAL_HASH=""
-            REMOTE_HASH=""
-        else
-            progress "Checking for updates from remote repository..."
-
-            # Fetch latest changes silently (with error handling)
-            if git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1 || git remote add "$PX4_REMOTE_NAME" "$REPO_URL"; then
-                :
-            fi
-
-            if git fetch "$PX4_REMOTE_NAME" "$BRANCH_NAME" --quiet 2>/dev/null; then
-                success "Remote repository checked."
-            else
-                warning "Could not fetch updates from remote. Continuing with local version..."
-                warning "Check your internet connection or try again later."
-            fi
-
-            # Check if local branch differs from remote (with error handling)
-            LOCAL_HASH=$(git rev-parse HEAD 2>/dev/null)
-            REMOTE_HASH=$(git rev-parse "$PX4_REMOTE_NAME/$BRANCH_NAME" 2>/dev/null)
-        fi
+        LOCAL_HASH="$(git rev-parse HEAD 2>/dev/null || true)"
+        REMOTE_HASH="$LOCAL_HASH"
     fi
 
     if [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ] && [ "$LOCAL_HASH" != "$REMOTE_HASH" ]; then
@@ -1366,6 +1132,8 @@ if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
         else
             info "Skipping updates. Using current local version."
         fi
+    elif [ "$SYNC_MODE" = false ]; then
+        info "Using local HEAD ${LOCAL_HASH:-unknown}; remote not checked (--no-sync)."
     elif [ -n "$LOCAL_HASH" ] && [ -n "$REMOTE_HASH" ]; then
         success "Your installation is up-to-date!"
     else
@@ -1695,8 +1463,8 @@ echo "  ✓ Airframe: $PLATFORM"
 echo "  ✓ IP Address: ${PX4_SIM_HOSTNAME:-Not configured}"
 echo ""
 echo "────────────────────────────────────────────────────────────────────────────"
-info "Official PX4 X-Plane SITL support is merged. Pending PX4 validation PRs are"
-info "applied only when selected in the launcher output above."
+info "Official PX4 X-Plane SITL support is merged. Experimental TECS PR #27670 is"
+info "applied only when explicitly selected in the launcher output above."
 echo "────────────────────────────────────────────────────────────────────────────"
 echo ""
 highlight "Happy Flying! 🚁✈️"

@@ -2,6 +2,19 @@
 
 **Quick reference for px4xplane development workflow, versioning, and CI/CD.**
 
+Normal users follow the official PX4 simulation guide. `px4xplane` defaults to
+official PX4 without experimental patches; `--validation` explicitly selects
+the open TECS proposal only. Custom repo/branch/path overrides remain available.
+The [compact QuadTailsitter](compact-qtailsitter.md) has its own isolated profile
+runner; do not combine it with unrelated experimental guards by default.
+For a feature-branch helper, `PX4XPLANE_SKIP_LAUNCHER_UPDATE=1` prevents the
+self-updater replacing it with master. `--no-sync` also skips self/remote update
+checks; it cannot apply a pending guard without synchronization. Builds may
+still need dependencies that were not previously installed.
+Keep private ACFs, aircraft-bearing logs, tokens and debug Git bundles out of
+public branches, CI artifacts and releases. This draft does not bump/tag the
+plugin version; release only after the paired migration and blockers are reviewed.
+
 ---
 
 ## Quick Start
