@@ -473,6 +473,12 @@ PLUGIN_API int XPluginStart(
 	char* outSig,
 	char* outDesc)
 {
+	// Without this, macOS XPLMGetPluginInfo returns an HFS path separated by
+	// colons. Config and editor lookup only split on '/' and '\'.
+	if (XPLMHasFeature("XPLM_USE_NATIVE_PATHS")) {
+		XPLMEnableFeature("XPLM_USE_NATIVE_PATHS", 1);
+	}
+
 	// Use centralized version information
 	strcpy(outName, PX4XPlaneVersion::PLUGIN_NAME);
 	strcpy(outSig, PX4XPlaneVersion::PLUGIN_SIGNATURE);

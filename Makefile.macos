@@ -171,10 +171,21 @@ $(OBJ_DIR):
 post_build: $(TARGET)
 	@echo ""
 	@echo "Copying resources..."
-	@mkdir -p $(BUILD_DIR)/px4xplane
+	@mkdir -p $(OUTPUT_DIR)
+	@mkdir -p $(BUILD_DIR)/px4xplane/docs/assets
 	@if [ -f config/config.ini ]; then \
-		cp config/config.ini $(BUILD_DIR)/px4xplane/; \
+		cp config/config.ini $(OUTPUT_DIR)/config.ini; \
 		echo "✓ Copied config.ini"; \
+	fi
+	@if [ -f docs/config-editor.html ]; then \
+		cp docs/config-editor.html $(BUILD_DIR)/px4xplane/docs/config-editor.html; \
+		echo "✓ Copied config editor"; \
+	fi
+	@if [ -f docs/assets/config-editor.js ]; then \
+		cp docs/assets/config-editor.js $(BUILD_DIR)/px4xplane/docs/assets/config-editor.js; \
+	fi
+	@if [ -f config/config_schema.json ]; then \
+		cp config/config_schema.json $(BUILD_DIR)/px4xplane/docs/config_schema.json; \
 	fi
 	@if [ -f README.md ]; then \
 		cp README.md $(BUILD_DIR)/px4xplane/; \
@@ -224,8 +235,12 @@ install: $(TARGET)
 		exit 1; \
 	fi
 	mkdir -p "$(XPLANE_DIR)/Resources/plugins/px4xplane/64"
+	mkdir -p "$(XPLANE_DIR)/Resources/plugins/px4xplane/docs/assets"
 	cp $(TARGET) "$(XPLANE_DIR)/Resources/plugins/px4xplane/64/"
-	cp config/config.ini "$(XPLANE_DIR)/Resources/plugins/px4xplane/"
+	cp config/config.ini "$(XPLANE_DIR)/Resources/plugins/px4xplane/64/"
+	cp docs/config-editor.html "$(XPLANE_DIR)/Resources/plugins/px4xplane/docs/"
+	cp docs/assets/config-editor.js "$(XPLANE_DIR)/Resources/plugins/px4xplane/docs/assets/"
+	cp config/config_schema.json "$(XPLANE_DIR)/Resources/plugins/px4xplane/docs/"
 	@echo "✓ Installation complete"
 
 #==============================================================================
