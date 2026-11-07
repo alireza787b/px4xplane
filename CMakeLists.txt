@@ -658,7 +658,7 @@ if(PX4XPLANE_BUILD_TESTS)
         )
         add_test(
             NAME python_offline_tools
-            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools tests.test_compact_profile_contract
+            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools tests.test_compact_profile_contract tests.test_alia_profile_contract tests.test_analyze_ulog_estimator
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
         if(UNIX)

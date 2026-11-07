@@ -21,6 +21,9 @@ TOPICS = [
     "vehicle_air_data",
     "sensor_baro",
     "vehicle_gps_position",
+    "vehicle_gnss",
+    "sensor_gnss",
+    "vehicle_status",
     "commander_state",
 ]
 
@@ -32,6 +35,10 @@ WINDOW_FIELDS = {
     "vehicle_air_data": ["baro_alt_meter", "baro_temp_celcius", "baro_pressure_pa", "rho"],
     "sensor_baro": ["pressure", "temperature", "error_count", "device_id"],
     "vehicle_gps_position": ["alt", "vel_n_m_s", "vel_e_m_s", "vel_d_m_s", "eph", "epv", "s_variance_m_s"],
+    "vehicle_gnss": ["receiver.altitude_msl", "receiver.vel_north", "receiver.vel_east", "receiver.vel_down",
+                     "receiver.eph", "receiver.epv", "receiver.speed_accuracy", "usable",
+                     "failed_strict_checks", "failed_relaxed_checks"],
+    "sensor_gnss": ["altitude_msl", "vel_north", "vel_east", "vel_down", "eph", "epv", "speed_accuracy"],
 }
 
 
@@ -127,7 +134,7 @@ def logged_messages(ulog: Any) -> List[Dict[str, Any]]:
 
 
 def relevant_events(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    needles = ("BARO switch", "vertical velocity", "height estimate", "GPS", "EKF", "land", "disarm")
+    needles = ("BARO switch", "vertical velocity", "height estimate", "GPS", "GNSS", "EKF", "land", "disarm")
     events = []
     for message in messages:
         text = message.get("message", "")
@@ -196,7 +203,10 @@ def analyze(path: Path, event_window_s: float) -> Dict[str, Any]:
     messages = logged_messages(ulog)
     events = relevant_events(messages)
 
-    commander = next((dataset for dataset in datasets if getattr(dataset, "name", "") == "commander_state"), None)
+    # Current PX4 carries navigation/arming state on vehicle_status. Keep the
+    # legacy commander_state fallback for older flight logs.
+    commander = next((dataset for name in ("vehicle_status", "commander_state")
+                      for dataset in datasets if getattr(dataset, "name", "") == name), None)
     transitions = state_transitions(commander, ("main_state", "arming_state", "nav_state")) if commander else []
 
     windows = []
@@ -216,6 +226,7 @@ def analyze(path: Path, event_window_s: float) -> Dict[str, Any]:
         "topics": summaries,
         "relevant_logged_messages": events,
         "commander_transitions": transitions,
+        "state_topic": getattr(commander, "name", None),
         "event_windows": windows,
     }
 

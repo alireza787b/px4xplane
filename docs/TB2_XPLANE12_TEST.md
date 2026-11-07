@@ -9,7 +9,6 @@ Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
 3. Confirm X-Plane `Log.txt` contains:
 
 ```text
-px4xplane: Version: v4.2.0
 px4xplane: Loaded configuration: TB2
 px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
 ```
@@ -18,38 +17,34 @@ px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
    Bayraktar `.acf` is loaded. The current package defers the match check while
    X-Plane is still reporting only the simulator root path during startup.
 5. Confirm the config editor shows `TB2` as the selected airframe.
+6. Record the installed plugin version/binary, not a hardcoded historical version.
 
 ## PX4 Check
 
-Run PX4 with the validation launcher and select `xplane_tb2`:
+Run the official guided launcher and select `xplane_tb2`:
 
 ```bash
-px4xplane --validation --reset-config
+px4xplane --official
 ```
 
-The printed validation stack should show official PX4 plus the pending EKF-GSF,
-Standard VTOL, and TECS PR guards unless you are deliberately testing
-`--official`.
-
-The setup script now resets the saved PX4 SITL parameter store automatically
-when the selected X-Plane airframe or its default airframe file fingerprint
-changes. That keeps stale `parameters.bson` values from masking the current
-defaults.
-
-For a fully manual run, still use a clean build after airframe changes:
+No optional guard is required. `--validation` is a separate TECS proposal test.
+Saved tuning is preserved on source/default changes. After reviewing a change,
+`px4xplane --official --reset-params` backs up/resets only the selected runtime;
+`--reset-config` only resets launcher choices. No routine distclean is needed.
+For a fully manual run:
 
 ```bash
-make px4_sitl_default distclean
 make px4_sitl_default xplane_tb2
 ```
 
 Before judging the flight, check the ULog initial parameters with:
 
 ```bash
-python3 tools/check_px4_airframe_params.py <ulog> px4_airframes/5002_xplane_tb2
+python3 tools/check_px4_airframe_params.py <ulog> /path/to/tested/PX4/ROMFS/px4fmu_common/init.d-posix/airframes/5002_xplane_tb2
 ```
 
-Important expected parameters:
+The following are historical reference values, not proof of current defaults.
+Compare against the exact tested source above; parameter names may have changed:
 
 ```text
 SYS_AUTOSTART=5002

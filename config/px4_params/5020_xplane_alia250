@@ -8,15 +8,10 @@
 # Configuration:     4 Hover Motors + 1 Pusher Motor + Control Surfaces
 # Compatible Sim:    X-Plane 11/12
 #
-# AIRCRAFT REFERENCE VALUES:
-# - Active SITL mass model: 3,120 kg, matching the tested X-Plane aircraft
-# - Public Alia reference MTOW: about 6,000 lb (2,721 kg)
-# - Wingspan: 50 ft (15 m) - Fixed-wing design
-# - Cruise Speed: 170 mph (75 m/s) in forward flight
-# - Range: 250 nautical miles (460 km)
-# - Capacity: 5 passengers or cargo
-# - Motors: 4x hover rotors + 1x pusher propeller
-# - Flight Modes: Multicopter hover, fixed-wing cruise, transition
+# Reference defaults: official PX4 95a0c2348232, with clarified comments only.
+# PX4 WEIGHT_* values do not set X-Plane's mass; record actual loading/CG.
+# The November 8 test model weighed 2857.22 kg. These defaults are not an
+# identified aerodynamic envelope or a real Alia flight configuration.
 #
 # USAGE:
 #   make px4_sitl_default xplane_alia250
@@ -113,18 +108,20 @@ param set-default CAL_BARO1_PRIO 0       # Backup disabled
 # EKF2 Core Configuration
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
-param set-default EKF2_IMU_CTRL 5
 
 # Accelerometer Bias Estimation
-param set-default EKF2_ABL_LIM 2.5        # X-Plane SITL requires higher tolerance (see note below)
+param set-default EKF2_ABL_LIM 2.5        # Inherited SITL bias bound
 param set-default EKF2_ABL_ACCLIM 35.0
 param set-default EKF2_ACC_NOISE 1.0
 param set-default EKF2_ACC_B_NOISE 0.001
 
-# X-Plane SITL note: this limit is intentionally higher than common robotics
-# simulator defaults because the bridge is frame-rate-limited and X-Plane's
-# physics model is not identical to the EKF sensor model. Revisit with replay
-# and ULog innovation evidence before reducing it.
+# Keep inherited estimator settings separate from performance tuning. A bias
+# limit is not a substitute for correct sensor timing/frames; diagnose warnings
+# from truth and ULog rather than increasing this bound to force arming.
+
+# Barometer
+param set-default EKF2_BARO_NOISE 1.0    # Baro height noise in m; avoids overconfident fusion during VTOL/FW transients
+param set-default EKF2_BARO_GATE 10.0    # Increased tolerance for VTOL transitions (prevents false BARO switch)
 
 # Use neutral simulated accelerometer offsets. The px4xplane bridge publishes
 # attitude-consistent HIL accelerometer data, so model-specific calibration
@@ -135,10 +132,10 @@ param set-default CAL_ACC0_YOFF 0.0
 param set-default CAL_ACC0_ZOFF 0.0
 
 # GPS Parameters
-param set-default SENS_GPS0_DELAY 10
-param set-default SENS_GPS1_DELAY 10
-param set-default EKF2_GPS_P_NOISE 1.5    # Matches px4xplane HIL_GPS position accuracy
-param set-default EKF2_GPS_V_NOISE 0.35   # X-Plane HIL velocity covariance for variable-FPS ground/transition phases
+param set-default SENS_GNSS0_DELAY 10
+param set-default SENS_GNSS1_DELAY 10
+param set-default EKF2_GPS_P_NOISE 5.0    # X-Plane HIL position covariance during high-speed transition
+param set-default EKF2_GPS_V_NOISE 0.30   # X-Plane HIL velocity covariance for variable-FPS ground/transition phases
 param set-default EKF2_GPS_P_GATE 10.0
 
 # Magnetometer
@@ -154,7 +151,7 @@ param set-default EKF2_GSF_TAS 0.0
 # Additional Sensors
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_WIND_NSD 0.01
-param set-default EKF2_REQ_VDRIFT 1.0
+param set-default GNSS_REQ_VDRIFT 1.0
 param set-default EKF2_SYNT_MAG_Z 1
 
 # IMU Configuration
@@ -373,7 +370,7 @@ param set-default FW_THR_MIN 0.12
 param set-default FW_THR_SLEW_MAX 0.35
 
 # Geometry
-param set-default FW_WING_SPAN 17.0      # Actually 15m, 17m for tuning
+param set-default FW_WING_SPAN 17.0      # Inherited control geometry, not a new measurement
 param set-default FW_WING_HEIGHT 3.5
 param set-default WEIGHT_BASE 3120.0
 param set-default WEIGHT_GROSS 3120.0

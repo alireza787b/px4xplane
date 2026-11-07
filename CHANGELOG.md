@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Synchronize the Alia reference to the recorded official PX4 source; freeze
+  the accepted eight-value Alia tune separately as an experimental profile.
+- Refresh Alia/EHang test guidance and GNSS log-analysis compatibility without
+  requiring owner-specific capture/upload services in the public launcher.
+
 - Keep the official PX4 Quick Start separate from optional automatic guided
   setup and explicit developer validation (TECS #27670 only).
 - Document safe checkout reuse, per-airframe saved state and explicit backed-up

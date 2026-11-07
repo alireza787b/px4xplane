@@ -1,6 +1,6 @@
 # Developer Guide
 
-Current package: `v4.2.1`. Changes for PR21 belong under `Unreleased`; this
+Current package: `v4.2.1`. Changes after that release belong under `Unreleased`; this
 work does not request a version bump, tag or release.
 
 Normal setup is in the [Quick Start](../README.md#quick-start) and optional
@@ -35,6 +35,10 @@ Model-specific work is covered in the
 [compact QuadTailsitter developer page](compact-qtailsitter.md). Source-only
 owner tools are not release assets. Keep private inputs and credentials out of
 public branches and artifacts.
+
+The [Alia accepted simulator profile](alia250-profile.md) is also separate from
+normal defaults. It records the flown source and scope without claiming full
+envelope validation or silently changing global PX4 parameter metadata.
 
 ## Local Checks
 

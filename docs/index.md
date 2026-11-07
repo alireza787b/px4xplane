@@ -16,6 +16,7 @@ launcher does not require experimental patches.
 ## Flight-Test Cards
 
 - [Alia 250](ALIA_XPLANE12_TEST.md)
+- [Alia accepted experimental profile and measured limits](alia250-profile.md)
 - [Ehang 184](EHANG184_XPLANE12_TEST.md)
 - [QuadTailsitter](QUADTAILSITTER_XPLANE12_TEST.md)
 - [Cessna 172](CESSNA172_XPLANE12_TEST.md)

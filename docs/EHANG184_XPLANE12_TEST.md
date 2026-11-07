@@ -1,109 +1,104 @@
-# Ehang 184 X-Plane 12 Validation Workflow
+# EHang 184 X-Plane 12 Test Card
 
-This card is for the first controlled final-validation run of the Ehang 184
-X-Plane multicopter after the Alia tuning lessons were applied.
+Use the matching EHang model, plugin section `ehang184`, PX4 target
+`xplane_ehang184` and `SYS_AUTOSTART=5010`. This is an MC-only workflow:
+do not apply Alia trims, fixed-wing gains or VTOL transitions.
 
-## Scenario
+## Setup
 
-1. Install px4xplane and set `px4xplane/64/config.ini` to:
-   - `config_name = ehang184`
-2. Install XPlaneTruthCapture `v0.1.7` or newer and start recording before PX4
-   connects.
-3. Run PX4 with the validation launcher and select `xplane_ehang184`:
-   - `px4xplane --validation --reset-config`
-   - `SYS_AUTOSTART` must be `5010`
-4. Confirm the printed validation stack shows official PX4 plus the pending
-   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
-   deliberately testing `--official`.
-5. Fly:
-   - takeoff to about `30 m`
-   - hover for at least `20 s`
-   - yaw left/right with no aggressive heading snap
-   - translate forward/back/left/right
-   - climb and descend
-   - Orbit with a commanded radius of `80-100 m`
-   - mission waypoint or auto reposition if QGC switches the vehicle into an
-     auto mode that consumes the reposition setpoint
-   - RTL and landing
-6. Wait `10-15 s` after disarm before stopping PX4.
-7. Save PX4 ULog, PX4 terminal output, X-Plane `Log.txt`, and the
-   XPlaneTruthCapture folder/zip.
+1. Follow [normal setup](../README.md#quick-start) or the
+   [guided launcher](guided-launcher.md). Use the current released plugin;
+   reload X-Plane after a binary replacement.
+2. Load EHang. Record actual aircraft path, mass/CG, weather, X-Plane version
+   and physics/render settings. Model dimensions and motor order must be
+   checked from the loaded ACF, not inherited comments or brochure figures.
+3. Select **Plugins > PX4 X-Plane > Airframes > Ehang 184**, then
+   **Connect to SITL**. The configuration section remains `ehang184`.
+4. Start official PX4, selecting `xplane_ehang184` in the guided launcher:
 
-## Parameter Sanity Check
+   ```bash
+   px4xplane --official
+   ```
 
-Confirm these values in the ULog before judging the result:
+   Manual equivalent after the documented host/network setup:
 
-- `SYS_AUTOSTART=5010`
-- `MC_ROLL_P=1.0`
-- `MC_PITCH_P=1.0`
-- `MC_ROLLRATE_K=3.0`
-- `MC_PITCHRATE_K=2.05`
-- `MC_YAW_P=0.6`
-- `MPC_XY_P=0.05`
-- `MPC_XY_VEL_P_ACC=1.2`
-- `MPC_XY_VEL_D_ACC=0.8`
-- `MPC_XY_ERR_MAX=10.0`
-- `MPC_XY_CRUISE=5.0`
-- `MPC_XY_VEL_MAX=6.5`
-- `MPC_VEL_MANUAL=5.0`
-- `MPC_Z_V_AUTO_UP=2.0`
-- `MPC_Z_V_AUTO_DN=1.2`
-- `MPC_TKO_SPEED=2.0`
-- `MPC_LAND_SPEED=0.6`
-- `MPC_LAND_ALT1=8.0`
-- `MPC_LAND_ALT2=3.0`
-- `MPC_LAND_CRWL=0.30`
-- `LNDMC_Z_VEL_MAX=0.24`
-- `COM_DISARM_LAND=1.5`
-- `MPC_ACC_HOR=1.5`
-- `MPC_ACC_HOR_MAX=1.8`
-- `MPC_ACC_UP_MAX=2.0`
-- `MPC_ACC_DOWN_MAX=2.0`
-- `MPC_JERK_AUTO=1.0`
-- `MPC_JERK_MAX=2.0`
-- `MPC_MAN_TILT_MAX=25.0`
-- `MPC_TILTMAX_AIR=30.0`
-- `MPC_MAN_Y_MAX=15.0`
-- `MPC_YAWRAUTO_MAX=20.0`
-- `NAV_ACC_RAD=12.0`
-- `NAV_MC_ALT_RAD=2.0`
-- `CAL_ACC0_PRIO=50`
-- `EKF2_GPS_P_NOISE=1.5`
-- PX4 default baro noise/gate values are used with GPS height reference
-- `IMU_GYRO_RATEMAX=200`
-- `IMU_INTEG_RATE=200`
-- `SENS_IMU_MODE=0`
+   ```bash
+   make px4_sitl_default xplane_ehang184
+   ```
 
-In X-Plane `Log.txt`, confirm:
+5. Check `ver all`, `param show SYS_AUTOSTART` and `mavlink status`.
+   QGC must display a connected vehicle; transmitted bytes alone are not proof.
+   Reconnect the plugin if the first build exceeded its connection timeout.
 
-- `px4xplane: Version: v4.2.0`
-- `config_name = ehang184` in `px4xplane/64/config.ini`
-- the X-Plane connection HUD shows `Airframe: Ehang 184` while waiting for PX4
+Normal setup needs no pending PR. `--validation` selects a separate TECS
+proposal and is not an EHang tuning mode. `--reset-config` resets launcher
+choices, not parameters. After reviewing changed defaults, explicitly use
+`--reset-params` to back up/reset only the selected isolated runtime.
 
-The `evtol1` Ehang log showed QGC `MAV_CMD_DO_REPOSITION` commands accepted
-while the vehicle stayed in Position mode and did not move horizontally. For the
-next validation, use Orbit, RTL, or a mission/auto mode for objective path
-tracking. A QGC "Go to location" test is still useful, but only record it as a
-command/mode-behavior check unless PX4 changes into a mode that actually follows
-the reposition setpoint.
+## First Controlled Flight
 
-The `evtol2`, `evtol3`, and `evtol4` orbit logs showed the vehicle initially starting well
-outside the commanded circle. PX4 Orbit mode first captures the closest point on
-the commanded circle, so a short S-turn/zigzag before the stable orbit is
-expected when the command is sent from outside the radius. Judge the tune after
-capture: radius hunting should be damped, pitch should not hit repeated
-`+-30 deg` setpoints, and actual roll should stay well below the attitude
-failure threshold.
+Keep calm weather and unchanged loading/CG. Verify engine index, rotation and
+command response against PX4 allocation before flight; do not reverse motors
+because a diagram/comment uses inconsistent axis labels.
 
-For a large commanded orbit, visible roll can be very small. For example,
-`5 m/s` around a `146 m` circle only requires about `1 deg` lateral tilt. That
-is not a missing roll-channel symptom by itself.
+1. Set takeoff height to **30 m** and take off. Hover **30 s** after settling.
+2. Send one modest GoTo about **150-200 m** ahead at the same altitude.
+   Wait for capture/settling, then another point roughly perpendicular.
+3. Make a gentle yaw change if control is available. Avoid simultaneous manual
+   inputs that make a response impossible to attribute.
+4. If the preceding stages are stable, command a climb to **50 m**, settle,
+   then descend to **30 m**. These are simulator test points, not certified limits.
+5. If the preceding stages are stable, use Return and observe landing/disarm.
+   If Return does not land, record the state and use Land nearby; that is not
+   a passing RTL result. Wait another **15 s** after disarm before `shutdown`.
+
+For console takeoff, set the scenario height before `commander takeoff`;
+the bare command uses the current MIS_TAKEOFF_ALT, which may not be 30 m.
+Use `commander land` for local landing. QGC Hold corresponds to
+`commander mode auto:loiter`, not `commander mode hold`.
+
+A QGC GoTo acknowledgement alone is not tracking evidence. Check the actual
+navigation mode and position setpoint. If reposition is not followed, record it
+and Land rather than retuning attitude gains to solve a mode-selection problem.
+Defer Orbit, higher speeds and wind/CG tests until this baseline is reviewed.
+
+## Evidence And Review
+
+For diagnostic flights, start TruthCapture after loading EHang and before
+connecting PX4; confirm a new growing recording. Capture the same flight's:
+
+- ULog, source revision, effective initial parameters and later parameter changes.
+- Plugin version/binary identity, config.ini, loaded-model identity and Log.txt.
+- Independent attitude/rates, position/velocity, available forces, mass and CG.
+- Commands, actual navigation states, controller setpoints, motor outputs,
+  allocator residuals and landing/disarm state.
+
+Optional owner automation is not required for public setup. Do not publish
+proprietary model files or upload credentials with review plots.
+
+Tune rate/attitude behavior before position/trajectory limits. Compare demanded
+and measured response and actuator margin; do not transfer Alia gains because
+both vehicles are described as air taxis. Keep smoothness goals separate from
+claims of passenger comfort or certification.
+
+```bash
+python3 tools/analyze_ulog_estimator.py /path/to/log.ulg --json
+python3 tools/check_px4_airframe_params.py /path/to/log.ulg /path/to/tested/5010_xplane_ehang184 --json
+```
+
+Names/defaults depend on PX4 revision; the source airframe is authoritative,
+including inherited values. No duplicated fixed parameter checklist is maintained
+here. The packaged EHang reference matches official `95a0c2348232`; this is
+source synchronization, not acceptance of a new EHang flight.
 
 ## Acceptance
 
-- No in-flight EKF, baro, GPS, or accelerometer-bias warnings.
-- Hover position and altitude do not oscillate visibly.
-- Yaw response is smooth and does not overshoot aggressively.
-- Auto descent and landing are controlled, with no bounce or tip tendency.
-- RTL returns and lands without failsafe.
-- TruthCapture reports zero dropped rows and no sim-time reset.
+- No unexplained in-flight estimator fault, rejection/reset or bias warning.
+- Damped attitude/rate and position/altitude capture, without sustained clipping.
+- Verified command/mode transitions and actual motion toward valid setpoints.
+- Controlled descent, touchdown and automatic disarm.
+- Complete same-run ULog/truth evidence with no unexplained gaps/time resets.
+
+Retain failed and low-FPS cases for diagnosis; do not increase bias/arming
+thresholds to force a pass. One passing flight does not establish every payload,
+CG, weather, speed or frame-rate condition.

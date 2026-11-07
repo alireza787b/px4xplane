@@ -7,6 +7,13 @@ The source of truth for SITL execution is the active PX4 checkout:
 
 `PX4-Autopilot/ROMFS/px4fmu_common/init.d-posix/airframes/`
 
+`5010_xplane_ehang184` and `5020_xplane_alia250` match the numeric defaults in
+official PX4 revision `95a0c2348232`; explanatory comments may be clarified.
+The separate [Alia experimental profile](../../docs/alia250-profile.md) freezes
+the eight runtime overrides accepted in the November 8 simulator test. It is
+not the packaged default and is not selected by `px4xplane --validation`.
+Do not combine a stale reference's estimator settings with the accepted tune.
+
 When preparing an official PX4 PR, keep the PX4 airframe files in the PX4
 repository and avoid adding px4xplane release-kit files to the PX4 branch.
 

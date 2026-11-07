@@ -5,31 +5,30 @@ mission baseline.
 
 ## Package And PX4 State
 
-1. Install the px4xplane package. This Cessna test package intentionally ships
-   with:
+1. Install the current px4xplane package and select Cessna172 in the plugin menu.
+   The selected runtime configuration must show:
 
    ```ini
    config_name = Cessna172
    ```
 
-   After the Cessna phase closes, normal demo packages can return to the Alia
-   default.
+   The normal package starts with Alia; selecting Cessna does not require a
+   separate debug build.
 
-2. Run PX4 with the validation launcher and select `xplane_cessna172`:
+2. Run the official guided launcher and select `xplane_cessna172`:
 
    ```bash
-   px4xplane --validation --reset-config
+   px4xplane --official
    ```
 
-   The printed validation stack should show official PX4 plus the pending
-   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
-   deliberately testing `--official`.
+   No optional guard is required. `--validation` is a separate TECS proposal
+   comparison, not a standard airframe-tuning prerequisite.
 
-3. For a fully manual developer run after changing the airframe file, reset the
-   PX4 SITL parameter store once and launch:
+3. After reviewing changed defaults, `px4xplane --official --reset-params`
+   backs up/resets only the runtime you select. Normal source sync preserves
+   tuning; `--reset-config` only resets launcher choices. For a manual run:
 
    ```bash
-   make px4_sitl_default distclean
    make px4_sitl_default xplane_cessna172
    ```
 
@@ -54,7 +53,10 @@ The Cessna is a manned fixed-wing aircraft, not an agile UAV.
 
 ## Expected Values
 
-PX4 airframe sanity values:
+The values below describe an earlier baseline, not a current-source checklist.
+For acceptance compare the ULog to the actual tested PX4 airframe file and
+record `ver all`; names/defaults may have changed upstream. Never relax an EKF
+bound to obtain an armable flight. See [the guided workflow](guided-launcher.md).
 
 ```text
 SYS_AUTOSTART = 5001
