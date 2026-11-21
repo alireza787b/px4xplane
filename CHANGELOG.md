@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   names without adding controller guards to normal launches.
 - Correct Cessna elevator mapping to drive both elevator halves, and refresh
   airframe cards, launcher instructions and the config-editor screenshot.
+- Move build and release CI off the retired macOS 14 runner while retaining
+  universal Intel/Apple Silicon output checks.
 - Consolidate launcher guidance and replace obsolete release-repair advice
   with immutable published tags and new-version corrections.
 

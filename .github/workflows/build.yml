@@ -39,7 +39,7 @@ jobs:
               cmake --build . --config Release -j$(nproc)
 
           # macOS build (Universal Binary: Intel + Apple Silicon, CMake)
-          - os: macos-14
+          - os: macos-15
             platform: macos
             cmake_platform: mac
             artifact_name: px4xplane-macos
