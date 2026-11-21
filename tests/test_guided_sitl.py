@@ -268,6 +268,39 @@ class GuidedStartupTests(unittest.TestCase):
         self.assertEqual([p.read_bytes() for p in (self.target/'backups').glob('*/parameters.bson')],
                          [b'legacy tuning'])
 
+    def test_backup_symlink_ancestors_cannot_alias_active_stores(self):
+        for level in ('backups', 'snapshot', 'fs'):
+            with self.subTest(level=level):
+                root = self.home/level/'runtime'
+                (root/'fs').mkdir(parents=True)
+                params = root/'fs/parameters.bson'
+                params.write_bytes(b'keep the only copy')
+                backup = runner.backup_parameters(root)
+                directory = {'backups': backup.parent, 'snapshot': backup, 'fs': backup/'fs'}[level]
+                if level == 'fs':
+                    (directory/'parameters.bson').unlink()
+                    directory.rmdir()
+                    directory.symlink_to(root/'fs', target_is_directory=True)
+                else:
+                    moved = root.parent/'preserved-backup'
+                    directory.rename(moved)
+                    directory.symlink_to(moved, target_is_directory=True)
+                with self.assertRaisesRegex(ValueError, 'symlinked parameter backup directory'):
+                    runner.reset_parameters(root)
+                self.assertEqual(params.read_bytes(), b'keep the only copy')
+
+    def test_dangling_backup_file_symlink_is_never_followed(self):
+        params = self.saved_parameters()
+        backup = runner.backup_parameters(self.target/'rootfs')
+        target = backup/'fs/parameters.bson'
+        target.unlink()
+        unrelated = self.home/'unrelated'
+        target.symlink_to(unrelated)
+        with self.assertRaisesRegex(ValueError, 'symlinked parameter backup file'):
+            runner.reset_parameters(self.target/'rootfs')
+        self.assertFalse(unrelated.exists())
+        self.assertEqual(params.read_bytes(), b'personal tuning')
+
     def test_parameter_storage_accepts_both_stock_layouts_not_dynamic_paths(self):
         self.assertEqual(runner.parameter_storage(RCS),
                          {'fs/parameters.bson', 'fs/parameters_backup.bson'})

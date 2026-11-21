@@ -55,9 +55,14 @@ def backup_parameters(root):
               for file in existing}
     identity = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
     backup = root.parent / 'backups' / identity
+    for directory in (root.parent / 'backups', backup, backup / 'fs'):
+        if directory.is_symlink():
+            raise ValueError(f'Refusing a symlinked parameter backup directory: {directory}')
     # Reuse identical snapshots; PX4's own autoconfiguration can reset imported values.
     for file in existing:
         target = backup / file.relative_to(root)
+        if target.is_symlink():
+            raise ValueError(f'Refusing a symlinked parameter backup file: {target}')
         target.parent.mkdir(parents=True, exist_ok=True)
         expected = hashes[str(file.relative_to(root))]
         if not target.exists():
