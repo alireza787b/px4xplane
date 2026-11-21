@@ -42,8 +42,15 @@ class AirframeToolTest(unittest.TestCase):
         self.assertEqual({item["param"] for item in mismatches}, {"SYS_AUTOSTART", "MC_PITCH_P"})
 
     def test_qtailsitter_design_summary(self):
-        acf = Path(__file__).resolve().parents[1] / "aircraft" / "QuadTailsitter" / "QuadTailsitter.acf"
-        result = design.analyze(acf, None, 1.2)
+        # Synthetic parser fixture, not another distributed aircraft or a flight model.
+        values = {'acf/_m_empty': '11', 'acf/_m_max': '13', '_wing/count': '1',
+                  '_wing/0/_semilen_SEG': '2', '_wing/0/_Croot': '.5',
+                  '_wing/0/_Ctip': '.5', '_wing/0/_is_right_mult': '1',
+                  '_blad/0/_semilen_SEG': '.5'}
+        with tempfile.TemporaryDirectory() as folder:
+            acf = Path(folder) / 'parser-fixture.acf'
+            acf.write_text(''.join(f'P {key} {value}\n' for key, value in values.items()))
+            result = design.analyze(acf, None, 1.2)
         aircraft = result["aircraft"]
 
         self.assertGreater(aircraft["mass"]["empty_kg"], 4.0)

@@ -94,7 +94,7 @@ jobs:
             cmake_platform: lin
             xpl_name: lin.xpl
 
-          - os: macos-14
+          - os: macos-15
             platform: macos
             cmake_platform: mac
             xpl_name: mac.xpl

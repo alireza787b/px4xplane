@@ -9,7 +9,9 @@
 # Compatible Sim:    X-Plane 11/12
 #
 # AIRCRAFT REFERENCE VALUES:
-# - Active SITL mass model: 3,120 kg, matching the tested X-Plane aircraft
+# - PX4 nominal mass references: WEIGHT_BASE=WEIGHT_GROSS=3120 kg.
+# - Accepted November 8, 2026 flight: measured X-Plane mass 2857.22 kg.
+# - WEIGHT_* values do not set X-Plane's actual mass or loading.
 # - Public Alia reference MTOW: about 6,000 lb (2,721 kg)
 # - Wingspan: 50 ft (15 m) - Fixed-wing design
 # - Cruise Speed: 170 mph (75 m/s) in forward flight
@@ -113,7 +115,6 @@ param set-default CAL_BARO1_PRIO 0       # Backup disabled
 # EKF2 Core Configuration
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
-param set-default EKF2_IMU_CTRL 5
 
 # Accelerometer Bias Estimation
 param set-default EKF2_ABL_LIM 2.5        # X-Plane SITL requires higher tolerance (see note below)
@@ -126,6 +127,10 @@ param set-default EKF2_ACC_B_NOISE 0.001
 # physics model is not identical to the EKF sensor model. Revisit with replay
 # and ULog innovation evidence before reducing it.
 
+# Barometer
+param set-default EKF2_BARO_NOISE 1.0    # Baro height noise in m; avoids overconfident fusion during VTOL/FW transients
+param set-default EKF2_BARO_GATE 10.0    # Increased tolerance for VTOL transitions (prevents false BARO switch)
+
 # Use neutral simulated accelerometer offsets. The px4xplane bridge publishes
 # attitude-consistent HIL accelerometer data, so model-specific calibration
 # offsets would corrupt sensor_combined and can trip EKF2 bias checks.
@@ -135,10 +140,10 @@ param set-default CAL_ACC0_YOFF 0.0
 param set-default CAL_ACC0_ZOFF 0.0
 
 # GPS Parameters
-param set-default SENS_GPS0_DELAY 10
-param set-default SENS_GPS1_DELAY 10
-param set-default EKF2_GPS_P_NOISE 1.5    # Matches px4xplane HIL_GPS position accuracy
-param set-default EKF2_GPS_V_NOISE 0.35   # X-Plane HIL velocity covariance for variable-FPS ground/transition phases
+param set-default SENS_GNSS0_DELAY 10
+param set-default SENS_GNSS1_DELAY 10
+param set-default EKF2_GPS_P_NOISE 5.0    # X-Plane HIL position covariance during high-speed transition
+param set-default EKF2_GPS_V_NOISE 0.30   # X-Plane HIL velocity covariance for variable-FPS ground/transition phases
 param set-default EKF2_GPS_P_GATE 10.0
 
 # Magnetometer
@@ -154,7 +159,7 @@ param set-default EKF2_GSF_TAS 0.0
 # Additional Sensors
 param set-default EKF2_AVEL_DELAY 0.0
 param set-default EKF2_WIND_NSD 0.01
-param set-default EKF2_REQ_VDRIFT 1.0
+param set-default GNSS_REQ_VDRIFT 1.0
 param set-default EKF2_SYNT_MAG_Z 1
 
 # IMU Configuration
@@ -265,7 +270,8 @@ param set-default MPC_LAND_ALT1 8
 param set-default MPC_LAND_ALT2 3
 param set-default MPC_LAND_SPEED 0.6
 param set-default MPC_LAND_RADIUS 1000
-param set-default MPC_LAND_RC_HELP 1
+# Autonomous landing; no pilot landing nudging.
+param set-default MPC_AUTO_NUDGING 0
 
 # Land Detector
 param set-default COM_DISARM_LAND 1.5
@@ -281,7 +287,7 @@ param set-default VT_TYPE 2              # Current PX4 airframe type used by thi
 # Transition airspeeds. Match the FW trim schedule so the pusher/TECS handoff
 # does not enter FW already overspeeding and above the mission altitude.
 param set-default VT_ARSP_BLEND 22.0
-param set-default VT_ARSP_TRANS 40.0
+param set-default VT_ARSP_TRANS 48
 param set-default VT_F_TRANS_THR 0.95
 param set-default VT_PSHER_SLEW 0.45
 
@@ -290,9 +296,9 @@ param set-default VT_F_TRANS_DUR 45.0
 param set-default VT_F_TR_OL_TM 55.0
 
 # Back Transition (FW -> MC)
-param set-default VT_B_TRANS_DUR 28.0
+param set-default VT_B_TRANS_DUR 40
 param set-default VT_B_DEC_MSS 2.0
-param set-default VT_B_DEC_I 0.25
+param set-default VT_B_DEC_I 0.08
 param set-default VT_B_TRANS_RAMP 10.0   # Smooth MC motor ramp-up for this large SITL eVTOL
 
 # Transition Safety
@@ -330,7 +336,7 @@ param set-default FW_PR_FF 3.6
 param set-default FW_PSP_OFF 2.0
 param set-default FW_P_LIM_MAX 24.0
 param set-default FW_P_LIM_MIN -2.0
-param set-default FW_P_TC 0.40
+param set-default FW_P_TC 1.0
 param set-default FW_PN_R_SLEW_MAX 50.0
 
 # Yaw Rate Control (High-speed cruise mode)
@@ -442,3 +448,9 @@ param set-default GPS_UBX_DYNMODEL 6     # Airborne <1g
 ################################################################################
 # END OF CONFIGURATION
 ################################################################################
+
+# Flight handling and actuator neutral calibration.
+param set-default WV_YRATE_MAX 10
+param set-default FW_RR_FF 1.5
+param set-default CA_SV_CS0_TRIM -0.3333333333
+param set-default CA_SV_CS1_TRIM -0.3333333333

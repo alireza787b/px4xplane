@@ -1,11 +1,11 @@
 # Developer Guide
 
-Current package: `v4.2.1`. Changes for PR21 belong under `Unreleased`; this
-work does not request a version bump, tag or release.
+Current published package: `v4.2.1`. Source changes belong under `Unreleased`
+until a separately approved version and release are prepared.
 
-Normal setup is in the [Quick Start](../README.md#quick-start) and optional
-[guided launcher guide](guided-launcher.md). Keep beginner instructions there
-separate from experimental validation.
+Normal setup is in the [Quick Start](../README.md#quick-start) and
+[guided launcher guide](guided-launcher.md). Keep source comparisons and
+technical verification separate from that workflow.
 
 ## Development Workflow
 
@@ -20,21 +20,77 @@ stashing, resetting or cleaning them.
 
 ## Developer Validation
 
-Plain `px4xplane` automates setup using official PX4 `main`, with no pending
-patches. `--validation` selects only open TECS #27670. Existing repo, branch
-and path overrides remain available. See
-[launcher validation](guided-launcher.md#developer-validation) for commands,
-`--no-sync` behavior and feature-branch helper updates.
+Plain `px4xplane` selects `--maintained`: the project repository
+`https://github.com/alireza787b/PX4-Autopilot-Me.git`, branch
+`px4xplane-airframes`. The integration baseline is upstream `0e0f3ce8a2` plus
+the project's five airframe files and a separate calibration-slot fix. The
+calibration utility now skips nonexistent/unreadable slots instead of treating
+them as free; it does not change estimator or controller tuning. Keep updates to that branch reviewable
+against their recorded upstream base; do not add a controller patch stack as
+an implicit setup step.
+
+`--official` selects bare upstream `PX4/PX4-Autopilot` `main`, without project
+airframe overlays or pending patches. Upstream's available targets and default
+values can differ. Project reference changes do not establish upstream merge
+status. See [source modes](guided-launcher.md#source-modes) for selection and
+[checkout safety](guided-launcher.md#existing-checkouts-and-sync) for custom
+repo/branch/path overrides and no-sync runs.
 
 Use separate per-airframe runtime state. Source updates must not silently
 delete saved tuning. `--reset-params` is an explicit backup/reset of the
 selected runtime only. Record source revision, plugin version, aircraft,
 active mapping and saved parameters when comparing results.
 
-Model-specific work is covered in the
-[compact QuadTailsitter developer page](compact-qtailsitter.md). Source-only
-owner tools are not release assets. Keep private inputs and credentials out of
-public branches and artifacts.
+The [QuadTailsitter card](QUADTAILSITTER_XPLANE12_TEST.md) is the single model
+and profile guide. Keep the names, mapping and target unchanged; do not add
+another profile runner or public aircraft variant. Aircraft files are supplied
+separately and do not belong in the public source or release assets.
+
+## Airframe Reference Contract
+
+Maintain `config/px4_params/` as reference copies of the maintained branch's
+`ROMFS/px4fmu_common/init.d-posix/airframes/` files for these IDs:
+`5001`, `5002`, `5010`, `5020` and `5021`. Compare the files at an exact source
+revision, not just target names or headings. Update schema/parameter checks
+when upstream retires a parameter; do not keep an obsolete second profile.
+
+QuadTailsitter has one canonical 209-value reference. The current failure
+detector uses `FD_TILT_ERROR` and `FD_TILT_ERROR_T` in place of the retired
+four roll/pitch failure-detector parameters. Preserve the other frozen profile values
+unless a separate, evidence-backed tuning change is approved.
+
+PX4 runs the airframe script embedded in its selected build, after inherited
+vehicle defaults. `param set-default` does not erase saved overrides. The
+plugin's packaged `px4_airframes` copies are not executed; editing or replacing
+them alone does not alter SITL. Rebuild after source changes and inspect the
+effective parameters, not just the reference file. See the
+[reference notes](../config/px4_params/README.md).
+
+## Verification Limits
+
+A profile's canonical status is an integration decision, not new flight
+evidence. Builds, parameter-contract checks and network/startup tests must be
+reported separately from X-Plane flight results on the exact source revision.
+
+For QuadTailsitter, retain review of `FW_R_TC=1.5` against the upstream metadata
+maximum of `1.0`; silently clamping it changes the control response. Validate
+the current failure-detector conversion, wing/clearance metadata, actual model
+mass/CG and speed/stall limits. Prior tests exposed fixed-wing oscillation and
+back-transition climb; they do not establish the envelope on this upstream
+base. Follow the flight card for controlled checks. SITL gains are not hardware
+firmware or hardware acceptance evidence.
+
+Other accepted profiles also contain values outside PX4's parameter-editor
+metadata bounds, including Alia transition times and speed. Some predate this
+integration. Do not silently clamp them or widen shared bounds just to make a
+range check pass; review the model envelope and the applicable controller code
+before changing them.
+
+PX4 output, effective parameters and ULogs are normal diagnostic inputs.
+TruthCapture is optional for investigations needing simulator ground truth,
+not an installation, launch or routine-flight requirement. Share sanitized
+metrics; keep privately supplied aircraft and aircraft-bearing raw evidence
+out of public reports and artifacts.
 
 ## Local Checks
 
@@ -46,6 +102,16 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release -DPX4XPLANE_BUILD_TESTS=ON
 cmake --build build --config Release
 ctest --test-dir build -C Release --output-on-failure
 ```
+
+From the px4xplane source checkout, check the five reference files against a
+local checkout of the maintained PX4 branch before publishing an airframe update:
+
+```bash
+python3 tools/check_airframe_references.py --px4-path ~/PX4-Autopilot
+```
+
+This source-only maintenance tool is not bundled with the plugin. Its default
+reference directory is `config/px4_params` in the source checkout.
 
 Before any flight check, match the X-Plane aircraft, plugin `config_name` and
 PX4 `SYS_AUTOSTART`. Offline tests and a successful build are not evidence of
@@ -61,13 +127,13 @@ a new live flight or full-envelope acceptance. Use the matching
 | Push of a new `v*.*.*` tag | Release workflow and versioned platform ZIPs |
 
 Regular pushes to `master` do not create releases. Workflow definitions:
-[build.yml](../.github/workflows/build.yml) and
-[release.yml](../.github/workflows/release.yml).
+[build.yml](https://github.com/alireza787b/px4xplane/blob/master/.github/workflows/build.yml) and
+[release.yml](https://github.com/alireza787b/px4xplane/blob/master/.github/workflows/release.yml).
 
 Check the complete staged plugin folder, including `64/{platform}.xpl`,
-`64/config.ini`, public `px4_airframes` references and user docs. Confirm
-experimental profiles, owner runners and private artifacts are not included
-as normal release assets. Use
+`64/config.ini`, the five canonical `px4_airframes` references and user docs.
+Confirm that no duplicate model/profile workflow, aircraft file or owner-only
+artifact is included. Use
 [GitHub Actions logs](https://github.com/alireza787b/px4xplane/actions) to
 investigate a failed build or packaging step.
 

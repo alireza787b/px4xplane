@@ -1,25 +1,97 @@
 # QuadTailsitter X-Plane 12 Test Card
 
-Use the public legacy QuadTailsitter reference with its matching model.
-Model/profile development details are in the
-[compact developer guide](compact-qtailsitter.md), not the normal setup flow.
+## Setup
 
-1. Follow the [Quick Start](../README.md#quick-start) using official PX4 `main`.
-   Select the matching X-Plane aircraft and plugin section `[QuadTailsitter]`.
-2. Select `xplane_qtailsitter` and verify `SYS_AUTOSTART=5021`. Confirm the
-   actual PX4 defaults and saved parameters; the target ID alone is not enough.
-   The guided launcher keeps this airframe's state separate and preserves tuning.
-3. Confirm QGC shows a connected vehicle and wait for estimator readiness.
-   The X-Plane TCP connection alone does not confirm QGC telemetry.
-4. Begin with hover, a short movement/stop and Land on a changed installation.
-   Never use these SITL values on hardware.
-5. Allow ample terrain/altitude margin for transition checks. Settle in
-   fixed-wing flight and check one back-transition before evaluating RTL.
-6. Judge body rates, quaternions and actual height, not near-vertical Euler
-   roll display alone. End the simulation for growing departure or non-decay.
-7. Verify controlled descent, touchdown and automatic disarm.
+Use the matching 2 kg, 0.6 m-span, 6S model with four canted 10x8 rotors and
+no aerodynamic control surfaces. The canonical profile is paired with this
+model and its original CG, not the earlier 5 kg dynamics.
 
-Record the source revision, plugin version, model/profile identity, PX4 output
-and relevant ULog results. This checklist does not claim a new completed flight
-or full-envelope acceptance. See [Troubleshooting](index.md#troubleshooting)
-for connection or saved-parameter issues.
+1. Load the matching model in X-Plane 12 and select **QuadTailsitter** in the
+   plugin. The configuration section and saved `config_name` remain
+   `QuadTailsitter`.
+2. Start the normal launcher:
+
+   ```bash
+   px4xplane --airframe xplane_qtailsitter
+   ```
+
+3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
+   telemetry, the estimator is ready, and `SYS_AUTOSTART=5021`.
+
+The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+`px4xplane-airframes`. To adopt changed defaults explicitly, use:
+
+```bash
+px4xplane --airframe xplane_qtailsitter --reset-params
+```
+
+Ordinary launches preserve saved tuning. See the
+[launcher reference](guided-launcher.md#saved-parameters) for state and backups.
+
+## Parameter Reference
+
+The canonical reference is
+[`5021_xplane_qtailsitter`](../config/px4_params/5021_xplane_qtailsitter).
+It contains **209 defaults**: the frozen 211-value profile with the four
+obsolete `FD_FAIL_R`, `FD_FAIL_P`, `FD_FAIL_R_TTRI` and `FD_FAIL_P_TTRI`
+assignments replaced by `FD_TILT_ERROR=85` and `FD_TILT_ERROR_T=1`.
+All other frozen values are preserved.
+
+Selected cross-checks, not a replacement for the complete profile:
+
+| Parameter | Value |
+| --- | ---: |
+| MPC_THR_HOVER | 0.26 |
+| MC_ROLLRATE_P | 0.06 |
+| MC_PITCHRATE_P | 0.16 |
+| FW_RR_P | 0.26 |
+| FW_T_I_GAIN_PIT | 0.10 |
+| FW_THR_TRIM | 0.18 |
+| FW_AIRSPD_STALL | 17 |
+| FW_AIRSPD_MIN | 21 |
+| FW_AIRSPD_TRIM | 26 |
+| FW_AIRSPD_MAX | 34 |
+| VT_ARSP_TRANS | 25 |
+| VT_B_TRANS_DUR | 15 |
+| FD_TILT_ERROR | 85 |
+| FD_TILT_ERROR_T | 1 |
+
+Keep the complete rotor geometry, effectiveness, MC/FW gains and transition
+settings together. The four motor channels address engine indices 0-3.
+Airspeed remains `body_axis` with `pitotAxisBody=-Z`; actuator smoothing
+remains zero.
+
+PX4 executes its checkout's airframe under
+`ROMFS/px4fmu_common/init.d-posix/airframes/`, not the packaged reference
+inside the plugin directory.
+
+## Flight Check
+
+1. Confirm model loading, original CG, QGC telemetry and effective parameters.
+2. Set the planned takeoff and transition heights in the mission. The profile's
+   `MIS_TAKEOFF_ALT=1.5` is not suitable transition clearance.
+3. Begin with hover, a modest movement/stop and a controlled Land after an
+   installation change.
+4. At the planned transition height, check front transition, settled
+   fixed-wing flight, back-transition and return.
+5. Judge body rates, quaternions and height as well as attitude; Euler roll
+   alone is misleading near vertical. Stop for a growing departure.
+6. Verify controlled descent, touchdown and automatic disarm. Wait 15 seconds,
+   then enter `shutdown` in the PX4 console.
+
+## Developer Checks
+
+- The R16 handling reference used logging child `58794523a151` of upstream
+  `649929706fb3`. Integration uses upstream base `0e0f3ce8a2`; the newer
+  core and failure-detector migration still require flight validation.
+- Upstream commits `7f83c28400` and `fa877566a4` replace the old roll/pitch
+  failure thresholds with tilt-error settings. Do not restore the removed
+  four parameters to obtain the historical count of 211.
+- The accepted flight used mission takeoff at 50 m and about 25 seconds of
+  fixed-wing flight before RTL. It did not validate the prescribed 180 m
+  takeoff/60-second fixed-wing scenario or a payload/CG/wind/FPS envelope.
+- Preserve `FW_R_TC=1.5` during metadata review; clamping it changes the
+  tune. Remaining fixed-wing oscillation and back-transition height gain
+  belong in the flight comparison.
+- Retain source/model identity, effective parameters and ULog results.
+  TruthCapture is optional development evidence.

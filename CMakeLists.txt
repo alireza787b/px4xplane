@@ -297,44 +297,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMENT "Copying README.md to plugin root directory"
 )
 
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/ALIA_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../ALIA_XPLANE12_TEST.md
-    COMMENT "Copying Alia X-Plane test card to plugin root directory"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/EHANG184_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../EHANG184_XPLANE12_TEST.md
-    COMMENT "Copying Ehang 184 X-Plane test card to plugin root directory"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../QUADTAILSITTER_XPLANE12_TEST.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
-        ${OUTPUT_DIR}/../compact-qtailsitter.md
-    COMMENT "Copying QuadTailsitter X-Plane test card to plugin root directory"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../CESSNA172_XPLANE12_TEST.md
-    COMMENT "Copying Cessna 172 X-Plane test card to plugin root directory"
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/TB2_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../TB2_XPLANE12_TEST.md
-    COMMENT "Copying TB2 X-Plane test card to plugin root directory"
-)
-
 # The QuadTailsitter mapping is an example for a separately supplied model.
 # Do not distribute private aircraft or retain stale model output in packages.
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
@@ -430,6 +392,18 @@ foreach(PARAM_FILE ${PX4_PARAMS})
     )
 endforeach()
 
+set(PACKAGE_DOCS_COMMAND
+    ${CMAKE_COMMAND}
+    "-DSOURCE_ROOT=${CMAKE_SOURCE_DIR}"
+    "-DPLUGIN_ROOT=${OUTPUT_DIR}/.."
+    -P "${CMAKE_SOURCE_DIR}/cmake/PackageDocs.cmake"
+)
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${PACKAGE_DOCS_COMMAND}
+    COMMENT "Finalizing package documentation links"
+    VERBATIM
+)
+
 # Refresh package assets even when the plugin binary itself does not relink.
 # Without this target, config/docs/airframe-only edits can leave an existing
 # build package carrying stale files.
@@ -442,21 +416,6 @@ set(PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/README.md
         ${OUTPUT_DIR}/../README.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/ALIA_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../ALIA_XPLANE12_TEST.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/EHANG184_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../EHANG184_XPLANE12_TEST.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/QUADTAILSITTER_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../QUADTAILSITTER_XPLANE12_TEST.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/CESSNA172_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../CESSNA172_XPLANE12_TEST.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/TB2_XPLANE12_TEST.md
-        ${OUTPUT_DIR}/../TB2_XPLANE12_TEST.md
     COMMAND ${CMAKE_COMMAND} -E make_directory
         ${OUTPUT_DIR}/../docs/assets
     COMMAND ${CMAKE_COMMAND} -E make_directory
@@ -533,9 +492,6 @@ endforeach()
 list(APPEND PACKAGE_ASSET_COMMANDS
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
-        ${OUTPUT_DIR}/../compact-qtailsitter.md
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_SOURCE_DIR}/docs/compact-qtailsitter.md
         ${OUTPUT_DIR}/../docs/compact-qtailsitter.md
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_SOURCE_DIR}/docs/guided-launcher.md
@@ -544,6 +500,7 @@ list(APPEND PACKAGE_ASSET_COMMANDS
         ${OUTPUT_DIR}/../tools/run_compact_qtailsitter.py
     COMMAND ${CMAKE_COMMAND} -E rm -rf
         ${PACKAGE_ROOT}/X-Plane_Aircraft/QuadTailsitter
+    COMMAND ${PACKAGE_DOCS_COMMAND}
 )
 
 add_custom_target(package_assets ALL
@@ -653,23 +610,23 @@ if(PX4XPLANE_BUILD_TESTS)
     find_package(Python3 COMPONENTS Interpreter QUIET)
     if(Python3_Interpreter_FOUND)
         add_test(
+            NAME packaged_documentation
+            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_package_docs
+            WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+        )
+        add_test(
             NAME validate_config_cli
             COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/validate_config.py ${CMAKE_SOURCE_DIR}/config/config.ini
         )
         add_test(
             NAME python_offline_tools
-            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools tests.test_compact_profile_contract
+            COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_validate_config tests.test_replay_truth_capture tests.test_airframe_tools tests.test_compact_profile_contract tests.test_airframe_references
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         )
         if(UNIX)
             add_test(
                 NAME guided_sitl_runner
                 COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_guided_sitl tests.test_launcher_safety
-                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-            )
-            add_test(
-                NAME compact_profile_runner
-                COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_compact_qtailsitter
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             )
             add_test(

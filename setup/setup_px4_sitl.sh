@@ -19,7 +19,7 @@
 #
 # === Functionality ===
 # The script performs the following tasks:
-# 1. Uses official PX4 main as the base, optionally with TECS PR #27670.
+# 1. Uses the maintained X-Plane airframes fork, or explicit official PX4 main.
 # 2. Auto-syncs with remote updates (smart pull detection).
 # 3. Sets up the necessary dependencies by running the provided setup script (`ubuntu.sh`).
 # 4. Targets QGC directly, with an optional already-installed MAVLink Router.
@@ -75,9 +75,11 @@
 
 # === Configurable Variables ===
 OFFICIAL_PX4_REPO_URL="https://github.com/PX4/PX4-Autopilot.git"
-OFFICIAL_PX4_BRANCH="${PX4XPLANE_OFFICIAL_PX4_BRANCH:-main}"
-DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-$OFFICIAL_PX4_BRANCH}"
-REPO_URL="${PX4XPLANE_PX4_REPO:-$OFFICIAL_PX4_REPO_URL}"
+OFFICIAL_PX4_BRANCH="main"
+MAINTAINED_PX4_REPO_URL="https://github.com/alireza787b/PX4-Autopilot-Me.git"
+MAINTAINED_PX4_BRANCH="px4xplane-airframes"
+DEFAULT_PX4_BRANCH="${PX4XPLANE_DEFAULT_PX4_BRANCH:-$MAINTAINED_PX4_BRANCH}"
+REPO_URL="${PX4XPLANE_PX4_REPO:-$MAINTAINED_PX4_REPO_URL}"
 BRANCH_NAME="${PX4XPLANE_PX4_BRANCH:-$DEFAULT_PX4_BRANCH}"
 PX4_REPO_EXPLICIT=false
 PX4_BRANCH_EXPLICIT=false
@@ -95,9 +97,9 @@ DEFAULT_FALLBACK_IP="127.0.0.1"
 SCRIPT_NAME="px4xplane_script.sh"
 COMMAND_NAME="px4xplane"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
-SETUP_SCRIPT_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh"
-SETUP_RUNNER_URL="https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/launch_sitl.py"
-LAUNCHER_VERSION="2026-11-03.1"
+LAUNCHER_BASE_URL="${PX4XPLANE_LAUNCHER_BASE_URL:-}"
+LAUNCHER_VERSION="2026-11-21.1"
+LAUNCHER_API_VERSION=2
 
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=false
@@ -136,23 +138,37 @@ RESET_CONFIG_MODE=false
 RESET_IP_MODE=false
 UNINSTALL_MODE=false
 RESTORE_OFFICIAL_MODE=false
-LAUNCH_MODE=official
+LAUNCH_MODE=maintained
+SELECTED_MODE=""
+TECS_DISABLED=false
+AIRFRAME=""
+LIST_AIRFRAMES=false
+UPDATE_LAUNCHER=false
 APPLY_TECS_ALT_FRAME_GUARD=false
 
 print_usage() {
     cat <<EOF
 Usage: $0 [options] [install_path]
 
-Normal use: no arguments, or --official (default; no experimental patches).
+Normal use: no arguments, or --maintained (default; maintained X-Plane airframes).
+Official baseline: --official (actual PX4/PX4-Autopilot main; no pending patches).
 Developer validation: --validation (experimental TECS PR #27670 only).
-Custom repository, branch, and checkout options work with either mode.
+Custom repository/branch overrides require omitting explicit source modes.
 
 Options:
+  --airframe NAME Select one of the five canonical xplane_* airframes without a menu.
+  --list-airframes
+                  List supported targets and exit without setup or network actions.
+  --maintained    Use the maintained public PX4 fork (default).
   --sync          Sync the clean selected PX4 checkout to the configured remote
                   revision and update submodules. Preserve local branches and tuning.
   --no-sync       Advanced/offline mode: do not sync the PX4 checkout before
-                  launching; skip launcher and PX4 update checks. Cannot apply
-                  the TECS guard. Saved per-airframe tuning is preserved.
+                  launching; no launcher download or dependency installer runs.
+                  Requires existing checkout/build dependencies. The build itself
+                  may need cached inputs. Saved per-airframe tuning is preserved.
+  --update-launcher
+                  Explicitly update the installed script/runner pair and exit.
+                  Never overwrites the invoking repository source file.
   --repair        Run the full dependency/setup path and sync the selected PX4 checkout.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
@@ -165,7 +181,7 @@ Options:
   --px4-repo URL  Use a different PX4 remote for this run.
   --px4-branch NAME
                   Use a different PX4 branch for this run. Also available via
-                  PX4XPLANE_PX4_BRANCH for scripted validation.
+                  PX4XPLANE_PX4_BRANCH for a custom source.
   --px4-path PATH Use an existing PX4-Autopilot checkout instead of the
                   helper-managed checkout. The script adds/uses a separate
                   px4xplane remote and does not rewrite your origin remote.
@@ -174,7 +190,7 @@ Options:
                   update submodules, preserve branches/tuning, and exit.
   --validation    Use official PX4 main plus the still-open experimental
                   fixed-wing TECS altitude reset PR #27670 only.
-  --official      Use official PX4 main without experimental patches (default).
+  --official      Use official PX4 main without experimental patches or custom overrides.
   --exact-pr      Backward-compatible alias for --official.
   --with-ekf-gsf-guard
                   Retired: fails because PR #27533 was closed without merging.
@@ -198,9 +214,21 @@ Options:
   --help          Show this help.
 
 Environment:
+  PX4XPLANE_LAUNCHER_BASE_URL
+                  Raw-content setup directory containing setup_px4_sitl.sh and
+                  launch_sitl.py. Remembered at bootstrap; use a commit URL to pin.
   PX4XPLANE_SKIP_LAUNCHER_UPDATE=1
-                  Skip launcher self-updates to preserve a development copy.
+                  Disable explicit launcher updates (normal runs never self-update).
 EOF
+}
+
+select_launch_mode() {
+    if [ -n "$SELECTED_MODE" ] && [ "$SELECTED_MODE" != "$1" ]; then
+        echo "Error: conflicting source modes: $SELECTED_MODE and $1" >&2
+        exit 1
+    fi
+    SELECTED_MODE="$1"
+    LAUNCH_MODE="$1"
 }
 
 POSITIONAL_ARGS=()
@@ -235,8 +263,28 @@ while [[ $# -gt 0 ]]; do
             RESET_PARAMS_MODE=true
             shift
             ;;
+        --airframe)
+            if [ -z "${2:-}" ] || [[ "$2" == --* ]]; then
+                echo "Missing value for --airframe" >&2
+                exit 1
+            fi
+            AIRFRAME="$2"
+            shift 2
+            ;;
+        --list-airframes)
+            LIST_AIRFRAMES=true
+            shift
+            ;;
+        --update-launcher)
+            UPDATE_LAUNCHER=true
+            shift
+            ;;
+        --maintained)
+            select_launch_mode maintained
+            shift
+            ;;
         --qgc-host)
-            if [ -z "${2:-}" ]; then
+            if [ -z "${2:-}" ] || [[ "$2" == --* ]]; then
                 echo "Missing value for --qgc-host"
                 print_usage
                 exit 1
@@ -249,74 +297,56 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         "$PX4_REPO_FLAG")
-            if [ -z "${2:-}" ]; then
+            if [ -z "${2:-}" ] || [[ "$2" == --* ]]; then
                 echo "Missing value for $PX4_REPO_FLAG"
                 print_usage
                 exit 1
             fi
             REPO_URL="$2"
             PX4_REPO_EXPLICIT=true
-            SYNC_MODE=true
             shift 2
             ;;
         "$PX4_BRANCH_FLAG")
-            if [ -z "${2:-}" ]; then
+            if [ -z "${2:-}" ] || [[ "$2" == --* ]]; then
                 echo "Missing value for $PX4_BRANCH_FLAG"
                 print_usage
                 exit 1
             fi
             BRANCH_NAME="$2"
             PX4_BRANCH_EXPLICIT=true
-            SYNC_MODE=true
             shift 2
             ;;
         "$PX4_PATH_FLAG")
-            if [ -z "${2:-}" ]; then
+            if [ -z "${2:-}" ] || [[ "$2" == --* ]]; then
                 echo "Missing value for $PX4_PATH_FLAG"
                 print_usage
                 exit 1
             fi
             PX4_PATH_OVERRIDE="$2"
-            SYNC_MODE=true
             shift 2
             ;;
         "$RESTORE_OFFICIAL_FLAG")
             RESTORE_OFFICIAL_MODE=true
-            SYNC_MODE=true
             shift
             ;;
         "$VALIDATION_MODE_FLAG")
-            LAUNCH_MODE=validation
-            if [ "$PX4_BRANCH_EXPLICIT" = false ]; then
-                BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
-            fi
-            if [ "$PX4_REPO_EXPLICIT" = false ]; then
-                REPO_URL="$OFFICIAL_PX4_REPO_URL"
-            fi
-            APPLY_TECS_ALT_FRAME_GUARD=true
+            select_launch_mode validation
             shift
             ;;
         "$OFFICIAL_MODE_FLAG"|"$EXACT_PR_MODE_FLAG")
-            LAUNCH_MODE=official
-            if [ "$PX4_BRANCH_EXPLICIT" = false ]; then
-                BRANCH_NAME="$OFFICIAL_PX4_BRANCH"
-            fi
-            if [ "$PX4_REPO_EXPLICIT" = false ]; then
-                REPO_URL="$OFFICIAL_PX4_REPO_URL"
-            fi
-            APPLY_TECS_ALT_FRAME_GUARD=false
+            select_launch_mode official
             shift
             ;;
         "$EKF_GSF_GUARD_FLAG")
-            echo "Error: $1 is retired: PX4 PR #27533 was closed without merging. Use --official (default) or --validation for TECS PR #27670 only." >&2
+            echo "Error: $1 is retired: PX4 PR #27533 was closed without merging. Use --maintained, --official or --validation for TECS PR #27670 only." >&2
             exit 1
             ;;
         "$VTOL_HANDOFF_GUARD_FLAG")
-            echo "Error: $1 is retired: PX4 PR #27601 is already merged. Use --official (default) or --validation for TECS PR #27670 only." >&2
+            echo "Error: $1 is retired: PX4 PR #27601 is already merged. Use --maintained, --official or --validation for TECS PR #27670 only." >&2
             exit 1
             ;;
         "$TAILSITTER_FW_FRAME_GUARD_FLAG")
-            echo "Error: $1 is retired: PX4 PR #27793 is already merged. Use --official (default) or --validation for TECS PR #27670 only." >&2
+            echo "Error: $1 is retired: PX4 PR #27793 is already merged. Use --maintained, --official or --validation for TECS PR #27670 only." >&2
             exit 1
             ;;
         "$NO_EKF_GSF_GUARD_FLAG"|"$NO_VTOL_HANDOFF_GUARD_FLAG"|"$NO_TAILSITTER_FW_FRAME_GUARD_FLAG")
@@ -324,12 +354,11 @@ while [[ $# -gt 0 ]]; do
             shift
             ;;
         "$TECS_ALT_FRAME_GUARD_FLAG")
-            LAUNCH_MODE=validation
-            APPLY_TECS_ALT_FRAME_GUARD=true
+            select_launch_mode validation
             shift
             ;;
         "$NO_TECS_ALT_FRAME_GUARD_FLAG")
-            APPLY_TECS_ALT_FRAME_GUARD=false
+            TECS_DISABLED=true
             shift
             ;;
         "$HELP_FLAG"|"-h")
@@ -349,29 +378,71 @@ while [[ $# -gt 0 ]]; do
 done
 set -- "${POSITIONAL_ARGS[@]}"
 
-if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] && [ "$SYNC_MODE" = false ]; then
-    echo "Error: cannot apply experimental TECS guard PR #27670 without sync. Remove --no-sync or select --without-tecs-alt-guard (or --official)." >&2
+if [ "$LIST_AIRFRAMES" = true ]; then
+    printf '%s\n' "${PLATFORM_CHOICES[@]}"
+    exit 0
+fi
+if [ -n "$AIRFRAME" ]; then
+    case "$AIRFRAME" in
+        xplane_ehang184|xplane_alia250|xplane_cessna172|xplane_tb2|xplane_qtailsitter) ;;
+        *) echo "Error: unsupported airframe: $AIRFRAME (see --list-airframes)" >&2; exit 1 ;;
+    esac
+fi
+if [ "$#" -gt 1 ] || { [ "$#" -gt 0 ] && [ -n "$PX4_PATH_OVERRIDE" ]; }; then
+    echo "Error: choose one install path or --px4-path, not both." >&2
+    exit 1
+fi
+if [ -n "$SELECTED_MODE" ] || [ "$RESTORE_OFFICIAL_MODE" = true ]; then
+    if [ "$PX4_REPO_EXPLICIT" = true ] || [ "$PX4_BRANCH_EXPLICIT" = true ]; then
+        echo "Error: source modes cannot be combined with custom PX4 repo/branch overrides." >&2
+        exit 1
+    fi
+    case "$LAUNCH_MODE" in
+        official|validation) REPO_URL="$OFFICIAL_PX4_REPO_URL"; BRANCH_NAME="$OFFICIAL_PX4_BRANCH" ;;
+        maintained) REPO_URL="$MAINTAINED_PX4_REPO_URL"; BRANCH_NAME="$MAINTAINED_PX4_BRANCH" ;;
+    esac
+elif [ "$PX4_REPO_EXPLICIT" = true ] || [ "$PX4_BRANCH_EXPLICIT" = true ] || [ -n "${PX4XPLANE_DEFAULT_PX4_BRANCH:-}" ]; then
+    LAUNCH_MODE=custom
+fi
+if [ "$LAUNCH_MODE" = validation ]; then
+    if [ "$TECS_DISABLED" = true ]; then
+        echo "Error: --validation requires the TECS guard; use --official instead." >&2
+        exit 1
+    fi
+    APPLY_TECS_ALT_FRAME_GUARD=true
+fi
+if [ "$RESTORE_OFFICIAL_MODE" = true ] && { [ "$REPAIR_MODE" = true ] || [ -n "$AIRFRAME" ] || [ "$RESET_PARAMS_MODE" = true ] || { [ -n "$SELECTED_MODE" ] && [ "$SELECTED_MODE" != official ]; }; }; then
+    echo "Error: --restore-official cannot be combined with repair, launch, reset-params or another source mode." >&2
+    exit 1
+fi
+if [ "$SYNC_MODE" = false ] && { [ "$REPAIR_MODE" = true ] || [ "$RESTORE_OFFICIAL_MODE" = true ] || [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ] || [ "$UPDATE_LAUNCHER" = true ]; }; then
+    echo "Error: --no-sync cannot be combined with --repair, --restore-official, --validation or --update-launcher." >&2
+    exit 1
+fi
+if [ "$UPDATE_LAUNCHER" = true ] && { [ "$REPAIR_MODE" = true ] || [ "$RESTORE_OFFICIAL_MODE" = true ] || [ -n "$AIRFRAME" ] || [ "$RESET_PARAMS_MODE" = true ] || [ "$LAUNCH_MODE" = validation ]; }; then
+    echo "Error: --update-launcher is a standalone maintenance operation." >&2
+    exit 1
+fi
+if [ "$UPDATE_LAUNCHER" = true ] && [ "${PX4XPLANE_SKIP_LAUNCHER_UPDATE:-0}" = 1 ]; then
+    echo "Error: launcher updates disabled by PX4XPLANE_SKIP_LAUNCHER_UPDATE." >&2
     exit 1
 fi
 
 print_launcher_selection() {
-    echo "Selected PX4 launcher configuration:"
+    echo "PX4-XPlane launcher $LAUNCHER_VERSION"
     if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
-        echo "  Mode: restore-official (no experimental patches)"
+        echo "  Mode: restore-official"
         echo "  Repository: $OFFICIAL_PX4_REPO_URL"
         echo "  Branch: $OFFICIAL_PX4_BRANCH"
-        echo "  TECS altitude guard #27670: disabled"
     else
         echo "  Mode: $LAUNCH_MODE"
         echo "  Repository: $REPO_URL"
         echo "  Branch: $BRANCH_NAME"
         if [ "$APPLY_TECS_ALT_FRAME_GUARD" = true ]; then
-            echo "  TECS altitude guard #27670: enabled (experimental, developer validation only)"
-        else
-            echo "  TECS altitude guard #27670: disabled"
+            echo "  TECS PR #27670: enabled (experimental)"
         fi
     fi
-    echo "  Retired guards: #27533 closed unmerged; #27601 and #27793 merged; never applied"
+    echo "  Checkout: ${CLONE_PATH:-${PX4_PATH_OVERRIDE:-not selected}}"
 }
 
 if [ "$UNINSTALL_MODE" = true ]; then
@@ -402,15 +473,33 @@ fi
 USING_EXTERNAL_PX4_PATH=false
 AUTO_DETECTED_PX4_PATH=""
 
+last_config_value() {
+    local key="$1"
+    local file="${2:-$CONFIG_FILE}"
+    if [ -f "$file" ]; then
+        grep -E "^${key}=" "$file" | tail -n 1 | cut -d= -f2-
+    fi
+}
+
+CONFIG_FILE="$DEFAULT_CONFIG_FILE"
+if [ "$RESET_CONFIG_MODE" = false ]; then
+    if [ -z "$PX4_PATH_OVERRIDE" ] && [ "$#" -eq 0 ]; then
+        PX4_PATH_OVERRIDE="$(last_config_value PX4_PATH)"
+    fi
+    LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL:-$(last_config_value LAUNCHER_BASE_URL)}"
+fi
+LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL:-https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup}"
+LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL%/}"
+SETUP_SCRIPT_URL="$LAUNCHER_BASE_URL/setup_px4_sitl.sh"
+SETUP_RUNNER_URL="$LAUNCHER_BASE_URL/launch_sitl.py"
+
 if [ -n "$PX4_PATH_OVERRIDE" ]; then
     CLONE_PATH="${PX4_PATH_OVERRIDE/#\~/$HOME}"
     INSTALL_PATH="$(dirname "$CLONE_PATH")"
-    CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
     USING_EXTERNAL_PX4_PATH=true
-elif [ -n "$1" ]; then
+elif [ "$#" -gt 0 ]; then
     INSTALL_PATH="$1"
     CLONE_PATH="$INSTALL_PATH/$MANAGED_CHECKOUT_NAME"
-    CONFIG_FILE="$INSTALL_PATH/.px4sitl_config"
 else
     INSTALL_PATH="$DEFAULT_CLONE_PATH"
     CLONE_PATH="$INSTALL_PATH/$MANAGED_CHECKOUT_NAME"
@@ -418,10 +507,19 @@ else
 
     # Reuse the legacy helper-managed fork checkout if an older installation
     # already has one. The remote is normalized during sync.
-    if [ ! -d "$CLONE_PATH/.git" ] && [ -d "$HOME/$LEGACY_CHECKOUT_NAME/.git" ]; then
+    if [ ! -e "$CLONE_PATH/.git" ] && [ -e "$HOME/$LEGACY_CHECKOUT_NAME/.git" ]; then
         AUTO_DETECTED_PX4_PATH="$HOME/$LEGACY_CHECKOUT_NAME"
         CLONE_PATH="$AUTO_DETECTED_PX4_PATH"
         USING_EXTERNAL_PX4_PATH=true
+    fi
+fi
+CLONE_PATH="$(readlink -m -- "$CLONE_PATH")" || exit 1
+INSTALL_PATH="$(dirname "$CLONE_PATH")"
+if [ "$USING_EXTERNAL_PX4_PATH" = true ] && [ "$UPDATE_LAUNCHER" = false ]; then
+    if [ "$(git -C "$CLONE_PATH" rev-parse --show-toplevel 2>/dev/null)" != "$CLONE_PATH" ] || \
+        [ ! -f "$CLONE_PATH/ROMFS/px4fmu_common/init.d-posix/rcS" ]; then
+        echo "Error: --px4-path must select the root of an existing PX4 checkout: $CLONE_PATH" >&2
+        exit 1
     fi
 fi
 
@@ -429,22 +527,9 @@ if [ "$USING_EXTERNAL_PX4_PATH" = true ] && [ "$PX4_REMOTE_NAME" = "origin" ]; t
     PX4_REMOTE_NAME="px4xplane"
 fi
 
-# === Create Parent Directory if Needed ===
-SOURCE_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
-if [ ! -d "$INSTALL_PATH" ]; then
-    echo "Directory $INSTALL_PATH does not exist. Creating it..."
-    mkdir -p "$INSTALL_PATH"
-fi
-
-# === Copy Script to Parent Directory ===
-SCRIPT_PATH="$INSTALL_PATH/$SCRIPT_NAME"
-SCRIPT_WAS_COPIED=false
-if [ "$(readlink -f "$0")" != "$(readlink -m "$SCRIPT_PATH")" ]; then
-    echo "Copying script to $SCRIPT_PATH..."
-    cp "$0" "$SCRIPT_PATH" || exit 1
-    chmod +x "$SCRIPT_PATH"
-    SCRIPT_WAS_COPIED=true
-fi
+SOURCE_SCRIPT_DIR="$(dirname -- "$(readlink -f -- "$0")")"
+SCRIPT_PATH="$HOME/.local/share/px4xplane/launcher/setup_px4_sitl.sh"
+RUNNER_PATH="$HOME/.local/share/px4xplane/launcher/launch_sitl.py"
 
 
 # === Distinguish Important Prompts ===
@@ -469,12 +554,6 @@ progress() {
 }
 
 global_command_paths() {
-    local command_path
-
-    if command_path="$(command -v "$COMMAND_NAME" 2>/dev/null)"; then
-        echo "$command_path"
-    fi
-
     echo "$HOME/bin/$COMMAND_NAME"
     echo "$HOME/.local/bin/$COMMAND_NAME"
 }
@@ -503,10 +582,6 @@ refresh_global_command() {
         fi
     done < <(global_command_paths)
 }
-
-if [ "$SCRIPT_WAS_COPIED" = true ]; then
-    refresh_global_command
-fi
 
 is_valid_ipv4() {
     local ip="$1"
@@ -667,13 +742,6 @@ choose_px4_sim_ip() {
     CHOSEN_PX4_SIM_IP_SOURCE="$candidate_source"
 }
 
-last_config_value() {
-    local key="$1"
-    if [ -f "$CONFIG_FILE" ]; then
-        grep -E "^${key}=" "$CONFIG_FILE" | tail -n 1 | cut -d= -f2-
-    fi
-}
-
 airframe_file_for_platform() {
     case "$1" in
         xplane_ehang184) echo "ROMFS/px4fmu_common/init.d-posix/airframes/5010_xplane_ehang184" ;;
@@ -723,7 +791,7 @@ require_clean_px4_checkout() {
     fi
     # Root status does not always expose untracked files in nested submodules.
     git submodule foreach --quiet --recursive \
-        'test -z "$(git status --porcelain --untracked-files=normal)"' || {
+        'status=$(git status --porcelain --untracked-files=normal) && test -z "$status" && test "$(git rev-parse HEAD)" = "$sha1"' || {
         warning "A PX4 submodule has local changes; sync stopped without cleaning."
         return 1
     }
@@ -810,7 +878,7 @@ sync_px4_repo_to_remote() {
     progress "Syncing PX4 checkout with $remote_ref..."
 
     if ! git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1; then
-        git remote add "$PX4_REMOTE_NAME" "$REPO_URL"
+        git remote add "$PX4_REMOTE_NAME" "$REPO_URL" || return 1
         info "Added $PX4_REMOTE_NAME remote: $REPO_URL"
     else
         current_remote_url="$(git remote get-url "$PX4_REMOTE_NAME" 2>/dev/null || true)"
@@ -821,7 +889,7 @@ sync_px4_repo_to_remote() {
         return 1
     fi
     if [ "$PX4_REMOTE_NAME" != origin ] && git remote get-url "$PX4_REMOTE_NAME" >/dev/null 2>&1; then
-        git remote set-url "$PX4_REMOTE_NAME" "$REPO_URL"
+        git remote set-url "$PX4_REMOTE_NAME" "$REPO_URL" || return 1
         info "Using $PX4_REMOTE_NAME remote: $REPO_URL"
     fi
 
@@ -842,8 +910,12 @@ sync_px4_repo_to_remote() {
         return 1
     fi
 
-    # Detached checkout leaves all the user's local branch pointers intact.
-    if ! git checkout --detach "$remote_ref"; then
+    # Keep even detached local work reachable before changing revisions.
+    local previous_head
+    previous_head="$(git rev-parse HEAD)" || return 1
+    git update-ref "refs/px4xplane/previous/$previous_head" "$previous_head" || return 1
+    # Refuse collisions with ignored files as well as normal untracked files.
+    if ! git checkout --no-overwrite-ignore --detach "$remote_ref"; then
         warning "Could not switch local branch to $remote_ref."
         return 1
     fi
@@ -863,7 +935,7 @@ sync_px4_repo_to_remote() {
 }
 
 restore_px4_repo_to_official() {
-    if [ ! -d "$CLONE_PATH/.git" ]; then
+    if [ ! -e "$CLONE_PATH/.git" ]; then
         warning "No PX4 git checkout found at $CLONE_PATH."
         return 1
     fi
@@ -877,46 +949,77 @@ restore_px4_repo_to_official() {
     info "X-Plane SITL airframes are available in official PX4 main."
 }
 
+ensure_sitl_runner() {
+    local install_dir="$HOME/.local/share/px4xplane"
+    local candidate pair_id pair_dir
+    mkdir -p "$install_dir" || return 1
+    candidate="$(mktemp -d "$install_dir/.launcher.XXXXXXXX")" || return 1
+    if [ "$UPDATE_LAUNCHER" = true ]; then
+        if ! curl --connect-timeout 10 --max-time 60 -fsSL "$SETUP_SCRIPT_URL" -o "$candidate/setup_px4_sitl.sh" || \
+            ! curl --connect-timeout 10 --max-time 60 -fsSL "$SETUP_RUNNER_URL" -o "$candidate/launch_sitl.py"; then
+            rm -rf -- "$candidate"
+            warning "Launcher pair download failed; the installed pair was not changed."
+            return 1
+        fi
+    else
+        cp "$(readlink -f -- "$0")" "$candidate/setup_px4_sitl.sh" || { rm -rf -- "$candidate"; return 1; }
+        if [ -f "$SOURCE_SCRIPT_DIR/launch_sitl.py" ]; then
+            cp "$SOURCE_SCRIPT_DIR/launch_sitl.py" "$candidate/launch_sitl.py" || { rm -rf -- "$candidate"; return 1; }
+        elif [ "$SYNC_MODE" = true ]; then
+            if ! curl --connect-timeout 10 --max-time 60 -fsSL "$SETUP_RUNNER_URL" -o "$candidate/launch_sitl.py"; then
+                rm -rf -- "$candidate"
+                warning "Could not download the launcher companion from $SETUP_RUNNER_URL."
+                return 1
+            fi
+        elif [ -f "$RUNNER_PATH" ]; then
+            cp "$RUNNER_PATH" "$candidate/launch_sitl.py" || { rm -rf -- "$candidate"; return 1; }
+        else
+            rm -rf -- "$candidate"
+            warning "Offline companion is missing. Bootstrap once online or run from the source setup directory."
+            return 1
+        fi
+    fi
+    if ! bash -n "$candidate/setup_px4_sitl.sh" || \
+        ! grep -qx "LAUNCHER_API_VERSION=$LAUNCHER_API_VERSION" "$candidate/setup_px4_sitl.sh" || \
+        [ "$(python3 "$candidate/launch_sitl.py" --api-version)" != "$LAUNCHER_API_VERSION" ]; then
+        rm -rf -- "$candidate"
+        warning "Launcher pair validation failed; the installed pair was not changed."
+        return 1
+    fi
+    # Install a complete immutable pair, then atomically switch the command's directory.
+    pair_id="$(sha256sum "$candidate/setup_px4_sitl.sh" "$candidate/launch_sitl.py" | awk '{printf "%s", $1}' | sha256sum | cut -c1-32)"
+    pair_dir="$install_dir/launcher-$pair_id"
+    chmod +x "$candidate/setup_px4_sitl.sh" || { rm -rf -- "$candidate"; return 1; }
+    if [ -d "$pair_dir" ]; then
+        if ! cmp -s "$candidate/setup_px4_sitl.sh" "$pair_dir/setup_px4_sitl.sh" || \
+            ! cmp -s "$candidate/launch_sitl.py" "$pair_dir/launch_sitl.py"; then
+            rm -rf -- "$candidate"
+            warning "Existing launcher pair is inconsistent; inspect $pair_dir."
+            return 1
+        fi
+        rm -rf -- "$candidate"
+    else
+        mv -T -- "$candidate" "$pair_dir" || { rm -rf -- "$candidate"; return 1; }
+    fi
+    candidate="$(mktemp -d "$install_dir/.link.XXXXXXXX")" || return 1
+    if ! ln -s "$pair_dir" "$candidate/launcher" || ! mv -Tf -- "$candidate/launcher" "$install_dir/launcher"; then
+        rm -rf -- "$candidate"
+        return 1
+    fi
+    rmdir "$candidate"
+    SCRIPT_PATH="$pair_dir/setup_px4_sitl.sh"
+    RUNNER_PATH="$pair_dir/launch_sitl.py"
+    printf 'LAUNCHER_BASE_URL=%s\n' "$LAUNCHER_BASE_URL" >> "$CONFIG_FILE" || return 1
+}
+
 update_launcher_script_if_needed() {
-    if [ "$SYNC_MODE" = false ] || [ "${PX4XPLANE_SKIP_LAUNCHER_UPDATE:-0}" = 1 ]; then
+    if [ "$UPDATE_LAUNCHER" = false ]; then
         return 0
     fi
-
-    local current_script_path
-    local temp_script
-
-    command -v curl >/dev/null 2>&1 || return 0
-
-    current_script_path="$(readlink -f "$0" 2>/dev/null || echo "$0")"
-    temp_script="$(mktemp)"
-
-    if ! curl -fsSL "$SETUP_SCRIPT_URL" -o "$temp_script" 2>/dev/null; then
-        rm -f "$temp_script"
-        warning "Could not check for the latest px4xplane launcher script."
-        return 0
-    fi
-
-    if ! cmp -s "$temp_script" "$current_script_path" 2>/dev/null || ! cmp -s "$temp_script" "$SCRIPT_PATH" 2>/dev/null; then
-        info "Updating px4xplane launcher script from master."
-        if ! cp "$temp_script" "$SCRIPT_PATH" || ! chmod +x "$SCRIPT_PATH"; then
-            rm -f "$temp_script"
-            warning "Could not install launcher update; stopping without running an outdated copy."
-            exit 1
-        fi
-
-        if [ "$current_script_path" != "$SCRIPT_PATH" ]; then
-            cp "$temp_script" "$current_script_path" 2>/dev/null || true
-            chmod +x "$current_script_path" 2>/dev/null || true
-        fi
-        refresh_global_command
-
-        rm -f "$temp_script"
-        success "Launcher script updated: $SCRIPT_PATH"
-        highlight "The px4xplane launcher was updated. Re-run the same command now."
-        exit 0
-    fi
-
-    rm -f "$temp_script"
+    ensure_sitl_runner || exit 1
+    refresh_global_command
+    success "Installed launcher pair from $LAUNCHER_BASE_URL. Re-run the launch command."
+    exit 0
 }
 
 if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
@@ -924,6 +1027,10 @@ if [ "$RESET_CONFIG_MODE" = true ] && [ -f "$CONFIG_FILE" ]; then
     success "Saved px4xplane CLI configuration reset: $CONFIG_FILE"
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+    warning "Python 3 is required. Install it before running setup."
+    exit 1
+fi
 update_launcher_script_if_needed
 if ! command -v pgrep >/dev/null 2>&1; then
     warning "Process checks require pgrep. Install procps before running setup."
@@ -949,49 +1056,13 @@ if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
 fi
 
 # === Introductory Information ===
-clear
-echo "╔════════════════════════════════════════════════════════════════════════════╗"
-echo "║                    PX4 X-Plane SITL Setup Script                           ║"
-echo "╚════════════════════════════════════════════════════════════════════════════╝"
-echo ""
-highlight "Author: Alireza Ghaderi (@alireza787b)"
-highlight "GitHub: https://github.com/alireza787b/px4xplane"
-highlight "Updated: November 2026"
-echo ""
-echo "────────────────────────────────────────────────────────────────────────────"
-highlight "PX4 X-Plane Support"
-echo ""
-echo "Official PX4 X-Plane SITL support is merged in PX4/PX4-Autopilot."
-echo "Normal runs use official PX4 main without experimental patches."
-echo "Developer validation (--validation) adds only experimental TECS PR #27670."
 print_launcher_selection
 echo ""
-info "Current Status:"
-echo "  → PX4 checkout: $CLONE_PATH"
-echo "  → PX4 source: $PX4_REMOTE_NAME ($REPO_URL)"
-echo "  → Branch: $BRANCH_NAME"
-echo "  → X-Plane SITL merge: https://github.com/PX4/PX4-Autopilot/pull/22493"
-echo "  → Optional TECS altitude guard: PX4 PR #27670"
-echo "  → Tailsitter conversion fix: PX4 PR #27793 merged in current PX4 main"
-if [ -n "$AUTO_DETECTED_PX4_PATH" ]; then
-    echo "  → Existing legacy PX4 checkout auto-detected; origin remote is preserved"
-fi
+echo "Requirements:"
+echo "  - X-Plane 11 or 12"
+echo "  - px4xplane bridge plugin (download from releases)"
+echo "  - Ubuntu/Debian Linux (or WSL on Windows)"
 echo ""
-echo "────────────────────────────────────────────────────────────────────────────"
-echo ""
-highlight "Requirements:"
-echo "  ✓ X-Plane 11 or 12"
-echo "  ✓ px4xplane bridge plugin (download from releases)"
-echo "  ✓ Ubuntu/Debian Linux (or WSL on Windows)"
-echo ""
-highlight "Supported Aircraft:"
-echo "  • Cessna 172 (fixed-wing trainer)"
-echo "  • TB2 UAV (fixed-wing)"
-echo "  • Ehang 184 (quadcopter airtaxi)"
-echo "  • Alia-250 (eVTOL quadplane)"
-echo "  • QuadTailsitter (small VTOL tailsitter)"
-echo ""
-echo "────────────────────────────────────────────────────────────────────────────"
 highlight "Press Enter to continue (auto-continue in 10 seconds)..."
 read -t 10 -r
 
@@ -1007,10 +1078,8 @@ if ! command -v python3 >/dev/null 2>&1; then
     warning "Python 3 is required. Install it with: sudo apt-get install python3"
     exit 1
 fi
-info "Launcher version: $LAUNCHER_VERSION | script: $(readlink -f "$0")"
-
 # === Simplified Process for Subsequent Runs ===
-if [ -d "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
+if [ -e "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
     info "Detected existing installation at: $CLONE_PATH"
 
     # === Auto-Sync Detection ===
@@ -1047,13 +1116,14 @@ else
     fi
 
     # === Clone the Repository ===
-    if [ ! -d "$CLONE_PATH/.git" ]; then
+    if [ ! -e "$CLONE_PATH/.git" ]; then
         if [ "$SYNC_MODE" = false ]; then
             warning "No existing checkout for --no-sync. Run once with sync or pass --px4-path."
             exit 1
         fi
         progress "Cloning the repository from $REPO_URL..."
         info "This may take a few minutes depending on your connection..."
+        mkdir -p "$INSTALL_PATH" || exit 1
         git clone --branch "$BRANCH_NAME" -- "$REPO_URL" "$CLONE_PATH" || exit 1
         success "Repository cloned successfully!"
     else
@@ -1069,10 +1139,10 @@ else
     # === Run the ubuntu.sh Script ===
     highlight "Installing PX4 dependencies..."
     warning "This step may prompt for sudo password and take several minutes."
-    info "The setup script will install compilers, simulators, and other tools."
+    info "Installing SITL dependencies without the NuttX or Gazebo toolchains."
     echo ""
 
-    if bash Tools/setup/ubuntu.sh; then
+    if bash Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools; then
         success "Dependencies installed successfully!"
         info "For WSL users: It's recommended to restart WSL after first installation."
         echo "  Exit WSL, then restart it before running this script again."
@@ -1145,18 +1215,25 @@ if ! is_valid_ipv4 "$PX4_SIM_HOSTNAME"; then
     PX4_SIM_HOSTNAME="$DEFAULT_FALLBACK_IP"
 fi
 
-# Save the IP; the selected platform and airframe fingerprint are appended after selection.
-echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME" > "$CONFIG_FILE"
-echo "PX4_SIM_HOST_SOURCE=${CHOSEN_PX4_SIM_IP_SOURCE:-auto}" >> "$CONFIG_FILE"
-export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
-success "IP address configured: $PX4_SIM_HOSTNAME"
-
+if [ -z "$QGC_HOST" ] && [ "$RESET_CONFIG_MODE" = false ]; then
+    QGC_HOST="$(last_config_value QGC_HOST)"
+fi
+SAVED_QGC_HOST="$QGC_HOST"
 QGC_HOST="${QGC_HOST:-$PX4_SIM_HOSTNAME}"
 QGC_HOST="$(normalize_ip_input "$QGC_HOST")"
 if ! is_valid_ipv4 "$QGC_HOST"; then
     warning "Invalid --qgc-host IPv4 address: $QGC_HOST"
     exit 1
 fi
+{
+    echo "PX4_PATH=$CLONE_PATH"
+    echo "LAUNCHER_BASE_URL=$LAUNCHER_BASE_URL"
+    echo "PX4_SIM_HOSTNAME=$PX4_SIM_HOSTNAME"
+    echo "PX4_SIM_HOST_SOURCE=${CHOSEN_PX4_SIM_IP_SOURCE:-auto}"
+    echo "QGC_HOST=$SAVED_QGC_HOST"
+} > "$CONFIG_FILE"
+export PX4_SIM_HOSTNAME="$PX4_SIM_HOSTNAME"
+success "IP address configured: $PX4_SIM_HOSTNAME"
 QGC_STARTUP_HOST="$QGC_HOST"
 info "X-Plane TCP endpoint: $PX4_SIM_HOSTNAME:4560"
 info "QGC UDP destination: $QGC_HOST:14550 (reception not yet verified)"
@@ -1185,37 +1262,8 @@ if [ "$USE_MAVLINK_ROUTER" = true ]; then
     fi
 fi
 
-ensure_sitl_runner() {
-    RUNNER_PATH="$HOME/.local/share/px4xplane/launch_sitl.py"
-    local candidate
-    candidate="$(mktemp)" || return 1
-    if [ -f "$SOURCE_SCRIPT_DIR/setup_px4_sitl.sh" ] && [ -f "$SOURCE_SCRIPT_DIR/launch_sitl.py" ]; then
-        cp "$SOURCE_SCRIPT_DIR/launch_sitl.py" "$candidate" || return 1
-    elif [ "$SYNC_MODE" = true ]; then
-        if ! curl -fsSL "$SETUP_RUNNER_URL" -o "$candidate"; then
-            rm -f "$candidate"
-            warning "Could not download the SITL launcher companion. Retry, or use --no-sync with an installed copy."
-            return 1
-        fi
-    elif [ -f "$RUNNER_PATH" ]; then
-        rm -f "$candidate"
-        candidate="$RUNNER_PATH"
-    else
-        rm -f "$candidate"
-        warning "Offline companion is missing. Run once online before --no-sync."
-        return 1
-    fi
-    if [ "$(python3 "$candidate" --api-version)" != 1 ]; then
-        [ "$candidate" = "$RUNNER_PATH" ] || rm -f "$candidate"
-        warning "Launcher companion version mismatch; refresh the setup script."
-        return 1
-    fi
-    if [ "$candidate" != "$RUNNER_PATH" ]; then
-        mkdir -p "$(dirname "$RUNNER_PATH")" || return 1
-        mv "$candidate" "$RUNNER_PATH" || return 1
-    fi
-}
 ensure_sitl_runner || exit 1
+refresh_global_command
 
 # === Global Access Setup (Optional) ===
 if ! command -v "$COMMAND_NAME" &> /dev/null; then
@@ -1258,15 +1306,21 @@ if ! command -v "$COMMAND_NAME" &> /dev/null; then
 fi
 
 # === Platform Selection and Build ===
-highlight "Platform Selection"
-echo "Select the X-Plane airframe to build and launch:"
-echo ""
-
-select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
-    if [[ "$PLATFORM" == "Exit" ]]; then
-        info "Exiting without building..."
-        exit 0
-    elif [ -n "$PLATFORM" ]; then
+PLATFORM="$AIRFRAME"
+if [ -z "$PLATFORM" ]; then
+    highlight "Platform Selection"
+    echo "Select the X-Plane airframe to build and launch:"
+    select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
+        if [[ "$PLATFORM" == "Exit" ]]; then
+            info "Exiting without building..."
+            exit 0
+        elif [ -n "$PLATFORM" ]; then
+            break
+        fi
+        warning "Invalid selection. Please choose a valid platform or 'Exit'."
+    done
+fi
+if [ -n "$PLATFORM" ]; then
         highlight "Building: $PLATFORM"
         require_no_running_px4 || exit 1
         LAST_PLATFORM="$PLATFORM"
@@ -1300,10 +1354,7 @@ select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
         PX4_EXIT_CODE=$?
         info "PX4 exited with status $PX4_EXIT_CODE. Saved tuning and logs remain in the reported runtime directory."
         exit "$PX4_EXIT_CODE"
-    else
-        warning "Invalid selection. Please choose a valid platform or 'Exit'."
-    fi
-done
+fi
 
 warning "No airframe selected; no SITL launch performed."
 exit 1

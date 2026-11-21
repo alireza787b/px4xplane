@@ -1,17 +1,29 @@
 # QuadTailsitter X-Plane Aircraft
 
-This historical 5 kg example is retained in source, not packaged in new
-releases. Use its matching public `5021_xplane_qtailsitter` defaults.
-Model-specific developer tuning is separate; see the
-[compact experiment guide](../../docs/compact-qtailsitter.md).
+Use the [QuadTailsitter test card](../../docs/QUADTAILSITTER_XPLANE12_TEST.md)
+for the single canonical model/profile pairing and normal launcher workflow.
+This directory contains documentation only, not a bundled ACF or aircraft
+installer. Obtain the matching aircraft separately from its owner.
+
+| Item | Configuration |
+| --- | --- |
+| Aircraft | 2 kg, 0.6 m-span tailsitter |
+| Propulsion | Four fixed 10x8 propellers, 6S power |
+| Control | Differential thrust, no control surfaces |
+| PX4 target / ID | `xplane_qtailsitter` / `5021` |
+| Plugin section | `[QuadTailsitter]` |
+
+The maintained PX4 branch supplies the canonical defaults. The plugin's
+reference copy does not configure PX4 at runtime. See the
+[reference notes](../../config/px4_params/README.md) before changing saved tuning.
 
 ## Camera Views
 
-px4xplane v4.2.1 provides config-driven camera views under
+px4xplane provides config-driven camera views under
 `PX4 X-Plane > Camera Views`. The views are not hardcoded to this aircraft;
 they are read from the active airframe's `cameraViews` line in `config.ini`.
 
-QuadTailsitter ships:
+The QuadTailsitter mapping defines:
 
 - `Nose / FPV`: in hover it points upward; in fixed-wing it points forward along
   the virtual pitot axis.
@@ -27,29 +39,5 @@ The config format is:
 
 `Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom`
 
-## Quick-Look Views
-
-`QuadTailsitter_prefs.txt` ships three X-Plane quick-look presets:
-
-- location `#1`: nose/FPV camera, aligned with the fixed-wing nose axis
-- location `#2`: belly/down-looking camera, pitched down relative to the
-  fixed-wing body
-- location `#3`: rear engineering chase view
-
-Use X-Plane's quick-look commands to bind these to the keys you prefer. On many
-installations the default commands are `sim/view/quick_look_0`,
-`sim/view/quick_look_1`, and `sim/view/quick_look_2`.
-
-## Aircraft Selection Icons
-
-`QuadTailsitter_icon11.png` and `QuadTailsitter_icon11_thumb.png` are included so
-the aircraft does not show a generic question-mark tile in X-Plane's aircraft
-selection UI. For a photoreal exact icon from your installed simulator, load the
-aircraft in X-Plane and run `Developer > Regenerate icons for current aircraft`.
-
-## Panel Scope
-
-The current 2-D panel is intentionally minimal and uses X-Plane's native panel
-records. A polished eVTOL operator panel with RPM/thrust/battery tiles, map, and
-camera MFDs should be authored in Plane Maker as a dedicated visual-cockpit
-slice, then committed after the ACF is saved by Plane Maker.
+Aircraft icons, panels and X-Plane quick-look preferences belong to the
+separately installed model. They are not provided by this documentation folder.

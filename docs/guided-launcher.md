@@ -1,139 +1,152 @@
 # Guided PX4 Launcher
 
-The optional `px4xplane` launcher automates PX4 setup and airframe selection.
-It targets Ubuntu/Debian, including WSL on Windows. On macOS, use the manual
-official PX4 workflow below.
-For the manual workflow, follow the official
-[PX4 development setup](https://docs.px4.io/main/en/dev_setup/dev_env.html) and
-[X-Plane simulation guide](https://docs.px4.io/main/en/sim_xplane/) first.
+The `px4xplane` launcher prepares PX4, selects an airframe and starts SITL on
+Ubuntu/Debian, including WSL on Windows. Start with the
+[Quick Start](../README.md#quick-start) to install X-Plane, the plugin and the
+matching aircraft. Other platforms can use the
+[advanced manual setup](../README.md#advanced-manual-setup).
 
 ## Install and Run
 
-Install X-Plane and the plugin using the [Quick Start](../README.md#quick-start),
-then run the setup helper in your PX4/SITL shell:
+Run the setup helper in your Ubuntu/Debian or WSL shell:
 
 ```bash
-tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash "$tmp"
+(base=https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup; tmp=$(mktemp) && trap 'rm -f "$tmp"' EXIT && curl -fsSL "$base/setup_px4_sitl.sh" -o "$tmp" && PX4XPLANE_LAUNCHER_BASE_URL="$base" bash "$tmp")
 ```
 
-Accept the command installation prompt to use `px4xplane` in later sessions:
+Accept command installation, then use this for later sessions:
 
 ```bash
 px4xplane
 ```
 
-Plain `px4xplane` prepares official `PX4/PX4-Autopilot` `main` automatically,
-without pending PRs. It reuses an existing checkout, checks dependencies,
-syncs the selected source and offers an airframe menu. Select the matching
-aircraft in X-Plane and the plugin, then choose `Connect to SITL`.
-If the first build outlasts the plugin's connection timeout, reconnect once
-PX4 is running.
+The launcher checks dependencies, reuses a PX4 checkout and build cache, syncs
+the selected source, detects networking and offers the airframe menu. Load the
+matching aircraft in X-Plane, select its plugin mapping, and choose
+`Connect to SITL`. Reconnect if the first build outlasts the plugin's wait window.
+After a run, use `shutdown` in the PX4 console.
+
+To update an existing installation, run the same setup command again. It
+refreshes the installed launcher pair and reuses the PX4 checkout. You can
+also run `px4xplane --update-launcher` to update just the launcher, then start
+`px4xplane` normally.
+
+## Source Modes
+
+| Mode | PX4 source | Airframe defaults |
+| --- | --- | --- |
+| `--maintained` (default) | Project fork, branch `px4xplane-airframes` | Current project airframe files on an upstream PX4 base |
+| `--official` | Bare `PX4/PX4-Autopilot` `main` | Only the defaults present upstream at the selected revision |
+
+The maintained repository is
+`https://github.com/alireza787b/PX4-Autopilot-Me.git`. Normal operation needs no
+PR stack or additional profile runner. Maintained airframe updates are not a
+claim that the same values have merged upstream. `--official` does not apply
+project airframe files or pending patches; it is an explicit upstream comparison.
+
+The launcher reports the selected repository, revision and airframe file.
+Check them when switching modes. If bare upstream lacks the requested target,
+use an available target or return to maintained mode; do not silently copy in
+different defaults. See [developer validation](DEVELOPER.md#developer-validation)
+for comparison and verification requirements.
+
+## Airframe Selection
+
+Without `--airframe`, choose from the menu. To select a target directly:
+
+```bash
+px4xplane --airframe xplane_qtailsitter
+```
+
+List the canonical names with `px4xplane --list-airframes`:
+
+| Aircraft | `--airframe` value | `SYS_AUTOSTART` | Plugin section |
+| --- | --- | --- | --- |
+| Cessna 172 | `xplane_cessna172` | 5001 | `Cessna172` |
+| TB2 | `xplane_tb2` | 5002 | `TB2` |
+| Ehang 184 | `xplane_ehang184` | 5010 | `ehang184` |
+| Alia 250 | `xplane_alia250` | 5020 | `Alia250` |
+| QuadTailsitter | `xplane_qtailsitter` | 5021 | `QuadTailsitter` |
+
+Select the same aircraft in X-Plane and the plugin. A target name or ID is not
+proof of model geometry or saved tuning. QuadTailsitter has one canonical
+profile; follow its [test card](QUADTAILSITTER_XPLANE12_TEST.md).
 
 ## Existing Checkouts and Sync
 
-To select an existing checkout explicitly:
+Select an existing checkout explicitly when needed:
 
 ```bash
-px4xplane --px4-path ~/PX4-Autopilot
+px4xplane --px4-path ~/PX4-Autopilot --airframe xplane_alia250
 ```
 
-The launcher validates the checkout and submodules before updating. It does
-not force-stash changes, force-reset branches or run `git clean`. If local
-changes prevent a safe update, it stops for you to resolve them or choose a
-different checkout. The requested revision is checked out detached, leaving
-local branch pointers and your `origin` remote unchanged. A later `git switch`
-can return to your development branch.
+The launcher checks tracked, untracked and submodule changes before updating.
+It stops for work that prevents a safe update; it does not force-stash,
+force-reset or run `git clean`. Selected revisions are checked out detached,
+preserving local branch pointers and `origin`. Switching source modes reuses
+the same checkout and cache, not a separate clone for every run.
 
-`--sync` explicitly requests the normal synchronization path. `--no-sync`
-skips launcher update checks and PX4 remote checks/fetches, using the available
-local source instead. It does not guarantee an offline build: missing build
-dependencies may still need installation. It cannot fetch/apply the TECS
-validation proposal. For a feature-branch helper, set
-`PX4XPLANE_SKIP_LAUNCHER_UPDATE=1` to retain that launcher version while
-allowing PX4 synchronization.
+`--sync` requests normal synchronization. `--no-sync` skips launcher update
+checks and PX4 remote checks/fetches and uses local source. Inspect the reported
+commit: no-sync mode does not turn a local custom build into the selected
+remote's current revision. Missing dependencies can still prevent an offline
+build. For launcher development, `PX4XPLANE_SKIP_LAUNCHER_UPDATE=1` retains the
+local helper while allowing PX4 synchronization.
 
-Use `--px4-repo URL`, `--px4-branch NAME` and `--px4-path PATH` for an
-intentional custom source selection. These overrides are not required for
-normal operation. `--restore-official` returns the selected checkout to
-official PX4 `main`, subject to the same checkout-safety checks; it is not a
-way to discard local work.
+Custom source selection is available through `--px4-repo URL`,
+`--px4-branch NAME` and `--px4-path PATH`; it is not part of normal setup.
+Do not select a checkout reserved for a pinned comparison unless you intend
+to change its checked-out source. Preserving branch pointers does not keep
+the worktree on its previous revision.
 
 ## Saved Parameters
 
-Each airframe has its own state directory under
-`$XDG_STATE_HOME/px4xplane/sitl` (default `~/.local/state/px4xplane/sitl`), grouped
-by checkout/source and target. The launcher prints the selected runtime path.
-It builds using official PX4 `make`, then runs the stock PX4 binary with that
-runtime as its `-w` working directory. Saved parameters are isolated between
-airframes and retained between launches. Syncing source or noticing changed
-airframe defaults does not automatically delete tuning.
+State is grouped by checkout/source and airframe under
+`$XDG_STATE_HOME/px4xplane/sitl` (default `~/.local/state/px4xplane/sitl`).
+The launcher prints the selected runtime path and uses it as PX4's `-w`
+working directory. Saved tuning remains between launches. Syncing source or
+detecting changed airframe defaults does not automatically reset it.
 
-To intentionally reload defaults for the airframe you select:
+To back up and reload defaults for one selected airframe:
 
 ```bash
-px4xplane --reset-params
+px4xplane --airframe xplane_qtailsitter --reset-params
 ```
 
-The reset backs up only the selected runtime's saved parameter store before
-resetting it. Keep that backup if you need to recover tuning. Other airframes'
-state is untouched. Do not delete shared PX4 parameter files as routine setup.
+Review the model/profile pairing first. Keep the printed backup to recover
+tuning. Only the selected runtime's parameter store is reset; other airframes
+are untouched. Do not delete shared PX4 parameters as routine setup.
 
-`--reset-ip` clears the remembered X-Plane host; `--reset-config` clears launcher
-configuration and prompts again. Neither is a parameter-reset request.
-`--repair` reruns dependency/setup checks, not a destructive checkout repair.
+PX4 executes `ROMFS/px4fmu_common/init.d-posix/airframes/<ID>_<target>` from
+the selected PX4 build. The plugin's `px4_airframes` and repository
+`config/px4_params` folders are reference copies, not scripts the plugin runs.
+`param set-default` supplies defaults; existing saved values can override them.
+
+`--reset-ip` forgets the X-Plane host; `--reset-config` resets launcher choices.
+Neither resets PX4 parameters. `--repair` reruns dependency/setup checks and
+does not discard local work. Uninstall preserves checkouts, saved tuning and logs.
 
 ## X-Plane and QGC Networking
-
-These are separate connections:
 
 | Connection | Destination | Default port |
 | --- | --- | --- |
 | PX4 simulator link | X-Plane host | TCP `4560` |
 | PX4 MAVLink telemetry | QGC host | UDP `14550` |
 
-For manual PX4 commands, set `PX4_SIM_HOSTNAME` to the X-Plane host before
-starting SITL. The launcher detects localhost/mirrored WSL2 and Windows-host
-addresses for WSL2 NAT, refreshing automatic choices as networking changes.
-Manual host choices remain saved until reset.
-
-The QGC target defaults to the selected X-Plane host. If QGC runs elsewhere,
-supply its destination explicitly:
-
-```bash
-px4xplane --qgc-host <qgc-host-ip>
-```
+The launcher detects localhost/mirrored WSL2 and the Windows host address for
+WSL2 NAT, refreshing automatic choices when networking changes. Manual choices
+remain saved until reset. QGC defaults to the selected X-Plane host; use
+`--qgc-host <qgc-host-ip>` if it runs elsewhere.
 
 Allow inbound TCP `4560` on the X-Plane host and UDP `14550` on the QGC host.
-Direct MAVLink is the default. For an explicit QGC target, the launcher uses a
-runtime-local copy of the stock MAVLink startup script; it does not require a
-PX4 source patch. Configuring or printing an address does not prove receipt:
-confirm that QGC displays a connected vehicle. A working simulator TCP link
-alone does not establish QGC telemetry.
+Direct MAVLink is the default. An explicit QGC destination uses a runtime-local
+copy of PX4's MAVLink startup script, not a source patch. Confirm that QGC
+actually shows a connected vehicle; an address or working simulator link
+alone does not establish telemetry reception.
 
-MAVLink Router is optional. Only `--with-mavlink-router` opts in, using an
-already-installed `mavlink-routerd` binary for a remote QGC address (not
-localhost, which would create a loop/port conflict). The launcher does not download a
-router installer or make it a normal setup dependency.
+`--with-mavlink-router` optionally uses an already-installed `mavlink-routerd`
+for remote QGC, not localhost. No router installer runs as part of setup.
+Truth capture is optional diagnostic recording, not a launch prerequisite.
 
-## Developer Validation
-
-```bash
-px4xplane --validation
-```
-
-This explicitly selects only the open
-[TECS altitude-reference proposal #27670](https://github.com/PX4/PX4-Autopilot/pull/27670)
-on official PX4 `main`. `--with-tecs-alt-guard` is the specific guard option.
-It does not apply closed GSF #27533 or already-merged VTOL/tailsitter proposals.
-Retired positive guard options stop with an explanation. `--no-sync` cannot
-be used to fetch/apply this proposal.
-
-Use `--official` for the official baseline without pending patches, or
-`--restore-official` to return a previously selected validation checkout to
-official `main`. Inspect checkout state before comparing builds; parameter
-reset remains an independent, explicit choice.
-
-No private service, Telegram integration, upload, benchmark or truth-capture
-tool is needed for the public launcher. See the [Developer Guide](DEVELOPER.md)
-for development policy and the [documentation index](index.md#troubleshooting)
-for setup troubleshooting.
+See [Troubleshooting](index.md#troubleshooting) for connection, checkout and
+saved-parameter issues.

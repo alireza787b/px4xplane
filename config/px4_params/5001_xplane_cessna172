@@ -58,7 +58,7 @@ param set-default CA_SV_CS4_FLAP 1.0
 param set-default CA_SV_CS5_TYPE 10
 param set-default CA_SV_CS5_FLAP 1.0
 param set-default CA_SV_CS_COUNT 6
-param set-default CA_SV_FLAP_SLEW 0.06
+param set-default CA_SV_FLAP_SLEW 0.08
 
 # PWM output mapping matched to config.ini Cessna172 channels.
 # Output 6 uses PX4's Landing_Gear_Wheel output function for runway steering.
@@ -102,23 +102,22 @@ param set-default CAL_ACC0_ZOFF 0.0
 # EKF2 core settings aligned with the current px4xplane sensor contract.
 param set-default EKF2_MULTI_IMU 1
 param set-default SENS_IMU_MODE 0
-param set-default EKF2_IMU_CTRL 5
 param set-default EKF2_ABL_LIM 0.8
 param set-default EKF2_ABL_ACCLIM 35.0
 param set-default EKF2_ACC_NOISE 1.0
 param set-default EKF2_ACC_B_NOISE 0.001
 
 # Height and horizontal aiding.
-param set-default SENS_GPS0_DELAY 10
-param set-default SENS_GPS1_DELAY 10
+param set-default EKF2_BARO_NOISE 1.0
+param set-default EKF2_BARO_GATE 10.0
+param set-default SENS_GNSS0_DELAY 10
+param set-default SENS_GNSS1_DELAY 10
 # Runway roll is intentional motion while the fixed-wing land detector can still
 # report landed/at-rest. Keep normal GNSS quality checks, but do not reject a
 # valid simulator GNSS source on stationary-only horizontal drift checks.
-param set-default EKF2_GPS_CHECK 1887
-# Match the bridge's reported HIL_GPS accuracy. GPS remains the height
-# reference; baro is left at PX4 defaults as a secondary aiding source.
-param set-default EKF2_GPS_P_NOISE 1.5
-param set-default EKF2_GPS_V_NOISE 0.35
+param set-default GNSS_CHECK 1887
+param set-default EKF2_GPS_P_NOISE 2.5
+param set-default EKF2_GPS_V_NOISE 0.30
 param set-default EKF2_GPS_P_GATE 8.0
 
 # Magnetometer and airspeed aiding.
@@ -148,9 +147,9 @@ param set-default FW_RR_P 0.42
 param set-default FW_RR_I 0.11
 param set-default FW_RR_D 0.08
 param set-default FW_RR_FF 3.2
-param set-default FW_R_RMAX 6.0
+param set-default FW_R_RMAX 8.0
 param set-default FW_R_TC 1.5
-param set-default FW_R_LIM 12.0
+param set-default FW_R_LIM 15.0
 
 # Pitch.
 param set-default FW_PR_P 0.365
@@ -158,17 +157,15 @@ param set-default FW_PR_I 0.045
 param set-default FW_PR_D 0.355
 param set-default FW_PR_FF 3.4
 param set-default FW_P_LIM_MAX 20.0
-param set-default FW_P_LIM_MIN 0.0
+param set-default FW_P_LIM_MIN -5.0
 param set-default FW_P_TC 0.55
 param set-default FW_PN_R_SLEW_MAX 10.0
-param set-default FW_PSP_OFF 4.0
 
 # Ground steering during runway takeoff/landing.
 param set-default FW_W_EN 1
-param set-default FW_WR_P 0.8
+param set-default FW_WR_P 1.0
 param set-default FW_WR_I 0.12
 param set-default FW_WR_FF 0.35
-param set-default FW_W_RMAX 30.0
 
 
 ################################################################################
@@ -203,8 +200,8 @@ param set-default FW_T_I_GAIN_PIT 0.22
 param set-default FW_T_SINK_R_SP 1.2
 
 param set-default FW_THR_TRIM 0.60
-param set-default FW_THR_MIN 0.25
-param set-default FW_THR_SLEW_MAX 0.50
+param set-default FW_THR_MIN 0.10
+param set-default FW_THR_SLEW_MAX 0.25
 
 
 ################################################################################
@@ -219,7 +216,7 @@ param set-default RWTO_ROT_AIRSPD 32.0
 param set-default RWTO_ROT_TIME 2.0
 param set-default FW_TKO_AIRSPD 40.0
 param set-default FW_TKO_PITCH_MIN 10.0
-param set-default FW_FLAPS_TO_SCL 0.25
+param set-default FW_FLAPS_TO_SCL 0.33
 param set-default MIS_TAKEOFF_ALT 150.0
 
 # Auto landing. Use landing flaps and early landing configuration so the
@@ -235,10 +232,10 @@ param set-default FW_LND_FL_PMAX 20.0
 param set-default FW_LND_FL_SINK 0.30
 param set-default FW_LND_THRTC_SC 0.8
 param set-default FW_FLAPS_LND_SCL 0.85
-param set-default LNDFW_AIRSPD_MAX 12.0
-param set-default LNDFW_VEL_XY_MAX 5.0
+param set-default LNDFW_AIRSPD_MAX 30.0
+param set-default LNDFW_VEL_XY_MAX 10.0
 param set-default LNDFW_VEL_Z_MAX 1.5
-param set-default LNDFW_TRIG_TIME 2.0
+param set-default LNDFW_TRIG_TIME 1.0
 
 
 ################################################################################

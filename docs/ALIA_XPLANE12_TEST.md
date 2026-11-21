@@ -1,209 +1,84 @@
-# Alia X-Plane 12 Validation Workflow
+# Alia250 X-Plane 12 Test Card
 
-This workflow keeps the current bridge sensor contract as the baseline. Do not
-change accel signs, GPS velocity units, GPS COG, or HIL_STATE units from a
-single visual symptom. First compare truth capture, decoded bridge replay, and
-PX4 ULog estimator topics.
+## Setup
 
-## References
+Use the matching lift-plus-cruise model: four hover motors, one pusher,
+ailerons, elevator and rudder. The handling reference used a loaded mass of
+2857.22 kg. PX4 `WEIGHT_BASE` and `WEIGHT_GROSS` do not set X-Plane loading.
 
-- PX4 Simulator MAVLink API: https://docs.px4.io/main/en/simulation/
-- PX4 Generic Standard VTOL / QuadPlane tuning: https://docs.px4.io/main/en/config_vtol/vtol_quad_configuration.html
-- PX4 fixed-wing TECS/NPFG tuning: https://docs.px4.io/main/en/config_fw/position_tuning_guide_fixedwing
-- PX4 multicopter PID tuning: https://docs.px4.io/main/en/config_mc/pid_tuning_guide_multicopter.html
+1. Load the model in X-Plane 12 and select **Alia250** in the plugin.
+   The configuration section and saved `config_name` are `Alia250`.
+2. Start the normal launcher:
 
-## Scenario
+   ```bash
+   px4xplane --airframe xplane_alia250
+   ```
 
-1. Install the px4xplane package with:
-   - `px4xplane/64/win.xpl`
-   - `px4xplane/64/config.ini`
-   - `px4xplane/px4_airframes/5020_xplane_alia250`
-   - this test note or an equivalent run card
-   Set `px4xplane/64/config.ini` to `config_name = Alia250` before connecting.
-2. Install XPlaneTruthCapture `v0.1.7` or newer. Confirm that starting capture
-   changes the menu state to `Recording Active`; the optional overlay can be
-   hidden with `overlay_enabled = false` in its `capture_config.ini`.
-3. Use X-Plane 12 Alia with model calculations per frame set to `6`.
-4. Start XPlaneTruthCapture before connecting PX4.
-5. Run PX4 with the validation launcher and select `xplane_alia250`:
-   - `px4xplane --validation --reset-config`
-   Confirm the printed validation stack shows official PX4 plus the pending
-   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
-   deliberately testing `--official`.
-6. Fly:
-   - takeoff to about `100 m`
-   - forward transition
-   - RTL, circle, or loiter return
-   - back-transition
-   - landing and disarm
-7. Wait `10-15 s` after disarm before stopping PX4. This makes shutdown-only
-   vertical velocity warnings distinguishable from in-flight estimator issues.
-8. Save:
-   - XPlaneTruthCapture zip/folder
-   - PX4 `.ulg`
-   - PX4 CLI log
-   - X-Plane `Log.txt`
+3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
+   telemetry, the estimator is ready, and `SYS_AUTOSTART=5020`.
 
-## Replay
-
-Decode truth-capture frames into bridge-contract rows:
+The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+`px4xplane-airframes`. On first adoption of changed defaults, explicitly reload
+only this airframe's saved parameters:
 
 ```bash
-python3 tools/replay_truth_capture.py /path/to/XPlaneTruthCapture-run.zip \
-  --output /tmp/alia_bridge_replay.csv
+px4xplane --airframe xplane_alia250 --reset-params
 ```
 
-This replay is a deterministic core-contract check. It intentionally omits
-stochastic sensor noise so it can catch sign, unit, velocity, and scheduling
-regressions before a full X-Plane/PX4 run.
+Ordinary launches preserve saved tuning. See the
+[launcher reference](guided-launcher.md#saved-parameters) for state and backups.
 
-For quick inspection:
+## Selected Parameters
 
-```bash
-python3 tools/replay_truth_capture.py /path/to/XPlaneTruthCapture-run.zip \
-  --messages sensor,gps,state \
-  --max-messages 20 \
-  --format jsonl
-```
+The canonical reference is
+[`5020_xplane_alia250`](../config/px4_params/5020_xplane_alia250).
+These eight settings preserve the accepted handling tune:
 
-## ULog Analysis
+| Parameter | Value |
+| --- | ---: |
+| WV_YRATE_MAX | 10 |
+| FW_P_TC | 1.0 |
+| VT_B_DEC_I | 0.08 |
+| VT_B_TRANS_DUR | 40 |
+| VT_ARSP_TRANS | 48 |
+| FW_RR_FF | 1.5 |
+| CA_SV_CS0_TRIM | -0.3333333333 |
+| CA_SV_CS1_TRIM | -0.3333333333 |
 
-Install `pyulog` if needed:
+`MPC_AUTO_NUDGING=0` preserves autonomous behavior when replacing the obsolete,
+ignored `MPC_LAND_RC_HELP` assignment.
 
-```bash
-python3 -m pip install pyulog
-```
+Keep `PWM_MAIN_REV=112`, the existing output order, and the elevator/rudder
+trims unchanged. Aileron endpoints remain `[-20 10]` degrees; elevator and
+rudder endpoints remain `[-15 20]`. The two aileron trims calibrate common
+neutral without changing those endpoints. Lift-prop auto braking remains
+disabled with an empty `autoPropBrakes` setting.
 
-Analyze the estimator topics and warning windows:
+PX4 executes the airframe in its checkout under
+`ROMFS/px4fmu_common/init.d-posix/airframes/`; packaged reference copies are
+not loaded directly from the plugin directory.
 
-```bash
-python3 tools/analyze_ulog_estimator.py /path/to/log.ulg
-python3 tools/analyze_ulog_estimator.py /path/to/log.ulg --json > /tmp/alia_ulog_summary.json
-```
+## Flight Check
 
-The script requests these topics:
+1. Verify actual loading, CG, weather, QGC reception and the commanded takeoff
+   altitude before arming.
+2. Take off and settle in hover at the planned altitude.
+3. Use a long straight segment for front transition. Check airspeed, height
+   and the first fixed-wing altitude capture before turning.
+4. Check settled fixed-wing Hold and a controlled return/back-transition.
+5. Verify descent, touchdown and automatic disarm. Wait 15 seconds after
+   disarm, then enter `shutdown` in the PX4 console.
 
-`estimator_status`, `estimator_status_flags`,
-`estimator_innovation_test_ratios`, `estimator_aid_src_baro_hgt`,
-`estimator_aid_src_gnss_vel`, `vehicle_local_position`,
-`vehicle_air_data`, `sensor_baro`, `vehicle_gps_position`,
-`commander_state`.
+## Developer Checks
 
-## Acceptance
-
-- No in-flight EKF warnings.
-- No GPS rejection bursts in estimator innovation/test-ratio topics.
-- No barometer source switch during flight, or a clear ULog-backed explanation.
-- Post-landing vertical velocity warning is eliminated or shown to be shutdown-only.
-- Alia RTL/circle altitude and path deviation improve against the previous run.
-
-## Parameter Sanity Check
-
-Before a comparison run, confirm the PX4 log or shell reports `SYS_AUTOSTART=5020`.
-The `alia-sitl2/19_07_20.ulg` retest artifact had `SYS_AUTOSTART=5010`, so it
-was not valid evidence for Alia tuning.
-
-For the current `v4.2.0` Alia milestone test,
-verify these key defaults are
-active in the PX4 ULog. If they still show the previous values, reset the SITL
-parameter store and rerun before judging the package.
-
-- `EKF2_MULTI_IMU=1`
-- `SENS_IMU_MODE=0`
-- `SENS_GPS0_DELAY=10`
-- `SENS_GPS1_DELAY=10`
-- `EKF2_GPS_P_NOISE=5.0`
-- `EKF2_GPS_P_GATE=10.0`
-- `EKF2_MAG_TYPE=1`
-- `EKF2_ARSP_THR=50.0`
-- `EKF2_GSF_TAS=0.0`
-- `IMU_INTEG_RATE=200`
-- `MPC_TKO_SPEED=3.0`
-- `MPC_XY_ERR_MAX=10.0`
-- `MPC_Z_VEL_MAX_DN=2.2`
-- `MPC_Z_V_AUTO_DN=2.2`
-- `MPC_LAND_ALT1=8.0`
-- `MPC_LAND_ALT2=3.0`
-- `MPC_LAND_SPEED=0.6`
-- `MPC_LAND_CRWL=0.30`
-- `NPFG_PERIOD=40.0`
-- `NPFG_DAMPING=0.80`
-- `NPFG_ROLL_TC=0.9`
-- `NPFG_SW_DST_MLT=0.7`
-- `NAV_LOITER_RAD=2000.0`
-- `RTL_LOITER_RAD=2000.0`
-- `CAL_BARO0_ID=6620172`
-- `CAL_BARO0_PRIO=100`
-- `CAL_BARO1_ID=6620428`
-- `CAL_BARO1_PRIO=0`
-- `EKF2_GPS_P_NOISE=1.5`
-- PX4 default baro noise/gate values are used with GPS height reference
-- `EKF2_ACC_B_NOISE=0.001`
-- `CAL_ACC0_PRIO=50`
-- `ASPD_DO_CHECKS=1`
-- `SYS_HAS_NUM_ASPD=0`
-- `VT_ARSP_TRANS=40.0`
-- `VT_F_TRANS_DUR=45.0`
-- `VT_F_TR_OL_TM=55.0`
-- `FW_T_ALT_TC=7.5`
-- `FW_T_RLL2THR=8.0`
-- `FW_T_STE_R_TC=2.0`
-- `FW_T_SPDWEIGHT=0.45`
-- `FW_T_THR_DAMPING=0.35`
-- `FW_T_PTCH_DAMP=0.25`
-- `FW_T_I_GAIN_PIT=0.20`
-- `FW_T_CLMB_R_SP=2.0`
-- `FW_T_SINK_R_SP=1.5`
-- `FW_PSP_OFF=2.0`
-- `FW_AIRSPD_TRIM=55.0`
-- `FW_P_LIM_MAX=24.0`
-- `FW_R_LIM=20.0`
-- `FW_THR_TRIM=0.65`
-- `FW_THR_MIN=0.12`
-- `FW_THR_SLEW_MAX=0.35`
-- `WEIGHT_BASE=3120.0`
-- `WEIGHT_GROSS=3120.0`
-- `VT_B_TRANS_DUR=28.0`
-- `VT_B_DEC_MSS=2.0`
-- `VT_B_DEC_I=0.25`
-- `VT_B_TRANS_RAMP=10.0`
-- `RTL_RETURN_ALT=100`
-- `RTL_DESCEND_ALT=80`
-- `LNDMC_Z_VEL_MAX=0.25`
-- `COM_DISARM_LAND=1.5`
-
-Do not use the exact accelerometer offset values as a package pass/fail check.
-PX4 can update them after a run; verify estimator behavior from ULog instead.
-
-In the X-Plane `Log.txt`, confirm:
-
-- `px4xplane: Version: v4.2.0`
-- `px4xplane: No autoPropBrakes specified or parameter not found for configuration: Alia250`
-- `px4xplane: Motor brakes configured for motors: 00000000`
-
-The Alia lift-prop brake policy is generic and opt-in from `config.ini`: it
-only applies when `autoPropBrakes` lists motor indices. The current package keeps Alia
-lift-prop braking disabled by default because the accepted no-brake handoff
-kept more recovery margin than the brake-window test. `feather`, `hard_lock`,
-and `prop_separate` remain available for controlled A/B testing only.
-
-If the first connection attempt times out, click `Connect to SITL` again after
-PX4 is visibly waiting on `simulator_mavlink`. A first timeout usually means
-PX4 and the plugin missed one TCP retry window; the retry is safe and should not
-change the active airframe or parameters.
-
-The `px4xplane/px4_airframes` folder in plugin releases contains reference
-copies only. PX4 SITL reads the airframe from the PX4 repository branch under
-`ROMFS/px4fmu_common/init.d-posix/airframes/`.
-
-If a low-FPS startup produces `High Accelerometer Bias` or `vertical velocity
-unstable`, do not tune from that run until the aircraft has been restarted with
-the current airframe defaults and the warning state is rechecked. Keep the log:
-that case is useful for validating frame-rate robustness, but it is not the
-same evidence as a clean high-FPS Alia tuning flight.
-
-During front transition, keep the aircraft on a long straight outbound segment
-where practical. PX4 Standard VTOL transition should be judged by airspeed,
-height loss, TECS pitch/throttle response, and the first fixed-wing altitude
-capture, not by forcing an early tight turn before the wing-borne state is
-settled.
+- The accepted November 8 flight used source `95a0c2348232`. Integration uses
+  upstream base `0e0f3ce8a2`; flight validation of that newer core is pending.
+- The accepted flight completed front transition, fixed-wing Hold, return,
+  back-transition and landing. It did not establish the requested 120-second
+  straight segment, a complete circle, or a payload/wind/FPS envelope.
+- Preserve the selected transition values during metadata reconciliation.
+  `VT_ARSP_TRANS=48` and `VT_B_TRANS_DUR=40` exceed generic metadata limits;
+  clamping them would change the flown tune.
+- Compare effective parameters, ULog tracking, actuator saturation and
+  estimator faults. TruthCapture is optional development evidence, not a
+  normal launcher dependency.
