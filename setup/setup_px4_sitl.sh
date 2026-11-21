@@ -98,13 +98,14 @@ SCRIPT_NAME="px4xplane_script.sh"
 COMMAND_NAME="px4xplane"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
 LAUNCHER_BASE_URL="${PX4XPLANE_LAUNCHER_BASE_URL:-}"
-LAUNCHER_VERSION="2026-11-21.2"
-LAUNCHER_API_VERSION=2
+LAUNCHER_VERSION="2026-11-21.3"
+LAUNCHER_API_VERSION=3
 
 # === MAVLink Router Configuration ===
 USE_MAVLINK_ROUTER=false
 QGC_HOST=""
 RESET_PARAMS_MODE=false
+KEEP_PARAMS_MODE=false
 
 # === Repair Mode (Configurable) ===
 REPAIR_MODE=false  # Set to true if you always want full repair mode
@@ -181,6 +182,7 @@ Options:
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
   --reset-params  Back up and reset only the selected airframe's isolated SITL
                   parameter store. Does not delete another checkout's parameters.
+  --keep-params   Keep saved tuning without the interactive keep/reset question.
   --qgc-host IP   QGC IPv4 address (default: the selected X-Plane host).
   --with-mavlink-router
                   Use an already installed mavlink-routerd for a remote GCS.
@@ -268,6 +270,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --reset-params)
             RESET_PARAMS_MODE=true
+            shift
+            ;;
+        --keep-params)
+            KEEP_PARAMS_MODE=true
             shift
             ;;
         --airframe)
@@ -422,7 +428,11 @@ if [ "$LAUNCH_MODE" = validation ]; then
     fi
     APPLY_TECS_ALT_FRAME_GUARD=true
 fi
-if [ "$RESTORE_OFFICIAL_MODE" = true ] && { [ "$REPAIR_MODE" = true ] || [ -n "$AIRFRAME" ] || [ "$RESET_PARAMS_MODE" = true ] || { [ -n "$SELECTED_MODE" ] && [ "$SELECTED_MODE" != official ]; }; }; then
+if [ "$RESET_PARAMS_MODE" = true ] && [ "$KEEP_PARAMS_MODE" = true ]; then
+    echo "Error: choose --reset-params or --keep-params, not both." >&2
+    exit 1
+fi
+if [ "$RESTORE_OFFICIAL_MODE" = true ] && { [ "$REPAIR_MODE" = true ] || [ -n "$AIRFRAME" ] || [ "$RESET_PARAMS_MODE" = true ] || [ "$KEEP_PARAMS_MODE" = true ] || { [ -n "$SELECTED_MODE" ] && [ "$SELECTED_MODE" != official ]; }; }; then
     echo "Error: --restore-official cannot be combined with repair, launch, reset-params or another source mode." >&2
     exit 1
 fi
@@ -430,7 +440,7 @@ if [ "$SYNC_MODE" = false ] && { [ "$REPAIR_MODE" = true ] || [ "$RESTORE_OFFICI
     echo "Error: --no-sync cannot be combined with --repair, --restore-official, --validation or --update-launcher." >&2
     exit 1
 fi
-if [ "$UPDATE_LAUNCHER" = true ] && { [ "$REPAIR_MODE" = true ] || [ "$RESTORE_OFFICIAL_MODE" = true ] || [ -n "$AIRFRAME" ] || [ "$RESET_PARAMS_MODE" = true ] || [ "$LAUNCH_MODE" = validation ]; }; then
+if [ "$UPDATE_LAUNCHER" = true ] && { [ "$REPAIR_MODE" = true ] || [ "$RESTORE_OFFICIAL_MODE" = true ] || [ -n "$AIRFRAME" ] || [ "$RESET_PARAMS_MODE" = true ] || [ "$KEEP_PARAMS_MODE" = true ] || [ "$LAUNCH_MODE" = validation ]; }; then
     echo "Error: --update-launcher is a standalone maintenance operation." >&2
     exit 1
 fi
@@ -839,6 +849,48 @@ airframe_hash_for_platform() {
     fi
 }
 
+report_no_sync_airframe() {
+    [ "$SYNC_MODE" = false ] || return 0
+    local actual_head remote_url cached_ref cached_commit relative_path cached_blob actual_blob
+    local -x GIT_NO_LAZY_FETCH=1 GIT_OPTIONAL_LOCKS=0
+    actual_head="$(git -C "$CLONE_PATH" rev-parse --verify 'HEAD^{commit}' 2>/dev/null)" || actual_head=unknown
+    info "Offline requested source: $REPO_URL@$BRANCH_NAME."
+    info "Offline actual local HEAD: $actual_head."
+    info "Cached comparison only; remote freshness not checked (--no-sync)."
+
+    if ! remote_url="$(git -C "$CLONE_PATH" remote get-url "$PX4_REMOTE_NAME" 2>/dev/null)" || [ "$remote_url" != "$REPO_URL" ]; then
+        info "Airframe comparison unavailable: remote $PX4_REMOTE_NAME does not verify the exact requested URL."
+        return 0
+    fi
+    cached_ref="refs/remotes/$PX4_REMOTE_NAME/$BRANCH_NAME"
+    if ! cached_commit="$(git -C "$CLONE_PATH" rev-parse --verify "$cached_ref^{commit}" 2>/dev/null)"; then
+        info "Airframe comparison unavailable: no locally cached requested branch ($cached_ref)."
+        return 0
+    fi
+    info "Cached requested branch: $cached_ref at $cached_commit."
+    relative_path="$(airframe_file_for_platform "$1")"
+    if [ -z "$relative_path" ] || [ ! -f "$CLONE_PATH/$relative_path" ]; then
+        info "Airframe comparison unavailable: selected local airframe script is missing."
+        return 0
+    fi
+    if ! cached_blob="$(git -C "$CLONE_PATH" rev-parse --verify "$cached_commit:$relative_path" 2>/dev/null)" ||
+        [ "$(git -C "$CLONE_PATH" cat-file -t "$cached_blob" 2>/dev/null)" != blob ]; then
+        info "Airframe comparison unavailable: selected script is not a cached blob ($relative_path)."
+        return 0
+    fi
+    if ! actual_blob="$(git -C "$CLONE_PATH" hash-object --no-filters -- "$relative_path" 2>/dev/null)"; then
+        info "Airframe comparison unavailable: cannot fingerprint the local script ($relative_path)."
+        return 0
+    fi
+    info "Selected airframe script: $relative_path (local blob $actual_blob; cached blob $cached_blob)."
+    if [ "$actual_blob" = "$cached_blob" ]; then
+        info "Selected airframe script matches the cached requested branch; saved tuning is not compared."
+    else
+        warning "Local airframe script differs from the cached requested branch; continuing with local source and saved tuning."
+    fi
+    return 0
+}
+
 require_clean_px4_checkout() {
     local status_output operation old_stash stash_oid recovery_ref original_head
     for operation in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer; do
@@ -858,13 +910,24 @@ require_clean_px4_checkout() {
     }
     # Git stash deliberately skips embedded repositories; never imply they were saved.
     (set -o pipefail
-        git ls-files --others --exclude-standard --directory -z | while IFS= read -r -d '' path; do
+        git ls-files --others --exclude-standard --directory --no-empty-directory -z | while IFS= read -r -d '' path; do
             if [ -d "$path" ]; then
-                nested="$(find "$path" -name .git -print -quit)" || exit 1
-                if [ -n "$nested" ] || [ "$(git -C "$path" rev-parse --is-bare-repository 2>/dev/null)" = true ]; then
+                # A mixed directory can contain both user work and ignored generated repositories.
+                find "$path" \( -name .git -o -name HEAD \) -print0 -prune | while IFS= read -r -d '' nested; do
+                    ignored=0
+                    git check-ignore --quiet --no-index -- "$nested" || ignored=$?
+                    case "$ignored" in
+                        0) continue ;;
+                        1) ;;
+                        *) exit "$ignored" ;;
+                    esac
+                    if [[ "$nested" == */HEAD ]] && \
+                        [ "$(git -C "${nested%/*}" rev-parse --is-bare-repository 2>/dev/null)" != true ]; then
+                        continue
+                    fi
                     printf 'Nested untracked repository preserved: %s\n' "$path"
                     exit 1
-                fi
+                done || exit 1
             fi
         done
     ) || { warning "Move/preserve nested repositories yourself before sync; no stash was performed."; return 1; }
@@ -1542,6 +1605,7 @@ if [ -n "$PLATFORM" ]; then
         warning "Confirm X-Plane is loaded with the matching aircraft/config before arming."
 
         cd "$CLONE_PATH" || exit
+        report_no_sync_airframe "$PLATFORM"
         CURRENT_AIRFRAME_HASH="$(airframe_hash_for_platform "$PLATFORM")"
 
         {
@@ -1552,7 +1616,7 @@ if [ -n "$PLATFORM" ]; then
         } >> "$CONFIG_FILE"
 
         info "Source commit: $(git rev-parse HEAD)"
-        info "Saved tuning: isolated by checkout/source and airframe; preserved unless --reset-params."
+        info "Saved tuning: isolated by checkout/source and airframe; keep/reset choice before launch."
         progress "Building with existing cache: make -j2 px4_sitl_default"
         echo ""
 
@@ -1560,6 +1624,7 @@ if [ -n "$PLATFORM" ]; then
         RUNNER_ARGS=(--checkout "$CLONE_PATH" --target "$PLATFORM" --host "$PX4_SIM_HOSTNAME"
             --qgc-host "$QGC_STARTUP_HOST" --source-label "$REPO_URL@$BRANCH_NAME:$APPLY_TECS_ALT_FRAME_GUARD")
         [ "$RESET_PARAMS_MODE" = false ] || RUNNER_ARGS+=(--reset-params)
+        [ "$KEEP_PARAMS_MODE" = false ] || RUNNER_ARGS+=(--keep-params)
         python3 "$RUNNER_PATH" "${RUNNER_ARGS[@]}"
         PX4_EXIT_CODE=$?
         info "PX4 exited with status $PX4_EXIT_CODE. Saved tuning and logs remain in the reported runtime directory."

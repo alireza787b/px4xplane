@@ -9,8 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Respect Git ignore rules when checking embedded repositories before sync;
+  normal PX4 build caches no longer falsely block an update.
+
 ### Changed
 
+- Offer a concise keep/reset choice for existing per-airframe tuning, preserve
+  saved files by default, and report stores whose original defaults are unknown.
+  Back up stores before PX4's normal startup and reuse identical snapshots.
+- Distinguish actual offline source from requested source and warn when the
+  local airframe script differs from the locally cached requested branch.
 - Keep native official PX4 as the main Quick Start; label the optional helper
   Beta / Developer Launcher and retain one bootstrap for installation or update.
 - Refresh the installed helper before checkout setup, offer consent-only

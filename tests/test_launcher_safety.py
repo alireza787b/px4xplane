@@ -373,6 +373,137 @@ git() {
         self.assertEqual((self.repo/'tracked').read_text(), 'root edits')
         self.assertEqual(self.git('stash', 'list'), '')
 
+    def ignored_generated_repositories(self, mixed=False, directory='build'):
+        rules = f'{directory}/*\n'
+        if mixed:
+            rules += f'!{directory}/notes.txt\n'
+        (self.repo/'.gitignore').write_text(rules)
+        self.git('add', '.gitignore')
+        self.git('commit', '-m', 'ignore generated contents')
+        self.git('push', 'origin', 'main')
+        generated = self.repo/directory/'px4_sitl_default/external/project with spaces'
+        subprocess.run(['git', 'init', str(generated)], env=self.env, check=True, capture_output=True)
+        # Also cover a generated Git-file marker, not only a .git directory.
+        other = generated.parent/'other generated project'
+        other.mkdir()
+        (other/'.git').write_text('generated gitdir metadata\n')
+        stores = self.repo/directory/'px4_sitl_default/rootfs'
+        (stores/'fs').mkdir(parents=True)
+        (stores/'log').mkdir()
+        sentinels = {stores/'fs/parameters.bson': b'preserve parameters',
+                     stores/'log/flight.ulg': b'preserve ULog',
+                     generated/'.git/HEAD': (generated/'.git/HEAD').read_bytes(),
+                     other/'.git': (other/'.git').read_bytes()}
+        for path, data in sentinels.items():
+            path.write_bytes(data)
+        return sentinels
+
+    def test_ignored_build_contents_with_external_git_metadata_do_not_block_sync(self):
+        sentinels = self.ignored_generated_repositories()
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        self.assertEqual(self.git('ls-files', '--others', '--exclude-standard', '--directory'), 'build/')
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertEqual(self.git('stash', 'list'), '')
+        for path, data in sentinels.items():
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_ignore_handling_is_not_a_hardcoded_build_path_exemption(self):
+        sentinels = self.ignored_generated_repositories(directory='generated-cache')
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        for path, data in sentinels.items():
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_mixed_directory_decline_preserves_user_work_and_ignored_metadata(self):
+        sentinels = self.ignored_generated_repositories(mixed=True)
+        notes = self.repo/'build/notes.txt'
+        notes.write_text('genuine user work\n')
+        self.assertEqual(self.git('ls-files', '--others', '--exclude-standard', '--directory',
+                                  '--no-empty-directory'), 'build/')
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('PX4 has local file edits', result.stdout)
+        self.assertNotIn('Nested untracked repository', result.stdout)
+        self.assertEqual(notes.read_text(), 'genuine user work\n')
+        self.assertEqual(self.git('stash', 'list'), '')
+        for path, data in sentinels.items():
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_mixed_directory_consent_stashes_only_unignored_user_work(self):
+        sentinels = self.ignored_generated_repositories(mixed=True)
+        notes = self.repo/'build/notes.txt'
+        notes.write_text('genuine user work\n')
+        result = self.invoke(answer='yes')
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        oid = self.git('rev-parse', 'refs/stash')
+        self.assertEqual(self.git('ls-tree', '-r', '--name-only', oid+'^3'), 'build/notes.txt')
+        self.assertEqual(self.git('show', oid+'^3:build/notes.txt'), 'genuine user work')
+        self.assertEqual(self.git('rev-parse', 'refs/px4xplane/stashes/'+oid), oid)
+        for path, data in sentinels.items():
+            self.assertEqual(path.read_bytes(), data)
+
+    def test_ignored_marker_does_not_hide_a_genuine_repository_in_same_directory(self):
+        (self.repo/'.gitignore').write_text('mixed/generated/*\n')
+        self.git('add', '.gitignore')
+        self.git('commit', '-m', 'ignore generated contents')
+        ignored = self.repo/'mixed/generated/output'
+        ignored.mkdir(parents=True)
+        (ignored/'.git').write_text('generated metadata\n')
+        nested = self.repo/'mixed/genuine'
+        subprocess.run(['git', 'init', str(nested)], env=self.env, check=True, capture_output=True)
+        (nested/'work').write_text('keep nested work\n')
+        (self.repo/'tracked').write_text('root edit\n')
+        result = self.invoke(answer='yes')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Nested untracked repository preserved', result.stdout)
+        self.assertEqual((nested/'work').read_text(), 'keep nested work\n')
+        self.assertEqual((self.repo/'tracked').read_text(), 'root edit\n')
+        self.assertEqual(self.git('stash', 'list'), '')
+
+    def test_unignored_embedded_git_file_is_preserved(self):
+        source = self.module_source('linked-source')
+        nested = self.repo/'nested/linked worktree'
+        self.git_in(source, 'worktree', 'add', '--detach', str(nested))
+        self.assertTrue((nested/'.git').is_file())
+        result = self.invoke(answer='yes')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Nested untracked repository preserved', result.stdout)
+        self.assertTrue((nested/'.git').is_file())
+        self.assertEqual(self.git('stash', 'list'), '')
+
+    def test_untracked_bare_repository_is_preserved(self):
+        bare = self.repo/'bare.git'
+        subprocess.run(['git', 'init', '--bare', str(bare)], env=self.env, check=True, capture_output=True)
+        result = self.invoke(answer='yes')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Nested untracked repository preserved', result.stdout)
+        self.assertTrue((bare/'HEAD').is_file())
+        self.assertEqual(self.git('stash', 'list'), '')
+
+    def test_nested_untracked_bare_repository_is_preserved(self):
+        bare = self.repo/'outer/nested/bare.git'
+        subprocess.run(['git', 'init', '--bare', str(bare)], env=self.env, check=True, capture_output=True)
+        result = self.invoke(answer='yes')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Nested untracked repository preserved', result.stdout)
+        self.assertTrue((bare/'HEAD').is_file())
+        self.assertEqual(self.git('stash', 'list'), '')
+
+    def test_ignore_check_error_stops_without_stashing(self):
+        nested = self.repo/'nested'
+        subprocess.run(['git', 'init', str(nested)], env=self.env, check=True, capture_output=True)
+        wrapper = '''
+git() {
+    if [ "$1" = check-ignore ]; then return 23; fi
+    command git "$@"
+}
+'''
+        result = self.invoke(answer='yes', git_wrapper=wrapper)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.git('stash', 'list'), '')
+        self.assertTrue((nested/'.git').is_dir())
+
     def test_stash_postcondition_failure_stops_before_fetch(self):
         (self.repo/'tracked').write_text('work')
         wrapper = '''

@@ -11,9 +11,8 @@ import shlex
 import shutil
 import subprocess
 import sys
-import time
 
-API_VERSION = 2
+API_VERSION = 3
 AIRFRAMES = {'xplane_cessna172': 5001, 'xplane_tb2': 5002,
              'xplane_ehang184': 5010, 'xplane_alia250': 5020, 'xplane_qtailsitter': 5021}
 GCS_START = 'mavlink start -x -u $udp_gcs_port_local -r 4000000 -f $mavlink_network_interface_arg\n'
@@ -37,26 +36,103 @@ def prepare_startup(stock, mavlink, qgc):
             mavlink.replace(GCS_START, GCS_START.rstrip('\n') + f' -t {ipv4(qgc)} -o 14550\n', 1))
 
 
-def reset_parameters(root):
+def parameter_files(root):
+    return [root / name for name in ('parameters.bson', 'parameters_backup.bson',
+                                    'fs/parameters.bson', 'fs/parameters_backup.bson')]
+
+
+def backup_parameters(root):
     if root.is_symlink() or (root / 'fs').is_symlink():
         raise ValueError('Refusing to reset a symlinked runtime or parameter directory')
-    files = [root / name for name in ('parameters.bson', 'parameters_backup.bson',
-                                     'fs/parameters.bson', 'fs/parameters_backup.bson')]
+    files = parameter_files(root)
     for file in files:
         if file.is_symlink():
             raise ValueError(f'Refusing to reset symlinked parameter store: {file}')
     existing = [file for file in files if file.is_file()]
     if not existing:
         return None
-    backup = root.parent / 'backups' / str(time.time_ns())
-    # Copy every store before removing any, so a failed backup leaves the originals intact.
+    hashes = {str(file.relative_to(root)): hashlib.sha256(file.read_bytes()).hexdigest()
+              for file in existing}
+    identity = hashlib.sha256(json.dumps(hashes, sort_keys=True).encode()).hexdigest()
+    backup = root.parent / 'backups' / identity
+    for directory in (root.parent / 'backups', backup, backup / 'fs'):
+        if directory.is_symlink():
+            raise ValueError(f'Refusing a symlinked parameter backup directory: {directory}')
+    # Reuse identical snapshots; PX4's own autoconfiguration can reset imported values.
     for file in existing:
         target = backup / file.relative_to(root)
+        if target.is_symlink():
+            raise ValueError(f'Refusing a symlinked parameter backup file: {target}')
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(file, target)
-    for file in existing:
-        file.unlink()
+        expected = hashes[str(file.relative_to(root))]
+        if not target.exists():
+            shutil.copy2(file, target)
+        if target.is_symlink() or hashlib.sha256(target.read_bytes()).hexdigest() != expected:
+            raise ValueError(f'Parameter backup verification failed: {target}')
     return backup
+
+
+def reset_parameters(root):
+    backup = backup_parameters(root)
+    if backup is not None:
+        for file in parameter_files(root):
+            if file.is_file():
+                file.unlink()
+    return backup
+
+
+def parameter_storage(stock):
+    stores = {}
+    for line in stock.splitlines():
+        prefix = line.split(maxsplit=2)
+        if len(prefix) < 2 or prefix[:2] not in (['set', 'PARAM_FILE'], ['set', 'PARAM_BACKUP_FILE']):
+            continue
+        tokens = shlex.split(line, comments=True)
+        if len(tokens) == 3 and tokens[0] == 'set' and tokens[1] in ('PARAM_FILE', 'PARAM_BACKUP_FILE'):
+            stores[tokens[1]] = tokens[2]
+    if set(stores) != {'PARAM_FILE', 'PARAM_BACKUP_FILE'} or any(
+            value not in ('parameters.bson', 'parameters_backup.bson',
+                          'fs/parameters.bson', 'fs/parameters_backup.bson') for value in stores.values()):
+        raise ValueError('PX4 parameter storage layout changed; update the launcher before running this source')
+    return set(stores.values())
+
+
+def select_parameters(root, previous, fingerprint, stores, reset=False, keep=False):
+    saved = any(path.is_file() for path in parameter_files(root))
+    if saved and not reset and not any((root / name).is_file() for name in stores):
+        raise ValueError('Saved parameters use an inactive storage path for this PX4 source. '
+                         'Nothing was removed; use --reset-params to back up those files and start with current defaults.')
+    loaded = previous.get('loaded_defaults_sha256', previous.get('airframe_sha256')) if saved else fingerprint
+    if saved and not reset:
+        if loaded is None:
+            print('Saved tuning origin is unknown; current defaults are NOT confirmed loaded.')
+        elif loaded != fingerprint:
+            print('Airframe defaults changed; saved tuning has not been reset.')
+        if not keep and sys.stdin.isatty():
+            while True:
+                try:
+                    choice = input('Saved tuning: [Enter] Keep | r Back up and reset to defaults | q Quit: ').strip().lower()
+                except EOFError as exc:
+                    raise ValueError('Parameter choice cancelled; saved tuning is untouched') from exc
+                if choice in ('', 'k', 'keep'):
+                    break
+                if choice in ('r', 'reset'):
+                    reset = True
+                    break
+                if choice in ('q', 'quit'):
+                    raise ValueError('Launch cancelled; saved tuning is untouched')
+                print('Press Enter to keep tuning, r to reset, or q to quit.')
+    if reset:
+        backup = reset_parameters(root)
+        print(f'Selected airframe parameter backup: {backup or "no saved parameters"}')
+        return fingerprint
+    if saved:
+        backup = backup_parameters(root)
+        print(f'Saved tuning files: PRESERVED; pre-start backup: {backup}')
+        print('PX4 imports saved parameters using its normal autoconfiguration rules.')
+    else:
+        print('Parameters: fresh airframe defaults.')
+    return loaded
 
 
 def state_path(checkout, target, label, base):
@@ -134,6 +210,7 @@ def run(args):
     build = px4 / 'build/px4_sitl_default'
     source = px4 / 'ROMFS/px4fmu_common/init.d-posix'
     stock = (source / 'rcS').read_text()
+    stores = parameter_storage(stock)
     startup, mavlink = prepare_startup(stock, (source / 'px4-rc.mavlink').read_text(), qgc)
     fingerprint, defaults_fingerprint, defaults = validate_startup(px4, build, args.target)
     binary = build / 'bin/px4'
@@ -156,23 +233,18 @@ def run(args):
         previous = json.loads(record.read_text()) if record.exists() else {}
         if not isinstance(previous, dict):
             raise ValueError('Runtime metadata is not an object; inspect it before retrying')
-        loaded_defaults = previous.get('loaded_defaults_sha256', previous.get('airframe_sha256', defaults_fingerprint))
-        if loaded_defaults != defaults_fingerprint and not args.reset_params:
-            print('Airframe defaults changed; saved tuning is PRESERVED. Use --reset-params '
-                  'after reviewing the change to back up and reload defaults.')
-        if args.reset_params:
-            backup = reset_parameters(root)
-            print(f'Selected airframe parameter backup: {backup or "no saved parameters"}')
+        loaded_defaults = select_parameters(root, previous, defaults_fingerprint, stores,
+                                            args.reset_params, args.keep_params)
         (state / 'startup.sh').write_text(startup)
         (state / 'mavlink.sh').write_text(mavlink)
         metadata = {'source_commit': revision, 'source_label': args.source_label,
                     'target': args.target, 'sys_autostart': AIRFRAMES[args.target],
                     'airframe_sha256': fingerprint, 'xplane_host': host, 'qgc_host': qgc,
                     'defaults_files_sha256': defaults, 'defaults_sha256': defaults_fingerprint,
-                    'loaded_defaults_sha256': defaults_fingerprint if args.reset_params else loaded_defaults,
+                    'loaded_defaults_sha256': loaded_defaults,
                     'binary_sha256': binary_fingerprint, 'binary_path': str(binary)}
         record.write_text(json.dumps(metadata, indent=2) + '\n')
-        print(f'PX4 source: {revision}\nSource selection: {args.source_label}\n'
+        print(f'Actual PX4 source: {revision}\nRequested source: {args.source_label}\n'
               f'PX4 binary: {binary}\nBinary SHA256: {binary_fingerprint}\n'
               f'Airframe: {args.target} (ID {AIRFRAMES[args.target]})\n'
               f'Runtime: {root}\nX-Plane: TCP {host}:4560\nQGC target: UDP {qgc}:14550')
@@ -193,7 +265,9 @@ def main(argv=None):
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--qgc-host', default='127.0.0.1')
     parser.add_argument('--source-label', default='official')
-    parser.add_argument('--reset-params', action='store_true')
+    parameters = parser.add_mutually_exclusive_group()
+    parameters.add_argument('--reset-params', action='store_true')
+    parameters.add_argument('--keep-params', action='store_true')
     parser.add_argument('--state-root', default=str(Path(os.environ.get('XDG_STATE_HOME',
                         str(Path.home() / '.local/state'))) / 'px4xplane/sitl'))
     args = parser.parse_args(argv)
