@@ -298,6 +298,7 @@ class GuidedStartupTests(unittest.TestCase):
 
 
 @unittest.skipUnless(sys.platform.startswith('linux'),'Guided shell setup targets Ubuntu/Debian and WSL')
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Ubuntu/WSL shell launcher integration')
 class GuidedShellWorkflow(unittest.TestCase):
     def workflow(self, target=None, reverse=False, remember=False, bootstrap=False, worktree=False,
                  sync=False, sync_fail=False, build_fail=False):
@@ -465,6 +466,7 @@ exec /usr/bin/git "$@"
         self.workflow(target='xplane_tb2', build_fail=True)
 
 
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Ubuntu/WSL shell launcher integration')
 class LauncherPairInstallation(unittest.TestCase):
     def test_explicit_updates_are_atomic_and_never_rewrite_source(self):
         with tempfile.TemporaryDirectory() as tmp:
