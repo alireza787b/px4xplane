@@ -342,6 +342,8 @@ binary.write_text('#!/bin/sh\\nprintf "OFFLINE PX4 CONSOLE STUB\\\\n"\\n')
 binary.chmod(0o755)
 '''
             for name,text in [('make',make),('pgrep','#!/bin/sh\nexit 1\n'),
+                              ('cmake','#!/bin/sh\nexit 0\n'), ('ninja','#!/bin/sh\nexit 0\n'),
+                              ('gcc','#!/bin/sh\nexit 0\n'), ('g++','#!/bin/sh\nexit 0\n'),
                               ('python3', '#!/bin/sh\nif [ "$1" = - ]; then exit 0; fi\nexec /usr/bin/python3 "$@"\n'),
                               ('curl','#!/bin/sh\necho UNEXPECTED_NETWORK >&2\nexit 97\n')]:
                 file=fake/name
@@ -583,6 +585,8 @@ binary=b/'bin/px4'
 binary.write_text('#!/bin/sh\\necho NO_ARG_BOOTSTRAP_CONSOLE\\n')
 binary.chmod(0o755)
 '''}
+            for name in ('cmake', 'ninja', 'gcc', 'g++'):
+                scripts[name] = '#!/bin/sh\nexit 0\n'
             for name, content in scripts.items():
                 executable = commands/name
                 executable.write_text(content)
