@@ -505,7 +505,13 @@ last_config_value() {
 CONFIG_FILE="$DEFAULT_CONFIG_FILE"
 if [ "$RESET_CONFIG_MODE" = false ]; then
     if [ -z "$PX4_PATH_OVERRIDE" ] && [ "$#" -eq 0 ]; then
-        PX4_PATH_OVERRIDE="$(last_config_value PX4_PATH)"
+        SAVED_PX4_PATH="$(last_config_value PX4_PATH)"
+        SAVED_PX4_PATH="${SAVED_PX4_PATH/#\~/$HOME}"
+        if [ -e "$SAVED_PX4_PATH/.git" ] && [ -f "$SAVED_PX4_PATH/ROMFS/px4fmu_common/init.d-posix/rcS" ]; then
+            PX4_PATH_OVERRIDE="$SAVED_PX4_PATH"
+        elif [ -n "$SAVED_PX4_PATH" ]; then
+            echo "Saved PX4 folder is unavailable; checking the usual installation locations."
+        fi
     fi
     # A downloaded no-argument README bootstrap comes from master, not a saved branch.
     if [ -f "$SOURCE_SCRIPT_DIR/launch_sitl.py" ]; then

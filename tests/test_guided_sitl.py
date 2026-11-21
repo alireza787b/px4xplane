@@ -511,7 +511,8 @@ class ReadmeBootstrapRecovery(unittest.TestCase):
                 self.assertEqual(failure.exception.code, 1)
                 self.assertIn('Empy >=3.3,<4', output.getvalue())
 
-    def bootstrap(self, existing=False, fail_fetch=False, dirty=False, missing=False, consent=False):
+    def bootstrap(self, existing=False, fail_fetch=False, dirty=False, missing=False, consent=False,
+                  stale_path=False):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             home, seed, commands = base/'home', base/'seed', base/'commands'
@@ -538,6 +539,8 @@ touch "$HOME/deps-ready"
             subprocess.run(['/usr/bin/git', 'clone', '--bare', str(seed), env['FIXTURE_REMOTE']],
                            env=env, check=True, capture_output=True)
             checkout = home/'PX4-Autopilot'
+            if stale_path:
+                (home/'.px4sitl_config').write_text(f'PX4_PATH={home / "deleted-PX4"}\n')
             if existing:
                 subprocess.run(['/usr/bin/git', 'clone', env['FIXTURE_REMOTE'], str(checkout)],
                                env=env, check=True, capture_output=True)
@@ -633,6 +636,9 @@ binary.chmod(0o755)
 
     def test_exact_no_argument_readme_bootstrap_existing(self):
         self.bootstrap(existing=True)
+
+    def test_no_argument_bootstrap_recovers_a_missing_remembered_checkout(self):
+        self.bootstrap(stale_path=True, missing=True)
 
     def test_helper_and_global_command_refresh_before_failed_fetch(self):
         self.bootstrap(existing=True, fail_fetch=True)
