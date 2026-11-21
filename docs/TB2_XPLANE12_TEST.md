@@ -8,7 +8,7 @@ span of about 10.8 m and a loaded mass of about 418 kg.
 
 1. Load the aircraft on a long paved runway and select **TB2** in the plugin.
    The configuration section and saved `config_name` are `TB2`.
-2. Start the normal launcher:
+2. Start the beta/developer launcher:
 
    ```bash
    px4xplane --airframe xplane_tb2
@@ -18,7 +18,7 @@ span of about 10.8 m and a loaded mass of about 418 kg.
    telemetry, the estimator is ready, and `SYS_AUTOSTART=5002`.
 4. Confirm runway alignment and release the parking brake before takeoff.
 
-The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+The beta/developer launcher uses the maintained `PX4-Autopilot-Me` fork, branch
 `px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
 ```bash

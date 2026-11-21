@@ -9,7 +9,7 @@ Weight and Balance settings; PX4 `WEIGHT_*` values do not set model loading.
 
 1. Load the aircraft on a paved runway and select **Cessna 172** in the plugin.
    The configuration section and saved `config_name` are `Cessna172`.
-2. Start the normal launcher:
+2. Start the beta/developer launcher:
 
    ```bash
    px4xplane --airframe xplane_cessna172
@@ -20,7 +20,7 @@ Weight and Balance settings; PX4 `WEIGHT_*` values do not set model loading.
 4. Check actual braking after connection and release the parking brake
    before starting the runway takeoff.
 
-The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+The beta/developer launcher uses the maintained `PX4-Autopilot-Me` fork, branch
 `px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
 ```bash

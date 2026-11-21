@@ -1,7 +1,7 @@
 # QuadTailsitter X-Plane Aircraft
 
 Use the [QuadTailsitter test card](../../docs/QUADTAILSITTER_XPLANE12_TEST.md)
-for the single canonical model/profile pairing and normal launcher workflow.
+for the single canonical model/profile pairing and beta launcher workflow.
 This directory contains documentation only, not a bundled ACF or aircraft
 installer. Obtain the matching aircraft separately from its owner.
 

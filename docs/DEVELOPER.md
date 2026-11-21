@@ -3,9 +3,10 @@
 Current published package: `v4.2.1`. Source changes belong under `Unreleased`
 until a separately approved version and release are prepared.
 
-Normal setup is in the [Quick Start](../README.md#quick-start) and
-[guided launcher guide](guided-launcher.md). Keep source comparisons and
-technical verification separate from that workflow.
+Normal setup uses native official PX4 as described in the
+[Quick Start](../README.md#quick-start). The optional
+[beta/developer launcher](guided-launcher.md) provides guided project setup
+and source comparisons.
 
 ## Development Workflow
 
@@ -28,6 +29,13 @@ calibration utility now skips nonexistent/unreadable slots instead of treating
 them as free; it does not change estimator or controller tuning. Keep updates to that branch reviewable
 against their recorded upstream base; do not add a controller patch stack as
 an implicit setup step.
+
+The beta bootstrap updates its installed launcher pair before PX4 setup and
+build, so a failed checkout update does not leave an old command installed.
+Stashing needs explicit approval; retain recovery identities and never
+automatically apply a stash to a different revision. Check nested repository
+work independently. A consented rebuild must target only SITL artifacts, not
+PX4's broad clean/distclean or ignored user files.
 
 `--official` selects bare upstream `PX4/PX4-Autopilot` `main`, without project
 airframe overlays or pending patches. Upstream's available targets and default

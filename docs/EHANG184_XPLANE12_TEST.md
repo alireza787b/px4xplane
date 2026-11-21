@@ -9,7 +9,7 @@ not just the selected menu label.
 
 1. Load the model in X-Plane 12 and select **Ehang 184** in the plugin.
    The configuration section and saved `config_name` remain `ehang184`.
-2. Start the normal launcher:
+2. Start the beta/developer launcher:
 
    ```bash
    px4xplane --airframe xplane_ehang184
@@ -18,7 +18,7 @@ not just the selected menu label.
 3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
    telemetry, the estimator is ready, and `SYS_AUTOSTART=5010`.
 
-The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+The beta/developer launcher uses the maintained `PX4-Autopilot-Me` fork, branch
 `px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
 ```bash

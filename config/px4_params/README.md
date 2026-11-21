@@ -1,7 +1,7 @@
 # PX4 Airframe Reference Copies
 
 These are the five canonical project airframe reference files, also packaged
-under the plugin's `px4_airframes` directory. Normal setup uses the maintained
+under the plugin's `px4_airframes` directory. The beta launcher uses the maintained
 PX4 fork, branch `px4xplane-airframes`, which carries the matching executable
 airframe files. See the [launcher guide](../../docs/guided-launcher.md).
 
