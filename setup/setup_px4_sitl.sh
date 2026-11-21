@@ -98,7 +98,7 @@ SCRIPT_NAME="px4xplane_script.sh"
 COMMAND_NAME="px4xplane"
 PLATFORM_CHOICES=("xplane_ehang184" "xplane_alia250" "xplane_cessna172" "xplane_tb2" "xplane_qtailsitter")
 LAUNCHER_BASE_URL="${PX4XPLANE_LAUNCHER_BASE_URL:-}"
-LAUNCHER_VERSION="2026-11-21.1"
+LAUNCHER_VERSION="2026-11-21.2"
 LAUNCHER_API_VERSION=2
 
 # === MAVLink Router Configuration ===
@@ -145,6 +145,10 @@ AIRFRAME=""
 LIST_AIRFRAMES=false
 UPDATE_LAUNCHER=false
 APPLY_TECS_ALT_FRAME_GUARD=false
+VERBOSE=false
+BUILD_PID=""
+BUILD_TAIL_PID=""
+MAVLINK_ROUTER_PID=""
 
 print_usage() {
     cat <<EOF
@@ -161,7 +165,8 @@ Options:
                   List supported targets and exit without setup or network actions.
   --maintained    Use the maintained public PX4 fork (default).
   --sync          Sync the clean selected PX4 checkout to the configured remote
-                  revision and update submodules. Preserve local branches and tuning.
+                  revision and update submodules. Offer to stash ordinary local
+                  file edits only with explicit confirmation. Never auto-pop.
   --no-sync       Advanced/offline mode: do not sync the PX4 checkout before
                   launching; no launcher download or dependency installer runs.
                   Requires existing checkout/build dependencies. The build itself
@@ -170,7 +175,9 @@ Options:
                   Explicitly update the installed script/runner pair and exit.
                   Never overwrites the invoking repository source file.
   --repair        Run the full dependency/setup path and sync the selected PX4 checkout.
+  --verbose       Show full build output instead of the interactive progress indicator.
   --reset-ip      Ignore the saved PX4_SIM_HOSTNAME and choose auto/default IP again.
+                  At the address prompt, 'a' chooses auto and 'r' resets to default.
   --reset-config  Remove saved px4xplane CLI config and re-prompt all remembered values.
   --reset-params  Back up and reset only the selected airframe's isolated SITL
                   parameter store. Does not delete another checkout's parameters.
@@ -294,6 +301,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --with-mavlink-router)
             USE_MAVLINK_ROUTER=true
+            shift
+            ;;
+        --verbose)
+            VERBOSE=true
             shift
             ;;
         "$PX4_REPO_FLAG")
@@ -429,7 +440,11 @@ if [ "$UPDATE_LAUNCHER" = true ] && [ "${PX4XPLANE_SKIP_LAUNCHER_UPDATE:-0}" = 1
 fi
 
 print_launcher_selection() {
-    echo "PX4-XPlane launcher $LAUNCHER_VERSION"
+    if [ -t 1 ]; then
+        printf '%s\n' '+--------------------------------+' \
+            '| PX4 x X-PLANE                  |' '+--------------------------------+'
+    fi
+    echo "PX4-XPlane launcher $LAUNCHER_VERSION (Beta/Developer Launcher)"
     if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
         echo "  Mode: restore-official"
         echo "  Repository: $OFFICIAL_PX4_REPO_URL"
@@ -470,6 +485,12 @@ if [ "$UNINSTALL_MODE" = true ]; then
 fi
 
 # === Check for Custom Installation Directory / PX4 Checkout Parameters ===
+if ! command -v python3 >/dev/null 2>&1 || ! command -v git >/dev/null 2>&1; then
+    echo "Python 3 and Git are required. On Ubuntu/Debian run:"
+    echo "  sudo apt-get install python3 git"
+    exit 1
+fi
+SOURCE_SCRIPT_DIR="$(dirname -- "$(readlink -f -- "$0")")"
 USING_EXTERNAL_PX4_PATH=false
 AUTO_DETECTED_PX4_PATH=""
 
@@ -486,7 +507,10 @@ if [ "$RESET_CONFIG_MODE" = false ]; then
     if [ -z "$PX4_PATH_OVERRIDE" ] && [ "$#" -eq 0 ]; then
         PX4_PATH_OVERRIDE="$(last_config_value PX4_PATH)"
     fi
-    LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL:-$(last_config_value LAUNCHER_BASE_URL)}"
+    # A downloaded no-argument README bootstrap comes from master, not a saved branch.
+    if [ -f "$SOURCE_SCRIPT_DIR/launch_sitl.py" ]; then
+        LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL:-$(last_config_value LAUNCHER_BASE_URL)}"
+    fi
 fi
 LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL:-https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup}"
 LAUNCHER_BASE_URL="${LAUNCHER_BASE_URL%/}"
@@ -534,23 +558,52 @@ RUNNER_PATH="$HOME/.local/share/px4xplane/launcher/launch_sitl.py"
 
 # === Distinguish Important Prompts ===
 highlight() {
-    echo -e "\n\033[1;33m$1\033[0m\n"  # Yellow bold text
+    printf '\n%s\n\n' "$1"
 }
 
 info() {
-    echo -e "\033[1;36m[INFO]\033[0m $1"  # Cyan info messages
+    printf '[INFO] %s\n' "$1"
 }
 
 success() {
-    echo -e "\033[1;32m[SUCCESS]\033[0m $1"  # Green success messages
+    printf '[SUCCESS] %s\n' "$1"
 }
 
 warning() {
-    echo -e "\033[1;31m[WARNING]\033[0m $1"  # Red warning messages
+    printf '[WARNING] %s\n' "$1"
 }
 
 progress() {
-    echo -e "\033[1;34m[PROGRESS]\033[0m $1"  # Blue progress messages
+    printf '[PROGRESS] %s\n' "$1"
+}
+
+confirm() {
+    local answer
+    printf '%s [y/N] ' "$1"
+    if [ ! -t 0 ] || ! IFS= read -r answer; then
+        printf '\n'
+        return 1
+    fi
+    [[ "$answer" = [Yy] || "$answer" = [Yy][Ee][Ss] ]]
+}
+
+setup_global_command() {
+    refresh_global_command || return 1
+    if command -v "$COMMAND_NAME" >/dev/null 2>&1; then return 0; fi
+    local answer command_dir="$HOME/.local/bin"
+    echo "Install the px4xplane command for future sessions? [Y/n]"
+    read -t 10 -r answer || answer=""
+    if [[ -n "$answer" && ! "$answer" =~ ^[Yy]$ ]]; then return 0; fi
+    mkdir -p "$command_dir" || return 1
+    ln -sfn "$SCRIPT_PATH" "$command_dir/$COMMAND_NAME" || return 1
+    case ":$PATH:" in
+        *":$command_dir:"*) ;;
+        *)
+            printf 'export PATH="%s:$PATH"\n' "$command_dir" >> "$HOME/.bashrc"
+            export PATH="$command_dir:$PATH"
+            ;;
+    esac
+    info "Installed $command_dir/$COMMAND_NAME. Open a new terminal to refresh PATH."
 }
 
 global_command_paths() {
@@ -561,6 +614,7 @@ global_command_paths() {
 refresh_global_command() {
     local target
     local current_target
+    local staging
     local seen=":"
 
     while IFS= read -r target; do
@@ -575,10 +629,13 @@ refresh_global_command() {
             current_target="$(readlink -f "$target" 2>/dev/null || true)"
 
             if [ "$current_target" != "$SCRIPT_PATH" ]; then
-                ln -sf "$SCRIPT_PATH" "$target" 2>/dev/null || cp "$SCRIPT_PATH" "$target" 2>/dev/null || true
+                staging="$(mktemp -d "$(dirname "$target")/.px4xplane.XXXXXXXX")" || return 1
+                if ! ln -s "$SCRIPT_PATH" "$staging/command" || ! mv -Tf "$staging/command" "$target"; then
+                    rm -rf -- "$staging"
+                    return 1
+                fi
+                rmdir "$staging"
             fi
-
-            chmod +x "$target" 2>/dev/null || true
         fi
     done < <(global_command_paths)
 }
@@ -678,7 +735,6 @@ choose_px4_sim_ip() {
             if [ "$saved_source" = "manual" ]; then
                 preferred_ip="$saved_ip"
                 preferred_source="manual"
-                info "Previous manual PX4_SIM_HOSTNAME found: $saved_ip"
             elif [ "$saved_ip" = "$auto_ip" ]; then
                 preferred_ip="$saved_ip"
                 preferred_source="auto"
@@ -697,12 +753,9 @@ choose_px4_sim_ip() {
         preferred_source="auto"
     fi
 
-    echo "$prompt_text"
-    echo "  Current/default: $preferred_ip ($preferred_source)"
-    echo "  Auto-detected:   $auto_ip"
-    echo ""
-    echo "Press Enter to use current/default, type 'a' for auto, 'r' to reset to default,"
-    echo "or enter a valid IPv4 address."
+    local address_label="X-Plane"
+    [ "$environment" != "WSL host" ] || address_label="Windows"
+    echo "$address_label address [$preferred_ip]: Enter accepts; otherwise enter address."
 
     read -t 15 -r input
     input="$(normalize_ip_input "$input")"
@@ -781,20 +834,70 @@ airframe_hash_for_platform() {
 }
 
 require_clean_px4_checkout() {
-    local status_output
-    status_output="$(git status --porcelain --untracked-files=normal)" || return 1
-    if [ -n "$status_output" ]; then
-        warning "PX4 has local changes or mismatched submodules. Nothing was discarded."
-        printf '%s\n' "$status_output"
-        info "Commit/preserve your changes first, or deliberately use --no-sync."
-        return 1
-    fi
-    # Root status does not always expose untracked files in nested submodules.
-    git submodule foreach --quiet --recursive \
-        'status=$(git status --porcelain --untracked-files=normal) && test -z "$status" && test "$(git rev-parse HEAD)" = "$sha1"' || {
-        warning "A PX4 submodule has local changes; sync stopped without cleaning."
+    local status_output operation old_stash stash_oid recovery_ref original_head
+    for operation in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer; do
+        if [ -e "$(git rev-parse --git-path "$operation")" ]; then
+            warning "PX4 has an interrupted Git operation ($operation). Finish or abort it yourself; nothing was stashed."
+            return 1
+        fi
+    done
+    git submodule foreach --quiet --recursive '
+        for operation in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_START rebase-merge rebase-apply sequencer; do
+            test ! -e "$(git rev-parse --git-path "$operation")" || exit 1
+        done
+        status=$(git status --porcelain --untracked-files=normal) && test -z "$status"
+    ' || {
+        warning "A PX4 submodule has local changes or an interrupted operation. Preserved; root stash cannot cover it."
         return 1
     }
+    # Git stash deliberately skips embedded repositories; never imply they were saved.
+    (set -o pipefail
+        git ls-files --others --exclude-standard --directory -z | while IFS= read -r -d '' path; do
+            if [ -d "$path" ]; then
+                nested="$(find "$path" -name .git -print -quit)" || exit 1
+                if [ -n "$nested" ] || [ "$(git -C "$path" rev-parse --is-bare-repository 2>/dev/null)" = true ]; then
+                    printf 'Nested untracked repository preserved: %s\n' "$path"
+                    exit 1
+                fi
+            fi
+        done
+    ) || { warning "Move/preserve nested repositories yourself before sync; no stash was performed."; return 1; }
+    status_output="$(git status --porcelain --untracked-files=normal --ignore-submodules=all)" || return 1
+    if [ -n "$status_output" ]; then
+        warning "PX4 has local file edits:"
+        printf '%s\n' "$status_output"
+        echo "Saved edits will not be active after the update. You can restore them later."
+        if ! confirm "Save your PX4 edits aside and continue updating?"; then
+            info "No changes made. Preserve your work yourself, or deliberately use --no-sync."
+            return 1
+        fi
+        original_head="$(git rev-parse HEAD)" || return 1
+        old_stash="$(git rev-parse -q --verify refs/stash 2>/dev/null || true)"
+        if ! git stash push --include-untracked -m "px4xplane recovery before sync from $original_head"; then
+            warning "Stash failed. Sync stopped; inspect git status and git stash list before retrying."
+            return 1
+        fi
+        stash_oid="$(git rev-parse --verify refs/stash)" || return 1
+        if [ "$stash_oid" = "$old_stash" ]; then
+            warning "No new stash was created; sync stopped."
+            return 1
+        fi
+        recovery_ref="refs/px4xplane/stashes/$stash_oid"
+        info "Saved stash OID: $stash_oid. It will NOT be automatically applied."
+        printf 'Return to the original base, then restore staged and untracked work:\n'
+        printf '  git -C %q switch --detach %q\n' "$CLONE_PATH" "$original_head"
+        printf '  git -C %q stash apply --index %q\n' "$CLONE_PATH" "$stash_oid"
+        if ! git update-ref "$recovery_ref" "$stash_oid"; then
+            warning "Could not create durable recovery ref. Stash remains at the OID above; sync stopped."
+            return 1
+        fi
+        info "Durable recovery ref: $recovery_ref"
+        status_output="$(git status --porcelain --untracked-files=normal --ignore-submodules=all)" || return 1
+        if [ -n "$status_output" ] || [ "$(git rev-parse HEAD)" != "$original_head" ]; then
+            warning "Checkout did not reach the expected clean state after stashing. Sync stopped; use the recovery instructions above."
+            return 1
+        fi
+    fi
 }
 
 require_no_running_px4() {
@@ -867,6 +970,22 @@ fetch_guard_ref() {
     fi
 }
 
+update_submodules_safely() {
+    local key
+    local -a options=()
+    if [ -f .gitmodules ]; then
+        git config --file .gitmodules --list >/dev/null || return 1
+        while IFS= read -r -d '' key; do
+            options+=(-c "${key%.path}.update=!git -c submodule.recurse=false checkout --no-overwrite-ignore --detach --quiet")
+        done < <(git config --file .gitmodules -z --name-only --get-regexp '^submodule\..*\.path$')
+    fi
+    git "${options[@]}" -c submodule.recurse=false submodule update --init --quiet || return 1
+    # Re-read nested registrations only after their parent's checkout is updated.
+    # Git's /bin/sh may strip exported Bash functions; pass our trusted body explicitly.
+    PX4XPLANE_SUBMODULE_UPDATE="$(declare -f update_submodules_safely)" \
+        git submodule foreach --quiet 'bash -c "$PX4XPLANE_SUBMODULE_UPDATE; update_submodules_safely"'
+}
+
 sync_px4_repo_to_remote() {
     local remote_ref="$PX4_REMOTE_NAME/$BRANCH_NAME"
     local current_remote_url
@@ -914,8 +1033,11 @@ sync_px4_repo_to_remote() {
     local previous_head
     previous_head="$(git rev-parse HEAD)" || return 1
     git update-ref "refs/px4xplane/previous/$previous_head" "$previous_head" || return 1
+    git submodule foreach --quiet --recursive '
+        head=$(git rev-parse HEAD) && git update-ref "refs/px4xplane/previous/$head" "$head"
+    ' || return 1
     # Refuse collisions with ignored files as well as normal untracked files.
-    if ! git checkout --no-overwrite-ignore --detach "$remote_ref"; then
+    if ! git -c submodule.recurse=false checkout --no-overwrite-ignore --detach "$remote_ref"; then
         warning "Could not switch local branch to $remote_ref."
         return 1
     fi
@@ -924,7 +1046,7 @@ sync_px4_repo_to_remote() {
 
     progress "Synchronizing submodules..."
     git submodule sync --recursive || return 1
-    if git submodule update --init --recursive --checkout --quiet; then
+    if update_submodules_safely; then
         success "Submodules updated."
     else
         warning "Submodule update failed; no build or launch will run."
@@ -1010,6 +1132,121 @@ ensure_sitl_runner() {
     SCRIPT_PATH="$pair_dir/setup_px4_sitl.sh"
     RUNNER_PATH="$pair_dir/launch_sitl.py"
     printf 'LAUNCHER_BASE_URL=%s\n' "$LAUNCHER_BASE_URL" >> "$CONFIG_FILE" || return 1
+    if [ -e "$CLONE_PATH/.git" ]; then
+        printf 'PX4_PATH=%s\n' "$CLONE_PATH" >> "$CONFIG_FILE" || return 1
+    fi
+    return 0
+}
+
+check_sitl_dependencies() {
+    local tool missing=false
+    for tool in make cmake ninja gcc g++; do
+        if ! command -v "$tool" >/dev/null 2>&1; then
+            warning "Missing build tool: $tool"
+            missing=true
+        fi
+    done
+    # Used by PX4 Kconfig, uORB generation, and the ROMFS config generators.
+    python3 - <<'PY' || missing=true
+import importlib
+from pathlib import Path
+import re
+import sys
+missing = []
+probes = ['kconfiglib', 'em', 'genmsg.template_tools', 'jinja2', 'yaml', 'numpy']
+root = Path.cwd()
+if (root / 'src/lib/cdrstream/idl2rihs01.py').is_file():
+    probes.append('lark')
+# Probe Pillow only for an actual ROMFS generator importing it, not geotag tools.
+romfs_cmake = root / 'ROMFS/CMakeLists.txt'
+if romfs_cmake.is_file():
+    generators = re.findall(r'\$\{PX4_SOURCE_DIR\}/([^\s";)]+\.py)', romfs_cmake.read_text())
+    if any(path.is_file() and re.search(r'\b(?:from\s+PIL\s+import|import\s+PIL\b)', path.read_text())
+           for path in (root / name for name in generators)):
+        probes.append('PIL.Image')
+for name in probes:
+    try:
+        module = importlib.import_module(name)
+        if name == 'em' and not all(hasattr(module, api) for api in ('RAW_OPT', 'BUFFERED_OPT', 'Interpreter')):
+            raise ImportError('PX4 requires Empy >=3.3,<4 with RAW_OPT, BUFFERED_OPT and Interpreter')
+    except (ImportError, AttributeError) as exc:
+        missing.append(f'{name}: {exc}')
+if missing:
+    print('Missing PX4 SITL Python dependencies:\n  ' + '\n  '.join(missing))
+    sys.exit(1)
+PY
+    [ "$missing" = false ]
+}
+
+ensure_sitl_dependencies() {
+    local force="${1:-false}"
+    if [ "$force" = false ] && check_sitl_dependencies; then return 0; fi
+    if [ "$SYNC_MODE" = false ]; then
+        warning "Missing SITL dependencies in --no-sync mode. No installer was run. Bootstrap online to repair them."
+        return 1
+    fi
+    if [ "$force" = false ] && ! confirm "Run the official PX4 SITL dependency setup now?"; then
+        warning "Dependencies are still missing. Re-run px4xplane when ready to install them."
+        return 1
+    fi
+    progress "Installing SITL dependencies (no NuttX or Gazebo); this may ask for sudo."
+    if ! bash Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools; then
+        warning "Official dependency setup failed. Resolve its output and re-run px4xplane --repair."
+        return 1
+    fi
+    if ! check_sitl_dependencies; then
+        warning "Dependencies are still unavailable to python3/PATH. Reopen the terminal or activate the correct environment, then re-run px4xplane."
+        return 1
+    fi
+}
+
+build_sitl() {
+    local log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/px4xplane/build" build_status
+    mkdir -p "$log_dir" || return 1
+    BUILD_LOG="$log_dir/latest.log"
+    info "Build log: $BUILD_LOG"
+    if ! command -v setsid >/dev/null 2>&1; then
+        warning "Build process isolation requires setsid (Ubuntu/Debian util-linux). No build started."
+        return 1
+    fi
+    # Use one owned process group in every output mode, including redirected logs.
+    TERM=dumb NO_COLOR=1 CLICOLOR=0 CLICOLOR_FORCE=0 FORCE_COLOR=0 \
+        setsid make -j2 px4_sitl_default > "$BUILD_LOG" 2>&1 &
+    BUILD_PID=$!
+    if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ] && [ "${VERBOSE:-false}" = false ]; then
+        local frames='|/-\\' tick=0
+        while kill -0 "$BUILD_PID" 2>/dev/null; do
+            printf '\r[%s] Building PX4; details are in the build log.' "${frames:tick%4:1}"
+            sleep 0.15
+            tick=$((tick + 1))
+        done
+        if wait "$BUILD_PID"; then build_status=0; else build_status=$?; fi
+        BUILD_PID=""
+        printf '\r%-72s\n' "Build finished."
+    else
+        tail --pid="$BUILD_PID" -n +1 -f -s 0.1 "$BUILD_LOG" &
+        BUILD_TAIL_PID=$!
+        if wait "$BUILD_PID"; then build_status=0; else build_status=$?; fi
+        BUILD_PID=""
+        if ! wait "$BUILD_TAIL_PID"; then build_status=1; fi
+        BUILD_TAIL_PID=""
+    fi
+    if [ "$build_status" -ne 0 ]; then
+        warning "Build/logging failed. No PX4 launch performed. Last output:"
+        tail -n 30 "$BUILD_LOG"
+        info "Inspect $BUILD_LOG. For dependency problems run px4xplane --repair; otherwise resolve the reported build error and re-run."
+        return 1
+    fi
+}
+
+build_with_recovery() {
+    if build_sitl; then return 0; fi
+    if ! confirm "Clean only this SITL target with CMake and retry the build once?"; then return 1; fi
+    if ! cmake --build "$CLONE_PATH/build/px4_sitl_default" --target clean; then
+        warning "Targeted clean failed; no build directory was deleted. Inspect the build output."
+        return 1
+    fi
+    build_sitl
 }
 
 update_launcher_script_if_needed() {
@@ -1017,7 +1254,7 @@ update_launcher_script_if_needed() {
         return 0
     fi
     ensure_sitl_runner || exit 1
-    refresh_global_command
+    refresh_global_command || exit 1
     success "Installed launcher pair from $LAUNCHER_BASE_URL. Re-run the launch command."
     exit 0
 }
@@ -1032,6 +1269,8 @@ if ! command -v python3 >/dev/null 2>&1; then
     exit 1
 fi
 update_launcher_script_if_needed
+ensure_sitl_runner || exit 1
+setup_global_command || exit 1
 if ! command -v pgrep >/dev/null 2>&1; then
     warning "Process checks require pgrep. Install procps before running setup."
     exit 1
@@ -1040,6 +1279,22 @@ require_no_running_px4 || exit 1
 
 # === Trap for Cleanup ===
 cleanup() {
+    if [ -n "${BUILD_PID:-}" ]; then
+        kill -TERM -- "-$BUILD_PID" 2>/dev/null || kill -TERM "$BUILD_PID" 2>/dev/null || true
+        local attempt
+        for attempt in {1..20}; do
+            kill -0 -- "-$BUILD_PID" 2>/dev/null || break
+            sleep 0.1
+        done
+        kill -KILL -- "-$BUILD_PID" 2>/dev/null || kill -KILL "$BUILD_PID" 2>/dev/null || true
+        wait "$BUILD_PID" 2>/dev/null || true
+        BUILD_PID=""
+    fi
+    if [ -n "${BUILD_TAIL_PID:-}" ]; then
+        kill -TERM "$BUILD_TAIL_PID" 2>/dev/null || true
+        wait "$BUILD_TAIL_PID" 2>/dev/null || true
+        BUILD_TAIL_PID=""
+    fi
     if [[ -n "$MAVLINK_ROUTER_PID" ]]; then
         highlight "Stopping MAVLink Router..."
         if kill -0 "$MAVLINK_ROUTER_PID" 2>/dev/null; then
@@ -1048,6 +1303,8 @@ cleanup() {
     fi
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 if [ "$RESTORE_OFFICIAL_MODE" = true ]; then
     print_launcher_selection
@@ -1108,7 +1365,8 @@ if [ -e "$CLONE_PATH/.git" ] && [ "$REPAIR_MODE" = false ]; then
         exit 1
     fi
 
-    highlight "Skipping initial setup. Proceeding to build selection..."
+    ensure_sitl_dependencies || exit 1
+    highlight "Proceeding to build selection..."
 else
     # === Full Repair Mode (If Flag is Set or Configured) ===
     if [ "$REPAIR_MODE" = true ]; then
@@ -1136,20 +1394,7 @@ else
         sync_px4_repo_to_remote || exit 1
     fi
 
-    # === Run the ubuntu.sh Script ===
-    highlight "Installing PX4 dependencies..."
-    warning "This step may prompt for sudo password and take several minutes."
-    info "Installing SITL dependencies without the NuttX or Gazebo toolchains."
-    echo ""
-
-    if bash Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools; then
-        success "Dependencies installed successfully!"
-        info "For WSL users: It's recommended to restart WSL after first installation."
-        echo "  Exit WSL, then restart it before running this script again."
-    else
-        warning "Dependency installation failed. Resolve the setup output before launching."
-        exit 1
-    fi
+    ensure_sitl_dependencies true || exit 1
 
 fi
 
@@ -1161,6 +1406,10 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null; then
     # WSL Environment: X-Plane runs on Windows, PX4 on WSL
     highlight "WSL Environment Detected"
     echo "For X-Plane integration, PX4 needs to know your Windows IP address."
+    echo "On Windows:"
+    echo "  1. Load the matching aircraft in X-Plane."
+    echo "  2. Select its px4xplane mapping and Connect to SITL."
+    echo "  3. Open QGC; if blocked, allow TCP 4560 for X-Plane and UDP 14550 for QGC."
     echo ""
 
     # Try to auto-detect the Windows IP from WSL
@@ -1193,7 +1442,7 @@ else
 
     info "Auto-detected IP: $AUTO_DETECTED_IP (localhost)"
     echo ""
-    echo "💡 Note: For native Linux, use 127.0.0.1 (localhost) since both"
+    echo "Note: For native Linux, use 127.0.0.1 (localhost) since both"
     echo "   X-Plane and PX4 SITL run on the same machine."
     echo ""
     echo "   If X-Plane runs on a different machine, enter that machine's IP address."
@@ -1242,7 +1491,7 @@ info "QGC UDP destination: $QGC_HOST:14550 (reception not yet verified)"
 if [ "$USE_MAVLINK_ROUTER" = true ]; then
     highlight "MAVLink Router Setup"
     if ! command -v mavlink-routerd >/dev/null 2>&1; then
-        warning "mavlink-routerd is not installed. Install it separately or omit --with-mavlink-router."
+        warning "mavlink-routerd is not installed. Re-run without --with-mavlink-router for direct QGC; no router installation is needed."
         exit 1
     fi
     if [[ "$QGC_HOST" == 127.* ]]; then
@@ -1262,59 +1511,17 @@ if [ "$USE_MAVLINK_ROUTER" = true ]; then
     fi
 fi
 
-ensure_sitl_runner || exit 1
-refresh_global_command
-
-# === Global Access Setup (Optional) ===
-if ! command -v "$COMMAND_NAME" &> /dev/null; then
-    highlight "Global Command Setup"
-    echo "Set up '$COMMAND_NAME' command for system-wide access?"
-    echo "This allows you to run this script from any directory."
-    echo ""
-    echo "Press Enter to enable (default: yes) or type 'n' to skip."
-    read -t 10 -r GLOBAL_SETUP
-
-    if [[ -z "$GLOBAL_SETUP" || "$GLOBAL_SETUP" =~ ^[Yy]$ ]]; then
-        if [ -d "$HOME/bin" ]; then
-            COMMAND_DIR="$HOME/bin"
-            ln -sf "$SCRIPT_PATH" "$HOME/bin/$COMMAND_NAME"
-            success "Global command set up in: $HOME/bin/$COMMAND_NAME"
-        elif [ -d "$HOME/.local/bin" ]; then
-            COMMAND_DIR="$HOME/.local/bin"
-            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/$COMMAND_NAME"
-            success "Global command set up in: $HOME/.local/bin/$COMMAND_NAME"
-        else
-            COMMAND_DIR="$HOME/.local/bin"
-            mkdir -p "$HOME/.local/bin"
-            ln -sf "$SCRIPT_PATH" "$HOME/.local/bin/$COMMAND_NAME"
-            success "Global command set up in: $HOME/.local/bin/$COMMAND_NAME"
-        fi
-        chmod +x "$SCRIPT_PATH"
-        refresh_global_command
-        case ":$PATH:" in
-            *":$COMMAND_DIR:"*) ;;
-            *)
-                printf 'export PATH="%s:$PATH"\n' "$COMMAND_DIR" >> "$HOME/.bashrc"
-                export PATH="$COMMAND_DIR:$PATH"
-                info "Open a new WSL/terminal session to refresh the parent shell's command path."
-                ;;
-        esac
-        info "You can now run '$COMMAND_NAME' from anywhere!"
-    else
-        info "Global access setup skipped."
-    fi
-fi
-
 # === Platform Selection and Build ===
 PLATFORM="$AIRFRAME"
 if [ -z "$PLATFORM" ]; then
     highlight "Platform Selection"
     echo "Select the X-Plane airframe to build and launch:"
-    select PLATFORM in "${PLATFORM_CHOICES[@]}" "Exit"; do
-        if [[ "$PLATFORM" == "Exit" ]]; then
+    select AIRFRAME_LABEL in "Ehang 184" "Alia 250" "Cessna 172" "TB2" "QuadTailsitter" "Exit"; do
+        if [[ "$AIRFRAME_LABEL" == "Exit" ]]; then
             info "Exiting without building..."
             exit 0
-        elif [ -n "$PLATFORM" ]; then
+        elif [ -n "$AIRFRAME_LABEL" ]; then
+            PLATFORM="${PLATFORM_CHOICES[$((REPLY - 1))]}"
             break
         fi
         warning "Invalid selection. Please choose a valid platform or 'Exit'."
@@ -1343,10 +1550,7 @@ if [ -n "$PLATFORM" ]; then
         progress "Building with existing cache: make -j2 px4_sitl_default"
         echo ""
 
-        if ! make -j2 px4_sitl_default; then
-            warning "Build failed. No PX4 launch performed."
-            exit 1
-        fi
+        build_with_recovery || exit 1
         RUNNER_ARGS=(--checkout "$CLONE_PATH" --target "$PLATFORM" --host "$PX4_SIM_HOSTNAME"
             --qgc-host "$QGC_STARTUP_HOST" --source-label "$REPO_URL@$BRANCH_NAME:$APPLY_TECS_ALT_FRAME_GUARD")
         [ "$RESET_PARAMS_MODE" = false ] || RUNNER_ARGS+=(--reset-params)

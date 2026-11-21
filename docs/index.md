@@ -3,21 +3,21 @@
 ## Start Here
 
 - [README](../README.md#quick-start) - installation and beginner quick start
-- [Guided Launcher](guided-launcher.md) - maintained PX4 setup, airframe selection and saved parameters
+- [Beta / Developer Launcher](guided-launcher.md) - optional guided setup and maintained airframe settings
 - [Custom Airframe Config](custom-airframe-config.md)
 - [Config Editor](config-editor.html)
 - [Config Schema](developer/config-schema.md)
 
-The current published package is `v4.2.1`. Normal runs use `--maintained`, the
-project's `px4xplane-airframes` branch with current airframe defaults on an
-upstream PX4 base. `--official` is a bare-upstream alternative, not a way to
-apply these references to upstream. See [source modes](guided-launcher.md#source-modes).
-
-Install the plugin and matching aircraft, select its plugin mapping, run
-`px4xplane`, then confirm the simulator connection and QGC telemetry.
-Use `--airframe <target>` to select directly or `--list-airframes` to list names.
+The current published package is `v4.2.1`. Normal setup uses native official
+PX4 targets as described in the README. The optional beta launcher uses the
+project's maintained branch for the latest airframe settings. Its `--official`
+mode selects bare upstream without those project updates. See
+[source modes](guided-launcher.md#source-modes) before comparing results.
 
 ## Flight-Test Cards
+
+These checks use the maintained project's airframe settings via the beta
+launcher. They are not a claim that the same defaults are already upstream.
 
 - [Alia 250](ALIA_XPLANE12_TEST.md)
 - [Ehang 184](EHANG184_XPLANE12_TEST.md)
@@ -25,13 +25,12 @@ Use `--airframe <target>` to select directly or `--list-airframes` to list names
 - [Cessna 172](CESSNA172_XPLANE12_TEST.md)
 - [TB2](TB2_XPLANE12_TEST.md)
 
-## Advanced Manual Setup
+## Native PX4 Setup
 
-For macOS, containers or a manually managed checkout, follow the official
+For the standard workflow on your platform, follow the official
 [PX4 development environment](https://docs.px4.io/main/en/dev_setup/dev_env.html)
 and [X-Plane simulation guide](https://docs.px4.io/main/en/sim_xplane/).
-Use the maintained branch for project airframe defaults or bare upstream for
-an explicit comparison. Do not assume the defaults are identical.
+The beta launcher is an alternative for project tuning and development.
 
 ## Network and Platform Notes
 
@@ -48,9 +47,12 @@ WSL2 normally uses localhost; WSL2 NAT needs the Windows host address.
 The launcher detects WSL networking and refreshes automatically detected
 addresses; manually entered addresses remain saved until `--reset-ip`.
 
-QGC telemetry is separate: normally UDP `14550` on the QGC host. For remote
-QGC, use `px4xplane --qgc-host <qgc-host-ip>` and allow that UDP traffic.
-Direct MAVLink is the default. A reported target address is not confirmation
+QGC telemetry is separate: normally UDP `14550` on the QGC host. Native PX4
+users running QGC on Windows should follow the official
+[WSL QGC connection instructions](https://docs.px4.io/main/en/dev_setup/dev_env_windows_wsl#qgroundcontrol-on-windows).
+The beta launcher targets Windows QGC directly; use
+`px4xplane --qgc-host <qgc-host-ip>` for a separate QGC machine.
+A reported target address is not confirmation
 that QGC is receiving; check for a connected vehicle in QGC. See the
 [launcher networking guide](guided-launcher.md#x-plane-and-qgc-networking)
 for the optional, explicitly enabled MAVLink Router path.
@@ -60,9 +62,10 @@ for the optional, explicitly enabled MAVLink Router path.
 - Wrong X-Plane host: run `px4xplane --reset-ip` and select the correct address.
 - QGC has no vehicle: check its host address, UDP `14550`, firewall and QGC
   connection status separately from the X-Plane TCP connection.
-- Checkout update refused: inspect `git status` in PX4 and its submodules.
-  Preserve your changes yourself, or select another clean checkout with
-  `--px4-path`. The launcher does not force-stash, reset or clean your work.
+- Beta launcher update paused for local edits: choose whether to save ordinary
+  files aside or keep them in place. Edited submodules, embedded repositories
+  and unfinished Git operations need individual review; no work is discarded.
+  See [checkout recovery](guided-launcher.md#existing-checkouts-and-sync).
 - Unexpected saved tuning: inspect the selected source, actual PX4 ROMFS
   airframe file and runtime state. Plugin reference files are not executed.
   `px4xplane --airframe <target> --reset-params` backs up and resets only that runtime.
@@ -99,8 +102,8 @@ Before arming, match the loaded aircraft, active `config_name` and PX4
 `SYS_AUTOSTART`. The plugin reads `px4xplane/64/config.ini`; `config_schema.json`
 is editor/validator metadata, not runtime configuration.
 
-TruthCapture is optional diagnostic recording. Normal setup uses the launcher,
-matching aircraft and plugin mapping without additional recording tools.
+TruthCapture is optional diagnostic recording. Neither native PX4 setup nor
+the beta launcher requires additional recording tools.
 
 ## Public Docs Policy
 

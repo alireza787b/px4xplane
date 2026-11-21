@@ -9,7 +9,7 @@ model and its original CG, not the earlier 5 kg dynamics.
 1. Load the matching model in X-Plane 12 and select **QuadTailsitter** in the
    plugin. The configuration section and saved `config_name` remain
    `QuadTailsitter`.
-2. Start the normal launcher:
+2. Start the beta/developer launcher:
 
    ```bash
    px4xplane --airframe xplane_qtailsitter
@@ -18,7 +18,7 @@ model and its original CG, not the earlier 5 kg dynamics.
 3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
    telemetry, the estimator is ready, and `SYS_AUTOSTART=5021`.
 
-The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+The beta/developer launcher uses the maintained `PX4-Autopilot-Me` fork, branch
 `px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
 ```bash

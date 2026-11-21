@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -341,6 +342,7 @@ binary.write_text('#!/bin/sh\\nprintf "OFFLINE PX4 CONSOLE STUB\\\\n"\\n')
 binary.chmod(0o755)
 '''
             for name,text in [('make',make),('pgrep','#!/bin/sh\nexit 1\n'),
+                              ('python3', '#!/bin/sh\nif [ "$1" = - ]; then exit 0; fi\nexec /usr/bin/python3 "$@"\n'),
                               ('curl','#!/bin/sh\necho UNEXPECTED_NETWORK >&2\nexit 97\n')]:
                 file=fake/name
                 file.write_text(text)
@@ -408,8 +410,13 @@ exec /usr/bin/git "$@"
                 self.assertNotEqual(result.returncode, 0, result.stdout+result.stderr)
                 self.assertNotIn('OFFLINE PX4 CONSOLE STUB', result.stdout)
                 self.assertNotIn('UNEXPECTED_NETWORK', result.stderr)
-                self.assertFalse((home/'state').exists())
+                self.assertFalse((home/'state/px4xplane/sitl').exists())
                 self.assertEqual((ROOT/'setup/setup_px4_sitl.sh').read_bytes(), source_before)
+                if build_fail:
+                    log = home/'state/px4xplane/build/latest.log'
+                    self.assertTrue(log.is_file())
+                    self.assertIn(str(log), result.stdout)
+                    self.assertNotIn('\x1b', log.read_text())
                 return
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             self.assertIn('OFFLINE PX4 CONSOLE STUB',result.stdout)
@@ -464,6 +471,176 @@ exec /usr/bin/git "$@"
     def test_sync_and_build_failures_do_not_launch(self):
         self.workflow(target='xplane_tb2', sync=True, sync_fail=True)
         self.workflow(target='xplane_tb2', build_fail=True)
+
+
+@unittest.skipUnless(sys.platform.startswith('linux'), 'Ubuntu/WSL shell launcher integration')
+class ReadmeBootstrapRecovery(unittest.TestCase):
+    def test_dependency_probes_follow_current_build_generators_not_analysis_packages(self):
+        shell = (ROOT/'setup/setup_px4_sitl.sh').read_text()
+        probe = shell.split("python3 - <<'PY' || missing=true\n", 1)[1].split('\nPY\n', 1)[0]
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            def run_probe():
+                with mock.patch('pathlib.Path.cwd', return_value=root), \
+                     mock.patch('importlib.import_module', return_value=mock.Mock()) as imports:
+                    exec(compile(probe, '<dependency-probe>', 'exec'), {})
+                return [call.args[0] for call in imports.call_args_list]
+            names = run_probe()
+            self.assertIn('numpy', names)
+            self.assertNotIn('lark', names)
+            self.assertNotIn('PIL.Image', names)
+            generator = root/'src/lib/cdrstream/idl2rihs01.py'
+            generator.parent.mkdir(parents=True)
+            generator.write_text('# RIHS generator\n')
+            (root/'ROMFS').mkdir()
+            (root/'ROMFS/CMakeLists.txt').write_text('${PX4_SOURCE_DIR}/Tools/resource_gen.py\n')
+            (root/'Tools').mkdir()
+            (root/'Tools/resource_gen.py').write_text('from PIL import Image\n')
+            names = run_probe()
+            self.assertIn('lark', names)
+            self.assertIn('PIL.Image', names)
+            self.assertNotIn('pandas', names)
+            self.assertNotIn('matplotlib', names)
+            with mock.patch('pathlib.Path.cwd', return_value=root), \
+                 mock.patch('importlib.import_module', side_effect=lambda name: object() if name == 'em' else mock.Mock()), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                with self.assertRaises(SystemExit) as failure:
+                    exec(compile(probe, '<dependency-probe>', 'exec'), {})
+                self.assertEqual(failure.exception.code, 1)
+                self.assertIn('Empy >=3.3,<4', output.getvalue())
+
+    def bootstrap(self, existing=False, fail_fetch=False, dirty=False, missing=False, consent=False):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            home, seed, commands = base/'home', base/'seed', base/'commands'
+            home.mkdir()
+            commands.mkdir()
+            write_startup(seed)
+            (seed/'.gitignore').write_text('build/\n')
+            setup = seed/'Tools/setup/ubuntu.sh'
+            setup.parent.mkdir(parents=True)
+            setup.write_text('''#!/bin/sh
+printf '%s\\n' "$*" >> "$HOME/setup-calls"
+touch "$HOME/deps-ready"
+''')
+            env = {'HOME': str(home), 'PATH': str(commands)+':'+str(home/'.local/bin')+':/usr/bin:/bin',
+                   'TERM': 'dumb', 'GIT_ALLOW_PROTOCOL': 'file', 'GIT_CONFIG_NOSYSTEM': '1',
+                   'GIT_CONFIG_GLOBAL': os.devnull, 'GIT_AUTHOR_NAME': 'Offline test',
+                   'GIT_AUTHOR_EMAIL': 'test@example.invalid', 'GIT_COMMITTER_NAME': 'Offline test',
+                   'GIT_COMMITTER_EMAIL': 'test@example.invalid', 'FIXTURE_REMOTE': str(base/'remote.git'),
+                   'FIXTURE_SETUP': str(ROOT/'setup'), 'FAIL_FETCH': str(int(fail_fetch)),
+                   'MISSING_DEPS': str(int(missing))}
+            for args in (['init', '-b', 'px4xplane-airframes'], ['add', '.'],
+                         ['-c', 'commit.gpgsign=false', 'commit', '-m', 'fixture']):
+                subprocess.run(['/usr/bin/git', '-C', str(seed), *args], env=env, check=True, capture_output=True)
+            subprocess.run(['/usr/bin/git', 'clone', '--bare', str(seed), env['FIXTURE_REMOTE']],
+                           env=env, check=True, capture_output=True)
+            checkout = home/'PX4-Autopilot'
+            if existing:
+                subprocess.run(['/usr/bin/git', 'clone', env['FIXTURE_REMOTE'], str(checkout)],
+                               env=env, check=True, capture_output=True)
+                command = home/'.local/bin/px4xplane'
+                command.parent.mkdir(parents=True)
+                command.write_text('#!/bin/sh\necho OLD_HELPER\n')
+                command.chmod(0o755)
+                (home/'.px4sitl_config').write_text('LAUNCHER_BASE_URL=https://example.invalid/old/setup\n')
+                if dirty:
+                    (checkout/'.gitignore').write_text('build/\n# keep my edit\n')
+            scripts = {
+                'curl': '''#!/usr/bin/python3
+import os, shutil, sys
+from pathlib import Path
+args=sys.argv[1:]
+url=next(arg for arg in args if arg.startswith('https://'))
+assert url.startswith('https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/')
+name=url.rsplit('/',1)[-1]
+with (Path(os.environ['HOME'])/'downloads').open('a') as log: log.write(name+'\\n')
+shutil.copyfile(Path(os.environ['FIXTURE_SETUP'])/name,args[args.index('-o')+1])
+''',
+                'git': '''#!/usr/bin/python3
+import os, sys
+args=sys.argv[1:]
+if args and args[0]=='fetch' and os.environ['FAIL_FETCH']=='1': raise SystemExit(23)
+args=[os.environ['FIXTURE_REMOTE'] if value=='https://github.com/alireza787b/PX4-Autopilot-Me.git' else value for value in args]
+os.execv('/usr/bin/git',['git',*args])
+''',
+                'python3': '''#!/bin/sh
+if [ "$1" = - ]; then
+    if [ "$MISSING_DEPS" = 1 ] && [ ! -f "$HOME/deps-ready" ]; then echo MISSING_TEST_DEPENDENCY; exit 1; fi
+    exit 0
+fi
+exec /usr/bin/python3 "$@"
+''',
+                'pgrep': '#!/bin/sh\nexit 1\n',
+                'make': '''#!/usr/bin/python3
+from pathlib import Path
+import shutil
+p=Path.cwd()
+b=p/'build/px4_sitl_default'
+shutil.copytree(p/'ROMFS/px4fmu_common',b/'etc',dirs_exist_ok=True)
+(b/'bin').mkdir(parents=True,exist_ok=True)
+binary=b/'bin/px4'
+binary.write_text('#!/bin/sh\\necho NO_ARG_BOOTSTRAP_CONSOLE\\n')
+binary.chmod(0o755)
+'''}
+            for name, content in scripts.items():
+                executable = commands/name
+                executable.write_text(content)
+                executable.chmod(0o755)
+            examples = re.findall(r'```bash\n(.*?)```', (ROOT/'README.md').read_text(), re.S)
+            command = next(block for block in examples if 'setup_px4_sitl.sh' in block)
+            if consent:
+                import pty
+                master, slave = pty.openpty()
+                try:
+                    process = subprocess.Popen(['/bin/bash', '-c', command], env=env, cwd=base,
+                                               stdin=slave, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                    os.close(slave)
+                    os.write(master, b'\ny\n\n1\n')
+                    stdout, stderr = process.communicate(timeout=30)
+                    result = subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+                finally:
+                    os.close(master)
+            else:
+                result = subprocess.run(['/bin/bash', '-c', command], env=env, cwd=base,
+                                        input='\n\n\n1\n', capture_output=True, text=True, timeout=30)
+            refreshed = home/'.local/bin/px4xplane'
+            self.assertTrue(refreshed.is_symlink(), result.stdout+result.stderr)
+            self.assertEqual(refreshed.read_bytes(), (ROOT/'setup/setup_px4_sitl.sh').read_bytes())
+            self.assertEqual((home/'downloads').read_text().splitlines(), ['setup_px4_sitl.sh', 'launch_sitl.py'])
+            self.assertNotIn('\x1b', result.stdout)
+            if fail_fetch or dirty or (existing and missing and not consent):
+                self.assertNotEqual(result.returncode, 0, result.stdout+result.stderr)
+                self.assertNotIn('NO_ARG_BOOTSTRAP_CONSOLE', result.stdout)
+            else:
+                self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+                self.assertIn('NO_ARG_BOOTSTRAP_CONSOLE', result.stdout)
+                self.assertIn('Ehang 184', result.stderr)
+            self.assertEqual((home/'setup-calls').exists(), not existing or consent)
+            if not existing or consent:
+                self.assertEqual((home/'setup-calls').read_text().strip(), '--no-nuttx --no-sim-tools')
+            if dirty:
+                self.assertIn('# keep my edit', (checkout/'.gitignore').read_text())
+                stash = subprocess.check_output(['/usr/bin/git', '-C', str(checkout), 'stash', 'list'], env=env, text=True)
+                self.assertEqual(stash, '')
+
+    def test_exact_no_argument_readme_bootstrap_fresh(self):
+        self.bootstrap(missing=True)
+
+    def test_exact_no_argument_readme_bootstrap_existing(self):
+        self.bootstrap(existing=True)
+
+    def test_helper_and_global_command_refresh_before_failed_fetch(self):
+        self.bootstrap(existing=True, fail_fetch=True)
+
+    def test_no_argument_dirty_checkout_eof_preserves_work_with_current_helper(self):
+        self.bootstrap(existing=True, dirty=True)
+
+    def test_existing_checkout_checks_missing_dependencies_and_declines_without_tty(self):
+        self.bootstrap(existing=True, missing=True)
+
+    def test_existing_checkout_dependency_repair_requires_yes_and_rechecks(self):
+        self.bootstrap(existing=True, missing=True, consent=True)
 
 
 @unittest.skipUnless(sys.platform.startswith('linux'), 'Ubuntu/WSL shell launcher integration')

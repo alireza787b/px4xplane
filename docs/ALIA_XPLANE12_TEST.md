@@ -8,7 +8,7 @@ ailerons, elevator and rudder. The handling reference used a loaded mass of
 
 1. Load the model in X-Plane 12 and select **Alia250** in the plugin.
    The configuration section and saved `config_name` are `Alia250`.
-2. Start the normal launcher:
+2. Start the beta/developer launcher:
 
    ```bash
    px4xplane --airframe xplane_alia250
@@ -17,7 +17,7 @@ ailerons, elevator and rudder. The handling reference used a loaded mass of
 3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
    telemetry, the estimator is ready, and `SYS_AUTOSTART=5020`.
 
-The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+The beta/developer launcher uses the maintained `PX4-Autopilot-Me` fork, branch
 `px4xplane-airframes`. On first adoption of changed defaults, explicitly reload
 only this airframe's saved parameters:
 
@@ -81,4 +81,4 @@ not loaded directly from the plugin directory.
   clamping them would change the flown tune.
 - Compare effective parameters, ULog tracking, actuator saturation and
   estimator faults. TruthCapture is optional development evidence, not a
-  normal launcher dependency.
+  beta/developer launcher dependency.

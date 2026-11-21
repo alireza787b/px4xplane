@@ -626,7 +626,7 @@ if(PX4XPLANE_BUILD_TESTS)
         if(UNIX)
             add_test(
                 NAME guided_sitl_runner
-                COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_guided_sitl tests.test_launcher_safety
+                COMMAND ${Python3_EXECUTABLE} -m unittest tests.test_guided_sitl tests.test_launcher_safety tests.test_launcher_ui
                 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             )
             add_test(

@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Keep native official PX4 as the main Quick Start; label the optional helper
+  Beta / Developer Launcher and retain one bootstrap for installation or update.
+- Refresh the installed helper before checkout setup, offer consent-only
+  recovery stashes, and check existing installations for missing dependencies.
+- Add friendly aircraft selection, terminal build progress and `--verbose`,
+  with a single consented targeted-SITL clean retry after build failure.
 - Make guided setup use the maintained X-Plane airframe branch by default;
   retain bare official PX4 and explicit developer validation as separate modes.
 - Add direct airframe selection, a side-effect-free airframe list and explicit

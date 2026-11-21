@@ -52,6 +52,12 @@ def function_source(name):
 
 
 class SetupLauncherTest(unittest.TestCase):
+    def test_router_cleanup_never_inherits_an_unowned_pid(self):
+        result = shell(OPTIONS + '\nprintf "%s" "$MAVLINK_ROUTER_PID"\n',
+                       env={'MAVLINK_ROUTER_PID': '12345'})
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '')
+
     def test_router_and_parameter_reset_require_explicit_flags(self):
         report='\nprintf "router=%s reset_params=%s qgc=%s\\n" "$USE_MAVLINK_ROUTER" "$RESET_PARAMS_MODE" "$QGC_HOST"\n'
         for flags,expected in (((), 'router=false reset_params=false qgc='),
@@ -255,7 +261,7 @@ success() { :; }
 
     def test_no_sync_uses_local_head_without_remote_check_or_prompt(self):
         detection = SOURCE.split("    # === Auto-Sync Detection ===\n", 1)[1].split(
-            '\n    highlight "Skipping initial setup.', 1
+            '\n    ensure_sitl_dependencies', 1
         )[0]
         mocks = r"""
 cd() { :; }
@@ -322,6 +328,7 @@ progress() { :; }
 reset_saved_sitl_parameters() { :; }
 require_clean_px4_checkout() { :; }
 require_no_running_px4() { :; }
+update_submodules_safely() { :; }
 git() {
     case "$1" in
         status) ;;
@@ -387,18 +394,52 @@ apply_guard_commits() {
         self.assertNotIn('Forbidden external command', result.stderr)
 
     def test_initial_and_repair_dependencies_are_sitl_only(self):
-        setup = SOURCE.split('    # === Run the ubuntu.sh Script ===\n', 1)[1].split('\nfi\n', 1)[0]
+        setup = function_source('ensure_sitl_dependencies')
         mocks = r'''
 highlight() { :; }
 warning() { :; }
 info() { :; }
 success() { :; }
 bash() { printf 'dependency-command'; printf ' %s' "$@"; printf '\n'; }
+check_sitl_dependencies() { return 0; }
 '''
-        result = shell(mocks + setup)
+        result = shell('SYNC_MODE=true\n' + mocks + setup + '\nensure_sitl_dependencies true\n')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('dependency-command Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools', result.stdout)
         self.assertNotIn('GIT_SUBMODULES_ARE_EVIL', SOURCE)
+
+    def test_dependency_recovery_is_consented_rechecked_and_offline_safe(self):
+        mocks = r'''
+warning() { echo "$*"; }
+progress() { echo "$*"; }
+confirm() { [ "$CONSENT" = yes ]; }
+check_sitl_dependencies() { [ "${INSTALLED:-false}" = true ]; }
+bash() { printf 'official %s\n' "$*"; INSTALLED=true; }
+'''
+        function = function_source('ensure_sitl_dependencies')
+        for sync, consent, expected in (('true', 'yes', 0), ('true', 'no', 1), ('false', 'yes', 1)):
+            result = shell(f'SYNC_MODE={sync}\nCONSENT={consent}\n' + mocks + function + '\nensure_sitl_dependencies\n')
+            self.assertEqual(result.returncode, expected, result.stdout+result.stderr)
+            self.assertEqual('official Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools' in result.stdout,
+                             sync == 'true' and consent == 'yes')
+
+    def test_targeted_clean_requires_consent_and_retries_at_most_once(self):
+        mocks = r'''
+warning() { echo "$*"; }
+confirm() { [ "$CONSENT" = yes ]; }
+attempt=0
+build_sitl() { attempt=$((attempt+1)); echo "build-attempt=$attempt"; return 1; }
+cmake() { printf 'targeted-clean'; printf ' %s' "$@"; printf '\n'; return "$CLEAN_STATUS"; }
+'''
+        for consent, clean_status, attempts in (('no', 0, 1), ('yes', 0, 2), ('yes', 23, 1)):
+            result = shell(f'CLONE_PATH="/checkout with spaces"\nCONSENT={consent}\nCLEAN_STATUS={clean_status}\n'
+                           + mocks + function_source('build_with_recovery') + '\nbuild_with_recovery\n')
+            self.assertEqual(result.returncode, 1, result.stdout+result.stderr)
+            self.assertEqual(result.stdout.count('build-attempt='), attempts)
+            self.assertEqual('targeted-clean --build /checkout with spaces/build/px4_sitl_default --target clean'
+                             in result.stdout, consent == 'yes')
+        self.assertNotIn('make clean', SOURCE)
+        self.assertNotIn('make distclean', SOURCE)
 
 
 if __name__ == "__main__":

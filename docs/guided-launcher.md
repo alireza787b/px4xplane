@@ -1,10 +1,10 @@
-# Guided PX4 Launcher
+# Beta / Developer Launcher
 
-The `px4xplane` launcher prepares PX4, selects an airframe and starts SITL on
-Ubuntu/Debian, including WSL on Windows. Start with the
-[Quick Start](../README.md#quick-start) to install X-Plane, the plugin and the
-matching aircraft. Other platforms can use the
-[advanced manual setup](../README.md#advanced-manual-setup).
+The optional `px4xplane` launcher prepares PX4, selects an airframe and starts
+SITL on Ubuntu/Debian, including WSL on Windows. It tests the project's latest
+airframe settings and supports custom development sources. Normal use follows
+the native official PX4 [Quick Start](../README.md#quick-start).
+Install X-Plane, its plugin and the matching aircraft before using either path.
 
 ## Install and Run
 
@@ -27,7 +27,8 @@ matching aircraft in X-Plane, select its plugin mapping, and choose
 After a run, use `shutdown` in the PX4 console.
 
 To update an existing installation, run the same setup command again. It
-refreshes the installed launcher pair and reuses the PX4 checkout. You can
+refreshes the installed launcher pair before updating/building PX4 and reuses
+the checkout. You can
 also run `px4xplane --update-launcher` to update just the launcher, then start
 `px4xplane` normally.
 
@@ -80,11 +81,38 @@ Select an existing checkout explicitly when needed:
 px4xplane --px4-path ~/PX4-Autopilot --airframe xplane_alia250
 ```
 
-The launcher checks tracked, untracked and submodule changes before updating.
-It stops for work that prevents a safe update; it does not force-stash,
-force-reset or run `git clean`. Selected revisions are checked out detached,
+The launcher checks local edits before updating. It can save ordinary PX4
+file edits aside and continue **only after you explicitly agree**. Declining
+or closing the prompt preserves them in place and stops the update. Saved
+edits are not automatically reapplied to the updated source: the launcher
+prints their backup identity for recovery.
+
+Unfinished Git operations, edited submodules and embedded repositories need
+individual review; the helper does not pretend a top-level backup covers
+them. It never force-resets or runs `git clean`. Selected revisions are checked out detached,
 preserving local branch pointers and `origin`. Switching source modes reuses
-the same checkout and cache, not a separate clone for every run.
+the same checkout and cache, not a separate clone for every run. The helper
+syncs the selected project branch; maintainers integrate upstream changes in
+that branch, not by silently merging official PX4 into the user's checkout.
+
+## Setup and Build Recovery
+
+Fresh setup uses PX4's own dependency installer. Existing installations are
+checked for missing build tools and Python dependencies; setup asks before
+running the official installer when repair is needed. It does not introduce
+a separate package installation method. Offline `--no-sync` runs do not
+download helpers or run dependency installers.
+
+On a build failure, keep the error report. A clean rebuild, when offered,
+cleans only the selected SITL build target after confirmation and retries
+once. Saved per-airframe tuning and ULogs remain outside that build target.
+The launcher does not run broad `make clean`, `distclean` or submodule clean
+commands, which can affect other builds and ignored files.
+
+Use `--verbose` for detailed output. Interactive progress is not a percentage
+estimate; logs retain the actual build output.
+
+## Advanced Source Options
 
 `--sync` requests normal synchronization. `--no-sync` skips launcher update
 checks and PX4 remote checks/fetches and uses local source. Inspect the reported
