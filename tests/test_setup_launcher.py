@@ -69,6 +69,16 @@ class SetupLauncherTest(unittest.TestCase):
                 self.assertEqual(result.returncode,0,result.stderr)
                 self.assertEqual(result.stdout.strip(),expected)
 
+    def test_keep_params_is_explicit_and_conflicts_with_reset(self):
+        result = shell(OPTIONS + '\nprintf "%s" "$KEEP_PARAMS_MODE"\n', ('--keep-params',))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, 'true')
+        for args in (('--keep-params', '--reset-params'), ('--reset-params', '--keep-params'),
+                     ('--restore-official', '--keep-params'), ('--update-launcher', '--keep-params')):
+            result = shell(SOURCE, args)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertNotIn('Forbidden external command', result.stderr)
+
     def selection(self, *args, env=None):
         result = shell(OPTIONS + '\nprint_launcher_selection\n'
                        'printf "path=%s\\ninstall=%s\\nsync=%s\\n" '

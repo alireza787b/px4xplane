@@ -89,7 +89,9 @@ prints their backup identity for recovery.
 
 Unfinished Git operations, edited submodules and embedded repositories need
 individual review; the helper does not pretend a top-level backup covers
-them. It never force-resets or runs `git clean`. Selected revisions are checked out detached,
+them. Ignored build files, including generated dependency repositories, do
+not count as local source edits and are left in place. It never force-resets
+or runs `git clean`. Selected revisions are checked out detached,
 preserving local branch pointers and `origin`. Switching source modes reuses
 the same checkout and cache, not a separate clone for every run. The helper
 syncs the selected project branch; maintainers integrate upstream changes in
@@ -120,6 +122,10 @@ commit: no-sync mode does not turn a local custom build into the selected
 remote's current revision. Missing dependencies can still prevent an offline
 build. For launcher development, `PX4XPLANE_SKIP_LAUNCHER_UPDATE=1` retains the
 local helper while allowing PX4 synchronization.
+The launcher compares the selected local airframe script against the requested
+branch only when a matching remote and cached revision are available. A mismatch
+is a warning, not an automatic replacement of intentional local work. This
+offline check does not verify the remote's latest state or all inherited defaults.
 
 Custom source selection is available through `--px4-repo URL`,
 `--px4-branch NAME` and `--px4-path PATH`; it is not part of normal setup.
@@ -134,6 +140,15 @@ State is grouped by checkout/source and airframe under
 The launcher prints the selected runtime path and uses it as PX4's `-w`
 working directory. Saved tuning remains between launches. Syncing source or
 detecting changed airframe defaults does not automatically reset it.
+When saved parameters exist, an interactive launch offers **Keep** (Enter),
+**Back up and reset** (`r`) or **Quit** (`q`). Changed defaults or an unknown
+saved-tuning origin are reported before that choice. A noninteractive launch
+preserves tuning unless `--reset-params` is explicit; `--keep-params` skips
+the question in an interactive session.
+Existing parameter files are backed up before PX4 starts, including Keep
+launches; identical snapshots are reused. PX4 still applies its own
+autoconfiguration/reset rules. A legacy store outside this source's active
+storage path is reported instead of being presented as loaded tuning.
 
 To back up and reload defaults for one selected airframe:
 

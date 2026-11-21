@@ -68,6 +68,7 @@ for the optional, explicitly enabled MAVLink Router path.
   See [checkout recovery](guided-launcher.md#existing-checkouts-and-sync).
 - Unexpected saved tuning: inspect the selected source, actual PX4 ROMFS
   airframe file and runtime state. Plugin reference files are not executed.
+  The launcher offers keep/reset when saved parameters exist; Enter keeps them.
   `px4xplane --airframe <target> --reset-params` backs up and resets only that runtime.
   Syncing PX4 or changing defaults does not automatically delete tuning.
   `--reset-config` resets launcher choices, not PX4 parameters.

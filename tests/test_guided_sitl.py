@@ -17,7 +17,7 @@ ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('guided_sitl',ROOT/'setup/launch_sitl.py')
 runner=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-RCS='#!/bin/sh\n# stock parameters/controllers\nparam import\n. px4-rc.mavlink\n'
+RCS='#!/bin/sh\n# stock parameters/controllers\nset PARAM_FILE fs/parameters.bson\nset PARAM_BACKUP_FILE fs/parameters_backup.bson\nparam import\n. px4-rc.mavlink\n'
 MAVLINK=runner.GCS_START+'# stock offboard links\n'
 
 
@@ -149,6 +149,135 @@ class GuidedStartupTests(unittest.TestCase):
         self.assertEqual(copies[0].read_bytes(),b'my tuning')
         self.assertEqual((other/'parameters.bson').read_bytes(),b'other tuning')
 
+    def saved_parameters(self):
+        params = self.target/'rootfs/fs/parameters.bson'
+        params.parent.mkdir(parents=True, exist_ok=True)
+        params.write_bytes(b'personal tuning')
+        return params
+
+    def test_interactive_default_keeps_tuning(self):
+        params = self.saved_parameters()
+        with mock.patch.object(runner.sys.stdin, 'isatty', return_value=True), \
+             mock.patch('builtins.input', return_value='') as prompt:
+            code, out, _ = self.invoke()
+        self.assertEqual(code, 0, out)
+        self.assertIn('Saved tuning:', prompt.call_args.args[0])
+        self.assertIn('origin is unknown', out)
+        self.assertEqual(params.read_bytes(), b'personal tuning')
+        meta = json.loads((self.target/'last-launch.json').read_text())
+        self.assertIsNone(meta['loaded_defaults_sha256'])
+
+    def test_interactive_reset_backs_up_stores_before_launch(self):
+        params = self.saved_parameters()
+        with mock.patch.object(runner.sys.stdin, 'isatty', return_value=True), \
+             mock.patch('builtins.input', side_effect=['invalid', 'r']):
+            code, out, _ = self.invoke()
+        self.assertEqual(code, 0, out)
+        self.assertFalse(params.exists())
+        copies = list((self.target/'backups').glob('*/fs/parameters.bson'))
+        self.assertEqual([p.read_bytes() for p in copies], [b'personal tuning'])
+        meta = json.loads((self.target/'last-launch.json').read_text())
+        self.assertEqual(meta['loaded_defaults_sha256'], meta['defaults_sha256'])
+
+    def test_declining_or_closing_choice_preserves_stores_and_metadata(self):
+        self.invoke()
+        params = self.saved_parameters()
+        record = self.target/'last-launch.json'
+        before = record.read_bytes()
+        for answer in ('q', EOFError()):
+            with self.subTest(answer=answer), \
+                 mock.patch.object(runner.sys.stdin, 'isatty', return_value=True), \
+                 mock.patch('builtins.input', side_effect=[answer]):
+                code, out, calls = self.invoke()
+            self.assertEqual(code, 1, out)
+            self.assertEqual(params.read_bytes(), b'personal tuning')
+            self.assertEqual(record.read_bytes(), before)
+            self.assertEqual(calls.call_count, 1)  # pgrep only; no PX4 launch.
+
+    def test_keep_flag_skips_prompt_without_hiding_unknown_origin(self):
+        params = self.saved_parameters()
+        with mock.patch.object(runner.sys.stdin, 'isatty', return_value=True), \
+             mock.patch('builtins.input') as prompt:
+            code, out, _ = self.invoke('--keep-params')
+        self.assertEqual(code, 0, out)
+        prompt.assert_not_called()
+        self.assertIn('origin is unknown', out)
+        self.assertEqual(params.read_bytes(), b'personal tuning')
+
+    def test_noninteractive_unknown_store_stays_unknown_on_relaunch(self):
+        self.saved_parameters()
+        with mock.patch.object(runner.sys.stdin, 'isatty', return_value=False), \
+             mock.patch('builtins.input') as prompt:
+            for _ in range(2):
+                code, out, _ = self.invoke()
+                self.assertEqual(code, 0, out)
+                self.assertIn('origin is unknown', out)
+        prompt.assert_not_called()
+
+    def test_no_saved_store_loads_current_defaults_despite_old_metadata(self):
+        self.invoke()
+        profile = self.source/'init.d-posix/airframes/5021_xplane_qtailsitter'
+        profile.write_text('updated defaults')
+        shutil.copytree(self.source, self.build/'etc', dirs_exist_ok=True)
+        code, out, _ = self.invoke()
+        self.assertEqual(code, 0, out)
+        self.assertIn('fresh airframe defaults', out)
+        meta = json.loads((self.target/'last-launch.json').read_text())
+        self.assertEqual(meta['loaded_defaults_sha256'], meta['defaults_sha256'])
+
+    def test_keep_snapshots_before_px4_can_autoconfigure(self):
+        params = self.saved_parameters()
+        def commands(args, **kwargs):
+            if args[0] == 'pgrep':
+                return mock.Mock(returncode=1)
+            copies = list((self.target/'backups').glob('*/fs/parameters.bson'))
+            self.assertEqual([p.read_bytes() for p in copies], [b'personal tuning'])
+            params.write_bytes(b'PX4 autoconfiguration result')
+            return mock.Mock(returncode=0)
+        code, out, _ = self.invoke('--keep-params', run=commands)
+        self.assertEqual(code, 0, out)
+        self.assertIn('normal autoconfiguration rules', out)
+
+    def test_unchanged_parameter_backups_are_deduplicated_and_verified(self):
+        self.saved_parameters()
+        for _ in range(2):
+            code, out, _ = self.invoke('--keep-params')
+            self.assertEqual(code, 0, out)
+        copies = list((self.target/'backups').glob('*/fs/parameters.bson'))
+        self.assertEqual(len(copies), 1)
+        copies[0].write_bytes(b'corrupt backup')
+        code, out, calls = self.invoke('--reset-params')
+        self.assertEqual(code, 1, out)
+        self.assertIn('backup verification failed', out)
+        self.assertEqual((self.target/'rootfs/fs/parameters.bson').read_bytes(), b'personal tuning')
+        self.assertEqual(calls.call_count, 1)
+
+    def test_inactive_legacy_stores_are_not_claimed_as_loaded_tuning(self):
+        root = self.target/'rootfs'
+        root.mkdir(parents=True)
+        old = root/'parameters.bson'
+        old.write_bytes(b'legacy tuning')
+        code, out, calls = self.invoke('--keep-params')
+        self.assertEqual(code, 1, out)
+        self.assertIn('inactive storage path', out)
+        self.assertEqual(calls.call_count, 1)
+        self.assertEqual(old.read_bytes(), b'legacy tuning')
+        code, out, _ = self.invoke('--reset-params')
+        self.assertEqual(code, 0, out)
+        self.assertFalse(old.exists())
+        self.assertEqual([p.read_bytes() for p in (self.target/'backups').glob('*/parameters.bson')],
+                         [b'legacy tuning'])
+
+    def test_parameter_storage_accepts_both_stock_layouts_not_dynamic_paths(self):
+        self.assertEqual(runner.parameter_storage(RCS),
+                         {'fs/parameters.bson', 'fs/parameters_backup.bson'})
+        self.assertEqual(runner.parameter_storage(RCS.replace('fs/', '')),
+                         {'parameters.bson', 'parameters_backup.bson'})
+        self.assertEqual(runner.parameter_storage(RCS + 'echo "multiline shell text\n'),
+                         {'fs/parameters.bson', 'fs/parameters_backup.bson'})
+        with self.assertRaisesRegex(ValueError, 'storage layout changed'):
+            runner.parameter_storage(RCS.replace('fs/parameters.bson', '${CUSTOM}/parameters.bson'))
+
     def test_failed_backup_preserves_all_original_parameters(self):
         root=self.home/'stores'
         root.mkdir()
@@ -269,7 +398,7 @@ class GuidedStartupTests(unittest.TestCase):
 
     def test_inherited_defaults_change_preserves_tuning_and_warns_after_rebuild(self):
         self.invoke()
-        params = self.target/'rootfs/parameters.bson'
+        params = self.saved_parameters()
         params.write_bytes(b'keep tuning')
         (self.source/'init.d/rc.mc_defaults').write_text('param set-default MC_ROLL_P 2\n')
         shutil.copytree(self.source, self.build/'etc', dirs_exist_ok=True)
