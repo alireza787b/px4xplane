@@ -11,14 +11,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Keep the official PX4 Quick Start separate from optional automatic guided
-  setup and explicit developer validation (TECS #27670 only).
+- Make guided setup use the maintained X-Plane airframe branch by default;
+  retain bare official PX4 and explicit developer validation as separate modes.
+- Add direct airframe selection, a side-effect-free airframe list and explicit
+  matched launcher updates, while preserving existing checkout work and caches.
 - Document safe checkout reuse, per-airframe saved state and explicit backed-up
   `--reset-params`; source updates no longer imply deleting saved tuning.
 - Clarify direct QGC targeting and optional use of an already-installed MAVLink
   Router, separately from the X-Plane TCP connection.
-- Restore the public legacy QuadTailsitter model/default pairing; isolate the
-  211-value compact profile under `config/experimental/compact-qtailsitter/`.
+- Consolidate QuadTailsitter into one canonical profile, with the existing
+  target, mapping and autostart ID. Remove the superseded profile runner and
+  legacy aircraft assets; aircraft are supplied separately.
+- Synchronize the five parameter references with the maintained PX4 branch;
+  incorporate reviewed Alia, EHang and Cessna settings and current PX4 parameter
+  names without adding controller guards to normal launches.
+- Correct Cessna elevator mapping to drive both elevator halves, and refresh
+  airframe cards, launcher instructions and the config-editor screenshot.
 - Consolidate launcher guidance and replace obsolete release-repair advice
   with immutable published tags and new-version corrections.
 

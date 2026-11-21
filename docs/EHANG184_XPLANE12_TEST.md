@@ -1,109 +1,79 @@
-# Ehang 184 X-Plane 12 Validation Workflow
+# EHang184 X-Plane 12 Test Card
 
-This card is for the first controlled final-validation run of the Ehang 184
-X-Plane multicopter after the Alia tuning lessons were applied.
+## Setup
 
-## Scenario
+Use a four-motor model matching the EHang184 allocator and engine order.
+The recorded handling reference used 245 kg with neutral recorded CG offsets
+and calm conditions. Model loading and motor layout must match the reference,
+not just the selected menu label.
 
-1. Install px4xplane and set `px4xplane/64/config.ini` to:
-   - `config_name = ehang184`
-2. Install XPlaneTruthCapture `v0.1.7` or newer and start recording before PX4
-   connects.
-3. Run PX4 with the validation launcher and select `xplane_ehang184`:
-   - `px4xplane --validation --reset-config`
-   - `SYS_AUTOSTART` must be `5010`
-4. Confirm the printed validation stack shows official PX4 plus the pending
-   EKF-GSF, Standard VTOL, and TECS PR guards unless you are
-   deliberately testing `--official`.
-5. Fly:
-   - takeoff to about `30 m`
-   - hover for at least `20 s`
-   - yaw left/right with no aggressive heading snap
-   - translate forward/back/left/right
-   - climb and descend
-   - Orbit with a commanded radius of `80-100 m`
-   - mission waypoint or auto reposition if QGC switches the vehicle into an
-     auto mode that consumes the reposition setpoint
-   - RTL and landing
-6. Wait `10-15 s` after disarm before stopping PX4.
-7. Save PX4 ULog, PX4 terminal output, X-Plane `Log.txt`, and the
-   XPlaneTruthCapture folder/zip.
+1. Load the model in X-Plane 12 and select **Ehang 184** in the plugin.
+   The configuration section and saved `config_name` remain `ehang184`.
+2. Start the normal launcher:
 
-## Parameter Sanity Check
+   ```bash
+   px4xplane --airframe xplane_ehang184
+   ```
 
-Confirm these values in the ULog before judging the result:
+3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
+   telemetry, the estimator is ready, and `SYS_AUTOSTART=5010`.
 
-- `SYS_AUTOSTART=5010`
-- `MC_ROLL_P=1.0`
-- `MC_PITCH_P=1.0`
-- `MC_ROLLRATE_K=3.0`
-- `MC_PITCHRATE_K=2.05`
-- `MC_YAW_P=0.6`
-- `MPC_XY_P=0.05`
-- `MPC_XY_VEL_P_ACC=1.2`
-- `MPC_XY_VEL_D_ACC=0.8`
-- `MPC_XY_ERR_MAX=10.0`
-- `MPC_XY_CRUISE=5.0`
-- `MPC_XY_VEL_MAX=6.5`
-- `MPC_VEL_MANUAL=5.0`
-- `MPC_Z_V_AUTO_UP=2.0`
-- `MPC_Z_V_AUTO_DN=1.2`
-- `MPC_TKO_SPEED=2.0`
-- `MPC_LAND_SPEED=0.6`
-- `MPC_LAND_ALT1=8.0`
-- `MPC_LAND_ALT2=3.0`
-- `MPC_LAND_CRWL=0.30`
-- `LNDMC_Z_VEL_MAX=0.24`
-- `COM_DISARM_LAND=1.5`
-- `MPC_ACC_HOR=1.5`
-- `MPC_ACC_HOR_MAX=1.8`
-- `MPC_ACC_UP_MAX=2.0`
-- `MPC_ACC_DOWN_MAX=2.0`
-- `MPC_JERK_AUTO=1.0`
-- `MPC_JERK_MAX=2.0`
-- `MPC_MAN_TILT_MAX=25.0`
-- `MPC_TILTMAX_AIR=30.0`
-- `MPC_MAN_Y_MAX=15.0`
-- `MPC_YAWRAUTO_MAX=20.0`
-- `NAV_ACC_RAD=12.0`
-- `NAV_MC_ALT_RAD=2.0`
-- `CAL_ACC0_PRIO=50`
-- `EKF2_GPS_P_NOISE=1.5`
-- PX4 default baro noise/gate values are used with GPS height reference
-- `IMU_GYRO_RATEMAX=200`
-- `IMU_INTEG_RATE=200`
-- `SENS_IMU_MODE=0`
+The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+`px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
-In X-Plane `Log.txt`, confirm:
+```bash
+px4xplane --airframe xplane_ehang184 --reset-params
+```
 
-- `px4xplane: Version: v4.2.0`
-- `config_name = ehang184` in `px4xplane/64/config.ini`
-- the X-Plane connection HUD shows `Airframe: Ehang 184` while waiting for PX4
+Ordinary launches preserve saved tuning. See the
+[launcher reference](guided-launcher.md#saved-parameters) for state and backups.
 
-The `evtol1` Ehang log showed QGC `MAV_CMD_DO_REPOSITION` commands accepted
-while the vehicle stayed in Position mode and did not move horizontally. For the
-next validation, use Orbit, RTL, or a mission/auto mode for objective path
-tracking. A QGC "Go to location" test is still useful, but only record it as a
-command/mode-behavior check unless PX4 changes into a mode that actually follows
-the reposition setpoint.
+## Selected Parameters
 
-The `evtol2`, `evtol3`, and `evtol4` orbit logs showed the vehicle initially starting well
-outside the commanded circle. PX4 Orbit mode first captures the closest point on
-the commanded circle, so a short S-turn/zigzag before the stable orbit is
-expected when the command is sent from outside the radius. Judge the tune after
-capture: radius hunting should be damped, pitch should not hit repeated
-`+-30 deg` setpoints, and actual roll should stay well below the attitude
-failure threshold.
+The canonical reference is
+[`5010_xplane_ehang184`](../config/px4_params/5010_xplane_ehang184).
 
-For a large commanded orbit, visible roll can be very small. For example,
-`5 m/s` around a `146 m` circle only requires about `1 deg` lateral tilt. That
-is not a missing roll-channel symptom by itself.
+| Parameter | Value |
+| --- | ---: |
+| MPC_THR_HOVER | 0.25 |
+| MPC_YAWRAUTO_MAX | 10 |
+| MPC_YAWRAUTO_ACC | 10 |
 
-## Acceptance
+`MPC_AUTO_NUDGING=0` preserves autonomous behavior when replacing the obsolete,
+ignored `MPC_LAND_RC_HELP` assignment. PID gains, allocation and thrust curve
+remain unchanged.
 
-- No in-flight EKF, baro, GPS, or accelerometer-bias warnings.
-- Hover position and altitude do not oscillate visibly.
-- Yaw response is smooth and does not overshoot aggressively.
-- Auto descent and landing are controlled, with no bounce or tip tendency.
-- RTL returns and lands without failsafe.
-- TruthCapture reports zero dropped rows and no sim-time reset.
+Plugin channels 0-3 address engine indices 0-3. Keep the allocator's motor
+positions, rotation signs and output order paired with the loaded model.
+PX4 body axes are +X forward, +Y right and +Z down; inherited motor-position
+comments are not a substitute for checking that pairing.
+
+PX4 executes its checkout's airframe under
+`ROMFS/px4fmu_common/init.d-posix/airframes/`, not the packaged reference
+inside the plugin directory.
+
+## Flight Check
+
+1. Verify actual loading, CG, weather and QGC reception before arming.
+2. Take off to the planned height and allow at least 20 seconds of settled
+   hover before evaluating position, height and yaw response.
+3. Check a modest GoTo move and a settled stop. Verify the actual mode and
+   setpoint before treating a command acknowledgement as tracking.
+4. Check a controlled return, descent, touchdown and automatic disarm.
+5. Wait 15 seconds after disarm, then enter `shutdown` in the PX4 console.
+
+Mission takeoff height is a scenario choice, not part of the three-value tune.
+
+## Developer Checks
+
+- The frozen November 8 handling flights used source `95a0c2348232`.
+  Integration uses upstream base `0e0f3ce8a2`; flight validation of that
+  newer core is pending.
+- Hover, GoTo response, short settled Orbit arcs, RTL and landing were
+  demonstrated. A full settled Orbit and separate 50 m/30 m height holds
+  remain unchecked.
+- Compare hover-thrust estimation, yaw allocation residuals, lower motor
+  limits and touchdown behavior. The repeat retained a landing-yaw transient;
+  the freeze does not mean zero saturation or identical-input A/B results.
+- Record source/model identity, effective parameters and ULog results for
+  comparisons. TruthCapture is optional development evidence.

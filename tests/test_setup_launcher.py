@@ -10,6 +10,8 @@ SOURCE = LAUNCHER.read_text(encoding="utf-8")
 # Stop before uninstall or any checkout/setup side effects, without a test-only CLI.
 OPTIONS = SOURCE.split('\nif [ "$UNINSTALL_MODE" = true ]; then', 1)[0]
 OFFICIAL_REPO = "https://github.com/PX4/PX4-Autopilot.git"
+MAINTAINED_REPO = "https://github.com/alireza787b/PX4-Autopilot-Me.git"
+AIRFRAMES = ('xplane_ehang184', 'xplane_alia250', 'xplane_cessna172', 'xplane_tb2', 'xplane_qtailsitter')
 RETIRED = (
     ("ekf-gsf", "27533", "closed without merging"),
     ("vtol-handoff", "27601", "already merged"),
@@ -69,30 +71,39 @@ class SetupLauncherTest(unittest.TestCase):
         self.assertNotIn("Forbidden external command", result.stderr)
         return result.stdout
 
-    def test_help_is_safe_and_explains_two_modes(self):
+    def test_help_is_safe_and_explains_source_modes(self):
         for flag in ("--help", "-h"):
             with self.subTest(flag=flag):
                 result = shell(SOURCE, (flag,))
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stderr, "")
-                self.assertIn("--official (default; no experimental patches)", result.stdout)
+                self.assertIn("--maintained (default; maintained X-Plane airframes)", result.stdout)
                 self.assertIn("--validation (experimental TECS PR #27670 only)", result.stdout)
-                self.assertIn("Custom repository, branch, and checkout", result.stdout)
+                self.assertIn("Custom repository/branch overrides", result.stdout)
+                self.assertIn("--airframe", result.stdout)
+                self.assertIn("PX4XPLANE_LAUNCHER_BASE_URL", result.stdout)
                 self.assertIn("PX4XPLANE_SKIP_LAUNCHER_UPDATE=1", result.stdout)
                 for guard, number, _ in RETIRED:
                     self.assertIn(f"--with-{guard}-guard", result.stdout)
                     self.assertIn(f"--without-{guard}-guard", result.stdout)
                     self.assertIn(f"PR #{number}", result.stdout)
 
-    def test_default_and_official_alias_have_no_experimental_guards(self):
-        for args in ((), ("--official",), ("--exact-pr",)):
+    def test_maintained_default_and_official_alias_have_no_experimental_guards(self):
+        for args, mode, repo, branch in (((), 'maintained', MAINTAINED_REPO, 'px4xplane-airframes'),
+                                       (('--maintained',), 'maintained', MAINTAINED_REPO, 'px4xplane-airframes'),
+                                       (('--official',), 'official', OFFICIAL_REPO, 'main'),
+                                       (('--exact-pr',), 'official', OFFICIAL_REPO, 'main')):
             with self.subTest(args=args):
                 output = self.selection(*args)
-                self.assertIn("Mode: official", output)
-                self.assertIn(f"Repository: {OFFICIAL_REPO}", output)
-                self.assertIn("Branch: main", output)
-                self.assertIn("#27670: disabled", output)
-                self.assertIn("never applied", output)
+                self.assertIn(f"Mode: {mode}", output)
+                self.assertIn(f"Repository: {repo}", output)
+                self.assertIn(f"Branch: {branch}", output)
+                self.assertIn('PX4-XPlane launcher ', output)
+                self.assertIn('Checkout:', output)
+                self.assertNotIn('TECS', output)
+                self.assertNotIn('Retired', output)
+                for number in ('22493', '27533', '27601', '27793'):
+                    self.assertNotIn(number, output)
                 self.assertNotIn("prompt", output.lower())
 
     def test_validation_and_explicit_tecs_select_only_tecs(self):
@@ -100,23 +111,41 @@ class SetupLauncherTest(unittest.TestCase):
             with self.subTest(flag=flag):
                 output = self.selection(flag)
                 self.assertIn("Mode: validation", output)
-                self.assertIn("#27670: enabled (experimental, developer validation only)", output)
-                self.assertIn("#27533 closed unmerged; #27601 and #27793 merged; never applied", output)
+                self.assertIn('TECS PR #27670: enabled (experimental)', output)
+                for number in ('27533', '27601', '27793'):
+                    self.assertNotIn(number, output)
 
-    def test_last_mode_or_tecs_flag_wins(self):
+    def test_intro_is_compact_ascii_and_keeps_requirements_prompt(self):
+        intro = SOURCE.split('# === Introductory Information ===\n', 1)[1].split(
+            '# === Prerequisites Check ===', 1)[0]
+        intro.encode('ascii')
+        function_source('print_launcher_selection').encode('ascii')
+        for args in ((), ('--official',), ('--validation',)):
+            result = shell(OPTIONS + '\nCLONE_PATH=/local/PX4\n'
+                           'highlight() { printf "%s\\n" "$*"; }\n' + intro + '\n:\n', args)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn('Checkout: /local/PX4', result.stdout)
+            self.assertIn('Requirements:', result.stdout)
+            self.assertIn('Press Enter to continue', result.stdout)
+            self.assertLessEqual(len(result.stdout.splitlines()), 14)
+            for obsolete in ('Author:', 'Current Status:', 'Supported Aircraft:', 'Retired', 'merged'):
+                self.assertNotIn(obsolete, result.stdout)
+            self.assertEqual('TECS PR #27670: enabled' in result.stdout, args == ('--validation',))
+
+    def test_conflicting_modes_fail_in_either_order(self):
         cases = (
-            (("--validation", "--official"), "official", "disabled"),
-            (("--official", "--validation"), "validation", "enabled"),
-            (("--validation", "--exact-pr"), "official", "disabled"),
-            (("--validation", "--without-tecs-alt-guard"), "validation", "disabled"),
-            (("--without-tecs-alt-guard", "--validation"), "validation", "enabled"),
-            (("--official", "--with-tecs-alt-guard"), "validation", "enabled"),
+            ("--validation", "--official"), ("--validation", "--exact-pr"),
+            ("--maintained", "--official"), ("--maintained", "--validation"),
+            ("--official", "--with-tecs-alt-guard"),
+            ("--validation", "--without-tecs-alt-guard"),
         )
-        for args, mode, state in cases:
-            with self.subTest(args=args):
-                output = self.selection(*args)
-                self.assertIn(f"Mode: {mode}", output)
-                self.assertIn(f"#27670: {state}", output)
+        for pair in cases:
+            for args in (pair, pair[::-1]):
+                with self.subTest(args=args):
+                    result = shell(SOURCE, args)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertIn('Error:', result.stderr)
+                    self.assertNotIn('Forbidden external command', result.stderr)
 
     def test_retired_positive_flags_fail_before_destructive_actions(self):
         for guard, number, reason in RETIRED:
@@ -130,7 +159,7 @@ class SetupLauncherTest(unittest.TestCase):
                     self.assertIn(flag + " is retired", result.stderr)
                     self.assertIn(f"PR #{number}", result.stderr)
                     self.assertIn(reason, result.stderr)
-                    self.assertIn("--official (default)", result.stderr)
+                    self.assertIn("--official", result.stderr)
                     self.assertNotIn("Forbidden external command", result.stderr)
                     self.assertEqual(result.stdout, "")
 
@@ -139,16 +168,21 @@ class SetupLauncherTest(unittest.TestCase):
         self.assertEqual(self.selection(*aliases), self.selection())
         self.assertEqual(self.selection("--validation", *aliases), self.selection("--validation"))
 
-    def test_custom_options_survive_either_mode_in_either_order(self):
+    def test_custom_options_are_separate_from_named_modes(self):
         custom = ("--px4-repo", "https://example.invalid/owner/PX4.git",
                   "--px4-branch", "developer-branch", "--px4-path", "/checkout with spaces/PX4")
-        for mode in ("--official", "--validation", "--exact-pr"):
+        output = self.selection(*custom)
+        self.assertIn('Mode: custom', output)
+        self.assertIn('Repository: https://example.invalid/owner/PX4.git', output)
+        self.assertIn('Branch: developer-branch', output)
+        self.assertIn('path=/checkout with spaces/PX4', output)
+        for mode in ("--official", "--validation", "--exact-pr", "--maintained", "--restore-official"):
             for args in ((*custom, mode), (mode, *custom)):
                 with self.subTest(args=args):
-                    output = self.selection(*args)
-                    self.assertIn("Repository: https://example.invalid/owner/PX4.git", output)
-                    self.assertIn("Branch: developer-branch", output)
-                    self.assertIn("path=/checkout with spaces/PX4", output)
+                    result = shell(SOURCE, args)
+                    self.assertEqual(result.returncode, 1, result.stderr)
+                    self.assertIn('custom PX4 repo/branch overrides', result.stderr)
+                    self.assertNotIn('Forbidden external command', result.stderr)
         self.assertIn("install=/install with spaces", self.selection("/install with spaces"))
 
     def test_environment_overrides_remain_supported(self):
@@ -157,19 +191,30 @@ class SetupLauncherTest(unittest.TestCase):
             "PX4XPLANE_PX4_BRANCH": "env-branch",
             "PX4XPLANE_PX4_PATH": "/env/PX4",
         }
-        for args in ((), ("--official",), ("--validation",)):
+        for args in ((),):
             with self.subTest(args=args):
                 output = self.selection(*args, env=env)
                 self.assertIn("Repository: https://example.invalid/env/PX4.git", output)
                 self.assertIn("Branch: env-branch", output)
                 self.assertIn("path=/env/PX4", output)
+        for mode in ('--official', '--validation', '--maintained'):
+            result = shell(SOURCE, (mode,), env)
+            self.assertEqual(result.returncode, 1)
+            self.assertNotIn('Forbidden external command', result.stderr)
+        output = self.selection('--official', env={'PX4XPLANE_OFFICIAL_PX4_BRANCH': 'not-main',
+                                                   'PX4XPLANE_DEFAULT_PX4_BRANCH': 'not-main'})
+        self.assertIn('Branch: main', output)
 
     def test_no_sync_flag_is_preserved(self):
         for args in (("--no-sync",), ("--official", "--no-sync"),
                      ("--no-sync", "--official"), ("--no-sync", "--exact-pr"),
-                     ("--validation", "--no-sync", "--without-tecs-alt-guard")):
+                     ("--no-sync", "--maintained"),
+                     ("--no-sync", "--px4-path", "/local/PX4"),
+                     ("--no-sync", "--px4-repo", "/local/remote.git"),
+                     ("--no-sync", "--px4-branch", "feature")):
             with self.subTest(args=args):
                 self.assertIn("sync=false", self.selection(*args))
+                self.assertIn("sync=false", self.selection(*args[1:], args[0]))
         self.assertIn("sync=true", self.selection("--sync"))
 
     def test_tecs_without_sync_fails_before_setup_in_either_order(self):
@@ -179,36 +224,33 @@ class SetupLauncherTest(unittest.TestCase):
                 with self.subTest(args=args):
                     result = shell(SOURCE, args)
                     self.assertEqual(result.returncode, 1, result.stderr)
-                    self.assertIn("cannot apply experimental TECS guard PR #27670 without sync", result.stderr)
-                    self.assertIn("--without-tecs-alt-guard", result.stderr)
+                    self.assertIn("--no-sync cannot be combined", result.stderr)
                     self.assertNotIn("Forbidden external command", result.stderr)
                     self.assertEqual(result.stdout, "")
         self.assertIn("sync=true", self.selection("--validation", "--no-sync", "--sync"))
 
     def test_updater_skips_no_sync_or_explicit_environment_opt_out(self):
         mocks = r"""
-readlink() { echo /nonexistent/launcher; }
-mktemp() { echo /nonexistent/launcher-download; }
-curl() { LAUNCHER_DOWNLOAD_ATTEMPTED=true; return 1; }
-rm() { :; }
-warning() { :; }
+ensure_sitl_runner() { echo 'PAIR_UPDATE'; return 0; }
+refresh_global_command() { :; }
+success() { :; }
 """
         cases = (
             (("--no-sync",), {}, False),
             (("--no-sync", "--official"), {}, False),
             ((), {"PX4XPLANE_SKIP_LAUNCHER_UPDATE": "1"}, False),
             (("--validation",), {"PX4XPLANE_SKIP_LAUNCHER_UPDATE": "1"}, False),
-            ((), {}, True),
-            ((), {"PX4XPLANE_SKIP_LAUNCHER_UPDATE": "0"}, True),
+            ((), {}, False),
+            ((), {"PX4XPLANE_SKIP_LAUNCHER_UPDATE": "0"}, False),
+            (("--update-launcher",), {}, True),
         )
         for args, env, attempted in cases:
             with self.subTest(args=args, env=env):
                 result = shell(OPTIONS + mocks + function_source("update_launcher_script_if_needed")
-                               + '\nupdate_launcher_script_if_needed\n'
-                               'printf "download_attempted=%s\\n" "${LAUNCHER_DOWNLOAD_ATTEMPTED:-false}"\n',
+                               + '\nupdate_launcher_script_if_needed\n',
                                args, env)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, f"download_attempted={str(attempted).lower()}\n")
+                self.assertEqual(result.stdout, 'PAIR_UPDATE\n' if attempted else '')
                 self.assertEqual(result.stderr, "")
 
     def test_no_sync_uses_local_head_without_remote_check_or_prompt(self):
@@ -246,7 +288,7 @@ git() {
 
     def test_unknown_and_missing_value_flags_fail_safely(self):
         for args in (("--unknown-option",), ("--px4-repo",),
-                     ("--px4-branch",), ("--px4-path",)):
+                     ("--px4-branch",), ("--px4-path",), ("--qgc-host",)):
             with self.subTest(args=args):
                 result = shell(SOURCE, args)
                 self.assertEqual(result.returncode, 1, result.stderr)
@@ -254,12 +296,11 @@ git() {
                 self.assertIn("Usage:", result.stdout)
 
     def test_restore_summary_reports_actual_official_target(self):
-        output = self.selection("--validation", "--px4-repo", "https://example.invalid/PX4.git",
-                                "--px4-branch", "custom", "--restore-official")
-        self.assertIn("Mode: restore-official (no experimental patches)", output)
+        output = self.selection("--restore-official")
+        self.assertIn("Mode: restore-official", output)
         self.assertIn(f"Repository: {OFFICIAL_REPO}", output)
         self.assertIn("Branch: main", output)
-        self.assertIn("#27670: disabled", output)
+        self.assertNotIn('TECS', output)
 
     def test_obsolete_refs_and_automatic_guard_prompts_are_absent(self):
         for number in ("27533", "27601", "27793"):
@@ -301,7 +342,7 @@ apply_guard_commits() {
 """
         for args, enabled in (((), False), (("--official",), False),
                               (("--validation",), True),
-                              (("--validation", "--without-tecs-alt-guard"), False)):
+                              (("--maintained",), False)):
             with self.subTest(args=args):
                 result = shell(OPTIONS + mocks + function_source("sync_px4_repo_to_remote")
                                + '\nsync_px4_repo_to_remote false\n', args)
@@ -314,6 +355,50 @@ apply_guard_commits() {
                     self.assertIn("guard-apply pr-27670-", result.stdout)
                 for number in ("27533", "27601", "27793"):
                     self.assertNotIn(number, result.stdout)
+
+    def test_list_and_airframe_validation_have_no_side_effects(self):
+        result = shell(SOURCE, ('--list-airframes',))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), list(AIRFRAMES))
+        for name in AIRFRAMES:
+            result = shell(OPTIONS + '\nprintf "%s" "$AIRFRAME"\n', ('--airframe', name))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout, name)
+        for args in (('--airframe', 'QuadTailsitter'), ('--airframe',),
+                     ('--airframe', '--no-sync'), ('--px4-path', '--no-sync')):
+            result = shell(SOURCE, args)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertNotIn('Forbidden external command', result.stderr)
+
+    def test_maintenance_conflicts_fail_before_setup(self):
+        for flag in ('--repair', '--restore-official', '--validation', '--update-launcher'):
+            for args in ((flag, '--no-sync'), ('--no-sync', flag)):
+                result = shell(SOURCE, args)
+                self.assertEqual(result.returncode, 1, result.stderr)
+                self.assertNotIn('Forbidden external command', result.stderr)
+        for args in (('--repair', '--restore-official'), ('--restore-official', '--validation'),
+                     ('--restore-official', '--reset-params'),
+                     ('--update-launcher', '--airframe', 'xplane_tb2')):
+            result = shell(SOURCE, args)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            self.assertNotIn('Forbidden external command', result.stderr)
+        result = shell(SOURCE, ('--update-launcher',), {'PX4XPLANE_SKIP_LAUNCHER_UPDATE': '1'})
+        self.assertEqual(result.returncode, 1, result.stderr)
+        self.assertNotIn('Forbidden external command', result.stderr)
+
+    def test_initial_and_repair_dependencies_are_sitl_only(self):
+        setup = SOURCE.split('    # === Run the ubuntu.sh Script ===\n', 1)[1].split('\nfi\n', 1)[0]
+        mocks = r'''
+highlight() { :; }
+warning() { :; }
+info() { :; }
+success() { :; }
+bash() { printf 'dependency-command'; printf ' %s' "$@"; printf '\n'; }
+'''
+        result = shell(mocks + setup)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('dependency-command Tools/setup/ubuntu.sh --no-nuttx --no-sim-tools', result.stdout)
+        self.assertNotIn('GIT_SUBMODULES_ARE_EVIL', SOURCE)
 
 
 if __name__ == "__main__":

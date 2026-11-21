@@ -13,9 +13,8 @@ PX4-XPlane connects PX4 SITL to X-Plane. It sends PX4 actuator commands to
 writable X-Plane datarefs and returns simulated IMU, GPS, barometer,
 magnetometer, airspeed, and ground-truth data.
 
-The current package is `v4.2.1` with Windows, Linux, and macOS builds. It
-includes examples for Cessna 172, TB2, Ehang 184, Alia 250 and QuadTailsitter.
-The QuadTailsitter example needs its matching owner-provided model.
+The current package is `v4.2.1` with Windows, Linux, and macOS builds. The five
+airframe mappings are Cessna 172, TB2, Ehang 184, Alia 250 and QuadTailsitter.
 
 ## Latest Video
 
@@ -30,132 +29,77 @@ project video archive and playlist; future videos will be added there.
    Use the official [X-Plane download](https://www.x-plane.com/desktop/try-it/)
    and [installation guide](https://www.x-plane.com/kb/digital-download-install/).
 
-2. Install or update PX4 SITL.
-   Follow the official
-   [PX4 development environment](https://docs.px4.io/main/en/dev_setup/dev_env.html)
-   setup for your OS, WSL2, container, or remote Linux machine, then the
-   [PX4 X-Plane simulation guide](https://docs.px4.io/main/en/sim_xplane/).
-   Use official `PX4/PX4-Autopilot` `main` for normal runs.
+2. Download the plugin for your OS from
+   [Releases](https://github.com/alireza787b/px4xplane/releases). Close X-Plane,
+   back up custom configs, and replace the complete `px4xplane` plugin folder
+   under `Resources/plugins`. Do not merge old and new package files.
+   For changes still marked [Unreleased](CHANGELOG.md#unreleased), install a
+   [source build](docs/BUILD.md) instead; an older release ZIP does not contain
+   the updated configuration.
 
-3. Download the latest px4xplane package for your OS from
-   [Releases](https://github.com/alireza787b/px4xplane/releases).
+3. Install the matching X-Plane aircraft and open it. Select its mapping under
+   `Plugins > PX4 X-Plane > Airframes`, then choose `Connect to SITL`.
+   See the [airframe cards](docs/index.md#flight-test-cards) for model details.
 
-4. Close X-Plane. If upgrading, back up custom configs and remove the existing
-   `px4xplane` plugin folder; do not merge old and new package files. Extract
-   the archive and copy its complete `px4xplane` folder into X-Plane's
-   `Resources/plugins` folder, for example
-   `X-Plane 12/Resources/plugins/px4xplane`.
+4. Open Ubuntu/Debian or WSL and run the setup helper:
 
-5. Copy any packaged X-Plane aircraft folders you want to test into an X-Plane
-   aircraft directory, then start X-Plane and load the matching aircraft.
+   ```bash
+   (base=https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup; tmp=$(mktemp) && trap 'rm -f "$tmp"' EXIT && curl -fsSL "$base/setup_px4_sitl.sh" -o "$tmp" && PX4XPLANE_LAUNCHER_BASE_URL="$base" bash "$tmp")
+   ```
 
-6. In X-Plane, choose `Plugins > PX4 X-Plane > Airframes > ...` and select the
-   matching airframe, then click `Plugins > PX4 X-Plane > Connect to SITL`.
+5. Accept command installation and select the same airframe in the launcher.
+   It prepares PX4, detects the X-Plane host, builds using the existing cache,
+   and opens the PX4 console. Confirm QGroundControl shows a connected vehicle.
+   If the first build exceeds the plugin's wait window, choose
+   `Connect to SITL` again once PX4 is running.
 
-7. Start PX4 SITL from your official PX4 checkout:
+For later sessions, run `px4xplane`. The default `--maintained` mode uses the
+project's [maintained PX4 branch](https://github.com/alireza787b/PX4-Autopilot-Me/tree/px4xplane-airframes),
+which carries the current project airframe defaults on an upstream PX4 base.
+The launcher reuses a checkout and build cache, preserves local work, and keeps
+saved parameters separate for each airframe. See the
+[launcher guide](docs/guided-launcher.md) for `--airframe`, source selection,
+networking and backed-up resets.
 
-```bash
-cd ~/PX4-Autopilot
-make px4_sitl_default xplane_alia250
-```
+## Airframes
 
-Starting PX4 first can also work, but starting `Connect to SITL` in X-Plane
-first gives visible connection status. The first PX4 build can take longer than
-the plugin's 60-second wait window; if the plugin times out, click
-`Connect to SITL` again after PX4 is running.
+| Aircraft | PX4 target | ID |
+| --- | --- | --- |
+| Cessna 172 | `xplane_cessna172` | 5001 |
+| TB2 | `xplane_tb2` | 5002 |
+| Ehang 184 | `xplane_ehang184` | 5010 |
+| Alia 250 | `xplane_alia250` | 5020 |
+| QuadTailsitter | `xplane_qtailsitter` | 5021 |
 
-Available PX4 targets include `xplane_alia250`, `xplane_cessna172`,
-`xplane_tb2`, `xplane_ehang184`, and `xplane_qtailsitter`. See the official
-[PX4 X-Plane simulation](https://docs.px4.io/main/en/sim_xplane/) page for the
-current target list, running notes, and the custom-airframe integration path.
+QuadTailsitter uses one canonical profile for its matching 2 kg, 0.6 m-span,
+four-motor aircraft. Use the [QuadTailsitter card](docs/QUADTAILSITTER_XPLANE12_TEST.md)
+for model selection and checks. PX4 loads defaults from the selected PX4
+checkout, not from the plugin's reference folder.
 
-## Optional Guided Setup
+## Networking
 
-For guided host detection, checkout setup and airframe selection, run:
+The simulator connection uses TCP `4560` on the X-Plane host. QGroundControl
+(QGC) receives MAVLink separately on UDP `14550`. The launcher detects WSL
+networking; use `--qgc-host <qgc-host-ip>` when QGC runs on another machine.
+Allow these ports through the corresponding host firewalls and check QGC's
+vehicle connection. See [network setup](docs/index.md#network-and-platform-notes)
+and [troubleshooting](docs/index.md#troubleshooting).
 
-```bash
-tmp=$(mktemp) && curl -fsSL -o "$tmp" https://raw.githubusercontent.com/alireza787b/px4xplane/master/setup/setup_px4_sitl.sh && bash "$tmp"
-```
+## Advanced Manual Setup
 
-After installing the command, start future sessions with `px4xplane`. The
-launcher automatically prepares official PX4 `main`, reuses existing checkouts
-and preserves saved tuning in separate per-airframe state directories. Use
-`--px4-path ~/PX4-Autopilot` to select an existing checkout explicitly.
-
-See the [guided launcher guide](docs/guided-launcher.md) for checkout safety,
-networking and explicit parameter resets, or
-[Troubleshooting](docs/index.md#troubleshooting) for connection problems.
-
-## Network Notes
-
-PX4 connects to the px4xplane plugin on TCP port `4560`. QGroundControl (QGC)
-uses a separate MAVLink connection, normally UDP `14550`. A configured target
-address does not confirm that QGC is receiving telemetry.
-
-If PX4 SITL and X-Plane run on the same Linux or macOS machine, the default
-localhost setup is normally enough.
-
-If PX4 runs in WSL2, Docker, or another computer, set `PX4_SIM_HOSTNAME` in the
-PX4/SITL shell to the IP address of the machine running X-Plane before starting
-PX4:
-
-```bash
-export PX4_SIM_HOSTNAME=<xplane-host-ip>
-make px4_sitl_default xplane_alia250
-```
-
-For WSL2, use localhost in mirrored networking mode and the current Windows
-host gateway in NAT-compatible modes:
-
-```bash
-if [[ "$(wslinfo --networking-mode 2>/dev/null)" == "mirrored" ]]; then
-  export PX4_SIM_HOSTNAME=127.0.0.1
-else
-  export PX4_SIM_HOSTNAME=$(ip route | awk '/default/ {print $3; exit}')
-fi
-```
-
-Run that `export` before the normal PX4 `make px4_sitl_default xplane_*`
-command in the same terminal session.
-
-Also allow inbound TCP `4560` on the X-Plane host firewall. More detail is in
-the [network setup guide](docs/index.md#network-and-platform-notes). With the
-launcher, use `--qgc-host <qgc-host-ip>` when QGC is on another host. Direct
-MAVLink is the default; MAVLink Router is optional, not installed automatically.
-
-## Developer Validation
-
-Normal launches use official PX4 without pending patches. To test only the open
-[TECS altitude-reference proposal #27670](https://github.com/PX4/PX4-Autopilot/pull/27670):
-
-```bash
-px4xplane --validation
-```
-
-Custom PX4 repo, branch and checkout overrides remain available. See
-[developer validation](docs/guided-launcher.md#developer-validation) for details.
-
-## Status
-
-PX4 X-Plane SITL support is merged in
-[PX4-Autopilot PR #22493](https://github.com/PX4/PX4-Autopilot/pull/22493).
-Use official `PX4/PX4-Autopilot` `main` for normal SITL runs.
-
-`v4.2.1` uses bounded HIL sensor scheduling for uneven or low X-Plane frame
-rates. The plugin establishes actuator-feedback flow control, keeps at most
-one primary sample outstanding, and splits long frame intervals into bounded
-IMU substeps while preserving elapsed simulation time. It disconnects on a
-feedback, timestamp, or backlog fault instead of silently corrupting estimator
-timing. Legacy configs that explicitly selected `async` now migrate to the safe
-mode; unbounded developer comparisons require the explicit `async_unsafe`
-value. Existing airframe mappings and PX4 parameters are unchanged.
+For macOS, containers or a manually managed development environment, follow
+the official [PX4 development setup](https://docs.px4.io/main/en/dev_setup/dev_env.html)
+and [X-Plane simulation guide](https://docs.px4.io/main/en/sim_xplane/).
+Choose the source deliberately: the maintained branch supplies this project's
+current airframe defaults; `--official` selects bare upstream PX4 without them.
+See [source modes](docs/guided-launcher.md#source-modes) before comparing runs.
 
 ## Common Paths
 
 | I want to... | Start here |
 | --- | --- |
-| Install and fly an included airframe | [Quick Start](#quick-start) and the matching [flight-test card](docs/index.md#flight-test-cards) |
-| Use guided PX4 setup | [Guided launcher guide](docs/guided-launcher.md) |
+| Install and run an airframe | [Quick Start](#quick-start) and the matching [flight-test card](docs/index.md#flight-test-cards) |
+| Select a checkout, source or airframe | [Guided launcher guide](docs/guided-launcher.md) |
 | Run PX4 in WSL2, Docker, or another computer | [Network setup](docs/index.md#network-and-platform-notes) |
 | Fix setup or connection errors | [Troubleshooting](docs/index.md#troubleshooting) |
 | Create or edit a custom airframe mapping | [Custom airframe guide](docs/custom-airframe-config.md) |
@@ -166,19 +110,17 @@ value. Existing airframe mappings and PX4 parameters are unchanged.
 
 ## Custom Airframes
 
-The included examples are ready-to-test PX4 targets, not a hard vehicle-class
-limit. A new X-Plane model can be integrated when PX4 has a matching
+The five example mappings are not a vehicle-class limit. A new X-Plane model
+can be integrated when PX4 has a matching
 SITL-capable control path and px4xplane can map the needed actuator outputs to
 writable X-Plane datarefs.
 
 Use the [custom airframe guide](docs/custom-airframe-config.md) for the config
 editor, schema, camera presets, actuator mappings, and validation workflow.
 
-## Maintenance
-
-The launcher includes maintenance flags for syncing the selected PX4 checkout,
-resetting saved IP/config choices, and repairing the setup. See the
-[documentation index](docs/index.md) for the operator and developer workflows.
+The [configuration editor](docs/custom-airframe-config.md#open-the-config-editor)
+edits the plugin's `64/config.ini` actuator and sensor mapping. PX4 flight
+parameters are separate.
 
 ## License
 

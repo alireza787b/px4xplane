@@ -3,15 +3,19 @@
 ## Start Here
 
 - [README](../README.md#quick-start) - installation and beginner quick start
-- [Official PX4 Development Environment](https://docs.px4.io/main/en/dev_setup/dev_env.html)
-- [Official PX4 X-Plane Simulation](https://docs.px4.io/main/en/sim_xplane/) - targets and run commands
-- [Optional Guided Launcher](guided-launcher.md) - automatic setup, checkout safety and saved parameters
+- [Guided Launcher](guided-launcher.md) - maintained PX4 setup, airframe selection and saved parameters
 - [Custom Airframe Config](custom-airframe-config.md)
 - [Config Editor](config-editor.html)
 - [Config Schema](developer/config-schema.md)
 
-The current package is `v4.2.1`. Normal runs use official PX4 `main`; the
-launcher does not require experimental patches.
+The current published package is `v4.2.1`. Normal runs use `--maintained`, the
+project's `px4xplane-airframes` branch with current airframe defaults on an
+upstream PX4 base. `--official` is a bare-upstream alternative, not a way to
+apply these references to upstream. See [source modes](guided-launcher.md#source-modes).
+
+Install the plugin and matching aircraft, select its plugin mapping, run
+`px4xplane`, then confirm the simulator connection and QGC telemetry.
+Use `--airframe <target>` to select directly or `--list-airframes` to list names.
 
 ## Flight-Test Cards
 
@@ -21,11 +25,19 @@ launcher does not require experimental patches.
 - [Cessna 172](CESSNA172_XPLANE12_TEST.md)
 - [TB2](TB2_XPLANE12_TEST.md)
 
+## Advanced Manual Setup
+
+For macOS, containers or a manually managed checkout, follow the official
+[PX4 development environment](https://docs.px4.io/main/en/dev_setup/dev_env.html)
+and [X-Plane simulation guide](https://docs.px4.io/main/en/sim_xplane/).
+Use the maintained branch for project airframe defaults or bare upstream for
+an explicit comparison. Do not assume the defaults are identical.
+
 ## Network and Platform Notes
 
 PX4 connects to the X-Plane plugin on TCP `4560`. When running PX4 in WSL2,
-Docker or another computer, set the X-Plane host before the official `make`
-command:
+Docker or another computer, the launcher detects or prompts for the host.
+For a manual PX4 launch, set it before the `make` command:
 
 ```bash
 export PX4_SIM_HOSTNAME=<xplane-host-ip>
@@ -51,8 +63,9 @@ for the optional, explicitly enabled MAVLink Router path.
 - Checkout update refused: inspect `git status` in PX4 and its submodules.
   Preserve your changes yourself, or select another clean checkout with
   `--px4-path`. The launcher does not force-stash, reset or clean your work.
-- Unexpected saved tuning: inspect the selected airframe's state directory.
-  `px4xplane --reset-params` backs up and resets only that selected runtime.
+- Unexpected saved tuning: inspect the selected source, actual PX4 ROMFS
+  airframe file and runtime state. Plugin reference files are not executed.
+  `px4xplane --airframe <target> --reset-params` backs up and resets only that runtime.
   Syncing PX4 or changing defaults does not automatically delete tuning.
   `--reset-config` resets launcher choices, not PX4 parameters.
 - Missing launcher command: rerun the setup helper in the
@@ -65,7 +78,7 @@ for the optional, explicitly enabled MAVLink Router path.
   and `FLOW:actuator_feedback`. Do not raise `EKF2_ABL_LIM` or calibrate PX4
   level to mask a timing fault. Inspect saved parameters before any explicit
   backed-up reset.
-- Actuator-feedback or sensor-queue fault: use current official PX4 `main`,
+- Actuator-feedback or sensor-queue fault: confirm the selected PX4 source,
   restore packaged `actuator_feedback`, reduce X-Plane load and reconnect.
 - Mapping problem: use `Plugins > PX4 X-Plane > Advanced > Validate Config`
   or `python3 tools/validate_config.py config/config.ini` from a source checkout.
@@ -76,14 +89,18 @@ for the optional, explicitly enabled MAVLink Router path.
 
 ## Developer Validation
 
-- [Guided Launcher Validation](guided-launcher.md#developer-validation) - explicit TECS #27670 testing and custom checkout flags
+- [Source Modes](guided-launcher.md#source-modes) - maintained defaults and bare upstream
 - [Build Guide](BUILD.md)
 - [Developer Guide](DEVELOPER.md) - development, CI and release policy
-- [Compact QuadTailsitter Experiment](compact-qtailsitter.md) - opt-in model/profile development
+- [Airframe Reference Contract](DEVELOPER.md#airframe-reference-contract)
+- [Verification Limits](DEVELOPER.md#verification-limits)
 
 Before arming, match the loaded aircraft, active `config_name` and PX4
 `SYS_AUTOSTART`. The plugin reads `px4xplane/64/config.ini`; `config_schema.json`
 is editor/validator metadata, not runtime configuration.
+
+TruthCapture is optional diagnostic recording. Normal setup uses the launcher,
+matching aircraft and plugin mapping without additional recording tools.
 
 ## Public Docs Policy
 

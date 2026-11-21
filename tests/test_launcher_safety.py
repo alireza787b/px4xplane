@@ -37,7 +37,7 @@ class LauncherCheckoutSafety(unittest.TestCase):
         return subprocess.check_output(['git','-C',str(self.repo),'-c','commit.gpgsign=false',*args],
                                        env=self.env,stderr=subprocess.DEVNULL,text=True).strip()
 
-    def invoke(self,remote=None):
+    def invoke(self,remote=None,git_wrapper=''):
         script='''
 warning() { printf '%s\\n' "$*"; }
 info() { printf '%s\\n' "$*"; }
@@ -51,7 +51,7 @@ REPO_URL="$2"
 PX4_REMOTE_NAME=px4xplane
 BRANCH_NAME=main
 APPLY_TECS_ALT_FRAME_GUARD=false
-'''+function('require_clean_px4_checkout')+function('sync_px4_repo_to_remote')+'\nsync_px4_repo_to_remote\n'
+'''+function('require_clean_px4_checkout')+function('sync_px4_repo_to_remote')+git_wrapper+'\nsync_px4_repo_to_remote\n'
         return subprocess.run(['/bin/bash','-c',script,'launcher-test',str(self.repo),str(remote or self.remote)],
                               env=self.env,capture_output=True,text=True,timeout=30)
 
@@ -106,6 +106,75 @@ APPLY_TECS_ALT_FRAME_GUARD=false
         self.assertNotEqual(result.returncode,0)
         self.assertEqual(self.git('rev-parse','HEAD'),self.original)
         self.assertEqual(self.git('remote','get-url','origin'),str(self.remote))
+
+    def test_detached_local_commit_gets_a_durable_recovery_ref(self):
+        self.git('checkout', '--detach')
+        (self.repo/'tracked').write_text('detached work\n')
+        self.git('commit', '-am', 'detached local work')
+        previous = self.git('rev-parse', 'HEAD')
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertEqual(self.git('rev-parse', 'HEAD'), self.original)
+        self.assertEqual(self.git('rev-parse', f'refs/px4xplane/previous/{previous}'), previous)
+
+    def test_linked_worktree_is_reused_without_moving_its_branch(self):
+        worktree = self.root/'linked checkout'
+        self.git('worktree', 'add', '-b', 'local-worktree', str(worktree))
+        self.repo = worktree
+        result = self.invoke()
+        self.assertEqual(result.returncode, 0, result.stdout+result.stderr)
+        self.assertTrue((worktree/'.git').is_file())
+        self.assertEqual(self.git('rev-parse', 'local-worktree'), self.original)
+        self.assertEqual(self.git('remote', 'get-url', 'origin'), str(self.remote))
+
+    def test_ignored_file_collision_does_not_overwrite_local_work(self):
+        (self.repo/'.gitignore').write_text('ignored-work\n')
+        self.git('add', '.gitignore')
+        self.git('commit', '-m', 'ignore local work')
+        previous = self.git('rev-parse', 'HEAD')
+        (self.repo/'ignored-work').write_text('upstream content')
+        self.git('add', '-f', 'ignored-work')
+        self.git('commit', '-m', 'track previously ignored path')
+        self.git('push', 'origin', 'main')
+        self.git('checkout', '--detach', previous)
+        (self.repo/'ignored-work').write_text('my ignored work')
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual((self.repo/'ignored-work').read_text(), 'my ignored work')
+        self.assertEqual(self.git('rev-parse', 'HEAD'), previous)
+
+    def test_failed_submodule_sync_or_update_is_not_reported_as_success(self):
+        for stage in ('sync', 'update'):
+            wrapper = '''
+git() {
+    if [ "$1" = submodule ] && [ "$2" = %s ]; then return 23; fi
+    command git "$@"
+}
+''' % stage
+            result = self.invoke(git_wrapper=wrapper)
+            self.assertNotEqual(result.returncode, 0, result.stdout+result.stderr)
+            self.assertNotIn('PX4 checkout synced to', result.stdout)
+
+    def test_hidden_submodule_head_mismatch_stops_sync(self):
+        module = self.root/'module-source'
+        subprocess.run(['git', 'init', '-b', 'main', str(module)], env=self.env, check=True, capture_output=True)
+        (module/'file').write_text('module')
+        for args in (['add', 'file'], ['-c', 'commit.gpgsign=false', 'commit', '-m', 'module']):
+            subprocess.run(['git', '-C', str(module), *args], env=self.env, check=True, capture_output=True)
+        self.git('submodule', 'add', str(module), 'module')
+        self.git('commit', '-am', 'module')
+        self.git('config', 'submodule.module.ignore', 'all')
+        (self.repo/'module/file').write_text('local submodule commit')
+        for args in (['add', 'file'], ['-c', 'commit.gpgsign=false', 'commit', '-m', 'local work']):
+            subprocess.run(['git', '-C', str(self.repo/'module'), *args],
+                           env=self.env, check=True, capture_output=True)
+        previous = subprocess.check_output(['git', '-C', str(self.repo/'module'), 'rev-parse', 'HEAD'], text=True)
+        self.assertEqual(self.git('status', '--porcelain'), '')
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(subprocess.check_output(['git', '-C', str(self.repo/'module'), 'rev-parse', 'HEAD'],
+                                                text=True), previous)
 
     def test_force_clean_stash_and_parameter_deletion_are_absent(self):
         self.assertNotIn('git reset --hard',SOURCE)

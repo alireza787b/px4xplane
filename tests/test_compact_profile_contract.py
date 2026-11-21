@@ -1,4 +1,4 @@
-"""The compact-model migration must not masquerade as the legacy profile."""
+"""The single QuadTailsitter profile retains its public identity and matched geometry."""
 import configparser
 from pathlib import Path
 import re
@@ -9,10 +9,10 @@ ROOT=Path(__file__).resolve().parents[1]
 
 class CompactProfileContract(unittest.TestCase):
     def defaults(self):
-        text=(ROOT/'config/experimental/compact-qtailsitter/5021_xplane_qtailsitter').read_text()
+        text=(ROOT/'config/px4_params/5021_xplane_qtailsitter').read_text()
         entries=re.findall(r'^param set-default ([A-Z][A-Z0-9_]*) (\S+)$',text,re.M)
         self.assertEqual(len(entries),len(dict(entries)))
-        self.assertEqual(len(entries),211)
+        self.assertEqual(len(entries),209)
         return {k:float(v) for k,v in entries}
 
     def test_geometry_and_mode_specific_damping(self):
@@ -42,7 +42,10 @@ class CompactProfileContract(unittest.TestCase):
         self.assertNotIn('CAL_BARO0_OFF',p)
         self.assertNotIn('CAL_ACC0_ID',p)
         self.assertIn('exceeds metadata',
-                      (ROOT/'config/experimental/compact-qtailsitter/5021_xplane_qtailsitter').read_text())
+                      (ROOT/'config/px4_params/5021_xplane_qtailsitter').read_text())
+        self.assertEqual(p['FD_TILT_ERROR'],85)
+        self.assertEqual(p['FD_TILT_ERROR_T'],1)
+        self.assertNotIn('FD_FAIL_R',p)
 
     def test_bridge_mapping_unchanged_and_private_asset_not_packaged(self):
         ini=configparser.ConfigParser(interpolation=None)
@@ -59,13 +62,15 @@ class CompactProfileContract(unittest.TestCase):
         self.assertNotRegex(cmake,r'copy_directory\s+\$\{CMAKE_SOURCE_DIR\}/aircraft/QuadTailsitter')
         self.assertNotRegex(cmake,r'copy_if_different\s+\$\{CMAKE_SOURCE_DIR\}/tools/run_compact_qtailsitter.py')
 
-    def test_experimental_defaults_do_not_replace_the_public_reference(self):
+    def test_only_one_profile_and_public_launcher_exist(self):
         public=(ROOT/'config/px4_params/5021_xplane_qtailsitter').read_text()
-        self.assertIn('5 kg',public)
-        self.assertNotEqual(public,(ROOT/'config/experimental/compact-qtailsitter/5021_xplane_qtailsitter').read_text())
+        self.assertIn('2 kg',public)
+        self.assertFalse((ROOT/'config/experimental/compact-qtailsitter/5021_xplane_qtailsitter').exists())
+        self.assertFalse((ROOT/'tools/run_compact_qtailsitter.py').exists())
+        self.assertFalse(list((ROOT/'aircraft').rglob('*.acf')))
 
     def test_public_identity_stays_quadtailsitter(self):
-        profile=(ROOT/'config/experimental/compact-qtailsitter/5021_xplane_qtailsitter').read_text()
+        profile=(ROOT/'config/px4_params/5021_xplane_qtailsitter').read_text()
         self.assertIn('@name              QuadTailsitter X-Plane SITL',profile)
         for relative in ('config/px4_params/5021_xplane_qtailsitter',
                          'config/config.ini', 'config/px4_params/README.md',

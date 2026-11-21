@@ -1,143 +1,83 @@
 # TB2 X-Plane 12 Test Card
 
-Use this card for the refreshed Bayraktar TB2-style fixed-wing validation.
+## Setup
 
-## Package Check
+Use the matching TB2-style model with inverted A-tail, separate nosewheel
+steering and left/right flaps. The reference describes a modeled main-wing
+span of about 10.8 m and a loaded mass of about 418 kg.
 
-1. Copy the packaged `px4xplane` plugin into `X-Plane 12/Resources/plugins/`.
-2. Copy the `Bayraktar_tb2` aircraft folder into an X-Plane aircraft folder.
-3. Confirm X-Plane `Log.txt` contains:
+1. Load the aircraft on a long paved runway and select **TB2** in the plugin.
+   The configuration section and saved `config_name` are `TB2`.
+2. Start the normal launcher:
 
-```text
-px4xplane: Version: v4.2.0
-px4xplane: Loaded configuration: TB2
-px4xplane: Actuator command smoothing enabled (tau 0.040s, channels 0,1,2,3)
-```
+   ```bash
+   px4xplane --airframe xplane_tb2
+   ```
 
-4. Confirm the HUD or `Log.txt` does not show a config warning after the
-   Bayraktar `.acf` is loaded. The current package defers the match check while
-   X-Plane is still reporting only the simulator root path during startup.
-5. Confirm the config editor shows `TB2` as the selected airframe.
+3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
+   telemetry, the estimator is ready, and `SYS_AUTOSTART=5002`.
+4. Confirm runway alignment and release the parking brake before takeoff.
 
-## PX4 Check
-
-Run PX4 with the validation launcher and select `xplane_tb2`:
+The normal launcher uses the maintained `PX4-Autopilot-Me` fork, branch
+`px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
 ```bash
-px4xplane --validation --reset-config
+px4xplane --airframe xplane_tb2 --reset-params
 ```
 
-The printed validation stack should show official PX4 plus the pending EKF-GSF,
-Standard VTOL, and TECS PR guards unless you are deliberately testing
-`--official`.
+Ordinary launches preserve saved tuning. See the
+[launcher reference](guided-launcher.md#saved-parameters) for state and backups.
 
-The setup script now resets the saved PX4 SITL parameter store automatically
-when the selected X-Plane airframe or its default airframe file fingerprint
-changes. That keeps stale `parameters.bson` values from masking the current
-defaults.
+## Parameter Reference
 
-For a fully manual run, still use a clean build after airframe changes:
+Keep the existing TB2 tune in
+[`5002_xplane_tb2`](../config/px4_params/5002_xplane_tb2).
+No Alia250, EHang184, Cessna172 or QuadTailsitter gains are transferred to TB2.
 
-```bash
-make px4_sitl_default distclean
-make px4_sitl_default xplane_tb2
-```
+| Parameter | Value |
+| --- | ---: |
+| FW_RR_P | 0.34 |
+| FW_RR_I | 0.08 |
+| FW_RR_D | 0.05 |
+| FW_RR_FF | 2.4 |
+| FW_PR_P | 0.32 |
+| FW_PR_I | 0.04 |
+| FW_PR_D | 0.08 |
+| FW_PR_FF | 2.4 |
+| FW_AIRSPD_TRIM | 36 |
+| FW_LND_AIRSPD | 28 |
+| FW_THR_TRIM | 0.32 |
+| COM_DISARM_LAND | 4 |
 
-Before judging the flight, check the ULog initial parameters with:
+Keep `PWM_MAIN_REV=15` and output functions
+`201,202,203,204,101,440,205,206` for outputs 1-8. Plugin channels 2/3
+control the A-tail, channel 4 the engine, channel 5 the nosewheel, and channels
+6/7 the flaps. Airspeed remains `xplane_indicated`; control-surface smoothing
+remains 0.04 seconds on channels 0-3.
 
-```bash
-python3 tools/check_px4_airframe_params.py <ulog> px4_airframes/5002_xplane_tb2
-```
+PX4 executes its checkout's airframe under
+`ROMFS/px4fmu_common/init.d-posix/airframes/`, not the packaged reference
+inside the plugin directory.
 
-Important expected parameters:
+## Flight Check
 
-```text
-SYS_AUTOSTART=5002
-PWM_MAIN_FUNC6=440
-PWM_MAIN_FUNC7=205
-PWM_MAIN_FUNC8=206
-FW_W_EN=1
-ASPD_DO_CHECKS=1
-ASPD_FALLBACK=1
-SYS_HAS_NUM_ASPD=0
-EKF2_ABL_LIM=0.8
-CAL_ACC0_XOFF=0.0
-CAL_ACC0_YOFF=0.0
-CAL_ACC0_ZOFF=0.0
-IMU_GYRO_RATEMAX=200
-IMU_INTEG_RATE=200
-SENS_GPS0_DELAY=10
-SENS_GPS1_DELAY=10
-EKF2_MAG_TYPE=1
-EKF2_MULTI_IMU=1
-SENS_IMU_MODE=0
-FW_AIRSPD_TRIM=36.0
-FW_LND_AIRSPD=28.0
-FW_T_ALT_TC=8.0
-FW_T_HRATE_FF=0.15
-FW_T_SPDWEIGHT=1.0
-FW_THR_TRIM=0.32
-FW_LND_THRTC_SC=0.7
-FW_FLAPS_LND_SCL=1.0
-LNDFW_AIRSPD_MAX=12.0
-LNDFW_VEL_XY_MAX=6.0
-LNDFW_TRIG_TIME=2.0
-COM_DISARM_LAND=4.0
-```
+1. Verify actual loading, CG, weather and QGC telemetry before arming.
+2. Use a straight runway takeoff and a long outbound climb before turning.
+3. Check cruise tracking and broad loiter capture at the mission's actual
+   height, radius and airspeed.
+4. Give the fixed-wing landing pattern enough final distance to stabilize.
+   Resolve an infeasible approach by reviewing height and distance.
+5. Check A-tail response, flap deployment, flare, steering and rollout.
+6. Wait 15 seconds after automatic disarm, then enter `shutdown` in the
+   PX4 console.
 
-Keep the accelerometer offsets neutral. The bridge already publishes
-attitude-consistent HIL accelerometer data; nonzero offsets can corrupt
-`sensor_combined` and trigger EKF2 accelerometer-bias checks while parked.
+## Developer Checks
 
-Abort the test if the ULog still shows stale values such as
-`EKF2_ABL_LIM=2.0`, `SENS_GPS0_DELAY=0`, `EKF2_MULTI_IMU=3`, or
-`IMU_INTEG_RATE=250`. Run `make px4_sitl_default distclean`, then delete any
-saved SITL parameter store if stale values remain:
-
-```bash
-rm -f build/px4_sitl_default/rootfs/parameters.bson \
-      build/px4_sitl_default/rootfs/parameters_backup.bson
-```
-
-Do not judge estimator warnings or landing behavior until these values match the
-airframe defaults.
-
-## Flight Script
-
-1. Start X-Plane with the Bayraktar TB2 aircraft on a long runway.
-2. Start PX4 with `xplane_tb2`.
-3. Wait for `Ready for takeoff` and verify QGC sees a valid airspeed.
-4. Create a mission with:
-   - runway takeoff,
-   - first waypoint straight ahead at least 1.5 km from runway end,
-   - cruise waypoints at 150 m AGL or higher,
-   - a loiter radius around 700 m,
-   - a runway or fixed-wing landing with a long final approach. If QGC/PX4
-     reports an infeasible landing slope, increase approach distance or lower
-     the landing entrance altitude instead of making the slope steeper.
-5. Run the mission without joystick intervention unless safety requires aborting.
-6. After landing/disarm, wait 10 seconds before stopping PX4.
-
-## What To Record
-
-Send back:
-
-- PX4 `.ulg`
-- PX4 terminal log
-- X-Plane `Log.txt`
-- XPlaneTruthCapture folder or zip
-- Any visible observations about:
-  - runway centerline tracking,
-  - surface smoothness,
-  - flap deployment,
-  - airspeed target tracking,
-  - loiter/orbit capture,
-  - flare and rollout.
-
-## Expected Closure Behavior
-
-The target is safe autonomous runway takeoff, cruise, loiter, and landing with
-no EKF warnings, controlled centerline tracking, stable flap deployment, and a
-landing approach that converges toward the configured `28 m/s` airspeed without
-the previous high-energy final. Rollout should stay armed and steered longer
-than the earlier high-energy landing baseline, then disarm after the aircraft has slowed to a low taxi speed.
+- No new TB2 tuning evidence was supplied for this integration; retain its
+  existing gains, speeds and landing tune.
+- Integration uses upstream base `0e0f3ce8a2`. Flight validation of that
+  newer core with this unchanged tune is pending.
+- Compare source/model identity, effective parameters, ULog tracking and
+  actuator outputs. Confirm both A-tail halves, the dedicated wheel output
+  and both flaps follow their commands. TruthCapture is optional development
+  evidence.
