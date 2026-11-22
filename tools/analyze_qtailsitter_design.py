@@ -113,8 +113,8 @@ class CaptureFrames:
 
 
 def estimate_wing_area_m2(values: Dict[str, str]) -> Dict[str, float]:
+    """Sum stored trapezoids once; left/right records are separate surfaces."""
     raw_area_ft2 = 0.0
-    mirrored_area_ft2 = 0.0
     wing_count = int(as_float(values, "_wing/count", 0))
     for index in range(wing_count):
         semilen = as_float(values, f"_wing/{index}/_semilen_SEG")
@@ -124,11 +124,8 @@ def estimate_wing_area_m2(values: Dict[str, str]) -> Dict[str, float]:
             continue
         area_ft2 = semilen * (croot + ctip) * 0.5
         raw_area_ft2 += area_ft2
-        right_multiplier = as_float(values, f"_wing/{index}/_is_right_mult", 0.0)
-        mirrored_area_ft2 += area_ft2 * (2.0 if right_multiplier > 0.0 else 1.0)
     return {
-        "raw_area_m2": raw_area_ft2 * FT_TO_M * FT_TO_M,
-        "mirrored_area_m2": mirrored_area_ft2 * FT_TO_M * FT_TO_M,
+        "section_area_estimate_m2": raw_area_ft2 * FT_TO_M * FT_TO_M,
     }
 
 
@@ -138,7 +135,7 @@ def aircraft_summary(values: Dict[str, str], clmax: float) -> Dict[str, object]:
     mass_kg = empty_lb * LB_TO_KG
     weight_n = mass_kg * G
     areas = estimate_wing_area_m2(values)
-    area_m2 = areas["mirrored_area_m2"] or areas["raw_area_m2"]
+    area_m2 = areas["section_area_estimate_m2"]
     wing_loading = weight_n / area_m2 if area_m2 > 0.0 else 0.0
     stall_mps = math.sqrt((2.0 * weight_n) / (RHO0 * area_m2 * clmax)) if area_m2 > 0.0 and clmax > 0.0 else 0.0
 
@@ -192,6 +189,7 @@ def aircraft_summary(values: Dict[str, str], clmax: float) -> Dict[str, object]:
         "wing": {
             **areas,
             "selected_area_m2": area_m2,
+            "area_scope": "Sum of ACF section trapezoids, not a measured lifting area; no sweep, overlap or interference correction.",
             "wing_loading_n_m2": wing_loading,
             "wing_loading_kg_m2": mass_kg / area_m2 if area_m2 > 0.0 else 0.0,
             "stall_mps_at_clmax": stall_mps,

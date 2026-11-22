@@ -55,9 +55,22 @@ class AirframeToolTest(unittest.TestCase):
 
         self.assertGreater(aircraft["mass"]["empty_kg"], 4.0)
         self.assertLess(aircraft["mass"]["empty_kg"], 6.0)
-        self.assertGreater(aircraft["wing"]["selected_area_m2"], 0.1)
+        self.assertAlmostEqual(aircraft["wing"]["selected_area_m2"], 0.3048 ** 2)
         self.assertGreater(aircraft["propulsion"]["hover_per_motor_thrust_n"], 10.0)
         self.assertGreater(aircraft["propulsion"]["props"][0]["diameter_in"], 9.0)
+
+    def test_left_and_right_wing_sections_are_counted_once(self):
+        values = {'_wing/count': '2'}
+        for index, handedness in enumerate(('-1', '1')):
+            values.update({f'_wing/{index}/_semilen_SEG': '2',
+                           f'_wing/{index}/_Croot': '.5',
+                           f'_wing/{index}/_Ctip': '.5',
+                           f'_wing/{index}/_is_right_mult': handedness})
+        area = design.estimate_wing_area_m2(values)['section_area_estimate_m2']
+        self.assertAlmostEqual(area, 2 * 0.3048 ** 2)
+        # Handedness is an orientation sign, not an instruction to clone a wing.
+        values['_wing/0/_is_right_mult'] = '1'
+        self.assertEqual(design.estimate_wing_area_m2(values)['section_area_estimate_m2'], area)
 
 
 if __name__ == "__main__":

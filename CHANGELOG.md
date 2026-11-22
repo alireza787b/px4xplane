@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   view for chase instead of its invalid body-fixed Chase preset.
 - Respect Git ignore rules when checking embedded repositories before sync;
   normal PX4 build caches no longer falsely block an update.
+- Count each stored wing section once in the offline sizing helper. Its
+  trapezoid area and assumed-CLmax stall estimate are not a measured envelope.
 
 ### Changed
 
