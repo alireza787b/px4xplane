@@ -18,6 +18,12 @@ model and its original CG, not the earlier 5 kg dynamics.
 3. Select **Connect to SITL** when PX4 is waiting. Confirm QGC receives
    telemetry, the estimator is ready, and `SYS_AUTOSTART=5021`.
 
+The plugin's **Nose / FPV** view follows the fixed camera mount and aircraft
+attitude; it is not a horizon-stabilized gimbal. **Belly / Down** looks forward
+in hover and down in fixed-wing flight. For a chase view, release the plugin
+camera and select X-Plane's own external view. Disable another camera plugin's
+control when isolating conflicting views.
+
 The beta/developer launcher uses the maintained `PX4-Autopilot-Me` fork, branch
 `px4xplane-airframes`. To adopt changed defaults explicitly, use:
 
@@ -83,7 +89,10 @@ inside the plugin directory.
 
 - The R16 handling reference used logging child `58794523a151` of upstream
   `649929706fb3`. Integration uses upstream base `0e0f3ce8a2`; the newer
-  core and failure-detector migration still require flight validation.
+  core and failure-detector migration passed an owner baseline flight on
+  November 22 with maintained commit `ecff79850f`: forward/back-transition,
+  RTL, touchdown and automatic disarm, at the original 2 kg/CG configuration.
+  This is not a payload, CG, wind or hardware-envelope validation.
 - Upstream commits `7f83c28400` and `fa877566a4` replace the old roll/pitch
   failure thresholds with tilt-error settings. Do not restore the removed
   four parameters to obtain the historical count of 211.

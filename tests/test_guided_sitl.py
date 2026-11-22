@@ -6,6 +6,7 @@ import json
 import os
 import re
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
@@ -82,6 +83,36 @@ class GuidedStartupTests(unittest.TestCase):
         self.assertEqual(startup,RCS.replace('. px4-rc.mavlink\n','. ../mavlink.sh\n'))
         self.assertIn('-t 172.23.128.2 -o 14550',mavlink)
         self.assertTrue(mavlink.endswith('# stock offboard links\n'))
+
+    def test_generated_shell_routes_only_gcs_with_or_without_an_interface(self):
+        stock = '''udp_gcs_port_local=$((18570+px4_instance))
+udp_offboard_port_local=$((14580+px4_instance))
+udp_offboard_port_remote=$((14540+px4_instance))
+mavlink_network_interface_arg=""
+if [ -n "$PX4_NET_INTERFACE" ]; then
+    mavlink_network_interface_arg="-n $PX4_NET_INTERFACE -p"
+fi
+''' + runner.GCS_START + '''mavlink stream -r 50 -s ATTITUDE -u $udp_gcs_port_local
+mavlink start -x -u $udp_offboard_port_local -r 4000000 -f -m onboard -o $udp_offboard_port_remote $mavlink_network_interface_arg
+mavlink start -x -u 14280 -r 4000 -f -m onboard -o 14030 $mavlink_network_interface_arg
+mavlink start -x -u 13030 -r 400000 -f -m gimbal -o 13280 $mavlink_network_interface_arg
+'''
+        capture = 'mavlink() { printf "%s\\n" "$*"; }\n'
+        for qgc in ('192.0.2.40', '127.0.0.1', 'localhost'):
+            for interface in ('', 'eth0'):
+                with self.subTest(qgc=qgc, interface=interface):
+                    _, routed = runner.prepare_startup(RCS, stock, qgc)
+                    commands = []
+                    for script in (stock, routed):
+                        result = subprocess.run(['/bin/sh', '-c', capture + script],
+                                                env={'px4_instance': '0', 'PX4_NET_INTERFACE': interface},
+                                                capture_output=True, text=True, timeout=5)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        commands.append([shlex.split(line) for line in result.stdout.splitlines()])
+                    self.assertEqual(commands[1][0], commands[0][0] +
+                                     ['-t', runner.ipv4(qgc), '-o', '14550'])
+                    self.assertEqual(commands[1][0][3], '18570')
+                    self.assertEqual(commands[1][1:], commands[0][1:])
 
     def test_changed_startup_layout_fails_before_creating_state(self):
         (self.px4/'ROMFS/px4fmu_common/init.d-posix/px4-rc.mavlink').write_text('new unsupported layout')
@@ -464,7 +495,7 @@ class GuidedStartupTests(unittest.TestCase):
 @unittest.skipUnless(sys.platform.startswith('linux'), 'Ubuntu/WSL shell launcher integration')
 class GuidedShellWorkflow(unittest.TestCase):
     def workflow(self, target=None, reverse=False, remember=False, bootstrap=False, worktree=False,
-                 sync=False, sync_fail=False, build_fail=False):
+                 sync=False, sync_fail=False, build_fail=False, wsl_mode=None):
         with tempfile.TemporaryDirectory() as tmp:
             base=Path(tmp).resolve()
             home=base/'home'
@@ -503,11 +534,27 @@ binary=b/'bin/px4'
 binary.write_text('#!/bin/sh\\nprintf "OFFLINE PX4 CONSOLE STUB\\\\n"\\n')
 binary.chmod(0o755)
 '''
-            for name,text in [('make',make),('pgrep','#!/bin/sh\nexit 1\n'),
+            scripts = [('make',make),('pgrep','#!/bin/sh\nexit 1\n'),
                               ('cmake','#!/bin/sh\nexit 0\n'), ('ninja','#!/bin/sh\nexit 0\n'),
                               ('gcc','#!/bin/sh\nexit 0\n'), ('g++','#!/bin/sh\nexit 0\n'),
                               ('python3', '#!/bin/sh\nif [ "$1" = - ]; then exit 0; fi\nexec /usr/bin/python3 "$@"\n'),
-                              ('curl','#!/bin/sh\necho UNEXPECTED_NETWORK >&2\nexit 97\n')]:
+                              ('curl','#!/bin/sh\necho UNEXPECTED_NETWORK >&2\nexit 97\n')]
+            if wsl_mode is not None:
+                env['FIXTURE_WSL_MODE'] = wsl_mode
+                scripts.extend([
+                    ('grep', '''#!/bin/sh
+if [ "$#" -eq 3 ] && [ "$1" = -qEi ] && [ "$3" = /proc/version ]; then exit 0; fi
+exec /usr/bin/grep "$@"
+'''),
+                    ('wslinfo', '''#!/bin/sh
+[ "$1" = --networking-mode ] || exit 97
+printf '%s\\r\\n' "$FIXTURE_WSL_MODE"
+'''),
+                    ('ip', '''#!/bin/sh
+[ "$*" = route ] || exit 97
+printf '%s\\n' 'default via 192.0.2.1 dev eth0'
+''')])
+            for name, text in scripts:
                 file=fake/name
                 file.write_text(text)
                 file.chmod(0o755)
@@ -584,7 +631,8 @@ exec /usr/bin/git "$@"
                 return
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             self.assertIn('OFFLINE PX4 CONSOLE STUB',result.stdout)
-            expected_qgc = '192.168.1.42' if remember else '127.0.0.1'
+            expected_host = '192.0.2.1' if wsl_mode is not None and wsl_mode != 'mirrored' else '127.0.0.1'
+            expected_qgc = '192.168.1.42' if remember else expected_host
             self.assertIn(f'QGC target: UDP {expected_qgc}:14550',result.stdout)
             self.assertNotIn('UNEXPECTED_NETWORK',result.stderr)
             self.assertNotIn('Setup Complete!',result.stdout)
@@ -596,6 +644,13 @@ exec /usr/bin/git "$@"
             self.assertTrue((home/'.local/share/px4xplane/launcher/launch_sitl.py').is_file())
             selected = target or 'xplane_ehang184'
             self.assertEqual(len(list((home/'state/px4xplane/sitl').glob(f'*/{selected}/last-launch.json'))),1)
+            record = next((home/'state/px4xplane/sitl').glob(f'*/{selected}/last-launch.json'))
+            metadata = json.loads(record.read_text())
+            self.assertEqual(metadata['xplane_host'], expected_host)
+            self.assertEqual(metadata['qgc_host'], expected_qgc)
+            route = (record.parent/'mavlink.sh').read_text()
+            self.assertIn(f'-t {expected_qgc} -o 14550\n', route)
+            self.assertEqual((px4/'ROMFS/px4fmu_common/init.d-posix/px4-rc.mavlink').read_text(), MAVLINK)
             self.assertFalse((px4/'build/px4_sitl_default/rootfs/parameters.bson').exists())
             self.assertEqual((ROOT/'setup/setup_px4_sitl.sh').read_bytes(), source_before)
             if target:
@@ -622,6 +677,14 @@ exec /usr/bin/git "$@"
 
     def test_remembered_checkout_qgc_and_branch_bootstrap_url(self):
         self.workflow(target='xplane_tb2', remember=True)
+
+    def test_wsl_nat_mirrored_and_unknown_mode_route_qgc_directly(self):
+        for mode in ('nat', 'mirrored', 'unknown'):
+            with self.subTest(mode=mode):
+                self.workflow(target='xplane_qtailsitter', wsl_mode=mode)
+
+    def test_wsl_qgc_override_remains_separate_from_xplane_and_is_remembered(self):
+        self.workflow(target='xplane_qtailsitter', wsl_mode='nat', remember=True)
 
     def test_single_script_bootstrap_installs_reusable_pair(self):
         self.workflow(target='xplane_alia250', bootstrap=True)

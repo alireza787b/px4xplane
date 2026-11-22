@@ -187,6 +187,17 @@ copy of PX4's MAVLink startup script, not a source patch. Confirm that QGC
 actually shows a connected vehicle; an address or working simulator link
 alone does not establish telemetry reception.
 
+If QGC appears disconnected, run `mavlink status` at the PX4 console. Check
+the **Normal** link, normally local UDP `18570`, remote port `14550`, and its
+partner IP against the reported QGC destination. TX with no errors confirms
+local sends, not delivery to QGC. RX and GCS heartbeats establish return traffic,
+but do not identify which GCS application or window received telemetry. The
+`MAVLink only on localhost` startup message checks broadcast mode, not the
+explicit partner IP, and may also describe other stock links. Check Windows UDP
+`14550` listener ownership, QGC logs, or a packet capture to distinguish a
+listener/firewall issue from the wrong QGC instance. The configured destination
+and ULog traffic counters alone do not record the incoming peer's IP address.
+
 `--with-mavlink-router` optionally uses an already-installed `mavlink-routerd`
 for remote QGC, not localhost. No router installer runs as part of setup.
 Truth capture is optional diagnostic recording, not a launch prerequisite.

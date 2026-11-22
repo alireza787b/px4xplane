@@ -31,7 +31,7 @@ namespace PX4XPlaneVersion {
     constexpr const char* YEAR = "2026";
 
     /** Plugin build number - increment for each build */
-    constexpr const char* BUILD = "015";
+    constexpr const char* BUILD = "016";
 
     // =================================================================
     // AUTHOR AND PROJECT INFORMATION  

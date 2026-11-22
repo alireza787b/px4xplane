@@ -538,6 +538,24 @@ if(PX4XPLANE_BUILD_TESTS)
         endif()
     endfunction()
 
+    add_executable(camera_pose_test tests/camera_pose_test.cpp)
+    target_include_directories(camera_pose_test PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/lib/Eigen
+        ${CMAKE_SOURCE_DIR}/lib/simpleini
+        ${CMAKE_SOURCE_DIR}/lib/SDK/CHeaders/XPLM
+    )
+    if(WIN32)
+        target_compile_definitions(camera_pose_test PRIVATE IBM=1)
+    elseif(APPLE)
+        target_compile_definitions(camera_pose_test PRIVATE APL=1)
+    elseif(UNIX)
+        target_compile_definitions(camera_pose_test PRIVATE LIN=1)
+    endif()
+    px4xplane_enable_test_assertions(camera_pose_test)
+    add_test(NAME camera_pose_test COMMAND camera_pose_test)
+
     add_executable(actuator_safety_test
         tests/actuator_safety_test.cpp
         src/ActuatorSafety.cpp

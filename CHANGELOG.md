@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Compose body-mounted camera rotations instead of adding Euler angles, and
+  rotate mount positions with all three aircraft axes independently of look
+  direction. Correct the QuadTailsitter FPV mount; use X-Plane's own external
+  view for chase instead of its invalid body-fixed Chase preset.
 - Respect Git ignore rules when checking embedded repositories before sync;
   normal PX4 build caches no longer falsely block an update.
 
@@ -35,6 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `--reset-params`; source updates no longer imply deleting saved tuning.
 - Clarify direct QGC targeting and optional use of an already-installed MAVLink
   Router, separately from the X-Plane TCP connection.
+- Add routing regression checks for WSL NAT, mirrored networking and separate
+  QGC destinations; explain how to distinguish transmission from GCS reception.
 - Consolidate QuadTailsitter into one canonical profile, with the existing
   target, mapping and autostart ID. Remove the superseded profile runner and
   legacy aircraft assets; aircraft are supplied separately.

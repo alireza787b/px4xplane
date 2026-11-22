@@ -140,6 +140,18 @@ PX4 actuator outputs are normalized floating-point setpoints, so px4xplane curre
 `cameraViews`
 : Plugin-owned camera presets available from `PX4 X-Plane > Camera Views` and X-Plane command bindings such as `px4xplane/camera/view_1`.
 
+Each preset has eight pipe-separated fields; separate presets with semicolons:
+
+```text
+Label|forward_m|right_m|up_m|pitch_offset_deg|heading_offset_deg|roll_offset_deg|zoom
+```
+
+Translation is fixed in the X-Plane aircraft frame, relative to its default center of gravity: forward is toward the aircraft nose (`-Z`), right is `+X`, and up is `+Y`, in meters. All three offsets follow the aircraft's heading, pitch, and roll. They do not follow the camera's look direction, and `up_m` is not world-vertical when the aircraft is tilted. Changing only the angular offsets never moves the camera mount.
+
+The angular offsets describe a body-fixed camera mount in degrees: heading turns right, pitch tilts up, and roll banks right around the look direction, applied in heading-pitch-roll order. The plugin composes the aircraft rotation with this mount rotation, rather than adding Euler angles. Zero angular offsets align the camera with the aircraft. A `+90` pitch offset looks along aircraft `+Y`; at aircraft pitch `-90` and zero roll it looks level. With aircraft heading `0` and roll `+30` in that attitude, the same mount looks level at heading `+30`, with zero camera roll. `forward_m` still points along the aircraft nose, not along that level view. At vertical look directions, different heading/roll pairs can represent the same camera orientation.
+
+These conventions follow the SDK's [camera rotation order](https://developer.x-plane.com/sdk/XPLMCamera/) and [aircraft-to-local coordinate transform](https://developer.x-plane.com/article/screencoordinates/). Zoom `1.0` is normal; larger values magnify. Camera control lasts until the view changes or another plugin takes control. If a camera plugin such as X-Camera is active, disable its camera control when isolating a view problem; a correct mount transform does not prevent ownership conflicts.
+
 `actuatorSmoothingTimeConstantSec`
 : Optional first-order smoothing between PX4 HIL actuator packets and X-Plane frames. Use small values such as `0.02` to `0.05` only for visibly stepped fixed-wing surfaces. Do not use smoothing to hide unstable tuning.
 

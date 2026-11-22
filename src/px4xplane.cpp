@@ -18,6 +18,7 @@
 #include "DataRefManager.h"
 #include "ConnectionManager.h"
 #include "ConfigManager.h"
+#include "CameraPose.h"
 #include "HILSensorFlowController.h"
 #include "HILSensorResampler.h"
 #include <algorithm>
@@ -194,12 +195,6 @@ void showConfigEditorLocation() {
 	}
 }
 
-struct Vec3f {
-	float x;
-	float y;
-	float z;
-};
-
 struct CameraDataRefs {
 	XPLMDataRef localX = nullptr;
 	XPLMDataRef localY = nullptr;
@@ -213,39 +208,6 @@ struct CameraDataRefs {
 static int g_activeCameraIndex = -1;
 static CameraDataRefs g_cameraRefs;
 static XPLMCommandRef g_externalViewCommand = nullptr;
-
-constexpr float degToRad(float degrees) {
-	return degrees * 0.01745329251994329577f;
-}
-
-float normalizeHeading(float degrees) {
-	while (degrees < 0.0f) {
-		degrees += 360.0f;
-	}
-	while (degrees >= 360.0f) {
-		degrees -= 360.0f;
-	}
-	return degrees;
-}
-
-Vec3f addVec(const Vec3f& a, const Vec3f& b) {
-	return { a.x + b.x, a.y + b.y, a.z + b.z };
-}
-
-Vec3f scaleVec(const Vec3f& v, float scale) {
-	return { v.x * scale, v.y * scale, v.z * scale };
-}
-
-Vec3f cameraLookVector(float headingDeg, float pitchDeg) {
-	const float headingRad = degToRad(headingDeg);
-	const float pitchRad = degToRad(pitchDeg);
-	const float cp = std::cos(pitchRad);
-	return {
-		std::sin(headingRad) * cp,
-		std::sin(pitchRad),
-		-std::cos(headingRad) * cp,
-	};
-}
 
 void initializeCameraDataRefs() {
 	if (g_cameraRefs.initialized) {
@@ -291,23 +253,8 @@ int customCameraCallback(XPLMCameraPosition_t* outCameraPosition, int inIsLosing
 	const float theta = XPLMGetDataf(g_cameraRefs.pitch);
 	const float phi = XPLMGetDataf(g_cameraRefs.roll);
 
-	const float cameraPitch = theta + view.pitchOffsetDeg;
-	const float cameraHeading = normalizeHeading(psi + view.headingOffsetDeg);
-	const float cameraRoll = phi + view.rollOffsetDeg;
-	const Vec3f forward = cameraLookVector(cameraHeading, cameraPitch);
-	const Vec3f right = cameraLookVector(cameraHeading + 90.0f, 0.0f);
-	const Vec3f up = { 0.0f, 1.0f, 0.0f };
-	const Vec3f offset = addVec(
-		addVec(scaleVec(forward, view.forwardOffsetM), scaleVec(right, view.rightOffsetM)),
-		scaleVec(up, view.upOffsetM));
-
-	outCameraPosition->x = static_cast<float>(aircraftX + offset.x);
-	outCameraPosition->y = static_cast<float>(aircraftY + offset.y);
-	outCameraPosition->z = static_cast<float>(aircraftZ + offset.z);
-	outCameraPosition->pitch = cameraPitch;
-	outCameraPosition->heading = cameraHeading;
-	outCameraPosition->roll = cameraRoll;
-	outCameraPosition->zoom = view.zoom;
+	*outCameraPosition = CameraPose::calculate(
+		Eigen::Vector3d(aircraftX, aircraftY, aircraftZ), psi, theta, phi, view);
 	return 1;
 }
 
