@@ -38,6 +38,8 @@ class CompactProfileContract(unittest.TestCase):
                               ('MPC_Z_V_AUTO_DN','MPC_Z_VEL_MAX_DN')]:
             self.assertLessEqual(p[request],p[bound])
         self.assertEqual(p['VT_B_TRANS_DUR'],15)
+        self.assertEqual(p['VT_FW_MIN_ALT'],10)
+        self.assertEqual(p['VT_QC_T_ALT_LOSS'],35)
         self.assertEqual(p['FW_R_TC'],1.5)
         self.assertNotIn('CAL_BARO0_OFF',p)
         self.assertNotIn('CAL_ACC0_ID',p)

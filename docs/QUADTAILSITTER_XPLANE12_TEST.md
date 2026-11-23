@@ -35,7 +35,7 @@ The canonical reference is
 It contains **209 defaults**: the frozen 211-value profile with the four
 obsolete `FD_FAIL_R`, `FD_FAIL_P`, `FD_FAIL_R_TTRI` and `FD_FAIL_P_TTRI`
 assignments replaced by `FD_TILT_ERROR=85` and `FD_TILT_ERROR_T=1`.
-All other frozen values are preserved.
+The X-Plane profile sets `VT_FW_MIN_ALT=10`; the other frozen values are unchanged.
 
 Selected cross-checks, not a replacement for the complete profile:
 
@@ -53,6 +53,7 @@ Selected cross-checks, not a replacement for the complete profile:
 | FW_AIRSPD_MAX | 34 |
 | VT_ARSP_TRANS | 25 |
 | VT_B_TRANS_DUR | 15 |
+| VT_FW_MIN_ALT | 10 |
 | FD_TILT_ERROR | 85 |
 | FD_TILT_ERROR_T | 1 |
 
@@ -70,6 +71,8 @@ inside the plugin directory.
 1. Confirm model loading, original CG, QGC telemetry and effective parameters.
 2. Set the planned takeoff and transition heights in the mission. The profile's
    `MIS_TAKEOFF_ALT=1.5` is not suitable transition clearance.
+   The 10 m quad-chute floor is relative to PX4's local altitude origin,
+   not Home or terrain, and is not a target or a recommended transition height.
 3. Begin with hover, a modest movement/stop and a controlled Land after an
    installation change.
 4. At the planned transition height, check front transition, settled
